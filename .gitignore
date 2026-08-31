@@ -1,0 +1,21 @@
+# builds e artefatos
+build/
+dist/
+*.bin
+*.elf
+*.map
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# ESP-IDF locais
+sdkconfig
+managed_components/
+
+# credenciais/config local
+.env
+*.secret
+secrets.*
