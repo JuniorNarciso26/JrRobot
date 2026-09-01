@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 echo ========================================
-echo JrBot Face OLED - Instalador ESP32-S3
+echo JrBot - Instalador ESP32-S3
  echo ========================================
 echo.
 echo Este instalador compila e grava o firmware na ESP32-S3.
@@ -29,7 +29,7 @@ if errorlevel 1 (
 echo Porta de gravacao: %PORT%
 echo Target: esp32s3
 echo.
-cd /d "%~dp0\firmware\face_oled"
+cd /d "%~dp0\firmware\esp32"
 call idf.py set-target esp32s3 || goto erro
 call idf.py build || goto erro
 call idf.py -p %PORT% flash || goto erro

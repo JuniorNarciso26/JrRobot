@@ -22,6 +22,7 @@ SERIAL_LOCK = threading.Lock()
 READER_THREAD = None
 READER_STOP = False
 BAUD = 115200
+APP_VERSION = "2026-09-01 11:32 UTC"
 LOGS = deque(maxlen=1200)
 LOG_ID = 0
 
@@ -44,12 +45,12 @@ HTML = r"""
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JrBot Face OLED V2</title>
+<title>JrBot</title>
 <style>
 :root{--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f;--yellow:#f3b33d;--purple:#9b62f0}
 *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;height:100vh;overflow:hidden}
 header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(10,12,18,.75);backdrop-filter:blur(8px)}
-h1{font-size:20px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}.status{display:flex;gap:10px;align-items:center}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}.pill.ok{color:#b9ffd7;border-color:#246b43}.pill.bad{color:#ffcbc6;border-color:#74312c}
+h1{font-size:20px;margin:0}.version{color:#b9ffd7;font-size:12px;margin-top:4px}.sub{color:var(--muted);font-size:13px;margin-top:3px}.status{display:flex;gap:10px;align-items:center}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}.pill.ok{color:#b9ffd7;border-color:#246b43}.pill.bad{color:#ffcbc6;border-color:#74312c}
 main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;height:calc(100vh - 64px);padding:14px}.card{background:rgba(21,25,35,.88);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.25)}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:#dfe8ff;display:flex;justify-content:space-between;align-items:center}.left,.right{display:flex;flex-direction:column;min-height:0}
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
 #log{flex:1;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow:auto;white-space:pre-wrap}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
@@ -59,7 +60,7 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;height:calc(100vh 
 </head>
 <body>
 <header>
-  <div><h1>JrBot Face OLED V2</h1><div class="sub">Log serial ao vivo + seleção de rostos 128x64</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Painel local do robô: log serial + seleção de rostos</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -160,7 +161,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/" or self.path.startswith("/?"):
-            self._send(200, HTML, "text/html; charset=utf-8")
+            self._send(200, HTML.replace("{APP_VERSION}", APP_VERSION), "text/html; charset=utf-8")
         elif self.path == "/ports":
             ports = [] if list_ports is None else [p.device for p in list_ports.comports()]
             self._send(200, json.dumps({"ports": ports}), "application/json")

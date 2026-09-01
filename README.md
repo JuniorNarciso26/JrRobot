@@ -1,49 +1,48 @@
-# jrbot
+# JrBot
 
-Projeto principal de trabalho do Corpo Pablo ESP32 / JrBot.
+Sistema do robô JrBot / Corpo Pablo ESP32.
 
-## MVP atual
+Versão atual: 2026-09-01 11:32 UTC
 
-Rosto OLED V2 para ESP32-S3-CAM com 16 expressões, piscada automática, pupilas móveis e modo demo.
+## Arquivos principais
 
-Comandos suportados via Serial/USB:
+Use só estes arquivos na maioria das vezes:
 
-```text
-neutro
-feliz
-triste
-bravo
-animado
-surpreso
-pensando
-cetico
-sono
-confuso
-piscando
-amor
-brincalhao
-preocupado
-cool
-bateria
-demo
-status
-help
+- `INSTALAR.bat` — compila, grava o ESP32-S3 e abre o painel no final.
+- `PAINEL.bat` — abre novamente o painel HTML/local depois que já instalou.
+- `DIAGNOSTICO.bat` — gera `erro-build.txt` se a compilação falhar.
+
+## Como instalar
+
+1. Extraia o ZIP em uma pasta simples.
+2. Abra pelo terminal **ESP-IDF Command Prompt**.
+3. Entre na pasta do projeto.
+4. Rode:
+
+```powershell
+.\INSTALAR.bat COM6
 ```
 
-## Estrutura
+Se a porta de gravação não for COM6, troque pelo COM correto.
 
-```text
-firmware/face_oled/      firmware ESP-IDF do rosto OLED
-tools/jrbot_frontend/    frontend local para mandar comandos seriais
-scripts/                 scripts de implantação/build/flash
-docs/                    documentação de plataforma e pinagem
-references/              material útil copiado do backup antigo
+## Como abrir só o painel depois
+
+```powershell
+.\PAINEL.bat
 ```
 
-## Primeiro teste
+O navegador abre em:
 
-1. Conectar OLED no ESP32-S3-CAM conforme `docs/PINAGEM.md`.
-2. Conectar a placa no computador.
-3. Rodar `scripts/deploy_windows.bat` no Windows com ESP-IDF instalado.
-4. Atenção nesta placa com duas USB/COM: a gravação pode aparecer em uma porta (ex.: `COM6`) e a Serial de comandos em outra (ex.: `COM4`).
-5. Abrir o console serial na porta de comandos e testar `feliz`, `triste`, `bravo` e `status`.
+```text
+http://127.0.0.1:8765
+```
+
+## Comandos do rosto
+
+`neutro`, `feliz`, `triste`, `bravo`, `animado`, `surpreso`, `pensando`, `cetico`, `sono`, `confuso`, `piscando`, `amor`, `brincalhao`, `preocupado`, `cool`, `bateria`, `demo`, `status`, `help`.
+
+## Estrutura técnica
+
+- `firmware/esp32/` — firmware ESP-IDF do ESP32-S3.
+- `tools/jrbot_frontend/` — painel local HTML/Python.
+- `docs/` — pinagem e documentação.
