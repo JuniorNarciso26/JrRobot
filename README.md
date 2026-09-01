@@ -13,6 +13,18 @@ Use só estes arquivos na maioria das vezes:
 - `PAINEL.bat` — abre novamente o painel local pelo computador depois que já instalou.
 - `DIAGNOSTICO.bat` — gera `erro-build.txt` se a compilação falhar.
 
+## Credenciais locais
+
+A pasta `credencial/` guarda `wifi.txt` só na máquina do Junior. Ela não vai para o GitHub e não entra nos próximos ZIPs normais, salvo quando for pedido porque a credencial mudou.
+
+Formato:
+
+```text
+NOME_WIFI=nome_da_rede
+SENHA_WIFI=senha_da_rede
+NOME_DO_DISPOSITIVO=jrbot
+```
+
 ## Como instalar com Wi-Fi
 
 1. Extraia o ZIP em uma pasta simples.

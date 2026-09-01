@@ -17,3 +17,6 @@ managed_components/
 *.secret
 secrets.*
 firmware/esp32/main/wifi_config.local.h
+
+# credenciais locais do Junior
+credencial/
