@@ -1,0 +1,19 @@
+# builds e artefatos locais
+build/
+firmware/esp32/build/
+firmware/i2c_scanner/build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# ESP-IDF locais
+sdkconfig
+managed_components/
+
+# credenciais/config local
+.env
+*.secret
+secrets.*
+firmware/esp32/main/wifi_config.local.h
