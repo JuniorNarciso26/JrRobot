@@ -9,6 +9,7 @@ if errorlevel 1 (
   exit /b 1
 )
 python -m pip install -r requirements.txt
-start http://127.0.0.1:8765
-python app.py
+start "JrBot Servidor Local" cmd /k python app.py
+timeout /t 2 /nobreak >nul
+start "" http://127.0.0.1:8765
 endlocal

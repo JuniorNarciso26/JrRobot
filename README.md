@@ -4,7 +4,7 @@ Projeto principal de trabalho do Corpo Pablo ESP32 / JrBot.
 
 ## MVP atual
 
-Rosto OLED para ESP32-S3-CAM com olhos expressivos.
+Rosto OLED V2 para ESP32-S3-CAM com 16 expressões, piscada automática, pupilas móveis e modo demo.
 
 Comandos suportados via Serial/USB:
 
@@ -13,10 +13,19 @@ neutro
 feliz
 triste
 bravo
-sono
-esquerda
-direita
+animado
 surpreso
+pensando
+cetico
+sono
+confuso
+piscando
+amor
+brincalhao
+preocupado
+cool
+bateria
+demo
 status
 help
 ```

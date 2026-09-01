@@ -8,7 +8,7 @@ out = root / 'dist'
 out.mkdir(exist_ok=True)
 name = 'jrbot-face-oled-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + '.zip'
 zip_path = out / name
-include_roots = ['README.md', 'INSTALAR_JRBOT_WINDOWS.bat', 'ABRIR_PAINEL_JRBOT_WINDOWS.bat', 'INSTALAR_SCANNER_I2C_WINDOWS.bat', 'CONSOLE_SERIAL_JRBOT_WINDOWS.bat', 'GRAVAR_JRBOT_SEM_MONITOR_WINDOWS.bat', 'docs', 'firmware/face_oled', 'firmware/i2c_scanner', 'tools/jrbot_frontend', 'scripts', 'references']
+include_roots = ['README.md', 'INSTALAR_JRBOT_WINDOWS.bat', 'ABRIR_PAINEL_JRBOT_WINDOWS.bat', 'CAPTURAR_ERRO_BUILD_WINDOWS.bat', 'INSTALAR_SCANNER_I2C_WINDOWS.bat', 'CONSOLE_SERIAL_JRBOT_WINDOWS.bat', 'GRAVAR_JRBOT_SEM_MONITOR_WINDOWS.bat', 'docs', 'firmware/face_oled', 'firmware/i2c_scanner', 'tools/jrbot_frontend', 'scripts', 'references']
 skip_parts = {'.git', 'build', 'dist', '__pycache__'}
 with ZipFile(zip_path, 'w', ZIP_DEFLATED) as zf:
     for rel in include_roots:
