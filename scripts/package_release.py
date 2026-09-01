@@ -8,8 +8,9 @@ out = root / 'dist'
 out.mkdir(exist_ok=True)
 name = 'jrbot-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + '.zip'
 zip_path = out / name
-include_roots = ['README.md', 'INSTALAR.bat', 'PAINEL.bat', 'DIAGNOSTICO.bat', 'docs', 'firmware/esp32', 'tools/jrbot_frontend', 'scripts', 'references']
+include_roots = ['README.md', 'INSTALAR.bat', 'PAINEL.bat', 'CONFIGURAR_WIFI.bat', 'DIAGNOSTICO.bat', 'docs', 'firmware/esp32', 'tools/jrbot_frontend', 'scripts', 'references']
 skip_parts = {'.git', 'build', 'dist', '__pycache__'}
+skip_names = {'wifi_config.local.h'}
 with ZipFile(zip_path, 'w', ZIP_DEFLATED) as zf:
     for rel in include_roots:
         p = root / rel
@@ -19,6 +20,6 @@ with ZipFile(zip_path, 'w', ZIP_DEFLATED) as zf:
             zf.write(p, p.relative_to(root))
             continue
         for f in p.rglob('*'):
-            if f.is_file() and not any(part in skip_parts for part in f.relative_to(root).parts):
+            if f.is_file() and f.name not in skip_names and not any(part in skip_parts for part in f.relative_to(root).parts):
                 zf.write(f, f.relative_to(root))
 print(zip_path)

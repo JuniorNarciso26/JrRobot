@@ -22,7 +22,7 @@ SERIAL_LOCK = threading.Lock()
 READER_THREAD = None
 READER_STOP = False
 BAUD = 115200
-APP_VERSION = "2026-09-01 11:32 UTC"
+APP_VERSION = "2026-09-01 11:46 UTC"
 LOGS = deque(maxlen=1200)
 LOG_ID = 0
 
@@ -60,7 +60,7 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;height:calc(100vh 
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Painel local do robô: log serial + seleção de rostos</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Painel local do robô: log serial + seleção de rostos | Wi-Fi no ESP32: http://IP_DO_ESP32/</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>

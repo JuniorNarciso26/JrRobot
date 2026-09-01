@@ -2,12 +2,11 @@
 setlocal
 cd /d "%~dp0"
 echo ========================================
-echo JrBot - Instalador ESP32-S3
+echo JrBot Face OLED - Instalador ESP32-S3
  echo ========================================
 echo.
 echo Este instalador compila e grava o firmware na ESP32-S3.
 echo No final ele abre automaticamente o painel HTML local.
-echo Para testar via Wi-Fi, rode CONFIGURAR_WIFI.bat antes deste instalador.
 echo Requisito: abrir pelo "ESP-IDF Command Prompt" no Windows.
 echo.
 echo Uso:
@@ -30,14 +29,13 @@ if errorlevel 1 (
 echo Porta de gravacao: %PORT%
 echo Target: esp32s3
 echo.
-cd /d "%~dp0\firmware\esp32"
+cd /d "%~dp0\firmware\face_oled"
 call idf.py set-target esp32s3 || goto erro
 call idf.py build || goto erro
 call idf.py -p %PORT% flash || goto erro
 cd /d "%~dp0"
 echo.
 echo Firmware gravado com sucesso.
-echo Se o Wi-Fi foi configurado, veja no log do ESP32 a linha JR_WIFI com o IP.
 echo Abrindo painel HTML local...
 echo Se o Windows perguntar, permita o Python na rede local apenas se quiser usar o painel.
 start "" "%~dp0\tools\jrbot_frontend\index.html"
