@@ -1,0 +1,15 @@
+#pragma once
+
+// Copie este arquivo para wifi_config.local.h ou rode CONFIGURAR_WIFI.bat.
+// Nunca suba wifi_config.local.h para o GitHub.
+#define JR_WIFI_SSID "NOME_DA_REDE"
+#define JR_WIFI_PASSWORD "SENHA_DA_REDE"
+#define JR_WIFI_HOSTNAME "jrbot"
+
+// IP fixo opcional: 1 = usa IP fixo, 0 = roteador escolhe automaticamente.
+#define JR_WIFI_USE_STATIC_IP 1
+#define JR_WIFI_STATIC_IP "192.168.0.50"
+#define JR_WIFI_GATEWAY "192.168.0.1"
+#define JR_WIFI_SUBNET "255.255.255.0"
+#define JR_WIFI_DNS1 "8.8.8.8"
+#define JR_WIFI_DNS2 "8.8.4.4"

@@ -1,7 +1,0 @@
-#pragma once
-
-// Copie este arquivo para wifi_config.local.h ou rode CONFIGURAR_WIFI.bat.
-// Nunca suba wifi_config.local.h para o GitHub.
-#define JR_WIFI_SSID "NOME_DA_REDE"
-#define JR_WIFI_PASSWORD "SENHA_DA_REDE"
-#define JR_WIFI_HOSTNAME "jrbot"

@@ -6,7 +6,6 @@ echo JrBot - Instalador ESP32-S3
 echo ========================================
 echo.
 echo Este instalador compila e grava o firmware na ESP32-S3.
-echo No final ele abre automaticamente o painel HTML local.
 echo Para testar via Wi-Fi, rode CONFIGURAR_WIFI.bat antes deste instalador.
 echo.
 echo Uso:
@@ -40,7 +39,7 @@ if errorlevel 1 (
 echo Porta de gravacao: %PORT%
 echo Target: esp32s3
 echo.
-cd /d "%~dp0firmware\esp32"
+cd /d "%~dp0firmware"
 call idf.py set-target esp32s3 || goto erro
 call idf.py build || goto erro
 call idf.py -p %PORT% flash || goto erro
@@ -48,8 +47,7 @@ cd /d "%~dp0"
 echo.
 echo Firmware gravado com sucesso.
 echo Se o Wi-Fi foi configurado, veja no log do ESP32 a linha JR_WIFI com o IP.
-echo Abrindo painel HTML local...
-call "%~dp0PAINEL.bat"
+echo Para testar por Serial, abra o monitor pela porta de log.
 goto fim
 
 :carregar_espidf

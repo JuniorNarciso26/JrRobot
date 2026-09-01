@@ -80,6 +80,23 @@ http://127.0.0.1:8765
 
 ## Estrutura técnica
 
-- `firmware/esp32/` — firmware ESP-IDF do ESP32-S3.
-- `tools/jrbot_frontend/` — painel local HTML/Python do computador.
+- `firmware/` — firmware ESP-IDF do ESP32-S3.
 - `docs/` — pinagem e documentação.
+
+## Arquitetura simples
+
+Estrutura atual do pacote:
+
+- `INSTALAR.bat`: compila e grava o firmware.
+- `CONFIGURAR_WIFI.bat`: gera a configuração local do Wi-Fi.
+- `PAINEL.bat`: abre o painel local/serial no computador.
+- `credencial/wifi.txt`: arquivo local para Junior editar rede/senha/IP.
+- `firmware/core/`: Wi-Fi, configuração e comandos.
+- `firmware/module_face/`: rosto/OLED e expressões.
+- `firmware/module_portal/`: painel/API web.
+- `firmware/install/`: observação do instalador.
+
+Para o ZIP de teste, não precisamos enviar `docs`, `scripts` e `tools`. Eles podem ficar só comigo como apoio de desenvolvimento, mas o pacote do Junior pode ir enxuto.
+
+Regra do projeto: alterar só o módulo necessário e preservar o que já funcionou no teste físico.
+Nota do pacote enxuto: as pastas `docs`, `scripts`, `tools` e `references` não vão mais no ZIP de teste. Elas ficam só no ambiente de desenvolvimento quando forem necessárias.

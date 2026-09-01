@@ -1,23 +1,19 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <ctype.h>
-#include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
-#include "driver/uart.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_random.h"
-#include "esp_event.h"
-#include "esp_http_server.h"
-#include "esp_netif.h"
-#include "esp_wifi.h"
-#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "jr_config.h"
+#include "jr_face.h"
 
 #define OLED_SDA GPIO_NUM_8
 #define OLED_SCL GPIO_NUM_9
@@ -26,30 +22,12 @@
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
 #define OLED_PAGES 8
-#define APP_VERSION "2026-09-01 11:46 UTC"
 
-#if __has_include("wifi_config.local.h")
-#include "wifi_config.local.h"
-#endif
-#ifndef JR_WIFI_SSID
-#define JR_WIFI_SSID ""
-#endif
-#ifndef JR_WIFI_PASSWORD
-#define JR_WIFI_PASSWORD ""
-#endif
-#ifndef JR_WIFI_HOSTNAME
-#define JR_WIFI_HOSTNAME "jrbot"
-#endif
-
-static const char *TAG = "jrbot_face_v2";
+static const char *TAG = "jrbot_face";
 static uint8_t frame[OLED_WIDTH * OLED_PAGES];
 static uint8_t oled_address = OLED_ADDRESS_PRIMARY;
 static i2c_master_bus_handle_t i2c_bus;
 static i2c_master_dev_handle_t oled_device;
-static bool wifi_connected = false;
-static char wifi_ip[16] = "sem wifi";
-static httpd_handle_t web_server = NULL;
-
 typedef enum {
     FACE_NEUTRAL = 0,
     FACE_HAPPY,
@@ -80,7 +58,7 @@ static uint32_t blink_started_ms = 0;
 static uint32_t last_auto_look_ms = 0;
 static uint32_t last_demo_ms = 0;
 
-static const char *expression_name(face_expression_t expression) {
+static const char *face_expression_to_name(face_expression_t expression) {
     switch (expression) {
         case FACE_HAPPY: return "happy";
         case FACE_SAD: return "sad";
@@ -215,7 +193,7 @@ static void draw_face(face_expression_t f, uint32_t ms) {
 }
 static bool oled_show(void){ for(uint8_t page=0; page<OLED_PAGES; ++page){ if(!oled_command(0xB0|page)||!oled_command(0x00)||!oled_command(0x10)||!oled_send(0x40,&frame[page*OLED_WIDTH],OLED_WIDTH)) return false;} return true; }
 
-static bool set_expression_from_command(const char *c){
+bool jr_face_set_expression(const char *c){
     if(!strcmp(c,"neutro")||!strcmp(c,"neutral")) current_expression=FACE_NEUTRAL;
     else if(!strcmp(c,"feliz")||!strcmp(c,"happy")) current_expression=FACE_HAPPY;
     else if(!strcmp(c,"triste")||!strcmp(c,"sad")) current_expression=FACE_SAD;
@@ -235,127 +213,38 @@ static bool set_expression_from_command(const char *c){
     else return false;
     demo_mode=false; return true;
 }
-static void print_status(void) {
-    printf("JR_STATUS v=3 version=%s expression=%s demo=%d oled=0x%02X sda=%d scl=%d commands=%lu frames=%lu wifi=%d ip=%s look=%d,%d\n",
-        APP_VERSION, expression_name(current_expression), demo_mode ? 1 : 0, oled_address, OLED_SDA, OLED_SCL,
-        (unsigned long)command_count, (unsigned long)frame_count, wifi_connected ? 1 : 0, wifi_ip, look_dx, look_dy);
-}
-static void print_help(void){ printf("\nJrBot v3. Comandos:\n neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria\n demo status help\n Wi-Fi: abrir http://IP_DO_ESP32/ no navegador\n\n"); }
-static bool handle_command(const char *cmd, char *response, size_t response_len) {
-    if (!strcmp(cmd, "status")) {
-        snprintf(response, response_len, "JR_STATUS v=3 version=%s expression=%s demo=%d oled=0x%02X wifi=%d ip=%s",
-            APP_VERSION, expression_name(current_expression), demo_mode ? 1 : 0, oled_address, wifi_connected ? 1 : 0, wifi_ip);
-        print_status();
-        return true;
-    }
-    if (!strcmp(cmd, "help") || !strcmp(cmd, "ajuda")) {
-        snprintf(response, response_len, "comandos: neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria demo status");
-        print_help();
-        return true;
-    }
-    if (!strcmp(cmd, "demo")) {
-        demo_mode = !demo_mode;
-        snprintf(response, response_len, "JR_OK demo=%d", demo_mode ? 1 : 0);
-        printf("JR_OK demo=%d\n", demo_mode ? 1 : 0);
-        return true;
-    }
-    if (set_expression_from_command(cmd)) {
-        command_count++;
-        snprintf(response, response_len, "JR_OK command=%lu expression=%s", (unsigned long)command_count, expression_name(current_expression));
-        printf("JR_OK command=%lu expression=%s\n", (unsigned long)command_count, expression_name(current_expression));
-        return true;
-    }
-    snprintf(response, response_len, "JR_ERROR comando_desconhecido=%s", cmd);
-    printf("JR_ERROR comando_desconhecido=%s\n", cmd);
-    return false;
-}
-static void terminal_task(void *p){
-    uint8_t rx[64]; char cmd[32]={0}; size_t n=0; char response[192]; print_help();
-    while(true){ int count=uart_read_bytes(UART_NUM_0,rx,sizeof(rx),pdMS_TO_TICKS(100)); for(int i=0;i<count;i++){ char ch=(char)rx[i]; if(ch=='\r'||ch=='\n'){ if(!n)continue; cmd[n]='\0'; handle_command(cmd,response,sizeof(response)); n=0; } else if(n<sizeof(cmd)-1) cmd[n++]=(char)tolower((unsigned char)ch); }}
-}
 
 
-static const char WEB_HTML[] =
-"<!doctype html><html lang='pt-br'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-"<title>JrBot Wi-Fi</title><style>body{margin:0;background:#0b0d12;color:#eef3ff;font-family:Arial,sans-serif;padding:18px}.wrap{max-width:900px;margin:auto}.card{background:#151923;border:1px solid #252b38;border-radius:16px;padding:18px;margin:12px 0}button{padding:12px 14px;margin:6px;border:0;border-radius:10px;background:#2f80ed;color:#fff;font-weight:700}.muted{color:#9aa7bd}.ok{color:#b9ffd7}input{padding:12px;border-radius:10px;border:1px solid #252b38;background:#050609;color:#fff;min-width:220px}</style></head>"
-"<body><div class='wrap'><div class='card'><h1>JrBot</h1><div class='ok'>Versao: " APP_VERSION "</div><p class='muted'>Painel Wi-Fi direto no ESP32. Use os botoes para mudar o rosto.</p><div id='status'>carregando...</div></div><div class='card' id='faces'></div><div class='card'><input id='cmd' placeholder='comando manual'><button onclick='send(document.getElementById(\"cmd\").value)'>Enviar</button></div><div class='card'><pre id='log'></pre></div></div>"
-"<script>const faces=['neutro','feliz','triste','animado','bravo','surpreso','pensando','cetico','sono','confuso','piscando','amor','brincalhao','preocupado','cool','bateria','demo','status'];document.getElementById('faces').innerHTML=faces.map(c=>`<button onclick=send('${c}')>${c}</button>`).join('');async function send(c){let r=await fetch('/cmd?c='+encodeURIComponent((c||'').trim()));let t=await r.text();log(t);status()}function log(t){document.getElementById('log').textContent='['+new Date().toLocaleTimeString()+'] '+t+'\\n'+document.getElementById('log').textContent}async function status(){let r=await fetch('/status');document.getElementById('status').textContent=await r.text()}status();setInterval(status,3000)</script></body></html>";
+const char *jr_face_expression_name(void) { return face_expression_to_name(current_expression); }
+void jr_face_set_demo(bool enabled) { demo_mode = enabled; }
+bool jr_face_demo_enabled(void) { return demo_mode; }
+uint32_t jr_face_command_count(void) { return command_count; }
+uint32_t jr_face_frame_count(void) { return frame_count; }
+void jr_face_increment_command_count(void) { command_count++; }
 
-static esp_err_t web_root_handler(httpd_req_t *req) {
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    return httpd_resp_send(req, WEB_HTML, HTTPD_RESP_USE_STRLEN);
-}
-static esp_err_t web_status_handler(httpd_req_t *req) {
-    char body[256];
-    snprintf(body, sizeof(body), "Versao: %s | rosto: %s | demo: %d | ip: %s | comandos: %lu | frames: %lu",
-        APP_VERSION, expression_name(current_expression), demo_mode ? 1 : 0, wifi_ip, (unsigned long)command_count, (unsigned long)frame_count);
-    httpd_resp_set_type(req, "text/plain; charset=utf-8");
-    return httpd_resp_send(req, body, HTTPD_RESP_USE_STRLEN);
-}
-static esp_err_t web_cmd_handler(httpd_req_t *req) {
-    char query[96] = {0}; char cmd[32] = {0}; char response[192] = {0};
-    httpd_req_get_url_query_str(req, query, sizeof(query));
-    httpd_query_key_value(query, "c", cmd, sizeof(cmd));
-    for (size_t i=0; cmd[i]; ++i) cmd[i] = (char)tolower((unsigned char)cmd[i]);
-    bool ok = cmd[0] && handle_command(cmd, response, sizeof(response));
-    httpd_resp_set_type(req, "text/plain; charset=utf-8");
-    return httpd_resp_send(req, response[0] ? response : (ok ? "ok" : "comando vazio"), HTTPD_RESP_USE_STRLEN);
-}
-static void start_web_server(void) {
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.server_port = 80;
-    if (httpd_start(&web_server, &config) == ESP_OK) {
-        httpd_uri_t root = {.uri="/", .method=HTTP_GET, .handler=web_root_handler};
-        httpd_uri_t status = {.uri="/status", .method=HTTP_GET, .handler=web_status_handler};
-        httpd_uri_t cmd = {.uri="/cmd", .method=HTTP_GET, .handler=web_cmd_handler};
-        httpd_register_uri_handler(web_server, &root);
-        httpd_register_uri_handler(web_server, &status);
-        httpd_register_uri_handler(web_server, &cmd);
-        ESP_LOGI(TAG, "Servidor web iniciado em http://%s/", wifi_ip);
-    }
-}
-static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) esp_wifi_connect();
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) { wifi_connected=false; snprintf(wifi_ip,sizeof(wifi_ip),"sem wifi"); esp_wifi_connect(); }
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        snprintf(wifi_ip, sizeof(wifi_ip), IPSTR, IP2STR(&event->ip_info.ip));
-        wifi_connected = true;
-        printf("JR_WIFI conectado ip=%s\n", wifi_ip);
-        if (!web_server) start_web_server();
-    }
-}
-static void wifi_init_sta(void) {
-    if (strlen(JR_WIFI_SSID) == 0) { printf("JR_WIFI nao configurado. Rode CONFIGURAR_WIFI.bat antes de instalar.\n"); return; }
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *sta = esp_netif_create_default_wifi_sta();
-    esp_netif_set_hostname(sta, JR_WIFI_HOSTNAME);
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
-    wifi_config_t wifi_config = {0};
-    strncpy((char*)wifi_config.sta.ssid, JR_WIFI_SSID, sizeof(wifi_config.sta.ssid));
-    strncpy((char*)wifi_config.sta.password, JR_WIFI_PASSWORD, sizeof(wifi_config.sta.password));
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    printf("JR_WIFI conectando ssid=%s\n", JR_WIFI_SSID);
+void jr_face_print_status(void) {
+    printf("JR_FACE v=3 version=%s expression=%s demo=%d oled=0x%02X sda=%d scl=%d commands=%lu frames=%lu look=%d,%d\n",
+        JR_APP_VERSION, jr_face_expression_name(), demo_mode ? 1 : 0, oled_address, OLED_SDA, OLED_SCL,
+        (unsigned long)command_count, (unsigned long)frame_count, look_dx, look_dy);
 }
 
-void app_main(void){
+void jr_face_loop(void) {
+    const face_expression_t demo[]={FACE_NEUTRAL,FACE_HAPPY,FACE_EXCITED,FACE_SAD,FACE_ANGRY,FACE_SURPRISED,FACE_THINKING,FACE_SKEPTICAL,FACE_SLEEPY,FACE_CONFUSED,FACE_WINKING,FACE_LOVE,FACE_PLAYFUL,FACE_WORRIED,FACE_COOL,FACE_BATTERY_LOW};
+    int demo_i=0;
+    ESP_LOGI(TAG,"JrBot face iniciado em 0x%02X",oled_address);
+    while(true){
+        uint32_t ms=now_ms();
+        if(demo_mode && ms-last_demo_ms>2500){ last_demo_ms=ms; current_expression=demo[demo_i++%16]; printf("JR_DEMO expression=%s\n",jr_face_expression_name()); }
+        if(ms-last_auto_look_ms>1800 && !demo_mode){ last_auto_look_ms=ms; look_dx=(int)(esp_random()%9)-4; look_dy=(int)(esp_random()%5)-2; }
+        draw_face(current_expression,ms); oled_show(); frame_count++;
+        if(frame_count%40==0) printf("JR_ALIVE v=3 expression=%s demo=%d commands=%lu frames=%lu\n",jr_face_expression_name(),demo_mode?1:0,(unsigned long)command_count,(unsigned long)frame_count);
+        vTaskDelay(pdMS_TO_TICKS(80));
+    }
+}
+
+esp_err_t jr_face_start(void){
     i2c_master_bus_config_t bus_config={.i2c_port=I2C_NUM_0,.sda_io_num=OLED_SDA,.scl_io_num=OLED_SCL,.clk_source=I2C_CLK_SRC_DEFAULT,.glitch_ignore_cnt=7,.flags.enable_internal_pullup=true};
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config,&i2c_bus));
-    if(!oled_init()){ ESP_LOGE(TAG,"OLED nao respondeu em I2C 0x3C nem 0x3D. Verifique SDA=8 SCL=9 VCC GND."); return; }
-    esp_err_t uart_result=uart_driver_install(UART_NUM_0,2048,0,0,NULL,0); if(uart_result!=ESP_OK&&uart_result!=ESP_ERR_INVALID_STATE) ESP_ERROR_CHECK(uart_result);
-    wifi_init_sta();
-    xTaskCreate(terminal_task,"terminal",4096,NULL,5,NULL);
-    const face_expression_t demo[]={FACE_NEUTRAL,FACE_HAPPY,FACE_EXCITED,FACE_SAD,FACE_ANGRY,FACE_SURPRISED,FACE_THINKING,FACE_SKEPTICAL,FACE_SLEEPY,FACE_CONFUSED,FACE_WINKING,FACE_LOVE,FACE_PLAYFUL,FACE_WORRIED,FACE_COOL,FACE_BATTERY_LOW};
-    int demo_i=0; ESP_LOGI(TAG,"JrBot v3 iniciado em 0x%02X",oled_address);
-    while(true){ uint32_t ms=now_ms(); if(demo_mode && ms-last_demo_ms>2500){ last_demo_ms=ms; current_expression=demo[demo_i++%16]; printf("JR_DEMO expression=%s\n",expression_name(current_expression)); }
-        if(ms-last_auto_look_ms>1800 && !demo_mode){ last_auto_look_ms=ms; look_dx=(int)(esp_random()%9)-4; look_dy=(int)(esp_random()%5)-2; }
-        draw_face(current_expression,ms); oled_show(); frame_count++; if(frame_count%40==0) printf("JR_ALIVE v=3 expression=%s demo=%d commands=%lu frames=%lu\n",expression_name(current_expression),demo_mode?1:0,(unsigned long)command_count,(unsigned long)frame_count); vTaskDelay(pdMS_TO_TICKS(80)); }
+    if(!oled_init()){ ESP_LOGE(TAG,"OLED nao respondeu em I2C 0x3C nem 0x3D. Verifique SDA=8 SCL=9 VCC GND."); return ESP_FAIL; }
+    return ESP_OK;
 }

@@ -1,15 +1,21 @@
 @echo off
-setlocal
-cd /d "%~dp0\tools\jrbot_frontend"
-where python >nul 2>nul
-if errorlevel 1 (
-  echo ERRO: Python nao encontrado no Windows.
-  echo Instale Python 3 ou abra pelo terminal que tenha Python.
-  pause
-  exit /b 1
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
+set "CRED_FILE=%~dp0credencial\wifi.txt"
+set "ESP_IP=192.168.0.50"
+
+if exist "%CRED_FILE%" (
+  for /f "usebackq tokens=1,* delims==" %%A in ("%CRED_FILE%") do (
+    if /i "%%A"=="IP_FIXO" set "ESP_IP=%%B"
+  )
 )
-python -m pip install -r requirements.txt
-start "JrBot Servidor Local" cmd /k python app.py
-timeout /t 2 /nobreak >nul
-start "" http://127.0.0.1:8765
+
+echo ========================================
+echo JrBot - Painel Wi-Fi simples
+echo ========================================
+echo.
+echo Abrindo painel direto no ESP32: http://%ESP_IP%
+echo Se ainda estiver testando somente por Serial, pode fechar esta janela.
+echo.
+start "" "http://%ESP_IP%"
 endlocal

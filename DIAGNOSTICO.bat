@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0\firmware\esp32"
+cd /d "%~dp0\firmware"
 echo Capturando log de build em: %~dp0erro-build.txt
 idf.py build > "%~dp0erro-build.txt" 2>&1
 cd /d "%~dp0"
