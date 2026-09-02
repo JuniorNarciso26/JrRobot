@@ -1,56 +1,83 @@
-# JrBot
+# JrRobot — Corpo Pablo ESP32
 
-Sistema do robô JrBot / Corpo Pablo ESP32.
+Firmware e ferramentas do **JrBot / Corpo Pablo**, um robô físico simples baseado em ESP32-S3. A primeira etapa do projeto é dar expressão ao robô usando um display OLED para o rosto; as próximas etapas incluem servo da cabeça, áudio/som, câmera e integração com IA.
 
-Versão atual: 2026-09-01 11:46 UTC
+> Status: protótipo inicial funcional para rosto OLED no ESP32-S3.
 
-## Arquivos principais
+![Prévia do rosto OLED do JrBot](previews/jrbot_emote_preview.png)
 
-Use só estes arquivos na maioria das vezes:
+## Visão do projeto
 
-- `CONFIGURAR_WIFI.bat` — grava o nome/senha do Wi-Fi no firmware local, sem subir segredo para GitHub.
+O objetivo é construir um corpo físico simples para o Pablo/JrBot:
+
+- ESP32-S3 como controlador embarcado;
+- rosto com olhos expressivos em display OLED 128x64;
+- cabeça/pescoço com servo para olhar e acompanhar movimento;
+- sistema de som/áudio modular;
+- câmera ou visão externa para detectar/acompanhamento humano;
+- integração futura com IA/OpenClaw ou cérebro embarcado no próprio ESP32-S3.
+
+A filosofia do projeto é começar pequeno, testável e seguro: primeiro rosto, depois movimento, depois áudio e inteligência.
+
+## O que já existe
+
+- Firmware ESP-IDF para ESP32-S3.
+- Rosto OLED com expressões básicas.
+- Comandos via Serial.
+- Wi-Fi configurável localmente sem subir senha para o GitHub.
+- API/painel web simples no ESP32 após conectar ao Wi-Fi.
+- Scripts `.bat` para facilitar instalação no Windows.
+- Documentação inicial de pinagem e plataforma.
+
+## Hardware testado até agora
+
+- Placa ESP32-S3 usada pelo Junior.
+- Display OLED I2C 128x64.
+- Endereço OLED detectado/testado: `0x3C` e fallback para `0x3D`.
+- Pinagem OLED validada no teste físico:
+  - `VCC` → `3V3`
+  - `GND` → `GND`
+  - `SDA` → `GPIO8`
+  - `SCL` → `GPIO9`
+
+Atenção: antes de soldar ou alimentar módulos maiores, validar tensão, corrente e GND comum. Servo, motor, amplificador e bateria não devem ser alimentados diretamente pelo pino `3V3` do ESP32.
+
+## Arquivos principais para uso rápido
+
+Na maioria dos testes no Windows, use estes arquivos:
+
+- `CONFIGURAR_WIFI.bat` — grava nome/senha do Wi-Fi no firmware local, sem publicar segredo.
 - `INSTALAR.bat` — compila, grava o ESP32-S3 e abre o painel local no final.
-- `PAINEL.bat` — abre novamente o painel local pelo computador depois que já instalou.
+- `PAINEL.bat` — abre novamente o painel local no computador.
 - `DIAGNOSTICO.bat` — gera `erro-build.txt` se a compilação falhar.
 
-## Credenciais locais
+## Instalação rápida com Wi-Fi
 
-A pasta `credencial/` guarda `wifi.txt` só na máquina do Junior. Ela não vai para o GitHub e não entra nos próximos ZIPs normais, salvo quando for pedido porque a credencial mudou.
+Pré-requisito: abrir o terminal **ESP-IDF Command Prompt** no Windows.
 
-Formato:
-
-```text
-NOME_WIFI=nome_da_rede
-SENHA_WIFI=senha_da_rede
-NOME_DO_DISPOSITIVO=jrbot
-```
-
-## Como instalar com Wi-Fi
-
-1. Extraia o ZIP em uma pasta simples.
-2. Abra pelo terminal **ESP-IDF Command Prompt**.
-3. Entre na pasta do projeto.
-4. Configure o Wi-Fi:
+1. Extraia o ZIP ou clone o projeto em uma pasta simples.
+2. Entre na pasta do projeto.
+3. Configure o Wi-Fi local:
 
 ```powershell
 .\CONFIGURAR_WIFI.bat
 ```
 
-5. Grave no ESP32:
+4. Grave o firmware no ESP32-S3:
 
 ```powershell
 .\INSTALAR.bat COM6
 ```
 
-Se a porta de gravação não for COM6, troque pelo COM correto.
+Se a porta de gravação não for `COM6`, troque pelo COM correto.
 
-Depois de iniciar, o ESP32 mostra no log serial uma linha parecida com:
+Depois de iniciar, o log serial deve mostrar algo parecido com:
 
 ```text
 JR_WIFI conectado ip=192.168.0.xxx
 ```
 
-Aí abra no navegador:
+Então abra no navegador:
 
 ```text
 http://IP_DO_ESP32/
@@ -62,13 +89,15 @@ Exemplo:
 http://192.168.0.50/
 ```
 
-## Como abrir só o painel local depois
+## Painel local do computador
+
+Depois de instalado, para abrir apenas o painel local:
 
 ```powershell
 .\PAINEL.bat
 ```
 
-O painel local do computador abre em:
+Endereço padrão:
 
 ```text
 http://127.0.0.1:8765
@@ -76,27 +105,74 @@ http://127.0.0.1:8765
 
 ## Comandos do rosto
 
-`neutro`, `feliz`, `triste`, `bravo`, `animado`, `surpreso`, `pensando`, `cetico`, `sono`, `confuso`, `piscando`, `amor`, `brincalhao`, `preocupado`, `cool`, `bateria`, `demo`, `status`, `help`.
+Comandos disponíveis nesta fase:
 
-## Estrutura técnica
+```text
+neutro, feliz, triste, bravo, animado, surpreso, pensando, cetico,
+sono, confuso, piscando, amor, brincalhao, preocupado, cool,
+bateria, demo, status, help
+```
 
-- `firmware/` — firmware ESP-IDF do ESP32-S3.
-- `docs/` — pinagem e documentação.
+## Estrutura do repositório
 
-## Arquitetura simples
+```text
+firmware/              Firmware ESP-IDF do ESP32-S3
+firmware/core/         Wi-Fi, configuração e comandos
+firmware/module_face/  Rosto OLED e expressões
+firmware/module_portal/ API e painel web no ESP32
+docs/                  Pinagem, plataforma e decisões técnicas
+scripts/               Scripts auxiliares de empacotamento/deploy
+tools/                 Ferramentas locais de apoio
+previews/              Imagens de prévia do projeto
+references/            Referências antigas/arquitetura para consulta
+```
 
-Estrutura atual do pacote:
+## Roadmap inicial
 
-- `INSTALAR.bat`: compila e grava o firmware.
-- `CONFIGURAR_WIFI.bat`: gera a configuração local do Wi-Fi.
-- `PAINEL.bat`: abre o painel local/serial no computador.
-- `credencial/wifi.txt`: arquivo local para Junior editar rede/senha/IP.
-- `firmware/core/`: Wi-Fi, configuração e comandos.
-- `firmware/module_face/`: rosto/OLED e expressões.
-- `firmware/module_portal/`: painel/API web.
-- `firmware/install/`: observação do instalador.
+- [x] Validar OLED I2C no ESP32-S3.
+- [x] Criar primeiras expressões do rosto.
+- [x] Adicionar configuração Wi-Fi local sem expor credenciais.
+- [x] Expor painel/API web simples no ESP32.
+- [ ] Organizar documentação pública para colaboradores.
+- [ ] Adicionar servo da cabeça/pescoço com PWM seguro.
+- [ ] Criar comandos `olhar_esquerda`, `olhar_direita`, `centro`.
+- [ ] Definir alimentação segura para ESP32 + servo + módulos.
+- [ ] Adicionar sistema de áudio/som.
+- [ ] Integrar câmera ou processamento externo para acompanhar humano.
+- [ ] Avaliar cérebro local inspirado em projetos como MimiClaw.
 
-Para o ZIP de teste, não precisamos enviar `docs`, `scripts` e `tools`. Eles podem ficar só comigo como apoio de desenvolvimento, mas o pacote do Junior pode ir enxuto.
+## Segurança e credenciais
 
-Regra do projeto: alterar só o módulo necessário e preservar o que já funcionou no teste físico.
-Nota do pacote enxuto: as pastas `docs`, `scripts`, `tools` e `references` não vão mais no ZIP de teste. Elas ficam só no ambiente de desenvolvimento quando forem necessárias.
+Este projeto não deve receber senhas, tokens, chaves privadas ou credenciais reais no GitHub.
+
+Arquivos locais ignorados:
+
+- `credencial/`
+- `.env`
+- `*.secret`
+- `secrets.*`
+- `firmware/esp32/main/wifi_config.local.h`
+
+Para colaboração pública, use exemplos e placeholders. Configurações reais ficam somente na máquina/dispositivo de quem está testando.
+
+## Como contribuir
+
+Contribuições são bem-vindas, principalmente em:
+
+- desenho de expressões OLED;
+- controle de servo e movimento da cabeça;
+- alimentação segura e montagem física;
+- áudio/I2S/TTS;
+- câmera e detecção/acompanhamento humano;
+- documentação para iniciantes;
+- testes em placas ESP32-S3 diferentes.
+
+Antes de propor alteração grande, abra uma issue descrevendo a ideia, hardware usado e riscos de ligação elétrica.
+
+## Licença
+
+Licença ainda não definida. Antes de tornar o repositório público com colaboradores externos, é recomendado adicionar uma licença aberta, por exemplo MIT, Apache-2.0 ou GPL-3.0.
+
+## Créditos
+
+Projeto iniciado por Junior para o Corpo Pablo/JrBot, com desenvolvimento incremental focado em protótipos físicos simples, seguros e testáveis.
