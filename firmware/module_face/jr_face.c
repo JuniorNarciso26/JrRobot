@@ -15,8 +15,8 @@
 #include "jr_config.h"
 #include "jr_face.h"
 
-#define OLED_SDA GPIO_NUM_1
-#define OLED_SCL GPIO_NUM_2
+#define OLED_SDA GPIO_NUM_8
+#define OLED_SCL GPIO_NUM_9
 #define OLED_ADDRESS_PRIMARY 0x3C
 #define OLED_ADDRESS_SECONDARY 0x3D
 #define OLED_WIDTH 128
@@ -245,6 +245,6 @@ void jr_face_loop(void) {
 esp_err_t jr_face_start(void){
     i2c_master_bus_config_t bus_config={.i2c_port=I2C_NUM_0,.sda_io_num=OLED_SDA,.scl_io_num=OLED_SCL,.clk_source=I2C_CLK_SRC_DEFAULT,.glitch_ignore_cnt=7,.flags.enable_internal_pullup=true};
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config,&i2c_bus));
-    if(!oled_init()){ ESP_LOGE(TAG,"OLED nao respondeu em I2C 0x3C nem 0x3D. Verifique SDA=1 SCL=2 VCC GND."); return ESP_FAIL; }
+    if(!oled_init()){ ESP_LOGE(TAG,"OLED nao respondeu em I2C 0x3C nem 0x3D. Verifique SDA=8 SCL=9 VCC GND."); return ESP_FAIL; }
     return ESP_OK;
 }
