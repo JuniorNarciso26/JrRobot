@@ -25,7 +25,7 @@ SERIAL_LOCK = threading.Lock()
 READER_THREAD = None
 READER_STOP = False
 BAUD = 115200
-APP_VERSION = "2026-09-03 19:35 UTC"
+APP_VERSION = "2026-09-03 20:47 UTC"
 LOGS = deque(maxlen=1200)
 LOG_ID = 0
 
@@ -58,7 +58,7 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
 .modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}.modepanel{display:none;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.modepanel.show{display:flex}.modepanel .ip{width:180px}.mini{color:var(--muted);font-size:12px;width:100%;margin-top:2px}
 #log{height:460px;max-height:55vh;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow-y:scroll;overflow-x:auto;white-space:pre-wrap;scroll-behavior:smooth}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
-.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg{color:var(--muted);font-size:13px;width:100%}
+.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera,.audio{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg,.audio .msg{color:var(--muted);font-size:13px;width:100%}.audio input[type=range]{min-width:220px}
 @media(max-width:850px){main{grid-template-columns:1fr}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:320px}.modebar .ip{width:100%}}
 </style>
 </head>
@@ -100,6 +100,14 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
       <div class="custom"><input id="custom" placeholder="comando manual"><button onclick="sendCustom()">enviar</button></div>
     </div>
     <div class="hint">Use Serial para configurar/diagnosticar. Clique em Wi-Fi para controlar pelo IP mantendo esta mesma tela.</div>
+    <h2>Audio / caixinha de som</h2>
+    <div class="audio" id="audio_box">
+      <button onclick="testAudio()" class="green">🔊 Testar audio</button>
+      <label>Volume <input id="audio_volume" type="range" min="0" max="100" value="35" oninput="audioVolText.textContent=this.value+'%'" onchange="setAudioVolume()"></label>
+      <span id="audioVolText">35%</span>
+      <button onclick="setAudioVolume()" class="yellow">Aplicar volume</button>
+      <div class="msg" id="audio_msg">Som simples: beep de 880Hz para confirmar a ligação do MAX98357A.</div>
+    </div>
     <h2>Camera</h2>
     <div class="camera" id="camera_box">
       <button onclick="takePhoto(1)" class="green">📷 Focar e tirar foto</button>
@@ -160,6 +168,17 @@ async function send(command){try{let params=new URLSearchParams({command,mode,ip
 function sendCustom(){let v=document.getElementById('custom').value.trim(); if(v) send(v)}
 async function connectWifi(){await setMode('wifi'); localStorage.setItem('jr_esp_ip',val('esp_ip')); await send('status')}
 async function testWifi(){await setMode('wifi'); await send('status')}
+async function setAudioVolume(){
+  const v=val('audio_volume')||'35';
+  document.getElementById('audioVolText').textContent=v+'%';
+  document.getElementById('audio_msg').textContent='Aplicando volume '+v+'%...';
+  try{await send('audio_volume '+v);document.getElementById('audio_msg').textContent='Volume aplicado: '+v+'%.';localStorage.setItem('jr_audio_volume',v)}catch(e){document.getElementById('audio_msg').textContent='Erro no volume: '+e.message}
+}
+async function testAudio(){
+  const v=val('audio_volume')||'35';
+  document.getElementById('audio_msg').textContent='Enviando beep de teste no volume '+v+'%...';
+  try{await send('audio_volume '+v);await send('audio_test');document.getElementById('audio_msg').textContent='Teste enviado. Se a ligação estiver certa, a caixinha deve fazer um beep.';localStorage.setItem('jr_audio_volume',v)}catch(e){document.getElementById('audio_msg').textContent='Erro no teste de audio: '+e.message}
+}
 async function takePhoto(focus){
   if(mode!=='wifi') await setMode('wifi');
   const ip=val('esp_ip');
@@ -197,7 +216,7 @@ async function clearWifi(){if(confirm('Limpar Wi-Fi salvo no ESP32?')) await sen
 document.getElementById('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom()});
 logEl.addEventListener('scroll',()=>{autoScroll=(logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20)});
 async function poll(){try{let r=await fetch('/logs?after='+lastId);let j=await r.json(); if(j.serial_connected&&mode==='serial'){document.getElementById('conn').textContent='Serial conectado';document.getElementById('conn').className='pill ok'} if(j.logs.length) appendLog(j.logs);}catch(e){} finally{setTimeout(poll,600)}}
-loadWifiLocal(); setMode(mode); refreshPorts(); poll();
+loadWifiLocal(); const savedAudioVol=localStorage.getItem('jr_audio_volume'); if(savedAudioVol!==null){document.getElementById('audio_volume').value=savedAudioVol;document.getElementById('audioVolText').textContent=savedAudioVol+'%'} setMode(mode); refreshPorts(); poll();
 </script>
 </body>
 </html>
@@ -261,7 +280,7 @@ def wifi_request(ip, command):
     try:
         with urllib.request.urlopen(url, timeout=4) as resp:
             return resp.read().decode("utf-8", errors="replace")
-    except urllib.error.URLError as exc:
+    except Exception as exc:
         raise RuntimeError(f"falha Wi-Fi em http://{safe_ip}/ : {exc}") from exc
 
 
@@ -277,7 +296,7 @@ def camera_capture_request(ip, focus):
             if not data:
                 raise RuntimeError("camera retornou imagem vazia")
             return data, ctype
-    except urllib.error.URLError as exc:
+    except Exception as exc:
         raise RuntimeError(f"falha ao capturar camera em http://{safe_ip}/capture : {exc}") from exc
 
 

@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 
 #include "jr_commands.h"
+#include "jr_audio.h"
 #include "jr_camera.h"
 #include "jr_face.h"
 #include "jr_portal.h"
@@ -19,9 +20,11 @@ void app_main(void) {
         return;
     }
 
-    if (jr_camera_start() != ESP_OK) {
-        ESP_LOGW(TAG, "Modulo camera falhou. Portal e OLED continuam para diagnostico.");
+    if (jr_audio_start() != ESP_OK) {
+        ESP_LOGW(TAG, "Modulo audio falhou. Portal, camera e OLED continuam para diagnostico.");
     }
+
+    ESP_LOGW(TAG, "Teste de audio ativo: camera nao inicia automaticamente porque usa GPIO15/16/17 neste hardware de teste.");
 
     jr_wifi_start();
     jr_portal_start();

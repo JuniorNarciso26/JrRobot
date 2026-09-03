@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "driver/uart.h"
@@ -10,6 +11,7 @@
 
 #include "jr_config.h"
 #include "jr_commands.h"
+#include "jr_audio.h"
 #include "jr_wifi.h"
 #include "jr_portal.h"
 #include "jr_face.h"
@@ -74,23 +76,24 @@ static void parse_wifi_config(const char *cmd, char *ssid, size_t ssid_len, char
     }
 }
 
-void jr_print_help(void){ printf("\nJrBot v4. Comandos:\n neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria\n demo status help\n wifi_config ssid=NOME|pass=SENHA|static=0|ip=192.168.0.50|gw=192.168.0.1|mask=255.255.255.0\n wifi_clear\n\n"); }
+void jr_print_help(void){ printf("\nJrBot v4. Comandos:\n neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria\n demo status help\n audio_test audio_volume 0-100\n wifi_config ssid=NOME|pass=SENHA|static=0|ip=192.168.0.50|gw=192.168.0.1|mask=255.255.255.0\n wifi_clear\n\n"); }
 
 bool jr_handle_command(const char *cmd, char *response, size_t response_len) {
     char base[48];
     lower_copy(base, sizeof(base), cmd);
 
     if (!strcmp(base, "status")) {
-        snprintf(response, response_len, "JR_STATUS v=4 version=%s expression=%s demo=%d wifi_config=%d wifi=%d ssid=%s ip=%s commands=%lu frames=%lu",
+        snprintf(response, response_len, "JR_STATUS v=4 version=%s expression=%s demo=%d wifi_config=%d wifi=%d ssid=%s ip=%s audio=%s volume=%d commands=%lu frames=%lu",
             JR_APP_VERSION, jr_face_expression_name(), jr_face_demo_enabled() ? 1 : 0,
             jr_wifi_is_configured() ? 1 : 0, jr_wifi_is_connected() ? 1 : 0, jr_wifi_ssid(), jr_wifi_ip(),
+            jr_audio_ready() ? "ok" : "off", jr_audio_volume(),
             (unsigned long)jr_face_command_count(), (unsigned long)jr_face_frame_count());
         jr_face_print_status();
         printf("%s\n", response);
         return true;
     }
     if (!strcmp(base, "help") || !strcmp(base, "ajuda")) {
-        snprintf(response, response_len, "comandos: neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria demo status wifi_config wifi_clear");
+        snprintf(response, response_len, "comandos: neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria demo status audio_test audio_volume 0-100 wifi_config wifi_clear");
         jr_print_help();
         return true;
     }
@@ -110,6 +113,24 @@ bool jr_handle_command(const char *cmd, char *response, size_t response_len) {
         snprintf(response, response_len, "JR_OK demo=%d", jr_face_demo_enabled() ? 1 : 0);
         printf("JR_OK demo=%d\n", jr_face_demo_enabled() ? 1 : 0);
         return true;
+    }
+    if (!strncmp(base, "audio_volume", 12) || !strncmp(base, "volume", 6)) {
+        const char *p = strchr(base, ' ');
+        int volume = p ? atoi(p + 1) : jr_audio_volume();
+        jr_audio_set_volume(volume);
+        snprintf(response, response_len, "JR_OK audio_volume=%d", jr_audio_volume());
+        printf("JR_OK audio_volume=%d\n", jr_audio_volume());
+        return true;
+    }
+    if (!strcmp(base, "audio_test") || !strcmp(base, "som") || !strcmp(base, "beep")) {
+        esp_err_t err = jr_audio_test_tone(880, 700);
+        if (err == ESP_OK) {
+            snprintf(response, response_len, "JR_OK audio_test beep=880Hz volume=%d", jr_audio_volume());
+        } else {
+            snprintf(response, response_len, "JR_ERROR audio_test=%s", esp_err_to_name(err));
+        }
+        printf("%s\n", response);
+        return err == ESP_OK;
     }
     if (jr_face_set_expression(base)) {
         jr_face_increment_command_count();

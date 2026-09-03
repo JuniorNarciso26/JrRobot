@@ -1,6 +1,6 @@
 #pragma once
 
-#define JR_APP_VERSION "2026-09-03 19:35 UTC"
+#define JR_APP_VERSION "2026-09-03 20:35 UTC"
 
 #if __has_include("wifi_config.local.h")
 #include "wifi_config.local.h"
