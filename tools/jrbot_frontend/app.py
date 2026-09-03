@@ -25,7 +25,7 @@ SERIAL_LOCK = threading.Lock()
 READER_THREAD = None
 READER_STOP = False
 BAUD = 115200
-APP_VERSION = "2026-09-02 18:58 UTC"
+APP_VERSION = "2026-09-03 17:46 UTC"
 LOGS = deque(maxlen=1200)
 LOG_ID = 0
 
@@ -56,15 +56,15 @@ header{min-height:64px;display:flex;align-items:center;justify-content:space-bet
 h1{font-size:20px;margin:0}.version{color:#b9ffd7;font-size:12px;margin-top:4px}.sub{color:var(--muted);font-size:13px;margin-top:3px}.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}.pill.ok{color:#b9ffd7;border-color:#246b43}.pill.bad{color:#ffcbc6;border-color:#74312c}
 main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card{background:rgba(21,25,35,.88);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.25)}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:#dfe8ff;display:flex;justify-content:space-between;align-items:center}.left,.right{display:flex;flex-direction:column;min-height:0}
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
-.modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}
-#log{min-height:420px;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow:auto;white-space:pre-wrap}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
+.modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}.modepanel{display:none;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.modepanel.show{display:flex}.modepanel .ip{width:180px}.mini{color:var(--muted);font-size:12px;width:100%;margin-top:2px}
+#log{height:460px;max-height:55vh;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow-y:scroll;overflow-x:auto;white-space:pre-wrap;scroll-behavior:smooth}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
 .faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}
 @media(max-width:850px){main{grid-template-columns:1fr}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:320px}.modebar .ip{width:100%}}
 </style>
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Uma tela só: escolha Serial USB ou Wi-Fi e use os mesmos botões</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Mesmo painel: Serial USB ou Wi-Fi mudam só o modo de conexão</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -73,14 +73,20 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
     <div class="modebar">
       <label id="lbl_serial"><input type="radio" name="mode" value="serial" checked onchange="setMode('serial')"> Serial USB</label>
       <label id="lbl_wifi"><input type="radio" name="mode" value="wifi" onchange="setMode('wifi')"> Wi-Fi</label>
-      <span>IP Wi-Fi:</span><input id="esp_ip" class="ip" value="192.168.0.83" placeholder="192.168.0.83">
-      <button onclick="testWifi()" class="yellow">testar Wi-Fi</button>
+      <button onclick="openWifiConfig()" class="yellow">Configurar Wi-Fi</button>
     </div>
-    <div class="toolbar" id="serialbar">
+    <div class="modepanel show" id="serialbar">
       <select id="port"></select>
       <button onclick="refreshPorts()" class="gray">Atualizar portas</button>
       <button onclick="connect()" class="green">Conectar Serial</button>
       <button onclick="disconnect()" class="red">Desconectar</button>
+      <div class="mini">Modo Serial: lê e envia comandos pela porta USB/COM do ESP32.</div>
+    </div>
+    <div class="modepanel" id="wifibar">
+      <span>IP do ESP32:</span><input id="esp_ip" class="ip" value="192.168.0.83" placeholder="192.168.0.83">
+      <button onclick="connectWifi()" class="green">Conectar Wi-Fi</button>
+      <button onclick="testWifi()" class="yellow">Testar/status</button>
+      <div class="mini">Modo Wi-Fi: a tela não muda; os mesmos botões passam a ler/enviar pelo IP do ESP32.</div>
     </div>
     <pre id="log"></pre>
   </section>
@@ -93,8 +99,8 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
       <button onclick="send('demo')" class="purple">demo on/off</button>
       <div class="custom"><input id="custom" placeholder="comando manual"><button onclick="sendCustom()">enviar</button></div>
     </div>
-    <div class="hint">Use Serial para configurar/diagnosticar. Use Wi-Fi quando o log mostrar JR_WIFI conectado ip=...</div>
-    <h2>Configurar Wi-Fi pelo Serial</h2>
+    <div class="hint">Use Serial para configurar/diagnosticar. Clique em Wi-Fi para controlar pelo IP mantendo esta mesma tela.</div>
+    <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
       <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
       <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
@@ -135,22 +141,24 @@ function appendLog(items){
 }
 function localLine(line){appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line}])}
 function clearLog(){logEl.textContent=''; lastId=0}
+function openWifiConfig(){document.getElementById('wifi_config_title').scrollIntoView({behavior:'smooth',block:'start'}); localLine('Abra/edite a configuração Wi-Fi abaixo. O envio da configuração é feito pela Serial.')}
 function val(id){return document.getElementById(id).value.trim()}
 async function api(path, opts){const r=await fetch(path,opts); const t=await r.text(); if(!r.ok) throw new Error(t); return t}
-function setMode(m){mode=m;localStorage.setItem('jr_mode',m);document.querySelector(`input[value=${m}]`).checked=true;document.getElementById('lbl_serial').classList.toggle('active',m==='serial');document.getElementById('lbl_wifi').classList.toggle('active',m==='wifi');document.getElementById('serialbar').style.display=m==='serial'?'flex':'none';document.getElementById('wificfg').style.display=m==='serial'?'grid':'none';document.getElementById('conn').textContent=m==='wifi'?'modo Wi-Fi '+val('esp_ip'):'modo Serial';document.getElementById('conn').className='pill '+(m==='wifi'?'ok':'bad')}
+async function setMode(m){mode=m;localStorage.setItem('jr_mode',m);document.querySelector(`input[value=${m}]`).checked=true;document.getElementById('lbl_serial').classList.toggle('active',m==='serial');document.getElementById('lbl_wifi').classList.toggle('active',m==='wifi');document.getElementById('serialbar').classList.toggle('show',m==='serial');document.getElementById('wifibar').classList.toggle('show',m==='wifi');document.getElementById('wificfg').style.display='grid';document.getElementById('conn').textContent=m==='wifi'?'modo Wi-Fi '+val('esp_ip'):'modo Serial';document.getElementById('conn').className='pill '+(m==='wifi'?'ok':'bad');if(m==='wifi'){try{await api('/disconnect',{method:'POST'});}catch(e){} localStorage.setItem('jr_esp_ip',val('esp_ip'));}localLine('modo alterado para '+(m==='wifi'?'Wi-Fi pelo IP '+val('esp_ip')+'; Serial parada':'Serial USB pela COM'))}
 async function refreshPorts(){try{let r=await fetch('/ports');let j=await r.json();let s=document.getElementById('port');s.innerHTML='';j.ports.forEach(p=>{let o=document.createElement('option');o.value=p;o.textContent=p;s.appendChild(o)}); localLine('portas: '+(j.ports.join(', ')||'nenhuma'));}catch(e){alert(e)}}
 async function connect(){try{let port=document.getElementById('port').value;let t=await api('/connect',{method:'POST',body:new URLSearchParams({port})});document.getElementById('conn').textContent='Serial conectado '+port;document.getElementById('conn').className='pill ok';localLine(t);}catch(e){alert(e.message)}}
 async function disconnect(){try{let t=await api('/disconnect',{method:'POST'});document.getElementById('conn').textContent='Serial desconectado';document.getElementById('conn').className='pill bad';localLine(t);}catch(e){alert(e.message)}}
 async function send(command){try{let params=new URLSearchParams({command,mode,ip:val('esp_ip')});let t=await api('/send',{method:'POST',body:params});localLine('> '+mode+' '+command); if(t.trim()) localLine(t.trim()); if(mode==='wifi') localStorage.setItem('jr_esp_ip',val('esp_ip'));}catch(e){alert(e.message)}}
 function sendCustom(){let v=document.getElementById('custom').value.trim(); if(v) send(v)}
-async function testWifi(){setMode('wifi'); await send('status')}
+async function connectWifi(){await setMode('wifi'); localStorage.setItem('jr_esp_ip',val('esp_ip')); await send('status')}
+async function testWifi(){await setMode('wifi'); await send('status')}
 function saveWifiLocal(){['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip'].forEach(id=>localStorage.setItem('jr_'+id,val(id)))}
 function loadWifiLocal(){['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip'].forEach(id=>{let v=localStorage.getItem('jr_'+id); if(v!==null) document.getElementById(id).value=v})}
 function cleanWifiValue(v){return (v||'').replace(/[|\r\n]/g,' ').trim()}
 async function configureWifi(){
   let ssid=cleanWifiValue(val('wifi_ssid'));
   if(!ssid){alert('Informe o nome do Wi-Fi');return}
-  setMode('serial');
+  await setMode('serial');
   let cmd='wifi_config ssid='+ssid+'|pass='+cleanWifiValue(document.getElementById('wifi_pass').value)+'|host='+cleanWifiValue(val('wifi_host')||'jrbot')+'|static='+val('wifi_static')+'|ip='+cleanWifiValue(val('wifi_ip'))+'|gw='+cleanWifiValue(val('wifi_gw'))+'|mask='+cleanWifiValue(val('wifi_mask'))+'|dns1='+cleanWifiValue(val('wifi_dns1'))+'|dns2='+cleanWifiValue(val('wifi_dns2'));
   saveWifiLocal();
   await send(cmd);
@@ -168,7 +176,7 @@ loadWifiLocal(); setMode(mode); refreshPorts(); poll();
 
 
 def reader_loop():
-    global READER_STOP
+    global READER_STOP, SERIAL
     while not READER_STOP:
         try:
             with SERIAL_LOCK:
@@ -180,8 +188,20 @@ def reader_loop():
             else:
                 time.sleep(0.2)
         except Exception as exc:
-            add_log(f"JR_PANEL_ERROR leitura_serial: {exc}")
-            time.sleep(0.5)
+            msg = str(exc)
+            if "PermissionError" in msg or "Acesso negado" in msg or "ClearCommError" in msg:
+                add_log("JR_PANEL_SERIAL_OFF porta Serial liberada/indisponivel; se estiver em modo Wi-Fi isso e normal")
+                with SERIAL_LOCK:
+                    try:
+                        if SERIAL:
+                            SERIAL.close()
+                    except Exception:
+                        pass
+                    SERIAL = None
+                time.sleep(1.0)
+            else:
+                add_log(f"JR_PANEL_ERROR leitura_serial: {exc}")
+                time.sleep(0.5)
 
 
 def ensure_reader():
@@ -191,6 +211,18 @@ def ensure_reader():
     READER_STOP = False
     READER_THREAD = threading.Thread(target=reader_loop, daemon=True)
     READER_THREAD.start()
+
+
+def close_serial(reason="Serial fechada"):
+    global SERIAL
+    with SERIAL_LOCK:
+        if SERIAL:
+            try:
+                SERIAL.close()
+            except Exception:
+                pass
+            SERIAL = None
+    add_log(reason)
 
 
 def wifi_request(ip, command):
