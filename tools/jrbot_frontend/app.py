@@ -25,7 +25,7 @@ SERIAL_LOCK = threading.Lock()
 READER_THREAD = None
 READER_STOP = False
 BAUD = 115200
-APP_VERSION = "2026-09-03 17:46 UTC"
+APP_VERSION = "2026-09-03 19:35 UTC"
 LOGS = deque(maxlen=1200)
 LOG_ID = 0
 
@@ -58,7 +58,7 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
 .modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}.modepanel{display:none;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.modepanel.show{display:flex}.modepanel .ip{width:180px}.mini{color:var(--muted);font-size:12px;width:100%;margin-top:2px}
 #log{height:460px;max-height:55vh;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow-y:scroll;overflow-x:auto;white-space:pre-wrap;scroll-behavior:smooth}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
-.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}
+.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg{color:var(--muted);font-size:13px;width:100%}
 @media(max-width:850px){main{grid-template-columns:1fr}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:320px}.modebar .ip{width:100%}}
 </style>
 </head>
@@ -100,6 +100,14 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
       <div class="custom"><input id="custom" placeholder="comando manual"><button onclick="sendCustom()">enviar</button></div>
     </div>
     <div class="hint">Use Serial para configurar/diagnosticar. Clique em Wi-Fi para controlar pelo IP mantendo esta mesma tela.</div>
+    <h2>Camera</h2>
+    <div class="camera" id="camera_box">
+      <button onclick="takePhoto(1)" class="green">📷 Focar e tirar foto</button>
+      <button onclick="takePhoto(0)" class="yellow">Tirar foto sem foco</button>
+      <button onclick="openCameraPortal()" class="gray">Abrir câmera no ESP32</button>
+      <div class="msg" id="cam_msg">Use no modo Wi-Fi com o IP correto do ESP32.</div>
+      <img id="cam_photo" alt="Foto capturada pela câmera do JrBot" style="display:none">
+    </div>
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
       <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
@@ -152,6 +160,27 @@ async function send(command){try{let params=new URLSearchParams({command,mode,ip
 function sendCustom(){let v=document.getElementById('custom').value.trim(); if(v) send(v)}
 async function connectWifi(){await setMode('wifi'); localStorage.setItem('jr_esp_ip',val('esp_ip')); await send('status')}
 async function testWifi(){await setMode('wifi'); await send('status')}
+async function takePhoto(focus){
+  if(mode!=='wifi') await setMode('wifi');
+  const ip=val('esp_ip');
+  const photo=document.getElementById('cam_photo');
+  const msg=document.getElementById('cam_msg');
+  msg.textContent=focus?'Focando e capturando foto...':'Capturando foto...';
+  try{
+    const url='/camera/capture?ip='+encodeURIComponent(ip)+'&focus='+(focus?1:0)+'&t='+Date.now();
+    const r=await fetch(url);
+    if(!r.ok) throw new Error(await r.text());
+    const blob=await r.blob();
+    if(photo.dataset.url) URL.revokeObjectURL(photo.dataset.url);
+    const obj=URL.createObjectURL(blob);
+    photo.dataset.url=obj;
+    photo.src=obj;
+    photo.style.display='block';
+    msg.textContent='Foto capturada pela câmera do JrBot.';
+    localLine('camera: foto capturada via Wi-Fi '+ip);
+  }catch(e){msg.textContent='Erro ao capturar foto: '+e.message; localLine('JR_CAMERA_ERROR '+e.message)}
+}
+function openCameraPortal(){const ip=val('esp_ip')||'192.168.0.83'; window.open('http://'+ip.replace(/^https?:\/\//,'').replace(/\/$/,'')+'/', '_blank')}
 function saveWifiLocal(){['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip'].forEach(id=>localStorage.setItem('jr_'+id,val(id)))}
 function loadWifiLocal(){['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip'].forEach(id=>{let v=localStorage.getItem('jr_'+id); if(v!==null) document.getElementById(id).value=v})}
 function cleanWifiValue(v){return (v||'').replace(/[|\r\n]/g,' ').trim()}
@@ -236,6 +265,22 @@ def wifi_request(ip, command):
         raise RuntimeError(f"falha Wi-Fi em http://{safe_ip}/ : {exc}") from exc
 
 
+def camera_capture_request(ip, focus):
+    ip = (ip or "").strip() or "192.168.0.83"
+    safe_ip = ip.replace("http://", "").replace("https://", "").strip("/")
+    focus_value = "1" if str(focus).strip().lower() in ("1", "true", "sim") else "0"
+    url = f"http://{safe_ip}/capture?focus={focus_value}&t={int(time.time() * 1000)}"
+    try:
+        with urllib.request.urlopen(url, timeout=12) as resp:
+            ctype = resp.headers.get("Content-Type", "image/jpeg")
+            data = resp.read()
+            if not data:
+                raise RuntimeError("camera retornou imagem vazia")
+            return data, ctype
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"falha ao capturar camera em http://{safe_ip}/capture : {exc}") from exc
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code=200, body="", ctype="text/plain; charset=utf-8"):
         self.send_response(code)
@@ -252,6 +297,17 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/ports":
             ports = [] if list_ports is None else [p.device for p in list_ports.comports()]
             self._send(200, json.dumps({"ports": ports}), "application/json")
+        elif self.path.startswith("/camera/capture"):
+            params = {}
+            if "?" in self.path:
+                params = parse_qs(self.path.split("?", 1)[1])
+            try:
+                img, ctype = camera_capture_request(params.get("ip", ["192.168.0.83"])[0], params.get("focus", ["1"])[0])
+            except RuntimeError as exc:
+                self._send(502, str(exc))
+                return
+            add_log("JR_CAMERA foto capturada pelo painel")
+            self._send(200, img, ctype)
         elif self.path.startswith("/logs"):
             after = 0
             if "?" in self.path:

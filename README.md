@@ -195,3 +195,19 @@ Licença ainda não definida. Antes de tornar o repositório público com colabo
 ## Créditos
 
 Projeto iniciado por Junior para o Corpo Pablo/JrBot, com desenvolvimento incremental focado em protótipos físicos simples, seguros e testáveis.
+
+
+## Teste da câmera pelo painel
+
+Nesta versão o painel local (`PAINEL.bat`) ganhou a área **Camera**.
+
+Fluxo de teste:
+
+1. Grave o firmware no ESP32-S3 CAM N16R8.
+2. Conecte o JrBot no Wi-Fi e copie o IP mostrado no log.
+3. Abra `PAINEL.bat`.
+4. Selecione **Wi-Fi** e informe o IP do ESP32.
+5. Clique em **📷 Focar e tirar foto**.
+
+O painel chama `http://IP_DO_ESP32/capture?focus=1` e mostra a foto capturada pela OV5640 na própria tela.
+Também existe o portal direto no ESP32 em `http://IP_DO_ESP32/`, com botões de foto, autofocus e foco manual.

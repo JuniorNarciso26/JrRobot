@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 
 #include "jr_commands.h"
+#include "jr_camera.h"
 #include "jr_face.h"
 #include "jr_portal.h"
 #include "jr_wifi.h"
@@ -18,12 +19,12 @@ void app_main(void) {
         return;
     }
 
-    if (jr_wifi_is_configured()) {
-        jr_wifi_start();
-        jr_portal_start();
-    } else {
-        ESP_LOGW(TAG, "Wi-Fi sem credencial; iniciando somente por Serial USB.");
+    if (jr_camera_start() != ESP_OK) {
+        ESP_LOGW(TAG, "Modulo camera falhou. Portal e OLED continuam para diagnostico.");
     }
+
+    jr_wifi_start();
+    jr_portal_start();
     jr_terminal_start();
     jr_face_loop();
 }
