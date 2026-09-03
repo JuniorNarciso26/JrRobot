@@ -37,8 +37,8 @@ A filosofia do projeto é começar pequeno, testável e seguro: primeiro rosto, 
 - Pinagem OLED validada no teste físico:
   - `VCC` → `3V3`
   - `GND` → `GND`
-  - `SDA` → `GPIO8`
-  - `SCL` → `GPIO9`
+  - `SDA` → `GPIO1`
+  - `SCL` → `GPIO2`
 
 Atenção: antes de soldar ou alimentar módulos maiores, validar tensão, corrente e GND comum. Servo, motor, amplificador e bateria não devem ser alimentados diretamente pelo pino `3V3` do ESP32.
 
