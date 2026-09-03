@@ -13,7 +13,7 @@ out = root / 'dist'
 out.mkdir(exist_ok=True)
 name = 'jrbot-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + '.zip'
 zip_path = out / name
-include_roots = ['README.md', 'INSTALAR.bat', 'PAINEL.bat', 'CONFIGURAR_WIFI.bat', 'DIAGNOSTICO.bat', 'docs', 'firmware/esp32', 'tools/jrbot_frontend', 'scripts', 'references']
+include_roots = ['README.md', 'INSTALAR.bat', 'PAINEL.bat', 'CONFIGURAR_WIFI.bat', 'DIAGNOSTICO.bat', 'firmware', 'tools/jrbot_frontend']
 if args.include_credencial:
     include_roots.append('credencial')
 skip_parts = {'.git', 'build', 'dist', '__pycache__'}

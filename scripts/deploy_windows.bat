@@ -1,7 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0\..\firmware\face_oled"
-echo === JrBot Face OLED - build/flash/monitor ===
+cd /d "%~dp0\..\firmware"
+echo === JrBot - build/flash/monitor ===
 echo.
 echo Uso: deploy_windows.bat COM4
 echo Se nao passar porta, usa COM4.

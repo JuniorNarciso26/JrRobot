@@ -10,8 +10,8 @@ A V2 usa o prompt enviado por Junior como referência, mas mantém o firmware em
 
 - ESP32-S3 do Junior
 - OLED I2C 128x64 no endereço `0x3C`
-- SDA: GPIO 8
-- SCL: GPIO 9
+- SDA: GPIO 1
+- SCL: GPIO 2
 - Flash/gravação: COM6 no teste do Junior
 - Serial comandos/log: COM4 no teste do Junior
 

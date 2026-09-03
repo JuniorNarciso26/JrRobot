@@ -18,8 +18,12 @@ void app_main(void) {
         return;
     }
 
-    jr_wifi_start();
-    jr_portal_start();
+    if (jr_wifi_is_configured()) {
+        jr_wifi_start();
+        jr_portal_start();
+    } else {
+        ESP_LOGW(TAG, "Wi-Fi sem credencial; iniciando somente por Serial USB.");
+    }
     jr_terminal_start();
     jr_face_loop();
 }

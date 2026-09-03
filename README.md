@@ -2,7 +2,7 @@
 
 Firmware e ferramentas do **JrBot / Corpo Pablo**, um robô físico simples baseado em ESP32-S3. A primeira etapa do projeto é dar expressão ao robô usando um display OLED para o rosto; as próximas etapas incluem servo da cabeça, áudio/som, câmera e integração com IA.
 
-> Status: protótipo inicial funcional para rosto OLED no ESP32-S3.
+> Status: protótipo funcional para rosto OLED no ESP32-S3, com Serial USB como modo principal de teste e Wi-Fi opcional.
 
 ![Prévia do rosto OLED do JrBot](previews/jrbot_emote_preview.png)
 
@@ -37,8 +37,8 @@ A filosofia do projeto é começar pequeno, testável e seguro: primeiro rosto, 
 - Pinagem OLED validada no teste físico:
   - `VCC` → `3V3`
   - `GND` → `GND`
-  - `SDA` → `GPIO8`
-  - `SCL` → `GPIO9`
+  - `SDA` → `GPIO1`
+  - `SCL` → `GPIO2`
 
 Atenção: antes de soldar ou alimentar módulos maiores, validar tensão, corrente e GND comum. Servo, motor, amplificador e bateria não devem ser alimentados diretamente pelo pino `3V3` do ESP32.
 
@@ -48,7 +48,7 @@ Na maioria dos testes no Windows, use estes arquivos:
 
 - `CONFIGURAR_WIFI.bat` — grava nome/senha do Wi-Fi no firmware local, sem publicar segredo.
 - `INSTALAR.bat` — compila, grava o ESP32-S3 e abre o painel local no final.
-- `PAINEL.bat` — abre novamente o painel local no computador.
+- `PAINEL.bat` — pergunta se abre por Serial USB ou Wi-Fi. Por enquanto use a opção 1, Serial USB.
 - `DIAGNOSTICO.bat` — gera `erro-build.txt` se a compilação falhar.
 
 ## Instalação rápida com Wi-Fi
@@ -86,22 +86,41 @@ http://IP_DO_ESP32/
 Exemplo:
 
 ```text
-http://192.168.0.50/
+http://192.168.0.83/
 ```
 
 ## Painel local do computador
 
-Depois de instalado, para abrir apenas o painel local:
+Depois de instalado, para abrir o painel:
 
 ```powershell
 .\PAINEL.bat
 ```
 
-Endereço padrão:
+Agora existe uma tela única no computador:
 
 ```text
 http://127.0.0.1:8765
 ```
+
+Na própria tela você escolhe o modo:
+
+- `Serial USB`: configurar, diagnosticar e testar pela COM.
+- `Wi-Fi`: controlar pelo IP do ESP32, usando a mesma tela e os mesmos botões.
+
+### Configurar Wi-Fi pelo painel único
+
+1. Abra `PAINEL.bat`.
+2. Na tela única, deixe `Serial USB` selecionado.
+3. Clique em `Atualizar portas`, escolha a COM e clique em `Conectar Serial`.
+4. No bloco `Configurar Wi-Fi pelo Serial`, preencha nome da rede e senha.
+5. Clique em `Configurar Wi-Fi no ESP32`.
+6. Aguarde no log a linha `JR_WIFI conectado ip=...`.
+7. Copie esse IP para o campo `IP Wi-Fi`.
+8. Selecione `Wi-Fi` no topo da mesma tela.
+9. Clique em `testar Wi-Fi` ou use os botões de rosto normalmente.
+
+No teste do Junior o IP entregue pelo roteador foi `192.168.0.83`. Isso é DHCP normal. `192.168.0.50` era apenas sugestão antiga para IP fixo.
 
 ## Comandos do rosto
 
@@ -151,7 +170,7 @@ Arquivos locais ignorados:
 - `.env`
 - `*.secret`
 - `secrets.*`
-- `firmware/esp32/main/wifi_config.local.h`
+- `firmware/main/wifi_config.local.h`
 
 Para colaboração pública, use exemplos e placeholders. Configurações reais ficam somente na máquina/dispositivo de quem está testando.
 

@@ -1,22 +1,18 @@
-# builds e artefatos locais
+# Build gerado pelo ESP-IDF/compilação local
+firmware/build/
 build/
-firmware/esp32/build/
-firmware/i2c_scanner/build/
 
-# Python
+# Credenciais e configuração local
+firmware/main/wifi_config.local.h
+wifi_config.local.h
+credencial/
+
+# Pacotes e temporários gerados localmente
+dist/
+*.zip
+*.bin
+*.elf
+*.map
+erro-build.txt
 __pycache__/
 *.pyc
-.venv/
-
-# ESP-IDF locais
-sdkconfig
-managed_components/
-
-# credenciais/config local
-.env
-*.secret
-secrets.*
-firmware/esp32/main/wifi_config.local.h
-
-# credenciais locais do Junior
-credencial/

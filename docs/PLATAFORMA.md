@@ -9,8 +9,8 @@ Ter duas camadas desde o começo:
 
 ## Primeiro estágio
 
-- Firmware `firmware/face_oled`: testa OLED 128x64 SSD1306/SH1106 por I2C.
-- Comandos via Serial/USB: `neutro`, `feliz`, `triste`, `bravo`, `sono`, `esquerda`, `direita`, `surpreso`, `status`.
+- Firmware `firmware/`: testa OLED 128x64 SSD1306/SH1106 por I2C, comandos Serial e Wi-Fi opcional.
+- Comandos via Serial/USB: `neutro`, `feliz`, `triste`, `bravo`, `animado`, `surpreso`, `pensando`, `cetico`, `sono`, `confuso`, `piscando`, `amor`, `brincalhao`, `preocupado`, `cool`, `bateria`, `demo`, `status`, `help`.
 - Frontend local: roda no computador e envia comandos pela porta serial.
 
 ## O que foi aproveitado do backup
