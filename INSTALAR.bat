@@ -4,19 +4,44 @@ cd /d "%~dp0"
 
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
-if not defined JR_FLASH_PORT set "JR_FLASH_PORT=COM6"
+if not "%~2"=="" set "JR_FLASH_PORT=%~2"
 set "BUILD_DIR=build-final-hw04"
 set "SDKCONFIG_FILE=sdkconfig.final-hw04"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
-if /i "%ACTION%"=="flash" goto prepare
-if /i "%ACTION%"=="all" goto prepare
+if /i "%ACTION%"=="flash" goto select_then_prepare
+if /i "%ACTION%"=="all" goto select_then_prepare
 if /i "%ACTION%"=="menuconfig" goto menuconfig
 if /i "%ACTION%"=="panel" goto panel
 
 echo ERRO: opcao invalida: %ACTION%
 goto help
+
+:select_then_prepare
+call :select_port
+if errorlevel 1 goto failure
+goto prepare
+
+:select_port
+if defined JR_FLASH_PORT (
+  echo Porta de gravacao definida: %JR_FLASH_PORT%
+  exit /b 0
+)
+set "PORT_FILE=%TEMP%\jrbot_port_%RANDOM%_%RANDOM%.txt"
+python tools\select_port.py --output "%PORT_FILE%"
+if errorlevel 1 (
+  if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>nul
+  exit /b 1
+)
+set /p JR_FLASH_PORT=<"%PORT_FILE%"
+del /q "%PORT_FILE%" >nul 2>nul
+if not defined JR_FLASH_PORT (
+  echo ERRO: nenhuma porta foi selecionada.
+  exit /b 1
+)
+echo Porta escolhida para esta instalacao: %JR_FLASH_PORT%
+exit /b 0
 
 :check
 if not defined IDF_PATH (
@@ -78,7 +103,7 @@ exit /b %errorlevel%
 echo.
 echo OK - JrBot V2 atualizado.
 echo Firmware: JRBotV2_2026-09-06-16:12
-echo Hardware: JRBOT-HW-04 ^| Gravacao: COM6 ^| Painel: COM4
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT%
 exit /b 0
 
 :failure
@@ -88,12 +113,13 @@ exit /b 1
 
 :help
 echo.
-echo JrBot V2 - instalador unico
+echo JrBot V2 - instalador unico com escolha de porta
 echo.
-echo   INSTALAR.bat            Compila, grava na COM6 e abre o painel estavel
-echo   INSTALAR.bat build      Apenas compila
-echo   INSTALAR.bat flash      Compila e grava
-echo   INSTALAR.bat panel      Abre o painel estavel
-echo   INSTALAR.bat menuconfig Abre configuracao do firmware
+echo   INSTALAR.bat              Escolhe a porta, compila, grava e abre o painel
+echo   INSTALAR.bat flash        Escolhe a porta, compila e grava
+echo   INSTALAR.bat flash COM7   Usa diretamente a COM7
+echo   INSTALAR.bat build        Apenas compila
+echo   INSTALAR.bat panel        Abre o painel com portas detectadas
+echo   INSTALAR.bat menuconfig   Abre configuracao do firmware
 echo.
 exit /b 0
