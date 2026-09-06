@@ -1,0 +1,9 @@
+menu "JrBot V2 - hardware"
+    config JR_AUDIO_PINS_CONFIRMED
+        bool "Enable MAX98357A after verifying GPIO39/40/41 on the physical board"
+        default n
+        help
+            Default face_only does not drive the proposed audio pins.
+            Enable only after confirming the wiring and external JTAG conflicts.
+            Camera and servo remain disabled in this candidate.
+endmenu

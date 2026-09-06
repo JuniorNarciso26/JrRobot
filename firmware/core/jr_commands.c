@@ -1,166 +1,227 @@
 #include <stdbool.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "driver/uart.h"
-#include "esp_err.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
-
 #include "jr_config.h"
+#include "jr_board.h"
 #include "jr_commands.h"
 #include "jr_audio.h"
 #include "jr_wifi.h"
-#include "jr_portal.h"
 #include "jr_face.h"
 
-static void lower_copy(char *dst, size_t dst_len, const char *src) {
-    size_t i = 0;
-    if (dst_len == 0) return;
-    for (; src && src[i] && i < dst_len - 1; ++i) dst[i] = (char)tolower((unsigned char)src[i]);
-    dst[i] = '\0';
+static SemaphoreHandle_t command_lock;
+static bool terminal_started;
+
+esp_err_t jr_commands_init(void) {
+    /* Called once by app_main before exposing any transports. */
+    if (!command_lock) command_lock = xSemaphoreCreateMutex();
+    return command_lock ? ESP_OK : ESP_ERR_NO_MEM;
+}
+static int hex_value(unsigned char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+bool jr_decode_component(const char *src, size_t len, char *dst, size_t cap, bool plus_space) {
+    if (!src || !dst || !cap) return false;
+    size_t n = 0;
+    for (size_t i = 0; i < len; i++) {
+        unsigned char c = (unsigned char)src[i];
+        if (c == '%') {
+            if (i + 2 >= len) return false;
+            int h = hex_value((unsigned char)src[i+1]), l = hex_value((unsigned char)src[i+2]);
+            if (h < 0 || l < 0) return false;
+            c = (unsigned char)((h << 4) | l); i += 2;
+        } else if (c == '+' && plus_space) c = ' ';
+        if (c < 32 || c == 127 || n + 1 >= cap) return false;
+        dst[n++] = (char)c;
+    }
+    dst[n] = '\0';
+    return true;
 }
 
-static void field_copy(char *dst, size_t dst_len, const char *src) {
-    if (dst_len == 0) return;
-    snprintf(dst, dst_len, "%s", src ? src : "");
-}
-
-static void parse_wifi_config(const char *cmd, char *ssid, size_t ssid_len, char *pass, size_t pass_len,
-                              char *host, size_t host_len, bool *use_static, char *ip, size_t ip_len,
-                              char *gw, size_t gw_len, char *mask, size_t mask_len,
-                              char *dns1, size_t dns1_len, char *dns2, size_t dns2_len) {
-    field_copy(host, host_len, "jrbot");
-    field_copy(ip, ip_len, "192.168.0.50");
-    field_copy(gw, gw_len, "192.168.0.1");
-    field_copy(mask, mask_len, "255.255.255.0");
-    field_copy(dns1, dns1_len, "8.8.8.8");
-    field_copy(dns2, dns2_len, "8.8.4.4");
-    *use_static = false;
-
-    const char *p = cmd;
-    if (!strncmp(p, "wifi_config", 11)) p += 11;
-    while (*p == ' ' || *p == '|') p++;
-
+static bool parse_wifi_config(const char *args, bool encoded, char *response, size_t cap) {
+    char ssid[33] = "", pass[65] = "", host[33] = "jrbot";
+    char ip[16] = "192.168.0.50", gw[16] = "192.168.0.1", mask[16] = "255.255.255.0";
+    char dns1[16] = "8.8.8.8", dns2[16] = "8.8.4.4", stat[6] = "0";
+    struct field { const char *key; char *value; size_t size; } fields[] = {
+        {"ssid",ssid,sizeof(ssid)}, {"pass",pass,sizeof(pass)}, {"host",host,sizeof(host)},
+        {"static",stat,sizeof(stat)}, {"ip",ip,sizeof(ip)}, {"gw",gw,sizeof(gw)},
+        {"mask",mask,sizeof(mask)}, {"dns1",dns1,sizeof(dns1)}, {"dns2",dns2,sizeof(dns2)}
+    };
+    unsigned seen = 0;
+    const char *p = args;
     while (*p) {
-        const char *eq = strchr(p, '=');
-        if (!eq) break;
-        char key[16] = {0};
-        size_t klen = (size_t)(eq - p);
-        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
-        for (size_t i = 0; i < klen; ++i) key[i] = (char)tolower((unsigned char)p[i]);
-
-        const char *value = eq + 1;
-        const char *end = strchr(value, '|');
-        size_t vlen = end ? (size_t)(end - value) : strlen(value);
-        char tmp[96] = {0};
-        if (vlen >= sizeof(tmp)) vlen = sizeof(tmp) - 1;
-        memcpy(tmp, value, vlen);
-        tmp[vlen] = '\0';
-
-        if (!strcmp(key, "ssid")) field_copy(ssid, ssid_len, tmp);
-        else if (!strcmp(key, "pass")) field_copy(pass, pass_len, tmp);
-        else if (!strcmp(key, "host")) field_copy(host, host_len, tmp);
-        else if (!strcmp(key, "static")) *use_static = (!strcmp(tmp, "1") || !strcmp(tmp, "sim") || !strcmp(tmp, "true"));
-        else if (!strcmp(key, "ip")) field_copy(ip, ip_len, tmp);
-        else if (!strcmp(key, "gw")) field_copy(gw, gw_len, tmp);
-        else if (!strcmp(key, "mask")) field_copy(mask, mask_len, tmp);
-        else if (!strcmp(key, "dns1")) field_copy(dns1, dns1_len, tmp);
-        else if (!strcmp(key, "dns2")) field_copy(dns2, dns2_len, tmp);
-
+        const char *end = strchr(p, '|');
+        size_t len = end ? (size_t)(end - p) : strlen(p);
+        const char *eq = memchr(p, '=', len);
+        if (!eq) goto invalid;
+        size_t klen = (size_t)(eq - p), vlen = len - klen - 1;
+        size_t i;
+        for (i = 0; i < sizeof(fields)/sizeof(fields[0]); i++) {
+            if (strlen(fields[i].key) == klen && !memcmp(p, fields[i].key, klen)) break;
+        }
+        if (i == sizeof(fields)/sizeof(fields[0]) || (seen & (1U << i))) goto invalid;
+        seen |= 1U << i;
+        if (encoded) {
+            if (!jr_decode_component(eq+1, vlen, fields[i].value, fields[i].size, false)) goto invalid;
+        } else {
+            if (vlen >= fields[i].size) goto invalid;
+            memcpy(fields[i].value, eq+1, vlen); fields[i].value[vlen] = '\0';
+        }
         if (!end) break;
         p = end + 1;
-        while (*p == ' ') p++;
+        if (!*p) goto invalid;
     }
-}
-
-void jr_print_help(void){ printf("\nJrBot v4. Comandos:\n neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria\n demo status help\n audio_test audio_volume 0-100\n wifi_config ssid=NOME|pass=SENHA|static=0|ip=192.168.0.50|gw=192.168.0.1|mask=255.255.255.0\n wifi_clear\n\n"); }
-
-bool jr_handle_command(const char *cmd, char *response, size_t response_len) {
-    char base[48];
-    lower_copy(base, sizeof(base), cmd);
-
-    if (!strcmp(base, "status")) {
-        snprintf(response, response_len, "JR_STATUS v=4 version=%s expression=%s demo=%d wifi_config=%d wifi=%d ssid=%s ip=%s audio=%s volume=%d commands=%lu frames=%lu",
-            JR_APP_VERSION, jr_face_expression_name(), jr_face_demo_enabled() ? 1 : 0,
-            jr_wifi_is_configured() ? 1 : 0, jr_wifi_is_connected() ? 1 : 0, jr_wifi_ssid(), jr_wifi_ip(),
-            jr_audio_ready() ? "ok" : "off", jr_audio_volume(),
-            (unsigned long)jr_face_command_count(), (unsigned long)jr_face_frame_count());
-        jr_face_print_status();
-        printf("%s\n", response);
-        return true;
-    }
-    if (!strcmp(base, "help") || !strcmp(base, "ajuda")) {
-        snprintf(response, response_len, "comandos: neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria demo status audio_test audio_volume 0-100 wifi_config wifi_clear");
-        jr_print_help();
-        return true;
-    }
-    if (!strncmp(base, "wifi_config", 11)) {
-        char ssid[33] = "", pass[65] = "", host[33] = "jrbot", ip[16] = "192.168.0.50", gw[16] = "192.168.0.1", mask[16] = "255.255.255.0", dns1[16] = "8.8.8.8", dns2[16] = "8.8.4.4";
-        bool use_static = false;
-        parse_wifi_config(cmd, ssid, sizeof(ssid), pass, sizeof(pass), host, sizeof(host), &use_static, ip, sizeof(ip), gw, sizeof(gw), mask, sizeof(mask), dns1, sizeof(dns1), dns2, sizeof(dns2));
-        bool ok = jr_wifi_configure(ssid, pass, host, use_static, ip, gw, mask, dns1, dns2, response, (unsigned)response_len);
-        if (ok) jr_portal_start();
-        return ok;
-    }
-    if (!strcmp(base, "wifi_clear")) {
-        return jr_wifi_clear(response, (unsigned)response_len);
-    }
-    if (!strcmp(base, "demo")) {
-        jr_face_set_demo(!jr_face_demo_enabled());
-        snprintf(response, response_len, "JR_OK demo=%d", jr_face_demo_enabled() ? 1 : 0);
-        printf("JR_OK demo=%d\n", jr_face_demo_enabled() ? 1 : 0);
-        return true;
-    }
-    if (!strncmp(base, "audio_volume", 12) || !strncmp(base, "volume", 6)) {
-        const char *p = strchr(base, ' ');
-        int volume = p ? atoi(p + 1) : jr_audio_volume();
-        jr_audio_set_volume(volume);
-        snprintf(response, response_len, "JR_OK audio_volume=%d", jr_audio_volume());
-        printf("JR_OK audio_volume=%d\n", jr_audio_volume());
-        return true;
-    }
-    if (!strcmp(base, "audio_test") || !strcmp(base, "som") || !strcmp(base, "beep")) {
-        esp_err_t err = jr_audio_test_tone(880, 700);
-        if (err == ESP_OK) {
-            snprintf(response, response_len, "JR_OK audio_test beep=880Hz volume=%d", jr_audio_volume());
-        } else {
-            snprintf(response, response_len, "JR_ERROR audio_test=%s", esp_err_to_name(err));
-        }
-        printf("%s\n", response);
-        return err == ESP_OK;
-    }
-    if (jr_face_set_expression(base)) {
-        jr_face_increment_command_count();
-        snprintf(response, response_len, "JR_OK command=%lu expression=%s", (unsigned long)jr_face_command_count(), jr_face_expression_name());
-        printf("JR_OK command=%lu expression=%s\n", (unsigned long)jr_face_command_count(), jr_face_expression_name());
-        return true;
-    }
-    snprintf(response, response_len, "JR_ERROR comando_desconhecido=%s", cmd);
-    printf("JR_ERROR comando_desconhecido=%s\n", cmd);
+    if (!(seen & 1) || (strcmp(stat,"0") && strcmp(stat,"1"))) goto invalid;
+    bool ok = jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
+    memset(pass, 0, sizeof(pass));
+    return ok;
+invalid:
+    memset(pass, 0, sizeof(pass));
+    snprintf(response, cap, "JR_ERROR wifi_campos_invalidos_ou_longos");
     return false;
 }
 
-static void terminal_task(void *p){
-    uint8_t rx[96]; char cmd[192]={0}; size_t n=0; char response[256]; jr_print_help();
-    while(true){
-        int count=uart_read_bytes(UART_NUM_0,rx,sizeof(rx),pdMS_TO_TICKS(100));
-        for(int i=0;i<count;i++){
-            char ch=(char)rx[i];
-            if(ch=='\r'||ch=='\n'){
-                if(!n)continue;
-                cmd[n]='\0';
-                jr_handle_command(cmd,response,sizeof(response));
-                n=0;
-            } else if(n<sizeof(cmd)-1) cmd[n++]=ch;
+bool jr_format_status(char *response, size_t cap) {
+    jr_face_status_t f;
+    jr_wifi_status_t w;
+    jr_face_get_status(&f);
+    jr_wifi_get_status(&w);
+    int n = snprintf(response, cap,
+        "JR_STATUS protocol=2 version=%s profile=%s expression=%s demo=%d "
+        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d camera=disabled "
+        "oled=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
+        "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu "
+        "last_success_ms=%lu last_error=%s",
+        JR_APP_VERSION,JR_PROFILE_NAME,f.expression,f.demo,w.configured,w.connected,w.pending_restart,w.ip,
+        jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"offline":"disabled"),jr_audio_volume(),
+        jr_face_state_name(f.state),f.address,JR_OLED_I2C_HZ,
+        (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
+        (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
+        (unsigned long)f.consecutive_failures,(unsigned long)f.recoveries,
+        (unsigned long)f.last_success_ms,esp_err_to_name(f.last_error));
+    return n >= 0 && (size_t)n < cap;
+}
+
+static bool execute_command(const char *cmd, char *response, size_t cap) {
+    size_t len = strlen(cmd);
+    if (!len || len > JR_COMMAND_MAX_BYTES) goto invalid;
+    for (size_t i=0; i<len; i++) if ((unsigned char)cmd[i] < 32 || (unsigned char)cmd[i] == 127) goto invalid;
+    /* Preserve credential bytes and trailing spaces. Only the verb is folded. */
+    const char *p = cmd;
+    while (*p == ' ') p++;
+    const char *space = strchr(p, ' ');
+    size_t verb_len = space ? (size_t)(space-p) : strlen(p);
+    char verb[32];
+    if (!verb_len || verb_len >= sizeof(verb)) goto invalid;
+    for (size_t i=0; i<verb_len; i++) verb[i] = (char)tolower((unsigned char)p[i]);
+    verb[verb_len] = '\0';
+    const char *args = space ? space+1 : "";
+    if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
+        return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),response,cap);
+    if (!strcmp(verb,"audio_volume") || !strcmp(verb,"volume")) {
+        char *end; errno=0;
+        long value = strtol(args,&end,10);
+        if (!*args || end == args || errno || value<0 || value>100) goto invalid;
+        while (*end==' ') end++;
+        if (*end) goto invalid;
+        jr_audio_set_volume((int)value);
+        snprintf(response,cap,"JR_OK audio_volume=%d audio=%s",jr_audio_volume(),JR_AUDIO_ENABLED?"enabled":"disabled");
+        return true;
+    }
+    while (*args==' ') args++;
+    if (*args) goto invalid;
+    if (!strcmp(verb,"status")) return jr_format_status(response,cap);
+    if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
+        snprintf(response,cap,"JR_HELP protocol=2 status demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_test audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+    }
+    if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
+    if (!strcmp(verb,"demo")) {
+        jr_face_set_demo(!jr_face_demo_enabled());
+        snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;
+    }
+    if (!strcmp(verb,"audio_test") || !strcmp(verb,"som") || !strcmp(verb,"beep")) {
+        esp_err_t err=jr_audio_test_tone(880,700);
+        snprintf(response,cap,err==ESP_OK?"JR_OK audio_test=completed":"JR_ERROR audio_test=%s",esp_err_to_name(err));
+        return err==ESP_OK;
+    }
+    if (jr_face_set_expression(verb)) {
+        jr_face_increment_command_count();
+        snprintf(response,cap,"JR_OK expression=%s",jr_face_expression_name()); return true;
+    }
+invalid:
+    /* Do not echo malformed input: it may contain a password. */
+    snprintf(response,cap,"JR_ERROR comando_ou_argumentos_invalidos"); return false;
+}
+
+bool jr_handle_command(const char *cmd, char *response, size_t cap) {
+    if (!response || cap < JR_RESPONSE_MAX_BYTES) return false;
+    response[0]='\0';
+    if (!cmd) { snprintf(response,cap,"JR_ERROR comando_vazio"); return false; }
+    if (!command_lock || xSemaphoreTake(command_lock,pdMS_TO_TICKS(1500))!=pdTRUE) {
+        snprintf(response,cap,"JR_ERROR commands_busy_or_unavailable"); return false;
+    }
+    bool ok=execute_command(cmd,response,cap);
+    xSemaphoreGive(command_lock);
+    return ok;
+}
+
+void jr_print_help(void) { printf("JR_READY protocol=2 max_command_bytes=%d; use help\n",JR_COMMAND_MAX_BYTES); }
+
+void jr_terminal_process_line(const char *line) {
+    char id[33]="";
+    const char *cmd=line;
+    if (*cmd=='@') {
+        const char *space=strchr(cmd,' ');
+        if (!space || space-cmd<2 || space-cmd>33) { puts("JR_ERROR invalid_id"); return; }
+        size_t n=(size_t)(space-cmd-1);
+        for (size_t i=0;i<n;i++) {
+            unsigned char c=(unsigned char)cmd[i+1];
+            if (!isalnum(c) && c!='-' && c!='_') { puts("JR_ERROR invalid_id"); return; }
+        }
+        memcpy(id,cmd+1,n); cmd=space+1;
+    }
+    char response[JR_RESPONSE_MAX_BYTES];
+    bool ok=jr_handle_command(cmd,response,sizeof(response));
+    if (*id) printf("JR_REPLY id=%s ok=%d %s\n",id,ok?1:0,response);
+    else printf("%s\n",response);
+}
+
+/* Keep the discarded-line state until its delimiter, including NUL/controls. */
+typedef struct { char line[JR_SERIAL_LINE_MAX_BYTES+1]; size_t size; bool discard; } serial_parser_t;
+static void terminal_feed(serial_parser_t *s, const uint8_t *data, size_t len) {
+    for (size_t i=0;i<len;i++) {
+        unsigned char c=data[i];
+        if (c=='\r' || c=='\n') {
+            if (s->discard) puts("JR_ERROR serial_invalid_or_overflow comando_descartado");
+            else if (s->size) { s->line[s->size]='\0'; jr_terminal_process_line(s->line); }
+            memset(s,0,sizeof(*s));
+        } else if (!s->discard) {
+            if (c<32 || c==127 || s->size>=JR_SERIAL_LINE_MAX_BYTES) s->discard=true;
+            else s->line[s->size++]=(char)c;
         }
     }
 }
-
+static void terminal_task(void *arg) {
+    (void)arg;
+    uint8_t rx[128]; serial_parser_t parser={0}; jr_print_help();
+    for (;;) {
+        int n=uart_read_bytes(UART_NUM_0,rx,sizeof(rx),pdMS_TO_TICKS(100));
+        if (n>0) terminal_feed(&parser,rx,(size_t)n);
+    }
+}
 void jr_terminal_start(void) {
-    esp_err_t uart_result=uart_driver_install(UART_NUM_0,2048,0,0,NULL,0);
-    if(uart_result!=ESP_OK&&uart_result!=ESP_ERR_INVALID_STATE) ESP_ERROR_CHECK(uart_result);
-    xTaskCreate(terminal_task,"terminal",4096,NULL,5,NULL);
+    if (terminal_started) return;
+    esp_err_t err=uart_driver_install(UART_NUM_0,2048,0,0,NULL,0);
+    if (err!=ESP_OK && err!=ESP_ERR_INVALID_STATE) { printf("JR_ERROR terminal_uart=%s\n",esp_err_to_name(err)); return; }
+    if (xTaskCreate(terminal_task,"terminal",8192,NULL,5,NULL)!=pdPASS) { puts("JR_ERROR terminal_task_create"); return; }
+    terminal_started=true;
 }
