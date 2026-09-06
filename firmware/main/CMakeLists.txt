@@ -15,5 +15,5 @@ idf_component_register(
         "../module_portal"
         "../module_camera"
         "../module_audio"
-    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_psram esp32-camera nvs_flash log esp_timer
+    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_psram esp32-camera nvs_flash log esp_timer heap
 )
