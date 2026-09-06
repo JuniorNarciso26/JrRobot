@@ -102,7 +102,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware: JRBotV2_2026-09-06-17:54
+echo Firmware: JRBotV2_2026-09-06-18:27
 if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT%
 exit /b 0
 
