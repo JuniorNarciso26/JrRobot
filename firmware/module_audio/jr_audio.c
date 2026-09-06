@@ -148,14 +148,7 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     uint32_t seq = audio_diag_begin(frequency_hz, duration_ms);
     uint32_t tone_bytes = 0;
     esp_err_t err = ESP_OK;
-    ESP_LOGI(TAG, "TEST_BEGIN seq=%lu freq=%d dur=%d volume=%d bclk=%d lrc=%d din=%d rate=%d format=MSB",
-             (unsigned long)seq,frequency_hz,duration_ms,jr_audio_volume(),
-             JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,JR_AUDIO_SAMPLE_RATE);
-
-    err = jr_audio_start();
-    if (err != ESP_OK) goto done;
-
-    const int frames_per_chunk = 256;
+    enum { frames_per_chunk = 256 };
     int16_t samples[frames_per_chunk * 2];
     int total_frames = (JR_AUDIO_SAMPLE_RATE * duration_ms) / 1000;
     int written_frames = 0;
@@ -164,6 +157,13 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     int amplitude = (jr_audio_volume() * 26000) / 100;
     if (amplitude < 0) amplitude = 0;
     if (amplitude > 26000) amplitude = 26000;
+
+    ESP_LOGI(TAG, "TEST_BEGIN seq=%lu freq=%d dur=%d volume=%d bclk=%d lrc=%d din=%d rate=%d format=MSB",
+             (unsigned long)seq,frequency_hz,duration_ms,jr_audio_volume(),
+             JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,JR_AUDIO_SAMPLE_RATE);
+
+    err = jr_audio_start();
+    if (err != ESP_OK) goto done;
 
     while (written_frames < total_frames) {
         int frames = total_frames - written_frames;
