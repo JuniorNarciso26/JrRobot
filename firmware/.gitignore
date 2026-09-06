@@ -1,4 +1,7 @@
-# Local output for the isolated diagnostic build. Keep sdkconfig.defaults tracked.
-/build-diag/
-/sdkconfig.diag
-/sdkconfig.diag.old
+build*/
+managed_components/
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults
+!sdkconfig.defaults.*
+main/wifi_config.local.h

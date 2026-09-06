@@ -1,44 +1,25 @@
-# Checklist para tornar o JrRobot público
+# JrBot - apresentacao publica
 
-Este checklist ajuda a preparar o repositório antes de convidar colaboradores.
+## Identidade
 
-## Antes de publicar
+Nome do robo: **JrBot**. Apresentacao: **robo com IA em desenvolvimento**. O repositorio conserva o endereco JuniorNarciso26/JrRobot; nao e necessario renomear a URL para mudar a identidade do produto.
 
-- [ ] Confirmar que não existe senha, token, chave ou Wi-Fi real no histórico recente.
-- [ ] Confirmar que `credencial/`, `.env`, `*.secret` e arquivos locais estão no `.gitignore`.
-- [ ] Escolher uma licença aberta: MIT, Apache-2.0 ou GPL-3.0.
-- [ ] Criar uma descrição curta do repositório no GitHub.
-- [ ] Adicionar topics no GitHub, por exemplo:
-  - `esp32`
-  - `esp32-s3`
-  - `robotics`
-  - `oled-display`
-  - `embedded`
-  - `iot`
-  - `ai-robot`
-- [ ] Conferir se o README mostra claramente objetivo, status, instalação e roadmap.
-- [ ] Criar issues iniciais para colaboradores.
+Descricao curta para o campo About/Description do GitHub:
 
-## Issues iniciais sugeridas
+> JrBot: robo com IA em desenvolvimento baseado em ESP32-S3, com painel de controle, camera, audio modular e OLED opcional.
 
-1. `Servo da cabeça: definir pinagem e controle PWM`
-2. `Adicionar expressões novas para o OLED`
-3. `Documentar alimentação segura ESP32 + servo`
-4. `Testar em outras placas ESP32-S3`
-5. `Planejar módulo de áudio/I2S`
-6. `Estudar integração com câmera/acompanhamento humano`
-7. `Avaliar cérebro embarcado inspirado em MimiClaw`
+A descricao de produto nao significa que conversacao por IA ja esteja implementada. Ver docs/PLATAFORMA.md para o estado real.
 
-## Descrição curta sugerida para o GitHub
+## About e README sao campos diferentes
 
-```text
-Robô físico simples com ESP32-S3: rosto OLED, servo de cabeça, áudio e integração futura com IA/OpenClaw.
-```
+README.md altera a pagina do projeto. O campo About e metadado do GitHub, nao e atualizado criando um arquivo. Nesta revisao foi lido vazio. A conexao usada disponibiliza escrita de arquivos/commits, mas nao uma acao para editar esse metadado. O proprietario pode abrir a engrenagem do About e colar a descricao acima; o texto tambem esta em DESCRICAO_REPOSITORIO.txt.
 
-## Sobre licença
+Nao mudar visibilidade, nome, branch padrao ou permissoes como parte desta limpeza. Implementacao em v2-revisada; main recebe apenas documentacao publica revisada.
 
-Se a ideia for facilitar colaboração ampla e uso simples, MIT é uma boa primeira opção.
+## Conteudo e seguranca
 
-Se quiser proteger mais explicitamente patentes/uso empresarial, considerar Apache-2.0.
+As referencias textuais ao projeto anterior foram removidas da documentacao ativa. Isso nao apaga commits historicos, caches do GitHub ou copias locais. Nao houve reescrita de historico.
 
-Se quiser obrigar derivações abertas, considerar GPL-3.0.
+Rever historico e arquivos antes de publicar credenciais. Nenhuma auditoria completa do historico de segredos foi realizada aqui. Se algum segredo ja foi publicado, revogar/rotacionar: apagar um arquivo nao basta. Nao anexar logs contendo senhas, imagens/audio pessoais ou credenciais de servicos de IA.
+
+A licenca do codigo proprio precisa ser decidida pelo proprietario. Repositorio publico nao e automaticamente uma licenca livre. Preservar avisos de dependencias; nao adicionar MIT/Apache/GPL sem aprovacao.

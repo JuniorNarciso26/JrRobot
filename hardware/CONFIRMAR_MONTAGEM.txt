@@ -1,0 +1,23 @@
+JrBot - confirmacao fisica HW03
+
+Placa / fabricante / revisao:
+Foto frente e verso / esquema do fabricante:
+Modelo do sensor de camera e inscricao no flex:
+GPIO21 ligado a:
+GPIO41 ligado a:
+GPIO42 ligado a:
+GPIO47 ligado a:
+GPIO14 exposto e livre? microSD/outro circuito:
+GPIO39 e GPIO40 livres? uso de JTAG externo:
+Amplificador: modelo/variante e rotulos do breakout:
+Amplificador BCLK ligado a:
+Amplificador LRC/WS ligado a:
+Amplificador DIN ligado a:
+Microfone: modelo e interface:
+Microfone: lista de todos os pinos e destinos:
+Falante: impedancia e potencia:
+Fonte(s): tensao, corrente, ligacao das duas USBs:
+OLED: modelo/controlador e estado:
+
+Nao preencher usando apenas a proposta. Conferir fios com alimentacao desligada.
+Nao publicar senhas, tokens, audio privado ou dados pessoais neste formulario.

@@ -1,52 +1,11 @@
-# Como contribuir com o JrRobot
+# Contribuir com o JrBot
 
-Obrigado pelo interesse em colaborar com o **JrRobot / Corpo Pablo ESP32**.
+JrBot e um robo com IA em desenvolvimento. Trabalhe na `v2-revisada` ou em uma branch derivada; nao publique firmware experimental em `main` sem revisao.
 
-Este projeto mistura software, firmware e hardware físico. Por isso, toda contribuição deve priorizar segurança, simplicidade e teste incremental.
+Toda alteracao de hardware deve atualizar `hardware/pinmap.json`, executar `python tools/generate_pinmap.py` e atualizar materiais/esquema. GPIO21, GPIO41, GPIO42 e GPIO47 sao ocupados e nao podem ser reutilizados. A lista de candidatos do firmware nao substitui o esquema da placa.
 
-## Áreas onde ajuda é bem-vinda
+Antes de enviar: rode `python tools/generate_pinmap.py --check` e `python tests/hardware/test_pin_policy.py`. Separe testes no computador, build ESP-IDF e teste na placa. Nao apresente resposta positiva de I2S como prova de som audivel, nem quadro JPEG como prova de foco.
 
-- Expressões para display OLED 128x64.
-- Controle de servo da cabeça/pescoço.
-- Montagem física simples e leve.
-- Alimentação segura com ESP32, servo e módulos.
-- Áudio, I2S, TTS ou efeitos sonoros.
-- Câmera, visão computacional e acompanhamento humano.
-- Documentação para iniciantes.
-- Testes em placas ESP32-S3 diferentes.
+Use o painel para operacao e logs. Para cada mudanca, informe versao do firmware, modelo exato da placa, pinagem, alimentacao e resultados. Nao adicione senhas, tokens, credenciais locais ou imagens/audio pessoais. Desligue todas as fontes antes de alterar fios e respeite as alimentacoes dos modulos.
 
-## Antes de enviar alteração
-
-1. Explique qual problema a mudança resolve.
-2. Informe o hardware usado no teste.
-3. Não adicione senha, token, API key, chave privada ou Wi-Fi real.
-4. Evite mudanças grandes sem abrir uma issue antes.
-5. Para hardware, descreva tensão, corrente e pinos usados.
-
-## Segurança de hardware
-
-- Não alimente servo/motor/amplificador pelo pino `3V3` do ESP32.
-- Use fonte/regulador adequado para cargas externas.
-- Use GND comum quando houver sinal compartilhado.
-- Confirme pinagem da sua placa antes de ligar.
-- Em dúvida, teste em protoboard antes de soldar.
-
-## Padrão de commits sugerido
-
-Use mensagens curtas e claras, por exemplo:
-
-```text
-feat: adiciona expressao feliz no OLED
-fix: corrige inicializacao do I2C
-docs: melhora pinagem do display
-```
-
-## Pull requests
-
-Ao abrir PR, inclua:
-
-- resumo da mudança;
-- como testou;
-- placa usada;
-- fotos/vídeos/logs se for hardware;
-- riscos conhecidos ou pendências.
+A IA ainda esta no roteiro de desenvolvimento. Nao documente integracoes, APIs ou drivers planejados como se ja existissem. Preserve atribuicoes/licencas de terceiros e nao escolha uma licenca para o projeto sem aprovacao do proprietario.

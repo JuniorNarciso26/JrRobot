@@ -1,30 +1,19 @@
-# Plataforma JrBot — direção inicial
+# JrBot - arquitetura e IA
 
-## Objetivo
+JrBot e um robo com IA em desenvolvimento. O firmware ativo esta na branch `v2-revisada`; a base de implementacao e ESP-IDF 5.5.x para ESP32-S3, nao um submodulo de outro firmware.
 
-Ter duas camadas desde o começo:
+## Implementado
 
-1. **Firmware no ESP32-S3-CAM**: rosto OLED, comandos seriais, status e depois câmera/servo/áudio.
-2. **Frontend no computador**: painel simples para instalar/atualizar firmware, mandar comandos e ler respostas/status.
+O painel Python/JavaScript local abre Serial USB (COM4 nesta montagem) ou comandos HTTP na rede local. O firmware valida comandos, responde com protocolo 2 e executa testes permitidos. O painel informa resultado e exporta log. Uma falha/desativacao do OLED nao interrompe o painel.
 
-## Primeiro estágio
+Modulos: rosto SSD1306 opcional; configuracao Wi-Fi; amplificador I2S sob demanda; camera de diagnostico de um quadro. A pinagem fixa vem de `hardware/pinmap.json`; audio exige tres pinos locais validos e aprovacao HW03. Nenhum teste inicia no boot.
 
-- Firmware `firmware/`: testa OLED 128x64 SSD1306/SH1106 por I2C, comandos Serial e Wi-Fi opcional.
-- Comandos via Serial/USB: `neutro`, `feliz`, `triste`, `bravo`, `animado`, `surpreso`, `pensando`, `cetico`, `sono`, `confuso`, `piscando`, `amor`, `brincalhao`, `preocupado`, `cool`, `bateria`, `demo`, `status`, `help`.
-- Frontend local: roda no computador e envia comandos pela porta serial.
+## Planejado, nao entregue
 
-## O que foi aproveitado do backup
+Entrada de microfone, reconhecimento de fala, modelo de linguagem, sintese de voz, memoria de conversa, deteccao visual e movimentos. Ainda nao existe provedor/API/servidor de IA conectado nem chave necessaria para usar o diagnostico. IA nao pode contornar limites de GPIO, corrente ou movimento do firmware.
 
-- `PetFace_oled`: base direta do desenho dos olhos no OLED e terminal serial.
-- `JrRobot` antigo: arquitetura futura de roteamento, estados e contrato de backend/LLM, copiada em `references/` como material de consulta.
+Uma arquitetura futura pode separar percepcao, processamento de IA e comandos locais validados. Local ou remoto, latencia, custos e privacidade precisam ser definidos antes da implementacao. Audio e imagem so devem sair da placa/computador com consentimento e finalidade claros.
 
-## Atualização futura
+## Restricoes atuais
 
-Depois do primeiro teste físico, evoluir nesta ordem:
-
-1. confirmar pinagem OLED real da ESP32-S3-CAM;
-2. adicionar detecção básica de placa/status;
-3. adicionar servo da cabeça;
-4. adicionar comandos HTTP/MQTT;
-5. transformar frontend em painel de atualização, comandos e telemetria;
-6. integrar cérebro OpenClaw/VPS somente quando o firmware local estiver estável.
+Sem microfone configurado, sem controle de servo, sem streaming de camera e sem suporte SH1106 declarado. O portal HTTP nao possui autenticacao/TLS; nao expor a Internet. Painel deve permanecer em loopback. Nao apresentar recurso planejado como implementado.

@@ -1,0 +1,97 @@
+{
+  "revision": "JRBOT-HW-03",
+  "board": "ESP32-S3 CAM N16R8; fabricante/revisao pendentes",
+  "blocked_by_owner": [
+    21,
+    41,
+    42,
+    47
+  ],
+  "oled": {
+    "SDA": 1,
+    "SCL": 2
+  },
+  "camera": {
+    "PWDN": -1,
+    "RESET": -1,
+    "XCLK": 15,
+    "SDA": 4,
+    "SCL": 5,
+    "D0": 11,
+    "D1": 9,
+    "D2": 8,
+    "D3": 10,
+    "D4": 12,
+    "D5": 18,
+    "D6": 17,
+    "D7": 16,
+    "VSYNC": 6,
+    "HREF": 7,
+    "PCLK": 13
+  },
+  "usb_native": [
+    19,
+    20
+  ],
+  "uart0": [
+    43,
+    44
+  ],
+  "memory_reserved": [
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37
+  ],
+  "boot_reserved": [
+    0,
+    3,
+    45,
+    46
+  ],
+  "board_review_required": [
+    14,
+    38,
+    39,
+    40,
+    48
+  ],
+  "audio": {
+    "BCLK": null,
+    "WS": null,
+    "DOUT": null,
+    "status": "unassigned"
+  },
+  "microphone": {
+    "model": null,
+    "interface": null,
+    "pins": null
+  },
+  "servo": {
+    "model": null,
+    "pin": null
+  },
+  "candidate_audio_only": {
+    "BCLK": 39,
+    "WS": 40,
+    "DOUT": 14,
+    "status": "PROPOSTA NAO HABILITADA; verificar esquema e ocupacao real"
+  },
+  "ports_reported_by_owner": {
+    "flash": "COM6",
+    "panel": "COM4"
+  },
+  "notes": [
+    "GPIOs bloqueados permanecem nas ligacoes existentes. Nao remapear nem desconectar sem identificar a funcao.",
+    "Nao ha confirmacao fisica para a proposta de audio. Valores null nao autorizam ligacao.",
+    "OLED permanece reservado mesmo desabilitado. Camera usa mapa herdado, nao pinagem universal."
+  ]
+}

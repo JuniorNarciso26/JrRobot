@@ -1,9 +1,9 @@
 'use strict';
+const AUDIO_FIRMWARE='JRBOT-V2-DIAG-02';
 const faces=[['Neutro','neutro'],['Feliz','feliz'],['Triste','triste'],['Animado','animado'],['Bravo','bravo'],['Surpreso','surpreso'],['Pensando','pensando'],['Cetico','cetico'],['Sono','sono'],['Confuso','confuso'],['Piscando','piscando'],['Amor','amor'],['Brincalhao','brincalhao'],['Preocupado','preocupado'],['Cool','cool'],['Bateria','bateria']];
 const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
 let serverCursor=0, serverSession='', autoScroll=true, busy=false, device=null;
-// Start in Serial intentionally; never silently send to a saved Wi-Fi address.
 let mode='serial', serialConnected=false, activePort='';
 function appendLog(items){
   for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}
@@ -16,13 +16,14 @@ function downloadLog(){const blob=new Blob([Array.from(logEl.children,n=>n.textC
 function openWifiConfig(){el('wifi_config_title').scrollIntoView({behavior:'smooth'});}
 function connection(text,ok){el('conn').textContent=text;el('conn').className='pill '+(ok?'ok':'bad');}
 function fields(text){const result={};for(const token of text.trim().split(/\s+/)){const at=token.indexOf('=');if(at>0)result[token.slice(0,at)]=token.slice(at+1);}return result;}
+function currentAudioFirmware(){return !!device&&device.version===AUDIO_FIRMWARE;}
 function refreshControls(){
   document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);
-  const sound=!!device&&['ready','on_demand'].includes(device.audio);
+  const sound=currentAudioFirmware()&&['ready','on_demand'].includes(device.audio);
   const camera=!!device&&mode==='serial'&&device.camera==='on_demand';
   el('test_audio').disabled=busy||!sound;
   el('test_camera').disabled=busy||!camera;
-  el('test_mic').disabled=true; // No microphone driver or wiring supplied.
+  el('test_mic').disabled=true;
   document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!device||device.oled==='disabled');
   el('audio_volume').disabled=busy||!device;
   el('apply_volume').disabled=busy||!device;
@@ -37,11 +38,11 @@ function renderStatus(text){
   el('fw_version').textContent=next.version;
   el('fw_profile').textContent=next.profile;
   el('oled_state').textContent=next.oled==='disabled'?'Desabilitado - nao bloqueia o robo':next.oled;
-  el('audio_state').textContent=next.audio==='disabled'?'Desabilitado no firmware':next.audio==='on_demand'?'Disponivel para teste':next.audio||'Nao informado';
+  el('audio_state').textContent=!currentAudioFirmware()?'Teste bloqueado: atualizar firmware para HW03':next.audio==='disabled'?'Sem pinagem HW03 confirmada':next.audio==='on_demand'?'Disponivel para teste':next.audio||'Nao informado';
   el('camera_state').textContent=next.camera==='disabled'?'Desabilitada no firmware':next.camera==='on_demand'?'Teste disponivel por Serial':next.camera||'Nao informado';
   el('mic_state').textContent='Nao configurado - informe modelo e ligacao';
   el('device_msg').textContent='Firmware respondeu. Estado consultado em '+new Date().toLocaleTimeString()+'.'+(next.pending_restart==='1'?' Configuracao de rede pendente de reinicializacao.':'');
-  el('audio_msg').textContent=next.audio==='disabled'?'O firmware ainda bloqueia o audio. A habilitacao depende de confirmar MAX98357A e GPIO39/40/41; este painel nao altera essa protecao.':'Teste curto e sob demanda. Envio I2S concluido nao comprova som audivel.';
+  el('audio_msg').textContent=!currentAudioFirmware()?'HW03 exige '+AUDIO_FIRMWARE+'. Nao testar o mapa antigo: GPIO21/41/42/47 estao ocupados.':next.audio==='disabled'?'Defina tres GPIOs fisicamente livres e confirme HW03. Padrao: -1 (sem atribuicao). GPIO21/41/42/47 nao podem ser reutilizados. Consulte o esquema; o painel nao altera a protecao.':'Teste sob demanda. Envio I2S concluido nao comprova som audivel.';
   el('cam_msg').textContent=next.camera==='disabled'?'Camera bloqueada no firmware ate confirmar o mapa de pinos. Nao e erro do OLED.':mode==='wifi'?'Nesta versao, use Serial USB / COM4 no proprio painel para testar a camera.':'O teste informa sensor, tamanho e bytes do quadro. Previa de foto e autofocus ainda indisponiveis.';
   el('face_msg').textContent=next.oled==='disabled'?'OLED desabilitado. Os outros testes continuam independentes.':'Rostos enviam comandos; envio aceito nao comprova imagem visivel.';
   connection(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - V2 confirmada':'Wi-Fi - V2 confirmada',true);
@@ -86,11 +87,12 @@ async function connect(){return action(async()=>{
 });}
 async function disconnect(){return action(async()=>{await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';invalidate('Desconectado.');connection('Desconectado',false);});}
 async function send(command){
+  const verb=command.trim().toLowerCase().split(/\s+/)[0];
+  if(['audio_test','som','beep'].includes(verb)&&!currentAudioFirmware())throw new Error('Teste de audio bloqueado: confira o firmware '+AUDIO_FIRMWARE+' e a pinagem HW03.');
   if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes; nada enviado.');
   let t;
   try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}
   catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado. Confira a versao gravada e a conexao.');connection('Firmware sem confirmacao',false);}throw e;}
-  // Do not echo submitted commands: they can contain Wi-Fi passwords.
   if(t.trim())localLine(t.trim());
   if(command.trim().toLowerCase()==='status')renderStatus(t);
   if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));
@@ -108,7 +110,7 @@ async function setAudioVolume(){return action(async()=>{
   el('audio_msg').textContent='Volume confirmado: '+v+'%.'+(t.includes('audio=disabled')?' Saida desabilitada no firmware.':'');
 },'audio_msg');}
 async function testAudio(){return action(async()=>{
-  if(!device||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao habilitado no firmware.');
+  if(!currentAudioFirmware()||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao habilitado em firmware HW03 confirmado.');
   el('audio_msg').textContent='Executando teste; aguarde a resposta...';
   const v=val('audio_volume'), volumeReply=await send('audio_volume '+v);
   if(fields(volumeReply).audio_volume!==v)throw new Error('Volume nao confirmado; teste nao iniciado.');
@@ -153,5 +155,6 @@ for(const [name,command] of faces){const b=document.createElement('button');b.cl
 el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});
 logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});
 window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
-loadWifiLocal(); // Volume starts at 10%; do not restore a previous loud setting.
+const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot - robo com IA em desenvolvimento | HW03 | COM4 painel / COM6 gravacao';
+loadWifiLocal();
 setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();

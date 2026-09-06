@@ -1,0 +1,272 @@
+{
+  "scope": "Host C11 compile-time pin policy only. No ESP-IDF build or physical test.",
+  "passed": 53,
+  "failed": 0,
+  "cases": [
+    {
+      "case": "default_unassigned",
+      "passed": true,
+      "expected_compile": true
+    },
+    {
+      "case": "legacy_approval_ignored",
+      "passed": true,
+      "expected_compile": true
+    },
+    {
+      "case": "configured_not_approved",
+      "passed": true,
+      "expected_compile": true
+    },
+    {
+      "case": "verified_candidate",
+      "passed": true,
+      "expected_compile": true
+    },
+    {
+      "case": "approved_but_unassigned",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal0_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal0_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal1_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal1_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal2_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_21_signal2_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal0_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal0_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal1_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal1_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal2_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_41_signal2_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal0_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal0_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal1_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal1_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal2_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_42_signal2_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal0_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal0_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal1_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal1_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal2_approval0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "blocked_47_signal2_approval1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_2",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_3",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_4",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_15",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_19",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_20",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_22",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_25",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_26",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_33",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_37",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_43",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_44",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_45",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "reserved_46",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "duplicate_0",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "duplicate_1",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "duplicate_2",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "out_of_range_-2",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "out_of_range_49",
+      "passed": true,
+      "expected_compile": false
+    },
+    {
+      "case": "candidate_38_only_after_approval",
+      "passed": true,
+      "expected_compile": true
+    },
+    {
+      "case": "candidate_48_only_after_approval",
+      "passed": true,
+      "expected_compile": true
+    }
+  ]
+}

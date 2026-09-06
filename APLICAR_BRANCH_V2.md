@@ -1,31 +1,22 @@
-# Aplicar a branch v2-revisada nesta montagem
+# JrBot - aplicar HW03 / DIAG-02
 
-**Entrega atual: JRBOT-V2-DIAG-01, diagnostico SEM OLED.**
+A operacao e pelo painel. Use somente a branch v2-revisada e mantenha o projeto fora da pasta do ESP-IDF.
 
-Leia [DIAGNOSTICO_SEM_OLED.md](DIAGNOSTICO_SEM_OLED.md) antes de gravar.
-O roteiro `DIAG_V2.bat` usa build/configuracao separados dos arquivos antigos.
-
-No terminal ESP-IDF 5.5.x, na raiz da copia atualizada:
+1. Feche painel antigo e qualquer programa usando as portas. Confira `git status`; preserve mudancas locais.
+2. No terminal ESP-IDF 5.5.x, dentro da sua copia do projeto:
 
 ```bat
+git switch v2-revisada
+git pull --ff-only origin v2-revisada
 DIAG_V2.bat build
-```
-
-Somente depois de compilacao bem-sucedida:
-
-```bat
 DIAG_V2.bat flash
-DIAG_V2.bat monitor
+PAINEL.bat
 ```
 
-COM6 grava; COM4 le logs e comandos nesta montagem. Nao use `flash monitor`
-com uma unica porta. O Windows pode renumerar as COM; confira antes de gravar.
+Execute uma linha por vez e pare em qualquer erro; nao use reset --hard ou clean para descartar seu trabalho. O roteiro usa build-hw03 e sdkconfig.hw03, sem reaproveitar aprovacao antiga de audio. O primeiro build usa configuracao nova. Se ja existir trabalho local nessa configuracao, revise antes de alterar.
 
-Procure `JRBOT-V2-DIAG-01` no boot e envie `version` e `status` pela COM4.
-OLED nao e inicializado no modo padrao. GPIO1/2 continuam reservados para ele.
-Audio e camera sao testes opt-in apos confirmar a montagem; nao iniciam no boot.
-Microfone ainda depende de modelo/pinagem e nao e tratado como testado.
-Nao altere eFuses, nao apague NVS e nao use reset Git destrutivo neste roteiro.
+Gravacao: COM6. Painel/comandos: COM4, 115200, conforme montagem relatada. Windows pode renumerar. O roteiro aceita `JR_FLASH_PORT` para mudar a porta de gravacao. Nao abrir monitor junto com o painel.
 
-Testes desta entrega: fluxo em computador com APIs simuladas. Build ESP-IDF e
-ensaio eletrico precisam ser feitos na sua instalacao e placa.
+No painel, a placa deve responder com JRBOT-V2-DIAG-02 e headless_diagnostic. OLED segue desativado; nenhum teste comeca no boot. Compilar com sucesso nao confirma funcionamento fisico dos modulos.
+
+Audio: nova configuracao tem BCLK=-1, WS=-1 e DOUT=-1. Leia docs/ESQUEMA_LIGACAO.md antes de preencher os GPIOs e confirmar HW03 em `DIAG_V2.bat menuconfig`. Nao reaproveitar autorizacao antiga. Nao gravar eFuses. Nao apagar a flash inteira apenas para trocar esta versao.

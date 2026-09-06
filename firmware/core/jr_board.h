@@ -1,14 +1,23 @@
 #pragma once
 #include "sdkconfig.h"
+#include "jr_pinmap_fixed.h"
 
-/* Physical GPIO numbers, not connector positions. OLED pinout is fixed. */
-#define JR_OLED_SDA_GPIO 1
-#define JR_OLED_SCL_GPIO 2
+/* New revision-specific approval: old sdkconfig audio approval is NOT reused. */
+#ifndef CONFIG_JR_AUDIO_BCLK_GPIO
+#define CONFIG_JR_AUDIO_BCLK_GPIO -1
+#endif
+#ifndef CONFIG_JR_AUDIO_WS_GPIO
+#define CONFIG_JR_AUDIO_WS_GPIO -1
+#endif
+#ifndef CONFIG_JR_AUDIO_DOUT_GPIO
+#define CONFIG_JR_AUDIO_DOUT_GPIO -1
+#endif
+#define JR_AUDIO_BCLK_GPIO CONFIG_JR_AUDIO_BCLK_GPIO
+#define JR_AUDIO_LRC_GPIO CONFIG_JR_AUDIO_WS_GPIO
+#define JR_AUDIO_DIN_GPIO CONFIG_JR_AUDIO_DOUT_GPIO
 #define JR_OLED_I2C_PORT 0
 #define JR_OLED_I2C_HZ 100000
-#define JR_AUDIO_BCLK_GPIO 39
-#define JR_AUDIO_LRC_GPIO 40
-#define JR_AUDIO_DIN_GPIO 41
+
 #if defined(CONFIG_JR_HEADLESS_DIAGNOSTIC) && CONFIG_JR_HEADLESS_DIAGNOSTIC
 #define JR_OLED_ENABLED 0
 #else
@@ -19,30 +28,29 @@
 #else
 #define JR_CAMERA_ENABLED 0
 #endif
-/* Existing camera wiring: not a universal ESP32-S3 pinout. */
-#define JR_CAM_PWDN -1
-#define JR_CAM_RESET -1
-#define JR_CAM_XCLK 15
-#define JR_CAM_SDA 4
-#define JR_CAM_SCL 5
-#define JR_CAM_D0 11
-#define JR_CAM_D1 9
-#define JR_CAM_D2 8
-#define JR_CAM_D3 10
-#define JR_CAM_D4 12
-#define JR_CAM_D5 18
-#define JR_CAM_D6 17
-#define JR_CAM_D7 16
-#define JR_CAM_VSYNC 6
-#define JR_CAM_HREF 7
-#define JR_CAM_PCLK 13
-#if defined(CONFIG_JR_AUDIO_PINS_CONFIRMED) && CONFIG_JR_AUDIO_PINS_CONFIRMED
+#if defined(CONFIG_JR_AUDIO_HW03_CONFIRMED) && CONFIG_JR_AUDIO_HW03_CONFIRMED
 #define JR_AUDIO_ENABLED 1
-
 #else
 #define JR_AUDIO_ENABLED 0
-
 #endif
+
+/* Policy whitelist, NOT a statement that a pin is free on the physical PCB.
+ * Existing OLED/camera, USB, UART, boot and memory pins stay reserved even off.
+ * 39/40 also need an external-JTAG check; 48 may drive an on-board RGB LED.
+ */
+#define JR_AUDIO_CANDIDATE(p) ((p)==14 || (p)==38 || (p)==39 || (p)==40 || (p)==48)
+#define JR_AUDIO_CONFIG_VALID(p) ((p)==-1 || (JR_AUDIO_CANDIDATE(p) && !JR_GPIO_BLOCKED(p)))
+_Static_assert(JR_AUDIO_CONFIG_VALID(JR_AUDIO_BCLK_GPIO), "Unsafe BCLK GPIO: see docs/PINAGEM.md");
+_Static_assert(JR_AUDIO_CONFIG_VALID(JR_AUDIO_LRC_GPIO), "Unsafe WS GPIO: see docs/PINAGEM.md");
+_Static_assert(JR_AUDIO_CONFIG_VALID(JR_AUDIO_DIN_GPIO), "Unsafe DOUT GPIO: see docs/PINAGEM.md");
+_Static_assert(JR_AUDIO_BCLK_GPIO < 0 || JR_AUDIO_LRC_GPIO < 0 || JR_AUDIO_BCLK_GPIO != JR_AUDIO_LRC_GPIO, "Audio BCLK/WS conflict");
+_Static_assert(JR_AUDIO_BCLK_GPIO < 0 || JR_AUDIO_DIN_GPIO < 0 || JR_AUDIO_BCLK_GPIO != JR_AUDIO_DIN_GPIO, "Audio BCLK/DOUT conflict");
+_Static_assert(JR_AUDIO_LRC_GPIO < 0 || JR_AUDIO_DIN_GPIO < 0 || JR_AUDIO_LRC_GPIO != JR_AUDIO_DIN_GPIO, "Audio WS/DOUT conflict");
+#if JR_AUDIO_ENABLED
+_Static_assert(JR_AUDIO_BCLK_GPIO >= 0 && JR_AUDIO_LRC_GPIO >= 0 && JR_AUDIO_DIN_GPIO >= 0,
+               "Audio needs three physically verified GPIOs; -1 means unassigned");
+#endif
+_Static_assert(JR_OLED_SDA_GPIO==1 && JR_OLED_SCL_GPIO==2,"Keep OLED on GPIO1/2");
 #if !JR_OLED_ENABLED
 #define JR_PROFILE_NAME "headless_diagnostic"
 #elif JR_AUDIO_ENABLED
@@ -50,7 +58,3 @@
 #else
 #define JR_PROFILE_NAME "face_only"
 #endif
-_Static_assert(JR_OLED_SDA_GPIO == 1 && JR_OLED_SCL_GPIO == 2, "OLED must remain on GPIO1/2");
-_Static_assert(JR_AUDIO_BCLK_GPIO != JR_OLED_SDA_GPIO && JR_AUDIO_BCLK_GPIO != JR_OLED_SCL_GPIO, "GPIO conflict");
-_Static_assert(JR_AUDIO_LRC_GPIO != JR_OLED_SDA_GPIO && JR_AUDIO_LRC_GPIO != JR_OLED_SCL_GPIO, "GPIO conflict");
-_Static_assert(JR_AUDIO_DIN_GPIO != JR_OLED_SDA_GPIO && JR_AUDIO_DIN_GPIO != JR_OLED_SCL_GPIO, "GPIO conflict");

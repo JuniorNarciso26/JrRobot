@@ -26,7 +26,7 @@ with sync_playwright() as p:
         else if(path==='/send'){
           const c=opts.body.get('command');m.calls.push({command:c,mode:opts.body.get('mode')});
           if(m.fail){ok=false;text='Falha simulada; execucao nao confirmada';}
-          else if(c==='status')text=m.old?'JR_STATUS v=4':'JR_STATUS protocol=2 version=JRBOT-V2-DIAG-01 profile=headless_diagnostic oled=disabled audio='+m.audio+' camera='+m.camera+' mic=not_configured volume=10';
+          else if(c==='status')text=m.old?'JR_STATUS v=4':'JR_STATUS protocol=2 version=JRBOT-V2-DIAG-02 profile=headless_diagnostic oled=disabled audio='+m.audio+' camera='+m.camera+' mic=not_configured volume=10';
           else if(c.startsWith('audio_volume '))text='JR_OK audio_volume='+c.split(' ')[1]+' audio=enabled';
           else if(c==='audio_test')text='JR_OK audio_test=tx_completed audible_check=pending';
           else if(c==='camera_test')text='JR_OK camera_test=frame_received pid=0x5640 width=320 height=240 bytes=4500 released=1 optical_check=pending';
@@ -42,7 +42,7 @@ with sync_playwright() as p:
     assert page.locator('#test_audio').is_disabled() and page.locator('#test_camera').is_disabled()
     RESULTS.append('defaults_COM4_and_tests_disabled_until_confirmed')
     page.get_by_role('button',name='Conectar Serial',exact=True).click()
-    page.wait_for_function("document.querySelector('#fw_version').textContent==='JRBOT-V2-DIAG-01'")
+    page.wait_for_function("document.querySelector('#fw_version').textContent==='JRBOT-V2-DIAG-02'")
     assert 'V2 confirmada' in page.locator('#conn').inner_text()
     assert 'bloqueia' in page.locator('#oled_state').inner_text()
     assert page.locator('#test_audio').is_enabled() and page.locator('#test_camera').is_enabled()

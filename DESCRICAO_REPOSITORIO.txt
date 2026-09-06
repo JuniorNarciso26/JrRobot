@@ -1,0 +1,1 @@
+JrBot: robo com IA em desenvolvimento baseado em ESP32-S3, com painel de controle, camera, audio modular e OLED opcional.
