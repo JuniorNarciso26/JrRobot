@@ -26,10 +26,18 @@ OLED: SDA GPIO1 / SCL GPIO2. A camera permanece no conector original da placa.
 
 O driver de entrada do microfone ainda nao esta implementado. A camera e o amplificador continuam com testes sob demanda; nenhum deles inicia automaticamente no boot. A IA conversacional ainda e etapa de desenvolvimento.
 
-## Operacao
+## Instalar e operar
 
-- COM6: gravacao nesta montagem.
-- COM4: painel/comandos nesta montagem.
-- O painel e a interface principal; nao e necessario monitor Serial separado.
+No terminal ESP-IDF 5.5.x:
 
-Documentos: [pinagem](docs/PINAGEM.md), [esquema](docs/ESQUEMA_LIGACAO.md), [materiais](docs/MATERIAIS.md) e [painel](PAINEL_V2.md).
+```bat
+git switch v2-revisada
+git pull --ff-only origin v2-revisada
+INSTALAR.bat
+```
+
+O instalador unico compila, grava pela **COM6** e abre o painel. No painel, use **COM4** para comandos nesta montagem. Nao e necessario monitor Serial separado.
+
+Comandos opcionais: `INSTALAR.bat build`, `INSTALAR.bat flash`, `INSTALAR.bat panel` e `INSTALAR.bat menuconfig`.
+
+Documentos: [instalacao](APLICAR_BRANCH_V2.md), [pinagem](docs/PINAGEM.md), [esquema](docs/ESQUEMA_LIGACAO.md), [materiais](docs/MATERIAIS.md) e [painel](PAINEL_V2.md).
