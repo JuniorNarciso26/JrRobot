@@ -26,10 +26,19 @@ const jrBaseRefreshControls=refreshControls;
 refreshControls=function(){
   jrBaseRefreshControls();
   jrInstallPhotoButton();
-  const button=document.getElementById('take_photo');
-  if(!button) return;
   const ip=val('esp_ip');
-  button.disabled=busy||!currentFirmware()||device?.camera!=='available'||device?.wifi!=='1'||!jrValidIpv4(ip);
+  const valid=currentFirmware();
+  const cameraReady=valid&&device?.camera==='available';
+  const wifiPhotoReady=cameraReady&&device?.wifi==='1'&&jrValidIpv4(ip);
+
+  const testButton=document.getElementById('test_camera');
+  if(testButton){
+    testButton.disabled=busy||(mode==='wifi'?!wifiPhotoReady:!cameraReady);
+    testButton.textContent=mode==='wifi'?'Testar camera pelo Wi-Fi':'Testar camera';
+  }
+
+  const photoButton=document.getElementById('take_photo');
+  if(photoButton) photoButton.disabled=busy||!wifiPhotoReady;
 };
 
 const jrBaseRenderStatus=renderStatus;
@@ -41,7 +50,7 @@ renderStatus=function(text){
   }
   if(device?.camera==='available'){
     el('cam_msg').textContent=device?.wifi==='1'
-      ? 'OV5640 detectada. O teste Serial valida a camera; "Ver foto pelo Wi-Fi" traz o JPEG para esta tela.'
+      ? 'OV5640 detectada. Pela Serial o teste valida o quadro; no modo Wi-Fi o mesmo botao Testar camera traz e mostra o JPEG.'
       : 'OV5640 detectada. Para ver a foto, conecte o Wi-Fi da placa e consulte o IP.';
   }
   refreshControls();
@@ -88,6 +97,12 @@ async function takePhoto(){
     localLine('JR_CAMERA_FOTO ip='+ip+' width='+img.naturalWidth+' height='+img.naturalHeight+' bytes='+blob.size+' exibida=1');
   },'cam_msg');
 }
+
+const jrBaseTestCamera=testCamera;
+testCamera=async function(){
+  if(mode==='wifi') return takePhoto();
+  return jrBaseTestCamera();
+};
 
 function openCameraPortal(){
   const ip=val('esp_ip');
