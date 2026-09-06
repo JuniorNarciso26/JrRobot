@@ -5,8 +5,8 @@ cd /d "%~dp0"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-final-hw04"
-set "SDKCONFIG_FILE=sdkconfig.final-hw04"
+set "BUILD_DIR=build-final-hw04-dualusb"
+set "SDKCONFIG_FILE=sdkconfig.final-hw04-dualusb"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -102,7 +102,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware: JRBotV2_2026-09-06-18:27
+echo Firmware: JRBotV2_2026-09-06-18:28
 if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT%
 exit /b 0
 
