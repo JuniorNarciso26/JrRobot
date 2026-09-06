@@ -24,7 +24,7 @@ def main():
     raw=subprocess.check_output(['git','-C',str(ROOT),'ls-files','-z'])
     paths=[p for p in raw.decode('utf-8').split('\0') if p and allowed(p)]
     output=ROOT/'dist';output.mkdir(exist_ok=True)
-    archive=output/('JrBot-HW03-'+datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')+'.zip')
+    archive=output/('JrBot-HW04-'+datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')+'.zip')
     with ZipFile(archive,'w',ZIP_DEFLATED) as z:
         for rel in sorted(paths):
             p=ROOT/rel
