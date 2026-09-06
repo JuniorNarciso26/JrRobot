@@ -45,7 +45,8 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
             write_once()
             confirmed = waiter["event"].wait(timeout)
         if not confirmed:
-            raise RuntimeError("Sem confirmacao do firmware. Porta permaneceu aberta; comando nao sera repetido automaticamente.")
+            app.close_serial("JR_PANEL_WARN timeout; porta serial fechada automaticamente")
+            raise RuntimeError("Sem confirmacao do firmware. A porta foi fechada automaticamente; reconecte e tente novamente.")
         if not waiter["ok"]:
             raise RuntimeError(app.sanitize_log_line(waiter["response"]))
         return waiter["response"]
@@ -68,7 +69,7 @@ def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
 
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
-app.APP_VERSION = "JRBOT-PANEL-V2-03-STABLE"
+app.APP_VERSION = "JRBOT-PANEL-V2-04-PORT-SAFE"
 
 
 def main() -> int:
