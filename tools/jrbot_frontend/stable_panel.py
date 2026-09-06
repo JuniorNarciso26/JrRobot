@@ -19,7 +19,6 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
 
     ident = uuid.uuid4().hex[:16]
     waiter = {"event": threading.Event(), "ok": False, "response": ""}
-    # V1 funcionava com uma unica linha limpa. Nada de CR extra, resync ou repeticao.
     payload = ("@" + ident + " " + command.strip() + "\n").encode("ascii", errors="strict")
 
     try:
@@ -61,7 +60,7 @@ def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
 
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
-app.APP_VERSION = "JRBOT-PANEL-V2-05-V1-FLOW"
+app.APP_VERSION = "JRBOT-PANEL-V2-06-DYNAMIC-PORTS"
 
 
 def main() -> int:
@@ -70,7 +69,7 @@ def main() -> int:
     except OSError:
         print("Porta 8765 ocupada. Feche o painel anterior antes de abrir esta versao.")
         return 1
-    print(app.APP_VERSION + " - http://127.0.0.1:8765 - COM4 comandos / COM6 gravacao")
+    print(app.APP_VERSION + " - http://127.0.0.1:8765 - selecione qualquer porta COM detectada")
     app.ensure_reader()
     webbrowser.open("http://127.0.0.1:8765")
     try:
