@@ -12,4 +12,4 @@ Pinagem adotada:
 
 O microfone ainda nao possui driver de captura. Nao interpretar `pinout_defined` como teste de audio de entrada concluido.
 
-Use `DIAG_V2.bat build`, `DIAG_V2.bat flash` e depois `PAINEL.bat`. Nao e necessario monitor externo.
+Use `INSTALAR.bat` para compilar, gravar e abrir o painel. Para etapas separadas: `INSTALAR.bat build`, `INSTALAR.bat flash` ou `INSTALAR.bat panel`. Nao e necessario monitor externo.
