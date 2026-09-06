@@ -124,7 +124,7 @@ def enhanced_do_get(self) -> None:
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-09-CAMERA-WIFI"
+app.APP_VERSION = "JRBOT-PANEL-V2-10-CAMERA-UNIFICADA"
 
 
 def main() -> int:
@@ -133,7 +133,7 @@ def main() -> int:
     except OSError:
         print("Porta 8765 ocupada. Feche o painel anterior antes de abrir esta versao.")
         return 1
-    print(app.APP_VERSION + " - http://127.0.0.1:8765 - portas COM dinamicas + teste/foto da camera por Wi-Fi")
+    print(app.APP_VERSION + " - http://127.0.0.1:8765 - um unico teste de camera para Serial ou Wi-Fi")
     app.ensure_reader()
     webbrowser.open("http://127.0.0.1:8765")
     try:
