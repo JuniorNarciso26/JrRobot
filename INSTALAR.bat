@@ -77,7 +77,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware: JRBotV2_2026-09-06-09:25
+echo Firmware: JRBotV2_2026-09-06-09:37
 echo Hardware: JRBOT-HW-04 ^| Gravacao: COM6 ^| Painel: COM4
 exit /b 0
 
@@ -90,10 +90,10 @@ exit /b 1
 echo.
 echo JrBot V2 - instalador unico
 echo.
-echo   INSTALAR.bat            Compila, grava na COM6 e abre o painel
+echo   INSTALAR.bat            Compila, grava na COM6 e abre o painel estavel
 echo   INSTALAR.bat build      Apenas compila
 echo   INSTALAR.bat flash      Compila e grava
-echo   INSTALAR.bat panel      Abre o painel
+echo   INSTALAR.bat panel      Abre o painel estavel
 echo   INSTALAR.bat menuconfig Abre configuracao do firmware
 echo.
 exit /b 0
