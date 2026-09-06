@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "driver/gpio.h"
 #include "driver/i2s_std.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -12,7 +13,7 @@
 #include "jr_audio.h"
 #include "jr_board.h"
 
-#define JR_AUDIO_SAMPLE_RATE 16000
+#define JR_AUDIO_SAMPLE_RATE 44100
 #define JR_AUDIO_PI 3.14159265358979323846f
 
 static portMUX_TYPE audio_state_lock=portMUX_INITIALIZER_UNLOCKED;
@@ -20,7 +21,8 @@ static const char *TAG = "jrbot_audio";
 static i2s_chan_handle_t tx_chan = NULL;
 static bool audio_ready = false;
 static int audio_volume = 35;
-static char status_text[128] = "MAX98357A pronto para teste sob demanda";
+static jr_audio_diag_t audio_diag = {.running=false,.tests=0,.last_bytes=0,.last_frequency_hz=0,.last_duration_ms=0,.last_error=ESP_ERR_INVALID_STATE};
+static char status_text[160] = "MAX98357A pronto para teste sob demanda";
 
 static void set_ready(bool ready) {
     portENTER_CRITICAL(&audio_state_lock);
@@ -28,12 +30,48 @@ static void set_ready(bool ready) {
     portEXIT_CRITICAL(&audio_state_lock);
 }
 
+static uint32_t audio_diag_begin(int frequency_hz, int duration_ms) {
+    uint32_t seq;
+    portENTER_CRITICAL(&audio_state_lock);
+    audio_diag.tests++;
+    audio_diag.running = true;
+    audio_diag.last_bytes = 0;
+    audio_diag.last_frequency_hz = frequency_hz;
+    audio_diag.last_duration_ms = duration_ms;
+    audio_diag.last_error = ESP_ERR_INVALID_STATE;
+    seq = audio_diag.tests;
+    portEXIT_CRITICAL(&audio_state_lock);
+    return seq;
+}
+
+static void audio_diag_finish(uint32_t bytes, esp_err_t err) {
+    portENTER_CRITICAL(&audio_state_lock);
+    audio_diag.running = false;
+    audio_diag.last_bytes = bytes;
+    audio_diag.last_error = err;
+    portEXIT_CRITICAL(&audio_state_lock);
+}
+
+void jr_audio_get_diag(jr_audio_diag_t *out) {
+    if (!out) return;
+    portENTER_CRITICAL(&audio_state_lock);
+    *out = audio_diag;
+    portEXIT_CRITICAL(&audio_state_lock);
+}
+
 void jr_audio_stop(void) {
-    if (!tx_chan) { set_ready(false); return; }
-    if (jr_audio_ready()) (void)i2s_channel_disable(tx_chan);
-    (void)i2s_del_channel(tx_chan);
-    tx_chan = NULL;
+    if (tx_chan) {
+        if (jr_audio_ready()) (void)i2s_channel_disable(tx_chan);
+        (void)i2s_del_channel(tx_chan);
+        tx_chan = NULL;
+    }
     set_ready(false);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_BCLK_GPIO, GPIO_MODE_OUTPUT);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_LRC_GPIO, GPIO_MODE_OUTPUT);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_DIN_GPIO, GPIO_MODE_OUTPUT);
+    (void)gpio_set_level((gpio_num_t)JR_AUDIO_BCLK_GPIO, 0);
+    (void)gpio_set_level((gpio_num_t)JR_AUDIO_LRC_GPIO, 0);
+    (void)gpio_set_level((gpio_num_t)JR_AUDIO_DIN_GPIO, 0);
 }
 
 esp_err_t jr_audio_start(void) {
@@ -75,38 +113,55 @@ esp_err_t jr_audio_start(void) {
         return err;
     }
     set_ready(true);
-    snprintf(status_text, sizeof(status_text), "MAX98357A BCLK=%d LRC=%d DIN=%d volume=%d",
-             JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,audio_volume);
+    snprintf(status_text, sizeof(status_text), "MAX98357A BCLK=%d LRC=%d DIN=%d rate=%d volume=%d",
+             JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,JR_AUDIO_SAMPLE_RATE,audio_volume);
     ESP_LOGI(TAG, "%s", status_text);
     return ESP_OK;
 }
 
 bool jr_audio_ready(void) {
-    portENTER_CRITICAL(&audio_state_lock); bool ready=audio_ready; portEXIT_CRITICAL(&audio_state_lock);
+    portENTER_CRITICAL(&audio_state_lock);
+    bool ready=audio_ready;
+    portEXIT_CRITICAL(&audio_state_lock);
     return ready;
 }
 
 int jr_audio_volume(void) {
-    portENTER_CRITICAL(&audio_state_lock); int value=audio_volume; portEXIT_CRITICAL(&audio_state_lock);
+    portENTER_CRITICAL(&audio_state_lock);
+    int value=audio_volume;
+    portEXIT_CRITICAL(&audio_state_lock);
     return value;
 }
 
 void jr_audio_set_volume(int volume) {
     if (volume < 0) volume = 0;
     if (volume > 100) volume = 100;
-    portENTER_CRITICAL(&audio_state_lock); audio_volume = volume; portEXIT_CRITICAL(&audio_state_lock);
+    portENTER_CRITICAL(&audio_state_lock);
+    audio_volume = volume;
+    portEXIT_CRITICAL(&audio_state_lock);
     snprintf(status_text, sizeof(status_text), "MAX98357A pronto BCLK=%d LRC=%d DIN=%d volume=%d",
              JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,audio_volume);
 }
 
 esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
-    if (!JR_AUDIO_ENABLED) return ESP_ERR_NOT_SUPPORTED;
-    esp_err_t err = jr_audio_start();
-    if (err != ESP_OK) return err;
     if (frequency_hz < 100) frequency_hz = 100;
     if (frequency_hz > 3000) frequency_hz = 3000;
     if (duration_ms < 100) duration_ms = 100;
     if (duration_ms > 5000) duration_ms = 5000;
+
+    uint32_t seq = audio_diag_begin(frequency_hz, duration_ms);
+    uint32_t tone_bytes = 0;
+    esp_err_t err = ESP_OK;
+    ESP_LOGI(TAG, "TEST_BEGIN seq=%lu freq=%d duration_ms=%d volume=%d bclk=%d lrc=%d din=%d rate=%d",
+             (unsigned long)seq,frequency_hz,duration_ms,jr_audio_volume(),
+             JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,JR_AUDIO_SAMPLE_RATE);
+
+    if (!JR_AUDIO_ENABLED) {
+        err = ESP_ERR_NOT_SUPPORTED;
+        goto done;
+    }
+    err = jr_audio_start();
+    if (err != ESP_OK) goto done;
 
     enum { frames_per_chunk = 256 };
     int16_t samples[frames_per_chunk * 2];
@@ -127,11 +182,13 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
             if (phase > 2.0f * JR_AUDIO_PI) phase -= 2.0f * JR_AUDIO_PI;
         }
         size_t bytes_written = 0;
-        err = i2s_channel_write(tx_chan, samples, (size_t)frames * 2 * sizeof(int16_t), &bytes_written, 1000);
-        if (err != ESP_OK || bytes_written != (size_t)frames * 2 * sizeof(int16_t)) {
+        size_t requested = (size_t)frames * 2 * sizeof(int16_t);
+        err = i2s_channel_write(tx_chan, samples, requested, &bytes_written, 1000);
+        if (err != ESP_OK || bytes_written != requested) {
             if (err == ESP_OK) err = ESP_ERR_INVALID_SIZE;
             goto done;
         }
+        tone_bytes += (uint32_t)bytes_written;
         written_frames += frames;
     }
 
@@ -145,8 +202,18 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
 
 done:
     jr_audio_stop();
-    if (err == ESP_OK) snprintf(status_text, sizeof(status_text), "MAX98357A teste transmitido; confirmacao auditiva pendente");
-    else snprintf(status_text, sizeof(status_text), "MAX98357A erro=%s", esp_err_to_name(err));
+    audio_diag_finish(tone_bytes, err);
+    if (err == ESP_OK) {
+        snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu transmitido bytes=%lu; confirmacao auditiva pendente",
+                 (unsigned long)seq,(unsigned long)tone_bytes);
+        ESP_LOGI(TAG, "TEST_END seq=%lu result=ESP_OK tone_bytes=%lu audible_check=pending",
+                 (unsigned long)seq,(unsigned long)tone_bytes);
+    } else {
+        snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu erro=%s bytes=%lu",
+                 (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
+        ESP_LOGE(TAG, "TEST_END seq=%lu result=%s tone_bytes=%lu",
+                 (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
+    }
     return err;
 }
 

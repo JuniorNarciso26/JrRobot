@@ -77,8 +77,8 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware: JRBotV2_2026-09-06-07:10
- echo Hardware: JRBOT-HW-04 ^| Gravacao: COM6 ^| Painel: COM4
+echo Firmware: JRBotV2_2026-09-06-09:25
+echo Hardware: JRBOT-HW-04 ^| Gravacao: COM6 ^| Painel: COM4
 exit /b 0
 
 :failure

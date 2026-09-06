@@ -96,18 +96,22 @@ bool jr_format_status(char *response, size_t cap) {
     jr_face_status_t f;
     jr_wifi_status_t w;
     jr_mic_status_t m = {0};
+    jr_audio_diag_t a = {0};
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
+    jr_audio_get_diag(&a);
     bool oled_present = (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
     unsigned camera_pid = 0;
     bool camera_present = jr_camera_probe_once(&camera_pid);
     bool mic_present = jr_mic_probe(&m);
     const char *camera_state = camera_present ? "available" : "unavailable";
     const char *mic_state = mic_present ? "available" : "unavailable";
+    const char *audio_last = a.tests ? esp_err_to_name(a.last_error) : "not_run";
     int n = snprintf(response, cap,
         "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
         "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=on_demand volume=%d "
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
+        "audio_test_seq=%lu audio_test_running=%d audio_last=%s audio_last_bytes=%lu "
         "camera=%s camera_model=%s camera_pid=0x%04X "
         "mic=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
@@ -115,6 +119,7 @@ bool jr_format_status(char *response, size_t cap) {
         JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
         w.configured,w.connected,w.pending_restart,w.ip,jr_audio_volume(),
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
+        (unsigned long)a.tests,a.running?1:0,audio_last,(unsigned long)a.last_bytes,
         camera_state,JR_CAMERA_MODEL,camera_pid,
         mic_state,JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
         jr_face_state_name(f.state),oled_present?"available":"unavailable",f.address,JR_OLED_I2C_HZ,
@@ -159,8 +164,16 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
     if (!strcmp(verb,"mic_test")) return jr_mic_test(response,cap);
+    if (!strcmp(verb,"audio_diag")) {
+        jr_audio_diag_t a;
+        jr_audio_get_diag(&a);
+        snprintf(response,cap,"JR_OK audio_diag seq=%lu running=%d last=%s bytes=%lu freq=%d duration_ms=%d volume=%d",
+                 (unsigned long)a.tests,a.running?1:0,a.tests?esp_err_to_name(a.last_error):"not_run",
+                 (unsigned long)a.last_bytes,a.last_frequency_hz,a.last_duration_ms,jr_audio_volume());
+        return true;
+    }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_test audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test audio_test audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
@@ -168,8 +181,16 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;
     }
     if (!strcmp(verb,"audio_test") || !strcmp(verb,"som") || !strcmp(verb,"beep")) {
-        esp_err_t err=jr_audio_test_tone(880,700);
-        snprintf(response,cap,err==ESP_OK?"JR_OK audio_test=tx_completed audible_check=pending":"JR_ERROR audio_test=%s",esp_err_to_name(err));
+        esp_err_t err=jr_audio_test_tone(880,900);
+        jr_audio_diag_t a;
+        jr_audio_get_diag(&a);
+        if (err==ESP_OK) {
+            snprintf(response,cap,"JR_OK audio_test=tx_completed seq=%lu bytes=%lu freq=%d duration_ms=%d audible_check=pending",
+                     (unsigned long)a.tests,(unsigned long)a.last_bytes,a.last_frequency_hz,a.last_duration_ms);
+        } else {
+            snprintf(response,cap,"JR_ERROR audio_test=%s seq=%lu bytes=%lu",
+                     esp_err_to_name(err),(unsigned long)a.tests,(unsigned long)a.last_bytes);
+        }
         return err==ESP_OK;
     }
     if (jr_face_set_expression(verb)) {
@@ -214,22 +235,47 @@ void jr_terminal_process_line(const char *line) {
 }
 
 typedef struct { char line[JR_SERIAL_LINE_MAX_BYTES+1]; size_t size; bool discard; } serial_parser_t;
+static unsigned long serial_noise_lines;
+static TickType_t serial_noise_last_report;
+
+static void serial_noise_drop(void) {
+    serial_noise_lines++;
+    TickType_t now=xTaskGetTickCount();
+    if ((TickType_t)(now-serial_noise_last_report) >= pdMS_TO_TICKS(2000)) {
+        printf("JR_WARN serial_noise dropped_lines=%lu parser_resynced=1\n",serial_noise_lines);
+        serial_noise_lines=0;
+        serial_noise_last_report=now;
+    }
+}
+
 static void terminal_feed(serial_parser_t *s, const uint8_t *data, size_t len) {
     for (size_t i=0;i<len;i++) {
         unsigned char c=data[i];
         if (c=='\r' || c=='\n') {
-            if (s->discard) puts("JR_ERROR serial_invalid_or_overflow comando_descartado");
-            else if (s->size) { s->line[s->size]='\0'; jr_terminal_process_line(s->line); }
-            memset(s,0,sizeof(*s));
+            if (s->discard) serial_noise_drop();
+            else if (s->size) {
+                s->line[s->size]='\0';
+                unsigned char first=(unsigned char)s->line[0];
+                if (first=='@' || isalpha(first)) jr_terminal_process_line(s->line);
+                else serial_noise_drop();
+            }
+            s->size=0;
+            s->discard=false;
         } else if (!s->discard) {
-            if (c<32 || c==127 || s->size>=JR_SERIAL_LINE_MAX_BYTES) s->discard=true;
-            else s->line[s->size++]=(char)c;
+            if (c<32 || c==127) {
+                if (s->size) s->discard=true;
+            } else if (s->size>=JR_SERIAL_LINE_MAX_BYTES) {
+                s->discard=true;
+            } else {
+                s->line[s->size++]=(char)c;
+            }
         }
     }
 }
 static void terminal_task(void *arg) {
     (void)arg;
-    uint8_t rx[128]; serial_parser_t parser={0}; jr_print_help();
+    uint8_t rx[256]; serial_parser_t parser={0}; jr_print_help();
+    (void)uart_flush_input(UART_NUM_0);
     for (;;) {
         int n=uart_read_bytes(UART_NUM_0,rx,sizeof(rx),pdMS_TO_TICKS(100));
         if (n>0) terminal_feed(&parser,rx,(size_t)n);
@@ -237,8 +283,9 @@ static void terminal_task(void *arg) {
 }
 void jr_terminal_start(void) {
     if (terminal_started) return;
-    esp_err_t err=uart_driver_install(UART_NUM_0,2048,0,0,NULL,0);
+    esp_err_t err=uart_driver_install(UART_NUM_0,8192,0,0,NULL,0);
     if (err!=ESP_OK && err!=ESP_ERR_INVALID_STATE) { printf("JR_ERROR terminal_uart=%s\n",esp_err_to_name(err)); return; }
+    (void)uart_set_rx_timeout(UART_NUM_0,2);
     if (xTaskCreate(terminal_task,"terminal",8192,NULL,5,NULL)!=pdPASS) { puts("JR_ERROR terminal_task_create"); return; }
     terminal_started=true;
 }

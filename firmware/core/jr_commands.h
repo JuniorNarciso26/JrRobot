@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include "esp_err.h"
 #define JR_COMMAND_MAX_BYTES 768
-#define JR_RESPONSE_MAX_BYTES 1024
+#define JR_RESPONSE_MAX_BYTES 2048
 #define JR_SERIAL_LINE_MAX_BYTES (JR_COMMAND_MAX_BYTES + 40)
 esp_err_t jr_commands_init(void);
 bool jr_handle_command(const char *cmd, char *response, size_t response_len);
