@@ -60,7 +60,7 @@ def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
 
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
-app.APP_VERSION = "JRBOT-PANEL-V2-06-DYNAMIC-PORTS"
+app.APP_VERSION = "JRBOT-PANEL-V2-07-WIFI-DIAG"
 
 
 def main() -> int:
