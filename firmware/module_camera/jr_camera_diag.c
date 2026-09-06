@@ -6,7 +6,6 @@
 #include "esp_psram.h"
 #include "esp_err.h"
 
-/* Do not reinitialize over resources left live by a failed deinit. */
 static bool cleanup_failed;
 static const camera_config_t diagnostic_config = {
     .pin_pwdn = JR_CAM_PWDN, .pin_reset = JR_CAM_RESET,
@@ -22,10 +21,30 @@ static const camera_config_t diagnostic_config = {
 };
 #endif
 
+bool jr_camera_probe_once(unsigned *pid_out) {
+    if (pid_out) *pid_out = 0;
+#if !JR_CAMERA_ENABLED
+    return false;
+#else
+    if (cleanup_failed || !esp_psram_is_initialized()) return false;
+    esp_err_t err = esp_camera_init(&diagnostic_config);
+    if (err != ESP_OK) return false;
+    sensor_t *sensor = esp_camera_sensor_get();
+    bool present = sensor != NULL;
+    if (present && pid_out) *pid_out = sensor->id.PID;
+    err = esp_camera_deinit();
+    if (err != ESP_OK) {
+        cleanup_failed = true;
+        return false;
+    }
+    return present;
+#endif
+}
+
 bool jr_camera_test_once(char *response, size_t capacity) {
     if (!response || capacity < 256) return false;
 #if !JR_CAMERA_ENABLED
-    snprintf(response, capacity, "JR_ERROR camera_test=pins_not_confirmed enable_in_menuconfig_after_checking_wiring");
+    snprintf(response, capacity, "JR_ERROR camera_test=disabled");
     return false;
 #else
     if (cleanup_failed) {
@@ -38,7 +57,6 @@ bool jr_camera_test_once(char *response, size_t capacity) {
     }
     esp_err_t err = esp_camera_init(&diagnostic_config);
     if (err != ESP_OK) {
-        /* esp32-camera 2.1.6 cleans its own failed initialization. */
         snprintf(response, capacity, "JR_ERROR camera_test=init error=%s", esp_err_to_name(err));
         return false;
     }

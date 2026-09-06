@@ -5,6 +5,8 @@ cd /d "%~dp0"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not defined JR_FLASH_PORT set "JR_FLASH_PORT=COM6"
+set "BUILD_DIR=build-hw04-live"
+set "SDKCONFIG_FILE=sdkconfig.hw04-live"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -27,7 +29,7 @@ if not exist "%IDF_PATH%\tools\idf.py" (
 )
 python tools\generate_pinmap.py --check
 if errorlevel 1 exit /b 1
-findstr /x /c:"JRBOT-V2-DIAG-03" firmware\version.txt >nul 2>nul
+findstr /b /c:"JRBOT-V2-DIAG-03" firmware\version.txt >nul 2>nul
 if errorlevel 1 (
   echo ERRO: versao inesperada em firmware\version.txt.
   exit /b 1
@@ -38,14 +40,8 @@ exit /b 0
 call :check
 if errorlevel 1 goto failure
 pushd firmware
-python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 build
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
-  popd
-  goto failure
-)
-findstr /x /c:"CONFIG_JR_HEADLESS_DIAGNOSTIC=y" sdkconfig.hw04 >nul
-if errorlevel 1 (
-  echo ERRO: mantenha Run without OLED habilitado nesta fase.
   popd
   goto failure
 )
@@ -55,7 +51,7 @@ if /i "%ACTION%"=="build" (
 )
 echo.
 echo Gravando JrBot em %JR_FLASH_PORT%...
-python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 -p "%JR_FLASH_PORT%" flash
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
   popd
   goto failure
@@ -68,7 +64,7 @@ goto panel
 call :check
 if errorlevel 1 goto failure
 pushd firmware
-python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 menuconfig
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
 set "RC=%errorlevel%"
 popd
 if not "%RC%"=="0" goto failure
@@ -81,7 +77,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware esperado: JRBOT-V2-DIAG-03 / JRBOT-HW-04
+echo Firmware: JRBOT-V2-DIAG-03 - build Sao Paulo 2026-09-06 06:44 BRT
 echo Gravacao: COM6 ^| Painel: COM4
 exit /b 0
 

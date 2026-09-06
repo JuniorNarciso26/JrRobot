@@ -1,25 +1,27 @@
 menu "JrBot V2 - hardware"
     config JR_HEADLESS_DIAGNOSTIC
         bool "Run without OLED (no I2C access to GPIO1/2)"
-        default y
+        default n
         help
-            Keep the panel, command terminal and Wi-Fi independent of the OLED.
-            No amplifier, camera, microphone or servo test runs at boot.
+            When disabled, the SSD1306 driver stays alive and retries if the OLED
+            is absent, so a display connected later can be detected without reflashing.
+            OLED failure never blocks the panel, Wi-Fi, camera or audio tests.
 
     config JR_AUDIO_HW04_CONFIRMED
         bool "Enable MAX98357A test on HW04 fixed pins (21/47/42)"
-        default n
+        default y
         help
             HW04 fixed map: BCLK=GPIO21, WS/LRC=GPIO47 and ESP32 DOUT=GPIO42
             to MAX98357A DIN. The MS3625 microphone shares GPIO21/47 clocks
-            and reserves GPIO41 for its SD output. This option enables only
-            the on-demand speaker test; microphone RX is not implemented yet.
+            and reserves GPIO41 for SD. MAX98357A has no presence/ACK line,
+            therefore the firmware can prepare the test but cannot prove the
+            amplifier is physically connected.
 
     config JR_CAMERA_PINS_CONFIRMED
-        bool "Allow one-shot OV5640 camera test on the existing connector"
-        default n
+        bool "Allow OV5640 runtime detection and one-shot camera test"
+        default y
         help
-            Camera model confirmed by the owner: OV5640. The existing camera
-            pin map remains unchanged. No autofocus or servo movement is run
-            by camera_test; it captures one QVGA/JPEG frame and cleans up.
+            Camera model confirmed by the owner: OV5640. Atualizar estado can
+            probe the sensor; the test button is released only when the probe
+            succeeds. camera_test captures one QVGA/JPEG frame and cleans up.
 endmenu

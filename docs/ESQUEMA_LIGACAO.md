@@ -1,8 +1,22 @@
 # JrBot - esquema de ligacao HW04
 
-## Audio
+## Amplificador MAX98357A - conector de 7 pinos
 
-### Microfone MS3625 I2S
+Use a **ordem impressa no modulo mostrado**, para ficar facil localizar cada pino:
+
+| Ordem | Pino MAX98357A | Ligar em |
+|---:|---|---|
+| 1 | LRC | GPIO47 |
+| 2 | BCLK | GPIO21 |
+| 3 | DIN | GPIO42 |
+| 4 | GAIN | **NAO LIGAR** nesta montagem |
+| 5 | SD | **NAO LIGAR** nesta montagem |
+| 6 | GND | GND da ESP32 |
+| 7 | VIN | 5V da placa, usando a alimentacao USB desta montagem |
+
+O falante 4 ohms / 3 W liga somente entre `OUT+` e `OUT-` do MAX98357A. Nenhum terminal do falante vai ao GND.
+
+## Microfone MS3625 I2S
 
 | MS3625 | ESP32-S3 |
 |---|---:|
@@ -11,21 +25,9 @@
 | SD | GPIO41 |
 | VDD | 3V3 |
 | GND | GND |
-| L/R | GND para o canal selecionado nesta configuracao |
+| L/R | GND |
 
-### Amplificador MAX98357A
-
-| MAX98357A | ESP32-S3 |
-|---|---:|
-| BCLK | GPIO21 |
-| LRC/WS | GPIO47 |
-| DIN | GPIO42 |
-| GND | GND comum |
-| VIN | Alimentacao compativel com o breakout; confirmar antes de energizar |
-
-O falante 4 ohms / 3 W liga somente entre `OUT+` e `OUT-` do MAX98357A. Nenhum terminal do falante vai ao GND.
-
-GPIO21 e GPIO47 sao compartilhados entre microfone e amplificador. GPIO41 e somente dado do microfone. GPIO42 e somente dado para o amplificador.
+GPIO21 e GPIO47 sao compartilhados entre microfone e amplificador. GPIO41 e entrada do microfone; GPIO42 e saida para o amplificador.
 
 ## OLED SSD1306 128x64
 
@@ -34,13 +36,13 @@ GPIO21 e GPIO47 sao compartilhados entre microfone e amplificador. GPIO41 e some
 | SDA | GPIO1 |
 | SCL | GPIO2 |
 | GND | GND |
-| VCC | Conforme o breakout; logica I2C deve permanecer compativel com 3,3 V |
+| VCC | 3V3 nesta montagem |
 
-O OLED pode ficar desconectado durante os testes; o firmware headless nao depende dele.
+O firmware nao para se o OLED estiver ausente. Ele continua tentando novamente; se o OLED for conectado depois, `Atualizar estado` passa a libera-lo quando o driver confirmar resposta.
 
 ## Camera OV5640
 
-A camera permanece no conector da placa. Nao refazer o cabo flex.
+A camera permanece no conector original da placa.
 
 | Sinal | GPIO |
 |---|---:|
@@ -50,10 +52,12 @@ A camera permanece no conector da placa. Nao refazer o cabo flex.
 | D4-D7 | 12/18/17/16 |
 | VSYNC/HREF/PCLK | 6/7/13 |
 
+Ao clicar `Atualizar estado`, o firmware tenta identificar a OV5640. Se nao responder, o botao de teste fica bloqueado; ao conectar e atualizar novamente, o teste pode ser liberado.
+
 ## USB
 
-- COM6: gravacao da placa nesta montagem.
-- COM4: painel e comandos nesta montagem.
-- Nao abrir outro monitor na COM4 ao mesmo tempo que o painel.
+- COM6: gravacao.
+- COM4: painel e comandos.
+- Nao abrir outro monitor na COM4 junto com o painel.
 
 Antes de alterar fios, desligue as duas USBs e qualquer fonte externa.

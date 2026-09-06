@@ -95,21 +95,27 @@ bool jr_format_status(char *response, size_t cap) {
     jr_wifi_status_t w;
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
+    bool oled_present = JR_OLED_ENABLED && (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
+    unsigned camera_pid = 0;
+    bool camera_present = JR_CAMERA_ENABLED && jr_camera_probe_once(&camera_pid);
+    const char *oled_for_panel = oled_present ? jr_face_state_name(f.state) : "disabled";
+    const char *camera_for_panel = camera_present ? "on_demand" : (JR_CAMERA_ENABLED ? "unavailable" : "disabled");
     int n = snprintf(response, cap,
-        "JR_STATUS protocol=2 version=%s hardware=%s profile=%s expression=%s demo=%d "
+        "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
         "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d "
-        "audio_bclk=%d audio_ws=%d audio_dout=%d camera=%s camera_model=%s "
-        "mic=pinout_defined mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d "
-        "oled=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
+        "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
+        "camera=%s camera_model=%s camera_pid=0x%04X "
+        "mic=driver_pending mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d "
+        "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu "
         "last_success_ms=%lu last_error=%s",
-        JR_APP_VERSION,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
+        JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
         w.configured,w.connected,w.pending_restart,w.ip,
         jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"on_demand":"disabled"),jr_audio_volume(),
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
-        JR_CAMERA_ENABLED?"on_demand":"disabled",JR_CAMERA_MODEL,
+        camera_for_panel,JR_CAMERA_MODEL,camera_pid,
         JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,
-        JR_OLED_ENABLED?jr_face_state_name(f.state):"disabled",f.address,JR_OLED_I2C_HZ,
+        oled_for_panel,oled_present?"available":(JR_OLED_ENABLED?"unavailable":"not_scanned"),f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
         (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
         (unsigned long)f.consecutive_failures,(unsigned long)f.recoveries,
@@ -146,7 +152,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     if (*args) goto invalid;
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
     if (!strcmp(verb,"version")) {
-        snprintf(response,cap,"JR_OK version=%s hardware=%s profile=%s",JR_APP_VERSION,JR_PINMAP_REVISION,JR_PROFILE_NAME);
+        snprintf(response,cap,"JR_OK version=%s build_sp=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
         return true;
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
