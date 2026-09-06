@@ -1,7 +1,7 @@
 #pragma once
 
-#define JR_APP_VERSION "JRBotV2_2026-09-06-09:25"
-#define JR_BUILD_STAMP_SP "2026-09-06_09:25_BRT"
+#define JR_APP_VERSION "JRBotV2_2026-09-06-09:37"
+#define JR_BUILD_STAMP_SP "2026-09-06_09:37_BRT"
 
 #if __has_include("wifi_config.local.h")
 #include "wifi_config.local.h"
