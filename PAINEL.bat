@@ -1,39 +1,26 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 cd /d "%~dp0"
 echo ========================================
-echo JrBot - Painel Unico
+echo JrBot - Painel V2 / COM4
 echo ========================================
-echo.
-echo Abrindo uma unica tela para Serial USB e Wi-Fi.
-echo Endereco local: http://127.0.0.1:8765
-echo.
-echo Na tela voce escolhe:
-echo   - Serial USB para configurar/testar/diagnosticar
-echo   - Wi-Fi usando o IP que apareceu no log, exemplo 192.168.0.83
-echo.
+echo Feche a janela do painel antigo e qualquer monitor usando COM4.
+echo O navegador abre apos o servidor iniciar. Mantenha esta janela aberta.
+echo COM6 continua reservada para gravacao, nao para estes controles.
 where python >nul 2>nul
-if errorlevel 1 (
-  echo ERRO: Python nao encontrado no PATH.
-  echo Instale Python 3 ou abra por um terminal onde o comando python funcione.
-  pause
-  exit /b 1
-)
+if errorlevel 1 goto sem_python
 python -c "import serial" >nul 2>nul
 if errorlevel 1 (
-  echo Instalando dependencia pyserial...
-  python -m pip install -r "%~dp0tools\jrbot_frontend\requirements.txt" || goto erro_python
+  python -m pip install -r "%~dp0tools\jrbot_frontend\requirements.txt"
+  if errorlevel 1 goto falha
 )
-start "" "http://127.0.0.1:8765"
-python "%~dp0tools\jrbot_frontend\app.py"
-goto fim
-
-:erro_python
-echo.
-echo Falhou ao instalar pyserial.
-echo Tente manualmente: python -m pip install pyserial
+python "%~dp0tools\jrbot_frontend\app.py" --browser
+if errorlevel 1 goto falha
+exit /b 0
+:sem_python
+echo Python nao encontrado. Abra este arquivo pelo terminal ESP-IDF instalado.
+goto falha
+:falha
+echo Nao foi possivel iniciar. Leia a mensagem acima. Nao abra outro painel em paralelo.
 pause
 exit /b 1
-
-:fim
-endlocal
