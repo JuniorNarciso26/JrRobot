@@ -35,12 +35,13 @@ static bool pin_allowed(int pin) {
     return false;
 }
 
+/* OFF seguro: ESP32 nao dirige nivel alto nem baixo e nao habilita pull interno. */
 static void release_all_pins_locked(void) {
     for (size_t i = 0; i < sizeof(TEST_PINS) / sizeof(TEST_PINS[0]); ++i) {
         gpio_num_t pin = (gpio_num_t)TEST_PINS[i];
         gpio_reset_pin(pin);
-        gpio_set_direction(pin, GPIO_MODE_INPUT);
         gpio_set_pull_mode(pin, GPIO_FLOATING);
+        gpio_set_direction(pin, GPIO_MODE_INPUT);
     }
     active_pin = -1;
 }
@@ -97,12 +98,13 @@ static void process_command(const char *line, wire_write_fn write_line) {
     for (char *q = p; *q; ++q) *q = (char)tolower((unsigned char)*q);
 
     if (!strcmp(p, "status")) {
-        char response[128];
+        char response[160];
         int current;
         xSemaphoreTake(pin_lock, portMAX_DELAY);
         current = active_pin;
         xSemaphoreGive(pin_lock);
-        snprintf(response, sizeof(response), "WIRE_STATUS ready=1 active_pin=%d pins=1,2,41,42,47,21", current);
+        snprintf(response, sizeof(response),
+                 "WIRE_STATUS ready=1 active_pin=%d idle_mode=high_z pins=1,2,41,42,47,21", current);
         write_line(response);
         return;
     }
@@ -111,7 +113,7 @@ static void process_command(const char *line, wire_write_fn write_line) {
         xSemaphoreTake(pin_lock, portMAX_DELAY);
         release_all_pins_locked();
         xSemaphoreGive(pin_lock);
-        write_line("WIRE_OK off=1 active_pin=-1");
+        write_line("WIRE_OK off=1 active_pin=-1 idle_mode=high_z");
         return;
     }
 
@@ -173,7 +175,7 @@ static void uart_task(void *arg) {
     (void)arg;
     uint8_t rx[128];
     wire_parser_t parser = {0};
-    uart_write_line("WIRE_TEST_READY transport=UART pins=1,2,41,42,47,21");
+    uart_write_line("WIRE_TEST_READY transport=UART pins=1,2,41,42,47,21 idle_mode=high_z");
     for (;;) {
         int n = uart_read_bytes(WIRE_UART, rx, sizeof(rx), pdMS_TO_TICKS(100));
         if (n > 0) feed_parser(&parser, rx, (size_t)n, uart_write_line);
@@ -184,7 +186,7 @@ static void usb_task(void *arg) {
     (void)arg;
     uint8_t rx[128];
     wire_parser_t parser = {0};
-    usb_write_line("WIRE_TEST_READY transport=USB_SERIAL_JTAG pins=1,2,41,42,47,21");
+    usb_write_line("WIRE_TEST_READY transport=USB_SERIAL_JTAG pins=1,2,41,42,47,21 idle_mode=high_z");
     for (;;) {
         int n = usb_serial_jtag_read_bytes(rx, sizeof(rx), pdMS_TO_TICKS(100));
         if (n > 0) feed_parser(&parser, rx, (size_t)n, usb_write_line);
