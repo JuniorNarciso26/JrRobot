@@ -11,8 +11,10 @@
 void app_main(void) {
     ESP_LOGI("jrbot_main", "BOOT %s hardware=%s profile=%s OLED=%s SDA=1 SCL=2",
              JR_APP_VERSION, JR_PINMAP_REVISION, JR_PROFILE_NAME, JR_OLED_ENABLED ? "enabled" : "disabled");
-    ESP_LOGI("jrbot_main", "Audio pinmap: BCLK=%d WS=%d DOUT=%d enabled=%d (-1=unassigned)",
+    ESP_LOGI("jrbot_main", "Audio HW04: BCLK=%d WS=%d DOUT=%d enabled=%d",
              JR_AUDIO_BCLK_GPIO, JR_AUDIO_LRC_GPIO, JR_AUDIO_DIN_GPIO, JR_AUDIO_ENABLED);
+    ESP_LOGI("jrbot_main", "Mic pinout: %s SCK=%d WS=%d SD=%d driver=disabled",
+             JR_MIC_MODEL, JR_MIC_SCK_GPIO, JR_MIC_WS_GPIO, JR_MIC_SD_GPIO);
     jr_wifi_prepare();
     if (jr_commands_init() != ESP_OK)
         ESP_LOGE("jrbot_main", "Command mutex unavailable");

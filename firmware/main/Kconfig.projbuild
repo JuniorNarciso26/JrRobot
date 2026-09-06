@@ -6,33 +6,20 @@ menu "JrBot V2 - hardware"
             Keep the panel, command terminal and Wi-Fi independent of the OLED.
             No amplifier, camera, microphone or servo test runs at boot.
 
-    config JR_AUDIO_BCLK_GPIO
-        int "Amplifier BCLK GPIO (-1 = not assigned)"
-        range -1 48
-        default -1
-    config JR_AUDIO_WS_GPIO
-        int "Amplifier WS/LRC GPIO (-1 = not assigned)"
-        range -1 48
-        default -1
-    config JR_AUDIO_DOUT_GPIO
-        int "ESP32 DOUT to amplifier DIN GPIO (-1 = not assigned)"
-        range -1 48
-        default -1
-    config JR_AUDIO_HW03_CONFIRMED
-        bool "HW03: I verified all three audio wires and board availability"
-        depends on JR_AUDIO_BCLK_GPIO >= 0 && JR_AUDIO_WS_GPIO >= 0 && JR_AUDIO_DOUT_GPIO >= 0
+    config JR_AUDIO_HW04_CONFIRMED
+        bool "Enable MAX98357A test on HW04 fixed pins (21/47/42)"
         default n
         help
-            GPIO21, GPIO41, GPIO42 and GPIO47 are already occupied by the owner.
-            Never reuse them. Camera/OLED/USB/UART/memory/boot pins stay reserved.
-            Check hardware/pinmap.json and docs/ESQUEMA_LIGACAO.md.
-            Previous JR_AUDIO_PINS_CONFIRMED settings do not enable this revision.
-            This enables an on-demand test in the panel, not automatic playback.
+            HW04 fixed map: BCLK=GPIO21, WS/LRC=GPIO47 and ESP32 DOUT=GPIO42
+            to MAX98357A DIN. The MS3625 microphone shares GPIO21/47 clocks
+            and reserves GPIO41 for its SD output. This option enables only
+            the on-demand speaker test; microphone RX is not implemented yet.
 
     config JR_CAMERA_PINS_CONFIRMED
-        bool "Allow one-shot camera test after verifying the existing camera pinout"
+        bool "Allow one-shot OV5640 camera test on the existing connector"
         default n
         help
-            Verify the integrated camera connector against docs/PINAGEM.md.
-            No autofocus, no servo movement; one QVGA/JPEG frame then cleanup.
+            Camera model confirmed by the owner: OV5640. The existing camera
+            pin map remains unchanged. No autofocus or servo movement is run
+            by camera_test; it captures one QVGA/JPEG frame and cleans up.
 endmenu

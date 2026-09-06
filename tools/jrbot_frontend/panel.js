@@ -1,5 +1,5 @@
 'use strict';
-const AUDIO_FIRMWARE='JRBOT-V2-DIAG-02';
+const AUDIO_FIRMWARE='JRBOT-V2-DIAG-03';
 const faces=[['Neutro','neutro'],['Feliz','feliz'],['Triste','triste'],['Animado','animado'],['Bravo','bravo'],['Surpreso','surpreso'],['Pensando','pensando'],['Cetico','cetico'],['Sono','sono'],['Confuso','confuso'],['Piscando','piscando'],['Amor','amor'],['Brincalhao','brincalhao'],['Preocupado','preocupado'],['Cool','cool'],['Bateria','bateria']];
 const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
@@ -38,12 +38,12 @@ function renderStatus(text){
   el('fw_version').textContent=next.version;
   el('fw_profile').textContent=next.profile;
   el('oled_state').textContent=next.oled==='disabled'?'Desabilitado - nao bloqueia o robo':next.oled;
-  el('audio_state').textContent=!currentAudioFirmware()?'Teste bloqueado: atualizar firmware para HW03':next.audio==='disabled'?'Sem pinagem HW03 confirmada':next.audio==='on_demand'?'Disponivel para teste':next.audio||'Nao informado';
-  el('camera_state').textContent=next.camera==='disabled'?'Desabilitada no firmware':next.camera==='on_demand'?'Teste disponivel por Serial':next.camera||'Nao informado';
-  el('mic_state').textContent='Nao configurado - informe modelo e ligacao';
+  el('audio_state').textContent=!currentAudioFirmware()?'Teste bloqueado: atualizar firmware para HW04':next.audio==='disabled'?'HW04 definido; teste desabilitado na compilacao':next.audio==='on_demand'?'Disponivel para teste':next.audio||'Nao informado';
+  el('camera_state').textContent=next.camera==='disabled'?'OV5640 desabilitada no firmware':next.camera==='on_demand'?'OV5640 disponivel para teste':next.camera||'Nao informado';
+  el('mic_state').textContent=next.mic==='pinout_defined'?'MS3625 I2S: SCK 21, WS 47, SD 41; driver pendente':'Nao informado';
   el('device_msg').textContent='Firmware respondeu. Estado consultado em '+new Date().toLocaleTimeString()+'.'+(next.pending_restart==='1'?' Configuracao de rede pendente de reinicializacao.':'');
-  el('audio_msg').textContent=!currentAudioFirmware()?'HW03 exige '+AUDIO_FIRMWARE+'. Nao testar o mapa antigo: GPIO21/41/42/47 estao ocupados.':next.audio==='disabled'?'Defina tres GPIOs fisicamente livres e confirme HW03. Padrao: -1 (sem atribuicao). GPIO21/41/42/47 nao podem ser reutilizados. Consulte o esquema; o painel nao altera a protecao.':'Teste sob demanda. Envio I2S concluido nao comprova som audivel.';
-  el('cam_msg').textContent=next.camera==='disabled'?'Camera bloqueada no firmware ate confirmar o mapa de pinos. Nao e erro do OLED.':mode==='wifi'?'Nesta versao, use Serial USB / COM4 no proprio painel para testar a camera.':'O teste informa sensor, tamanho e bytes do quadro. Previa de foto e autofocus ainda indisponiveis.';
+  el('audio_msg').textContent=!currentAudioFirmware()?'HW04 exige '+AUDIO_FIRMWARE+'.':next.audio==='disabled'?'MAX98357A: BCLK 21, LRC 47, DIN 42. Habilite o teste no firmware somente apos conferir os fios.':'Teste sob demanda. Envio I2S concluido nao comprova som audivel.';
+  el('cam_msg').textContent=next.camera==='disabled'?'Camera OV5640 desabilitada no firmware.':mode==='wifi'?'Nesta versao, use Serial USB / COM4 no proprio painel para testar a camera.':'O teste informa sensor, tamanho e bytes do quadro. Previa de foto e autofocus ainda indisponiveis.';
   el('face_msg').textContent=next.oled==='disabled'?'OLED desabilitado. Os outros testes continuam independentes.':'Rostos enviam comandos; envio aceito nao comprova imagem visivel.';
   connection(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - V2 confirmada':'Wi-Fi - V2 confirmada',true);
   refreshControls();
@@ -88,7 +88,7 @@ async function connect(){return action(async()=>{
 async function disconnect(){return action(async()=>{await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';invalidate('Desconectado.');connection('Desconectado',false);});}
 async function send(command){
   const verb=command.trim().toLowerCase().split(/\s+/)[0];
-  if(['audio_test','som','beep'].includes(verb)&&!currentAudioFirmware())throw new Error('Teste de audio bloqueado: confira o firmware '+AUDIO_FIRMWARE+' e a pinagem HW03.');
+  if(['audio_test','som','beep'].includes(verb)&&!currentAudioFirmware())throw new Error('Teste de audio bloqueado: use '+AUDIO_FIRMWARE+' / HW04.');
   if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes; nada enviado.');
   let t;
   try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}
@@ -99,7 +99,7 @@ async function send(command){
   return t;
 }
 async function refreshStatus(){return action(()=>send('status'));}
-async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Versao confirmada: '+device.version+' | perfil: '+device.profile;});}
+async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Versao confirmada: '+device.version+' | hardware: '+(device.hardware||'?')+' | perfil: '+device.profile;});}
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
 async function connectWifi(){if(busy)return;await setMode('wifi');return refreshStatus();}
 async function testWifi(){return connectWifi();}
@@ -110,7 +110,7 @@ async function setAudioVolume(){return action(async()=>{
   el('audio_msg').textContent='Volume confirmado: '+v+'%.'+(t.includes('audio=disabled')?' Saida desabilitada no firmware.':'');
 },'audio_msg');}
 async function testAudio(){return action(async()=>{
-  if(!currentAudioFirmware()||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao habilitado em firmware HW03 confirmado.');
+  if(!currentAudioFirmware()||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao habilitado em firmware HW04 confirmado.');
   el('audio_msg').textContent='Executando teste; aguarde a resposta...';
   const v=val('audio_volume'), volumeReply=await send('audio_volume '+v);
   if(fields(volumeReply).audio_volume!==v)throw new Error('Volume nao confirmado; teste nao iniciado.');
@@ -121,10 +121,10 @@ async function testAudio(){return action(async()=>{
 async function testCamera(){return action(async()=>{
   if(mode!=='serial')throw new Error('Use Serial USB / COM4 neste painel para testar a camera.');
   if(!device||device.camera!=='on_demand')throw new Error('Camera nao habilitada no firmware.');
-  el('cam_msg').textContent='Capturando um quadro. Aguarde; nao e uma transmissao de video...';
+  el('cam_msg').textContent='Capturando um quadro da OV5640. Aguarde...';
   const t=await send('camera_test'), f=fields(t);
   if(f.camera_test!=='frame_received'||f.released!=='1')throw new Error('Captura e liberacao nao confirmadas.');
-  el('cam_msg').textContent='Quadro recebido: '+f.width+' x '+f.height+', '+f.bytes+' bytes, sensor '+f.pid+'. Recursos liberados. Imagem e foco ainda nao avaliados.';
+  el('cam_msg').textContent='Quadro recebido: '+f.width+' x '+f.height+', '+f.bytes+' bytes, sensor '+f.pid+'. Recursos liberados.';
 },'cam_msg');}
 function takePhoto(){el('cam_msg').textContent='Previa de foto indisponivel nesta versao. Use Testar camera para verificar uma captura.';}
 function openCameraPortal(){takePhoto();}
@@ -155,6 +155,6 @@ for(const [name,command] of faces){const b=document.createElement('button');b.cl
 el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});
 logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});
 window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
-const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot - robo com IA em desenvolvimento | HW03 | COM4 painel / COM6 gravacao';
+const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot - robo com IA em desenvolvimento | HW04 | COM4 painel / COM6 gravacao';
 loadWifiLocal();
 setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();

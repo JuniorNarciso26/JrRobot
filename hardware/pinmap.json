@@ -1,13 +1,9 @@
 {
-  "revision": "JRBOT-HW-03",
-  "board": "ESP32-S3 CAM N16R8; fabricante/revisao pendentes",
-  "blocked_by_owner": [
-    21,
-    41,
-    42,
-    47
-  ],
+  "revision": "JRBOT-HW-04",
+  "board": "ESP32-S3-N16R8 dual USB-C",
+  "camera_model": "OV5640",
   "oled": {
+    "model": "SSD1306",
     "SDA": 1,
     "SCL": 2
   },
@@ -29,69 +25,32 @@
     "HREF": 7,
     "PCLK": 13
   },
-  "usb_native": [
-    19,
-    20
-  ],
-  "uart0": [
-    43,
-    44
-  ],
-  "memory_reserved": [
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    37
-  ],
-  "boot_reserved": [
-    0,
-    3,
-    45,
-    46
-  ],
-  "board_review_required": [
-    14,
-    38,
-    39,
-    40,
-    48
-  ],
   "audio": {
-    "BCLK": null,
-    "WS": null,
-    "DOUT": null,
-    "status": "unassigned"
+    "amplifier": "MAX98357A",
+    "BCLK": 21,
+    "WS": 47,
+    "DOUT": 42
   },
   "microphone": {
-    "model": null,
-    "interface": null,
-    "pins": null
+    "model": "MS3625",
+    "interface": "I2S",
+    "SCK": 21,
+    "WS": 47,
+    "SD": 41,
+    "LR": "GND"
   },
-  "servo": {
-    "model": null,
-    "pin": null
-  },
-  "candidate_audio_only": {
-    "BCLK": 39,
-    "WS": 40,
-    "DOUT": 14,
-    "status": "PROPOSTA NAO HABILITADA; verificar esquema e ocupacao real"
-  },
+  "usb_native": [19, 20],
+  "uart0": [43, 44],
+  "memory_reserved": [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
+  "boot_reserved": [0, 3, 45, 46],
   "ports_reported_by_owner": {
     "flash": "COM6",
     "panel": "COM4"
   },
   "notes": [
-    "GPIOs bloqueados permanecem nas ligacoes existentes. Nao remapear nem desconectar sem identificar a funcao.",
-    "Nao ha confirmacao fisica para a proposta de audio. Valores null nao autorizam ligacao.",
-    "OLED permanece reservado mesmo desabilitado. Camera usa mapa herdado, nao pinagem universal."
+    "GPIO21 e GPIO47 sao clocks I2S compartilhados entre microfone e amplificador.",
+    "GPIO41 recebe SD do microfone; GPIO42 envia DOUT para DIN do MAX98357A.",
+    "O driver de microfone ainda nao esta implementado; a pinagem fica reservada para ele.",
+    "OLED permanece em GPIO1/2 e fica desabilitado no perfil headless atual."
   ]
 }

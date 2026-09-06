@@ -20,7 +20,6 @@ static SemaphoreHandle_t command_lock;
 static bool terminal_started;
 
 esp_err_t jr_commands_init(void) {
-    /* Called once by app_main before exposing any transports. */
     if (!command_lock) command_lock = xSemaphoreCreateMutex();
     return command_lock ? ESP_OK : ESP_ERR_NO_MEM;
 }
@@ -97,14 +96,19 @@ bool jr_format_status(char *response, size_t cap) {
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
     int n = snprintf(response, cap,
-        "JR_STATUS protocol=2 version=%s profile=%s expression=%s demo=%d "
-        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d camera=%s mic=not_configured "
+        "JR_STATUS protocol=2 version=%s hardware=%s profile=%s expression=%s demo=%d "
+        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d "
+        "audio_bclk=%d audio_ws=%d audio_dout=%d camera=%s camera_model=%s "
+        "mic=pinout_defined mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d "
         "oled=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu "
         "last_success_ms=%lu last_error=%s",
-        JR_APP_VERSION,JR_PROFILE_NAME,f.expression,f.demo,w.configured,w.connected,w.pending_restart,w.ip,
+        JR_APP_VERSION,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
+        w.configured,w.connected,w.pending_restart,w.ip,
         jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"on_demand":"disabled"),jr_audio_volume(),
-        JR_CAMERA_ENABLED?"on_demand":"disabled",
+        JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
+        JR_CAMERA_ENABLED?"on_demand":"disabled",JR_CAMERA_MODEL,
+        JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,
         JR_OLED_ENABLED?jr_face_state_name(f.state):"disabled",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
         (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
@@ -117,7 +121,6 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     size_t len = strlen(cmd);
     if (!len || len > JR_COMMAND_MAX_BYTES) goto invalid;
     for (size_t i=0; i<len; i++) if ((unsigned char)cmd[i] < 32 || (unsigned char)cmd[i] == 127) goto invalid;
-    /* Preserve credential bytes and trailing spaces. Only the verb is folded. */
     const char *p = cmd;
     while (*p == ' ') p++;
     const char *space = strchr(p, ' ');
@@ -143,12 +146,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     if (*args) goto invalid;
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
     if (!strcmp(verb,"version")) {
-        snprintf(response,cap,"JR_OK version=%s profile=%s",JR_APP_VERSION,JR_PROFILE_NAME);
+        snprintf(response,cap,"JR_OK version=%s hardware=%s profile=%s",JR_APP_VERSION,JR_PINMAP_REVISION,JR_PROFILE_NAME);
         return true;
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
     if (!strcmp(verb,"mic_test")) {
-        snprintf(response,cap,"JR_ERROR mic_test=not_configured model_interface_and_wiring_required");
+        snprintf(response,cap,"JR_ERROR mic_test=driver_not_implemented model=%s sck=%d ws=%d sd=%d",
+                 JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
         return false;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
@@ -169,7 +173,6 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         snprintf(response,cap,"JR_OK expression=%s",jr_face_expression_name()); return true;
     }
 invalid:
-    /* Do not echo malformed input: it may contain a password. */
     snprintf(response,cap,"JR_ERROR comando_ou_argumentos_invalidos"); return false;
 }
 
@@ -206,7 +209,6 @@ void jr_terminal_process_line(const char *line) {
     else printf("%s\n",response);
 }
 
-/* Keep the discarded-line state until its delimiter, including NUL/controls. */
 typedef struct { char line[JR_SERIAL_LINE_MAX_BYTES+1]; size_t size; bool discard; } serial_parser_t;
 static void terminal_feed(serial_parser_t *s, const uint8_t *data, size_t len) {
     for (size_t i=0;i<len;i++) {

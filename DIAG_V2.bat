@@ -17,26 +17,26 @@ pushd "%~dp0" || exit /b 1
 python tools\generate_pinmap.py --check
 if errorlevel 1 goto failure
 cd firmware
-findstr /x /c:"JRBOT-V2-DIAG-02" version.txt >nul 2>nul
+findstr /x /c:"JRBOT-V2-DIAG-03" version.txt >nul 2>nul
 if errorlevel 1 goto failure
 echo Projeto: %CD%
-echo Firmware: JRBOT-V2-DIAG-02 / hardware HW03
+echo Firmware: JRBOT-V2-DIAG-03 / hardware HW04
 if /i "%ACTION%"=="menuconfig" goto menuconfig
-python "%IDF_PATH%\tools\idf.py" -B build-hw03 -D SDKCONFIG=sdkconfig.hw03 build
+python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 build
 if errorlevel 1 goto failure
-findstr /x /c:"CONFIG_JR_HEADLESS_DIAGNOSTIC=y" sdkconfig.hw03 >nul
+findstr /x /c:"CONFIG_JR_HEADLESS_DIAGNOSTIC=y" sdkconfig.hw04 >nul
 if errorlevel 1 (
     echo ERRO: mantenha Run without OLED habilitado nesta fase.
     goto failure
 )
 if /i "%ACTION%"=="build" goto success
 echo Gravando em %JR_FLASH_PORT%. Desconecte o painel durante a gravacao.
-python "%IDF_PATH%\tools\idf.py" -B build-hw03 -D SDKCONFIG=sdkconfig.hw03 -p "%JR_FLASH_PORT%" flash
+python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 goto failure
 echo Gravacao concluida. Abra PAINEL.bat e conecte a COM4.
 goto success
 :menuconfig
-python "%IDF_PATH%\tools\idf.py" -B build-hw03 -D SDKCONFIG=sdkconfig.hw03 menuconfig
+python "%IDF_PATH%\tools\idf.py" -B build-hw04 -D SDKCONFIG=sdkconfig.hw04 menuconfig
 if errorlevel 1 goto failure
 :success
 popd

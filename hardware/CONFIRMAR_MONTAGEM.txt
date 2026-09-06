@@ -1,23 +1,17 @@
-JrBot - confirmacao fisica HW03
+JrBot - montagem HW04
 
-Placa / fabricante / revisao:
-Foto frente e verso / esquema do fabricante:
-Modelo do sensor de camera e inscricao no flex:
-GPIO21 ligado a:
-GPIO41 ligado a:
-GPIO42 ligado a:
-GPIO47 ligado a:
-GPIO14 exposto e livre? microSD/outro circuito:
-GPIO39 e GPIO40 livres? uso de JTAG externo:
-Amplificador: modelo/variante e rotulos do breakout:
-Amplificador BCLK ligado a:
-Amplificador LRC/WS ligado a:
-Amplificador DIN ligado a:
-Microfone: modelo e interface:
-Microfone: lista de todos os pinos e destinos:
-Falante: impedancia e potencia:
-Fonte(s): tensao, corrente, ligacao das duas USBs:
-OLED: modelo/controlador e estado:
+Confirmado pelo proprietario:
+- Placa: ESP32-S3-N16R8, duas USB-C.
+- Camera: OV5640 no conector da placa.
+- OLED: SSD1306 I2C 128x64; SDA=GPIO1, SCL=GPIO2; atualmente pode ficar desconectado.
+- Microfone: MS3625 I2S.
+- Amplificador: MAX98357A I2S mono.
+- Falante: 4 ohms / 3 W.
 
-Nao preencher usando apenas a proposta. Conferir fios com alimentacao desligada.
-Nao publicar senhas, tokens, audio privado ou dados pessoais neste formulario.
+Pinagem de audio definida:
+- GPIO21 -> SCK/BCLK do microfone e BCLK do amplificador.
+- GPIO47 -> WS do microfone e LRC/WS do amplificador.
+- GPIO41 <- SD do microfone.
+- GPIO42 -> DIN do amplificador.
+
+Antes de energizar: conferir continuidade, VDD/VIN/GND e ausencia de curto com a placa desligada.
