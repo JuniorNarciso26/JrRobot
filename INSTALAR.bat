@@ -5,8 +5,8 @@ cd /d "%~dp0"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not defined JR_FLASH_PORT set "JR_FLASH_PORT=COM6"
-set "BUILD_DIR=build-hw04-live"
-set "SDKCONFIG_FILE=sdkconfig.hw04-live"
+set "BUILD_DIR=build-final-hw04"
+set "SDKCONFIG_FILE=sdkconfig.final-hw04"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -29,7 +29,7 @@ if not exist "%IDF_PATH%\tools\idf.py" (
 )
 python tools\generate_pinmap.py --check
 if errorlevel 1 exit /b 1
-findstr /b /c:"JRBOT-V2-DIAG-03" firmware\version.txt >nul 2>nul
+findstr /b /c:"JRBotV2_" firmware\version.txt >nul 2>nul
 if errorlevel 1 (
   echo ERRO: versao inesperada em firmware\version.txt.
   exit /b 1
@@ -77,8 +77,8 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot V2 atualizado.
-echo Firmware: JRBOT-V2-DIAG-03 - build Sao Paulo 2026-09-06 06:44 BRT
-echo Gravacao: COM6 ^| Painel: COM4
+echo Firmware: JRBotV2_2026-09-06-07:10
+ echo Hardware: JRBOT-HW-04 ^| Gravacao: COM6 ^| Painel: COM4
 exit /b 0
 
 :failure
@@ -96,7 +96,4 @@ echo   INSTALAR.bat flash      Compila e grava
 echo   INSTALAR.bat panel      Abre o painel
 echo   INSTALAR.bat menuconfig Abre configuracao do firmware
 echo.
-echo Para outra porta de gravacao:
-echo   set JR_FLASH_PORT=COM7
-echo   INSTALAR.bat flash
 exit /b 0

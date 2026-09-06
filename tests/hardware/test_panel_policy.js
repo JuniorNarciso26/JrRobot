@@ -12,15 +12,14 @@ const ctx=vm.createContext({console,TextEncoder,URLSearchParams,AbortController,
  fetch:async()=>{requests++;return {ok:true,text:async()=>'JR_OK audio_test=tx_completed'};},
  localStorage:{setItem(){},getItem(){return null;}}});
 vm.runInContext(source,ctx);
-const render=(version,audio)=>vm.runInContext(`renderStatus('JR_STATUS protocol=2 version=${version} hardware=JRBOT-HW-04 profile=headless_diagnostic oled=disabled audio=${audio} camera=disabled mic=pinout_defined')`,ctx);
+const render=(version,audio,mic='available')=>vm.runInContext(`renderStatus('JR_STATUS protocol=2 version=${version} build_sp=2026-09-06_07:10_BRT hardware=JRBOT-HW-04 profile=full_hardware_test oled=ready oled_presence=available audio=${audio} camera=available camera_pid=0x5640 mic=${mic} mic_channel=L mic_peak_raw=1000')`,ctx);
 (async()=>{
  let passed=0;
- render('JRBOT-V2-DIAG-02','on_demand');assert.equal(element('test_audio').disabled,true);passed++;
+ render('JRBOT-V2-DIAG-03','on_demand');assert.equal(element('test_audio').disabled,true);passed++;
  await assert.rejects(vm.runInContext("send('audio_test')",ctx));assert.equal(requests,0);passed++;
- render('JRBOT-V2-DIAG-03','disabled');assert.equal(element('test_audio').disabled,true);passed++;
- render('JRBOT-V2-DIAG-03','on_demand');assert.equal(element('test_audio').disabled,false);passed++;
- await vm.runInContext("send('audio_test')",ctx);assert.equal(requests,1);passed++;
- assert.match(element('mic_state').textContent,/MS3625/);passed++;
- assert.equal(element('test_mic').disabled,true);passed++;
+ render('JRBotV2_2026-09-06-07:10','on_demand');assert.equal(element('test_audio').disabled,false);passed++;
+ assert.equal(element('test_camera').disabled,false);passed++;
+ assert.equal(element('test_mic').disabled,false);passed++;
+ render('JRBotV2_2026-09-06-07:10','on_demand','unavailable');assert.equal(element('test_mic').disabled,true);passed++;
  console.log(JSON.stringify({scope:'Node + minimal DOM mocks only',passed,failed:0}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,160 +1,74 @@
 'use strict';
-const AUDIO_FIRMWARE='JRBOT-V2-DIAG-03';
+const FIRMWARE_PREFIX='JRBotV2_';
 const faces=[['Neutro','neutro'],['Feliz','feliz'],['Triste','triste'],['Animado','animado'],['Bravo','bravo'],['Surpreso','surpreso'],['Pensando','pensando'],['Cetico','cetico'],['Sono','sono'],['Confuso','confuso'],['Piscando','piscando'],['Amor','amor'],['Brincalhao','brincalhao'],['Preocupado','preocupado'],['Cool','cool'],['Bateria','bateria']];
 const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
 let serverCursor=0, serverSession='', autoScroll=true, busy=false, device=null;
 let mode='serial', serialConnected=false, activePort='';
-function appendLog(items){
-  for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}
-  while(logEl.children.length>1200)logEl.removeChild(logEl.firstChild);
-  if(autoScroll)logEl.scrollTop=logEl.scrollHeight;
-}
+function appendLog(items){for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}while(logEl.children.length>1200)logEl.removeChild(logEl.firstChild);if(autoScroll)logEl.scrollTop=logEl.scrollHeight;}
 function localLine(line){appendLog([{ts:new Date().toLocaleTimeString(),line}]);}
 function clearLog(){logEl.textContent='';}
 function downloadLog(){const blob=new Blob([Array.from(logEl.children,n=>n.textContent).join('\n')],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='JrBot-painel-log.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function openWifiConfig(){el('wifi_config_title').scrollIntoView({behavior:'smooth'});}
 function connection(text,ok){el('conn').textContent=text;el('conn').className='pill '+(ok?'ok':'bad');}
 function fields(text){const result={};for(const token of text.trim().split(/\s+/)){const at=token.indexOf('=');if(at>0)result[token.slice(0,at)]=token.slice(at+1);}return result;}
-function currentAudioFirmware(){return !!device&&device.version===AUDIO_FIRMWARE;}
+function currentFirmware(){return !!device&&typeof device.version==='string'&&device.version.startsWith(FIRMWARE_PREFIX)&&device.hardware==='JRBOT-HW-04';}
+function oledAvailable(){return !!device&&device.oled_presence==='available'&&['ready','degraded'].includes(device.oled);}
 function refreshControls(){
   document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);
-  const sound=currentAudioFirmware()&&['ready','on_demand'].includes(device.audio);
-  const camera=!!device&&mode==='serial'&&device.camera==='on_demand';
-  el('test_audio').disabled=busy||!sound;
-  el('test_camera').disabled=busy||!camera;
-  el('test_mic').disabled=true;
-  document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!device||device.oled==='disabled');
-  el('audio_volume').disabled=busy||!device;
-  el('apply_volume').disabled=busy||!device;
+  const valid=currentFirmware();
+  el('test_audio').disabled=busy||!valid||!['ready','on_demand'].includes(device?.audio);
+  el('test_camera').disabled=busy||!valid||mode!=='serial'||device?.camera!=='available';
+  el('test_mic').disabled=busy||!valid||device?.mic!=='available';
+  document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!valid||!oledAvailable());
+  el('audio_volume').disabled=busy||!valid;
+  el('apply_volume').disabled=busy||!valid;
 }
 function invalidate(message){device=null;el('device_msg').textContent=message;for(const id of ['fw_version','fw_profile','oled_state','audio_state','camera_state','mic_state'])el(id).textContent='Nao verificado';refreshControls();}
 function renderStatus(text){
-  if(!text.startsWith('JR_STATUS protocol=2 ')){invalidate('Firmware sem protocolo V2.');connection('Firmware nao confirmado',false);throw new Error('Firmware sem protocolo V2. Atualize o firmware; abrir a COM nao confirma a versao.');}
-  const next=fields(text);
-  if(!next.version||!next.profile||!next.oled){invalidate('Estado incompleto.');connection('Firmware nao confirmado',false);throw new Error('Estado incompleto do firmware; diagnostico nao confirmado.');}
-  device=next;
-  el('face_controls').open=next.oled!=='disabled';
+  if(!text.startsWith('JR_STATUS protocol=2 ')){invalidate('Firmware sem protocolo V2.');connection('Firmware nao confirmado',false);throw new Error('Firmware sem protocolo V2.');}
+  const next=fields(text);if(!next.version||!next.profile||!next.hardware){invalidate('Estado incompleto.');connection('Firmware nao confirmado',false);throw new Error('Estado incompleto do firmware.');}
+  device=next;const valid=currentFirmware();
+  el('face_controls').open=oledAvailable();
   el('fw_version').textContent=next.version;
   el('fw_profile').textContent=next.profile;
-  el('oled_state').textContent=next.oled==='disabled'?'Desabilitado - nao bloqueia o robo':next.oled;
-  el('audio_state').textContent=!currentAudioFirmware()?'Teste bloqueado: atualizar firmware para HW04':next.audio==='disabled'?'HW04 definido; teste desabilitado na compilacao':next.audio==='on_demand'?'Disponivel para teste':next.audio||'Nao informado';
-  el('camera_state').textContent=next.camera==='disabled'?'OV5640 desabilitada no firmware':next.camera==='on_demand'?'OV5640 disponivel para teste':next.camera||'Nao informado';
-  el('mic_state').textContent=next.mic==='pinout_defined'?'MS3625 I2S: SCK 21, WS 47, SD 41; driver pendente':'Nao informado';
-  el('device_msg').textContent='Firmware respondeu. Estado consultado em '+new Date().toLocaleTimeString()+'.'+(next.pending_restart==='1'?' Configuracao de rede pendente de reinicializacao.':'');
-  el('audio_msg').textContent=!currentAudioFirmware()?'HW04 exige '+AUDIO_FIRMWARE+'.':next.audio==='disabled'?'MAX98357A: BCLK 21, LRC 47, DIN 42. Habilite o teste no firmware somente apos conferir os fios.':'Teste sob demanda. Envio I2S concluido nao comprova som audivel.';
-  el('cam_msg').textContent=next.camera==='disabled'?'Camera OV5640 desabilitada no firmware.':mode==='wifi'?'Nesta versao, use Serial USB / COM4 no proprio painel para testar a camera.':'O teste informa sensor, tamanho e bytes do quadro. Previa de foto e autofocus ainda indisponiveis.';
-  el('face_msg').textContent=next.oled==='disabled'?'OLED desabilitado. Os outros testes continuam independentes.':'Rostos enviam comandos; envio aceito nao comprova imagem visivel.';
-  connection(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - V2 confirmada':'Wi-Fi - V2 confirmada',true);
+  el('oled_state').textContent=next.oled_presence==='available'?'Disponivel - '+next.oled:'Indisponivel - '+(next.oled||'offline');
+  el('audio_state').textContent=valid?'Pronto para teste - MAX98357A':'Firmware antigo/incompativel';
+  el('camera_state').textContent=next.camera==='available'?'Disponivel - OV5640 '+(next.camera_pid||''):'Indisponivel - OV5640';
+  el('mic_state').textContent=next.mic==='available'?'Disponivel - MS3625 canal '+(next.mic_channel||'?')+' pico '+(next.mic_peak_raw||'0'):'Indisponivel - MS3625';
+  el('device_msg').textContent='Estado atualizado. Build: '+(next.build_sp||next.version)+'.'+(next.pending_restart==='1'?' Wi-Fi pendente de reinicializacao.':'');
+  el('audio_msg').textContent='MAX98357A: LRC GPIO47, BCLK GPIO21, DIN GPIO42. GAIN e SD sem ligar. O teste envia um tom; ouvir confirma o conjunto.';
+  el('cam_msg').textContent=next.camera==='available'?'OV5640 detectada. Teste liberado.':'OV5640 nao respondeu. Conecte e clique Atualizar estado.';
+  el('face_msg').textContent=oledAvailable()?'OLED respondeu. Controles liberados.':'OLED nao respondeu; o restante do JrBot continua disponivel.';
+  const micInfo=el('test_mic')?.nextElementSibling;if(micInfo)micInfo.textContent=next.mic==='available'?'MS3625 detectou atividade I2S. Teste liberado.':'MS3625 sem atividade I2S. Conecte e clique Atualizar estado.';
+  connection(valid?(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - firmware confirmado':'Wi-Fi - firmware confirmado'):'Firmware nao confirmado',valid);
   refreshControls();
 }
-async function api(path,opts={}){
-  const headers={...(opts.headers||{})};if(opts.method==='POST')headers['X-JrBot-Panel']='1';
-  const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),35000);
-  try{const r=await fetch(path,{...opts,headers,signal:controller.signal});const text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));return text;}
-  catch(e){if(e.name==='AbortError')throw new Error('Tempo de resposta esgotado. Execucao nao confirmada; nao reenviada automaticamente.');throw e;}
-  finally{clearTimeout(timer);}
-}
-async function action(work,messageId='device_msg'){
-  if(busy)return;busy=true;refreshControls();
-  try{return await work();}catch(e){el(messageId).textContent='Erro: '+e.message;localLine('ERRO: '+e.message);}
-  finally{busy=false;refreshControls();}
-}
-async function setMode(m){
-  if(busy)return;
-  mode=m==='wifi'?'wifi':'serial';
-  document.querySelector('input[value='+mode+']').checked=true;
-  el('lbl_serial').classList.toggle('active',mode==='serial');el('lbl_wifi').classList.toggle('active',mode==='wifi');
-  el('serialbar').classList.toggle('show',mode==='serial');el('wifibar').classList.toggle('show',mode==='wifi');
-  invalidate('Selecione a conexao e clique em Conectar ou Atualizar estado.');
-  connection('Conexao nao verificada',false);
-  if(mode==='wifi'){await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';localStorage.setItem('jr_esp_ip',val('esp_ip'));}
-}
-async function refreshPorts(){try{
-  const j=JSON.parse(await api('/ports'));const previous=val('port')||localStorage.getItem('jr_serial_port')||'COM4';
-  el('port').textContent='';const empty=document.createElement('option');empty.value='';empty.textContent='Selecione a porta de comandos';el('port').appendChild(empty);
-  for(const p of j.ports){const o=document.createElement('option');o.value=p;o.textContent=p+(p==='COM4'?' - painel (sua montagem)':p==='COM6'?' - gravacao (sua montagem)':'');el('port').appendChild(o);}
-  el('port').value=j.ports.includes(previous)?previous:j.ports.includes('COM4')?'COM4':'';
-}catch(e){localLine('ERRO: '+e.message);}}
-async function connect(){return action(async()=>{
-  const port=val('port');if(!port)throw new Error('Selecione COM4, ou a porta de comandos renumerada pelo Windows.');
-  if(port==='COM6'&&!confirm('Voce informou COM6 para gravacao e COM4 para comandos. Abrir COM6 mesmo assim?'))return;
-  invalidate('Abrindo a porta e consultando o firmware...');
-  const t=await api('/connect',{method:'POST',body:new URLSearchParams({port})});serialConnected=true;activePort=port;localStorage.setItem('jr_serial_port',port);
-  connection('Porta aberta; firmware ainda nao confirmado',false);localLine(t);
-  await new Promise(resolve=>setTimeout(resolve,1200));
-  await send('status');
-});}
+async function api(path,opts={}){const headers={...(opts.headers||{})};if(opts.method==='POST')headers['X-JrBot-Panel']='1';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);try{const r=await fetch(path,{...opts,headers,signal:controller.signal});const text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));return text;}catch(e){if(e.name==='AbortError')throw new Error('Tempo de resposta esgotado.');throw e;}finally{clearTimeout(timer);}}
+async function action(work,messageId='device_msg'){if(busy)return;busy=true;refreshControls();try{return await work();}catch(e){el(messageId).textContent='Erro: '+e.message;localLine('ERRO: '+e.message);}finally{busy=false;refreshControls();}}
+async function setMode(m){if(busy)return;mode=m==='wifi'?'wifi':'serial';document.querySelector('input[value='+mode+']').checked=true;el('lbl_serial').classList.toggle('active',mode==='serial');el('lbl_wifi').classList.toggle('active',mode==='wifi');el('serialbar').classList.toggle('show',mode==='serial');el('wifibar').classList.toggle('show',mode==='wifi');invalidate('Selecione a conexao e clique em Conectar ou Atualizar estado.');connection('Conexao nao verificada',false);if(mode==='wifi'){await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';localStorage.setItem('jr_esp_ip',val('esp_ip'));}}
+async function refreshPorts(){try{const j=JSON.parse(await api('/ports'));const available=['COM4','COM6'].filter(p=>j.ports.includes(p));const previous=val('port')||localStorage.getItem('jr_serial_port')||'COM4';el('port').textContent='';for(const p of available){const o=document.createElement('option');o.value=p;o.textContent=p;el('port').appendChild(o);}el('port').value=available.includes(previous)?previous:available.includes('COM4')?'COM4':(available[0]||'');}catch(e){localLine('ERRO: '+e.message);}}
+async function connect(){return action(async()=>{const port=val('port');if(!['COM4','COM6'].includes(port))throw new Error('Conecte COM4 ou COM6 e clique Atualizar portas.');invalidate('Abrindo a porta e consultando o firmware...');const t=await api('/connect',{method:'POST',body:new URLSearchParams({port})});serialConnected=true;activePort=port;localStorage.setItem('jr_serial_port',port);connection('Porta aberta; consultando firmware',false);localLine(t);await new Promise(resolve=>setTimeout(resolve,1200));await send('status');});}
 async function disconnect(){return action(async()=>{await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';invalidate('Desconectado.');connection('Desconectado',false);});}
-async function send(command){
-  const verb=command.trim().toLowerCase().split(/\s+/)[0];
-  if(['audio_test','som','beep'].includes(verb)&&!currentAudioFirmware())throw new Error('Teste de audio bloqueado: use '+AUDIO_FIRMWARE+' / HW04.');
-  if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes; nada enviado.');
-  let t;
-  try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}
-  catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado. Confira a versao gravada e a conexao.');connection('Firmware sem confirmacao',false);}throw e;}
-  if(t.trim())localLine(t.trim());
-  if(command.trim().toLowerCase()==='status')renderStatus(t);
-  if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));
-  return t;
-}
+async function send(command){const verb=command.trim().toLowerCase().split(/\s+/)[0];if(['audio_test','som','beep','mic_test'].includes(verb)&&!currentFirmware())throw new Error('Teste bloqueado: grave uma versao JRBotV2_ / HW04.');if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes.');let t;try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado.');connection('Firmware sem confirmacao',false);}throw e;}if(t.trim())localLine(t.trim());if(command.trim().toLowerCase()==='status')renderStatus(t);if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));return t;}
 async function refreshStatus(){return action(()=>send('status'));}
-async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Versao confirmada: '+device.version+' | hardware: '+(device.hardware||'?')+' | perfil: '+device.profile;});}
+async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Firmware confirmado: '+device.version+' | '+device.hardware+' | '+device.profile;});}
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
 async function connectWifi(){if(busy)return;await setMode('wifi');return refreshStatus();}
 async function testWifi(){return connectWifi();}
-async function setAudioVolume(){return action(async()=>{
-  const v=val('audio_volume');el('audioVolText').textContent=v+'%';el('audio_msg').textContent='Aguardando confirmacao do volume...';
-  const t=await send('audio_volume '+v);
-  if(fields(t).audio_volume!==v)throw new Error('Volume devolvido difere do solicitado.');
-  el('audio_msg').textContent='Volume confirmado: '+v+'%.'+(t.includes('audio=disabled')?' Saida desabilitada no firmware.':'');
-},'audio_msg');}
-async function testAudio(){return action(async()=>{
-  if(!currentAudioFirmware()||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao habilitado em firmware HW04 confirmado.');
-  el('audio_msg').textContent='Executando teste; aguarde a resposta...';
-  const v=val('audio_volume'), volumeReply=await send('audio_volume '+v);
-  if(fields(volumeReply).audio_volume!==v)throw new Error('Volume nao confirmado; teste nao iniciado.');
-  const reply=await send('audio_test');
-  if(!/^JR_OK audio_test=(tx_completed|completed)( |$)/.test(reply))throw new Error('Conclusao do teste nao confirmada.');
-  el('audio_msg').textContent='Envio do tom concluido. Confirme se ouviu o som: a resposta nao comprova o falante.';
-},'audio_msg');}
-async function testCamera(){return action(async()=>{
-  if(mode!=='serial')throw new Error('Use Serial USB / COM4 neste painel para testar a camera.');
-  if(!device||device.camera!=='on_demand')throw new Error('Camera nao habilitada no firmware.');
-  el('cam_msg').textContent='Capturando um quadro da OV5640. Aguarde...';
-  const t=await send('camera_test'), f=fields(t);
-  if(f.camera_test!=='frame_received'||f.released!=='1')throw new Error('Captura e liberacao nao confirmadas.');
-  el('cam_msg').textContent='Quadro recebido: '+f.width+' x '+f.height+', '+f.bytes+' bytes, sensor '+f.pid+'. Recursos liberados.';
-},'cam_msg');}
-function takePhoto(){el('cam_msg').textContent='Previa de foto indisponivel nesta versao. Use Testar camera para verificar uma captura.';}
-function openCameraPortal(){takePhoto();}
+async function setAudioVolume(){return action(async()=>{const v=val('audio_volume');el('audioVolText').textContent=v+'%';const t=await send('audio_volume '+v);if(fields(t).audio_volume!==v)throw new Error('Volume nao confirmado.');el('audio_msg').textContent='Volume confirmado: '+v+'%.';},'audio_msg');}
+async function testAudio(){return action(async()=>{if(!currentFirmware()||!['ready','on_demand'].includes(device.audio))throw new Error('Audio nao disponivel.');el('audio_msg').textContent='Executando tom...';const v=val('audio_volume'),vr=await send('audio_volume '+v);if(fields(vr).audio_volume!==v)throw new Error('Volume nao confirmado.');const reply=await send('audio_test');if(!/^JR_OK audio_test=tx_completed( |$)/.test(reply))throw new Error('Teste de audio nao confirmado.');el('audio_msg').textContent='Tom enviado. Se ouviu, MAX98357A + falante estao funcionando.';},'audio_msg');}
+async function testMic(){return action(async()=>{if(!currentFirmware()||device?.mic!=='available')throw new Error('Microfone nao detectado. Clique Atualizar estado.');el('mic_state').textContent='Testando MS3625...';const reply=await send('mic_test'),f=fields(reply);if(f.mic_test!=='signal_detected')throw new Error('Sinal do microfone nao confirmado.');el('mic_state').textContent='OK - MS3625 canal '+f.channel+' | amostras '+f.samples+' | pico '+f.peak_raw+' | mudancas '+f.changes;},'device_msg');}
+async function testCamera(){return action(async()=>{if(mode!=='serial')throw new Error('Use Serial USB / COM4 para testar a camera.');if(!device||device.camera!=='available')throw new Error('Camera nao detectada. Clique Atualizar estado.');el('cam_msg').textContent='Capturando um quadro da OV5640...';const t=await send('camera_test'),f=fields(t);if(f.camera_test!=='frame_received'||f.released!=='1')throw new Error('Captura nao confirmada.');el('cam_msg').textContent='OK - quadro '+f.width+' x '+f.height+', '+f.bytes+' bytes, sensor '+f.pid+'.';},'cam_msg');}
+function takePhoto(){el('cam_msg').textContent='Use Testar camera para verificar a captura.';}function openCameraPortal(){takePhoto();}
 function saveWifiLocal(){for(const id of ['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip'])localStorage.setItem('jr_'+id,el(id).value);}
 function loadWifiLocal(){for(const id of ['wifi_ssid','wifi_host','wifi_static','wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2','esp_ip']){const v=localStorage.getItem('jr_'+id);if(v!==null)el(id).value=v;}}
 function encodedField(id,max){const text=el(id).value;if(/[\x00-\x1f\x7f]/.test(text))throw new Error('Caracteres de controle nao permitidos.');if(new TextEncoder().encode(text).length>max)throw new Error(id+' excede '+max+' bytes.');return encodeURIComponent(text);}
-async function configureWifi(){return action(async()=>{
-  if(mode!=='serial')throw new Error('Selecione Serial USB e conecte a COM4 antes de salvar Wi-Fi.');
-  const ssid=encodedField('wifi_ssid',32);if(!ssid)throw new Error('Informe o SSID.');
-  const pairs=[['ssid',ssid],['pass',encodedField('wifi_pass',64)],['host',encodedField('wifi_host',32)],['static',val('wifi_static')],['ip',encodedField('wifi_ip',15)],['gw',encodedField('wifi_gw',15)],['mask',encodedField('wifi_mask',15)],['dns1',encodedField('wifi_dns1',15)],['dns2',encodedField('wifi_dns2',15)]];
-  const reply=await send('wifi_config_pct '+pairs.map(([k,v])=>k+'='+v).join('|'));
-  if(!reply.startsWith('JR_WIFI_SALVO'))throw new Error('Salvamento nao confirmado.');
-  saveWifiLocal();el('wifi_pass').value='';el('device_msg').textContent='Wi-Fi salvo. Reinicie a placa e clique em Atualizar estado para conferir o IP.';
-});}
-async function clearWifi(){if(confirm('Limpar configuracao Wi-Fi? Exige reiniciar.'))return action(async()=>{if(mode!=='serial')throw new Error('Use a conexao Serial no painel.');await send('wifi_clear');el('device_msg').textContent='Configuracao limpa. Reinicie a placa.';});}
-async function poll(){try{
-  const j=JSON.parse(await api('/logs?after='+serverCursor+'&session='+encodeURIComponent(serverSession)));
-  if(serverSession&&serverSession!==j.session){serverCursor=0;invalidate('Servidor reiniciado. Reconecte e atualize o estado.');localLine('Servidor do painel reiniciado.');}
-  serverSession=j.session;if(j.gap)localLine('Aviso: registros antigos expiraram.');appendLog(j.logs);serverCursor=j.next_cursor;
-  if(mode==='serial'&&!busy){
-    serialConnected=j.serial_connected;activePort=j.serial_port||'';
-    if(!serialConnected){if(device)invalidate('Serial desconectada.');connection('Serial desconectado',false);}
-    else if(!device)connection('Porta aberta; firmware nao confirmado',false);
-  }
-}catch(e){if(!busy){invalidate('Servidor do painel indisponivel. Reabra PAINEL.bat.');connection('Servidor indisponivel',false);}}
-finally{setTimeout(poll,600);}}
+async function configureWifi(){return action(async()=>{if(mode!=='serial')throw new Error('Use Serial USB antes de salvar Wi-Fi.');const ssid=encodedField('wifi_ssid',32);if(!ssid)throw new Error('Informe o SSID.');const pairs=[['ssid',ssid],['pass',encodedField('wifi_pass',64)],['host',encodedField('wifi_host',32)],['static',val('wifi_static')],['ip',encodedField('wifi_ip',15)],['gw',encodedField('wifi_gw',15)],['mask',encodedField('wifi_mask',15)],['dns1',encodedField('wifi_dns1',15)],['dns2',encodedField('wifi_dns2',15)]];const reply=await send('wifi_config_pct '+pairs.map(([k,v])=>k+'='+v).join('|'));if(!reply.startsWith('JR_WIFI_SALVO'))throw new Error('Salvamento nao confirmado.');saveWifiLocal();el('wifi_pass').value='';el('device_msg').textContent='Wi-Fi salvo. Reinicie a placa e clique Atualizar estado.';});}
+async function clearWifi(){if(confirm('Limpar configuracao Wi-Fi?'))return action(async()=>{if(mode!=='serial')throw new Error('Use Serial USB.');await send('wifi_clear');el('device_msg').textContent='Configuracao Wi-Fi limpa. Reinicie a placa.';});}
+async function poll(){try{const j=JSON.parse(await api('/logs?after='+serverCursor+'&session='+encodeURIComponent(serverSession)));if(serverSession&&serverSession!==j.session){serverCursor=0;invalidate('Servidor reiniciado. Reconecte.');}serverSession=j.session;if(j.gap)localLine('Aviso: registros antigos expiraram.');appendLog(j.logs);serverCursor=j.next_cursor;if(mode==='serial'&&!busy){serialConnected=j.serial_connected;activePort=j.serial_port||'';if(!serialConnected){if(device)invalidate('Serial desconectada.');connection('Serial desconectado',false);}else if(!device)connection('Porta aberta; firmware nao confirmado',false);}}catch(e){if(!busy){invalidate('Servidor do painel indisponivel.');connection('Servidor indisponivel',false);}}finally{setTimeout(poll,600);}}
 for(const [name,command] of faces){const b=document.createElement('button');b.className='face';b.textContent=name;b.onclick=()=>action(()=>send(command));el('faces').appendChild(b);}
-el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});
-logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});
-window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
-const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot - robo com IA em desenvolvimento | HW04 | COM4 painel / COM6 gravacao';
-loadWifiLocal();
-setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();
+const micButton=el('test_mic');if(micButton){micButton.textContent='Testar microfone';micButton.className='green';micButton.onclick=()=>testMic();if(micButton.nextElementSibling)micButton.nextElementSibling.textContent='MS3625: o painel libera o teste quando detectar atividade I2S.';}
+el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
+const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot V2 | COM4 / COM6';
+loadWifiLocal();setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();

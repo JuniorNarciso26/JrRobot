@@ -1,47 +1,30 @@
 # JrBot - robo com IA
 
-JrBot e um robo com IA em desenvolvimento baseado em ESP32-S3, com painel no computador, camera OV5640, audio I2S e rosto OLED SSD1306 opcional.
+Branch ativa: `v2-revisada`.
 
-Branch ativa: `v2-revisada`. Firmware: **JRBOT-V2-DIAG-03 / JRBOT-HW-04**. Build desta revisao: **2026-09-06 06:44 BRT (America/Sao_Paulo)**.
+**Firmware atual:** `JRBotV2_2026-09-06-07:10`  
+**Hardware:** `JRBOT-HW-04`  
+**Perfil:** `full_hardware_test`
 
-## Hardware
+## Hardware liberado para teste
 
-- ESP32-S3-N16R8 dual USB-C.
-- Camera OV5640.
-- OLED SSD1306 I2C 128x64.
-- Microfone MS3625 I2S.
-- Amplificador MAX98357A I2S.
-- Falante 4 ohms / 3 W.
+- OLED SSD1306 128x64: SDA GPIO1, SCL GPIO2. Se estiver ausente, o robo continua e o driver tenta recuperar.
+- Camera OV5640: verificada ao usar `Atualizar estado`; o teste libera quando a camera responde.
+- Amplificador MAX98357A: BCLK GPIO21, LRC GPIO47, DIN GPIO42. Presenca fisica nao pode ser detectada; o teste de som fica disponivel.
+- Microfone MS3625: SCK GPIO21, WS GPIO47, SD GPIO41. `Atualizar estado` le amostras I2S e libera o teste quando ha atividade digital.
 
-## Audio HW04
-
-| GPIO | Uso |
-|---:|---|
-| 21 | BCLK/SCK compartilhado |
-| 47 | WS/LRC compartilhado |
-| 41 | SD do microfone -> ESP32 |
-| 42 | ESP32 -> DIN do MAX98357A |
-
-MAX98357A, ordem do conector de 7 pinos: **LRC, BCLK, DIN, GAIN, SD, GND, VIN**. Nesta montagem **GAIN e SD ficam sem ligar**.
-
-## Atualizar estado
-
-O firmware trata os modulos de forma independente:
-
-- OLED: falha nao para o robo; o driver tenta novamente e pode reconhecer um OLED conectado depois.
-- Camera: `Atualizar estado` faz uma verificacao da OV5640; o teste fica disponivel somente quando ela responde.
-- MAX98357A: nao possui retorno de presenca; o painel pode liberar o teste quando o I2S esta configurado, mas somente ouvir o som confirma o conjunto fisico.
-- MS3625: pinagem definida; driver RX ainda pendente.
+MAX98357A, ordem dos 7 pinos: `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Nesta montagem `GAIN` e `SD` ficam sem ligar.
 
 ## Instalar
 
 No terminal ESP-IDF 5.5.x:
 
 ```bat
+git switch v2-revisada
 git pull --ff-only origin v2-revisada
 INSTALAR.bat
 ```
 
-COM6 grava. COM4 e usada pelo painel. Nao e necessario monitor Serial separado.
+O instalador usa uma configuracao final nova, compila, grava pela COM6 e abre o painel. No seletor do painel aparecem somente COM4 e COM6.
 
-Documentos: [pinagem](docs/PINAGEM.md), [esquema](docs/ESQUEMA_LIGACAO.md), [materiais](docs/MATERIAIS.md) e [painel](PAINEL_V2.md).
+Documentos: [pinagem](docs/PINAGEM.md), [esquema de ligacao](docs/ESQUEMA_LIGACAO.md) e [painel](PAINEL_V2.md).

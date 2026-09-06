@@ -12,6 +12,7 @@
 #include "jr_board.h"
 #include "jr_commands.h"
 #include "jr_audio.h"
+#include "jr_mic.h"
 #include "jr_wifi.h"
 #include "jr_face.h"
 #include "jr_camera_diag.h"
@@ -65,9 +66,8 @@ static bool parse_wifi_config(const char *args, bool encoded, char *response, si
         if (!eq) goto invalid;
         size_t klen = (size_t)(eq - p), vlen = len - klen - 1;
         size_t i;
-        for (i = 0; i < sizeof(fields)/sizeof(fields[0]); i++) {
+        for (i = 0; i < sizeof(fields)/sizeof(fields[0]); i++)
             if (strlen(fields[i].key) == klen && !memcmp(p, fields[i].key, klen)) break;
-        }
         if (i == sizeof(fields)/sizeof(fields[0]) || (seen & (1U << i))) goto invalid;
         seen |= 1U << i;
         if (encoded) {
@@ -81,9 +81,11 @@ static bool parse_wifi_config(const char *args, bool encoded, char *response, si
         if (!*p) goto invalid;
     }
     if (!(seen & 1) || (strcmp(stat,"0") && strcmp(stat,"1"))) goto invalid;
-    bool ok = jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
-    memset(pass, 0, sizeof(pass));
-    return ok;
+    {
+        bool ok = jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
+        memset(pass, 0, sizeof(pass));
+        return ok;
+    }
 invalid:
     memset(pass, 0, sizeof(pass));
     snprintf(response, cap, "JR_ERROR wifi_campos_invalidos_ou_longos");
@@ -93,33 +95,33 @@ invalid:
 bool jr_format_status(char *response, size_t cap) {
     jr_face_status_t f;
     jr_wifi_status_t w;
+    jr_mic_status_t m = {0};
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
-    bool oled_present = JR_OLED_ENABLED && (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
+    bool oled_present = (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
     unsigned camera_pid = 0;
-    bool camera_present = JR_CAMERA_ENABLED && jr_camera_probe_once(&camera_pid);
-    const char *oled_for_panel = oled_present ? jr_face_state_name(f.state) : "disabled";
-    const char *camera_for_panel = camera_present ? "on_demand" : (JR_CAMERA_ENABLED ? "unavailable" : "disabled");
+    bool camera_present = jr_camera_probe_once(&camera_pid);
+    bool mic_present = jr_mic_probe(&m);
+    const char *camera_state = camera_present ? "available" : "unavailable";
+    const char *mic_state = mic_present ? "available" : "unavailable";
     int n = snprintf(response, cap,
         "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
-        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d "
+        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=on_demand volume=%d "
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
         "camera=%s camera_model=%s camera_pid=0x%04X "
-        "mic=driver_pending mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d "
+        "mic=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
-        "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu "
-        "last_success_ms=%lu last_error=%s",
+        "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
         JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
-        w.configured,w.connected,w.pending_restart,w.ip,
-        jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"on_demand":"disabled"),jr_audio_volume(),
+        w.configured,w.connected,w.pending_restart,w.ip,jr_audio_volume(),
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
-        camera_for_panel,JR_CAMERA_MODEL,camera_pid,
-        JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,
-        oled_for_panel,oled_present?"available":(JR_OLED_ENABLED?"unavailable":"not_scanned"),f.address,JR_OLED_I2C_HZ,
+        camera_state,JR_CAMERA_MODEL,camera_pid,
+        mic_state,JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
+        jr_face_state_name(f.state),oled_present?"available":"unavailable",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
         (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
         (unsigned long)f.consecutive_failures,(unsigned long)f.recoveries,
-        (unsigned long)f.last_success_ms,JR_OLED_ENABLED?esp_err_to_name(f.last_error):"none");
+        (unsigned long)f.last_success_ms,esp_err_to_name(f.last_error));
     return n >= 0 && (size_t)n < cap;
 }
 
@@ -145,7 +147,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         while (*end==' ') end++;
         if (*end) goto invalid;
         jr_audio_set_volume((int)value);
-        snprintf(response,cap,"JR_OK audio_volume=%d audio=%s",jr_audio_volume(),JR_AUDIO_ENABLED?"enabled":"disabled");
+        snprintf(response,cap,"JR_OK audio_volume=%d audio=enabled",jr_audio_volume());
         return true;
     }
     while (*args==' ') args++;
@@ -156,11 +158,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
-    if (!strcmp(verb,"mic_test")) {
-        snprintf(response,cap,"JR_ERROR mic_test=driver_not_implemented model=%s sck=%d ws=%d sd=%d",
-                 JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
-        return false;
-    }
+    if (!strcmp(verb,"mic_test")) return jr_mic_test(response,cap);
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
         snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_test audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }

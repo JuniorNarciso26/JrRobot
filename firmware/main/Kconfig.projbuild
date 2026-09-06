@@ -1,27 +1,3 @@
 menu "JrBot V2 - hardware"
-    config JR_HEADLESS_DIAGNOSTIC
-        bool "Run without OLED (no I2C access to GPIO1/2)"
-        default n
-        help
-            When disabled, the SSD1306 driver stays alive and retries if the OLED
-            is absent, so a display connected later can be detected without reflashing.
-            OLED failure never blocks the panel, Wi-Fi, camera or audio tests.
-
-    config JR_AUDIO_HW04_CONFIRMED
-        bool "Enable MAX98357A test on HW04 fixed pins (21/47/42)"
-        default y
-        help
-            HW04 fixed map: BCLK=GPIO21, WS/LRC=GPIO47 and ESP32 DOUT=GPIO42
-            to MAX98357A DIN. The MS3625 microphone shares GPIO21/47 clocks
-            and reserves GPIO41 for SD. MAX98357A has no presence/ACK line,
-            therefore the firmware can prepare the test but cannot prove the
-            amplifier is physically connected.
-
-    config JR_CAMERA_PINS_CONFIRMED
-        bool "Allow OV5640 runtime detection and one-shot camera test"
-        default y
-        help
-            Camera model confirmed by the owner: OV5640. Atualizar estado can
-            probe the sensor; the test button is released only when the probe
-            succeeds. camera_test captures one QVGA/JPEG frame and cleans up.
+    comment "HW04 final profile: OLED SSD1306 + OV5640 + MAX98357A + MS3625 are enabled"
 endmenu

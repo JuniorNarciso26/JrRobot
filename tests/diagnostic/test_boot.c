@@ -10,14 +10,11 @@
 #include "freertos/task.h"
 void app_main(void);
 static jmp_buf done;
-static int terminal,display,loop,delays,wifi,portal,sequence,term_order,face_order;
+static int terminal,display,loop,wifi,portal,sequence,term_order,face_order;
 static bool network_ready;
 static esp_err_t command_result;
 static char logs[4096];
-void diag_test_log(const char *tag,const char *fmt,...) {
- (void)tag;size_t n=strlen(logs);va_list ap;va_start(ap,fmt);
- vsnprintf(logs+n,sizeof(logs)-n,fmt,ap);va_end(ap);
-}
+void diag_test_log(const char *tag,const char *fmt,...) {(void)tag;size_t n=strlen(logs);va_list ap;va_start(ap,fmt);vsnprintf(logs+n,sizeof(logs)-n,fmt,ap);va_end(ap);}
 void jr_wifi_prepare(void) {}
 esp_err_t jr_commands_init(void) {return command_result;}
 void jr_terminal_start(void) {terminal++;term_order=++sequence;}
@@ -26,17 +23,12 @@ void jr_face_loop(void) {loop++;longjmp(done,1);}
 void jr_wifi_start(void) {wifi++;}
 bool jr_wifi_network_ready(void) {return network_ready;}
 void jr_portal_start(void) {portal++;}
-void vTaskDelay(TickType_t n) {assert(n==1000);if(++delays==3)longjmp(done,1);}
+void vTaskDelay(TickType_t n) {(void)n;longjmp(done,1);}
 int main(int argc,char **argv) {
- assert(argc==2);network_ready=!strcmp(argv[1],"network");
- command_result=!strcmp(argv[1],"mutex_error")?ESP_FAIL:ESP_OK;
- if (!setjmp(done)) {app_main();assert(!"app_main returned instead of keeping diagnostics alive");}
+ assert(argc==2);network_ready=!strcmp(argv[1],"network");command_result=!strcmp(argv[1],"mutex_error")?ESP_FAIL:ESP_OK;
+ if (!setjmp(done)) {app_main();assert(!"app_main returned");}
  assert(terminal==1 && wifi==1 && portal==(network_ready?1:0));
- assert(strstr(logs,"JRBOT-V2-DIAG-01"));
- if (!JR_OLED_ENABLED) {
-   assert(display==0 && loop==0 && delays==3);assert(strstr(logs,"no OLED I2C access"));
- } else {
-   assert(display==1 && loop==1 && term_order<face_order);assert(strstr(logs,"terminal remains available"));
- }
- puts("PASS boot control flow (mock APIs; no hardware)");return 0;
+ assert(display==1 && loop==1 && term_order<face_order);
+ assert(strstr(logs,"JRBotV2_2026-09-06-07:10"));assert(strstr(logs,"terminal remains available"));
+ puts("PASS final boot control flow (mock APIs; no hardware)");return 0;
 }

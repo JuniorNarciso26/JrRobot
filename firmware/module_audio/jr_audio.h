@@ -4,6 +4,7 @@
 #include "esp_err.h"
 
 esp_err_t jr_audio_start(void);
+void jr_audio_stop(void);
 bool jr_audio_ready(void);
 int jr_audio_volume(void);
 void jr_audio_set_volume(int volume);

@@ -7,6 +7,7 @@ idf_component_register(
         "../module_portal/jr_portal.c"
         "../module_camera/jr_camera_diag.c"
         "../module_audio/jr_audio.c"
+        "../module_audio/jr_mic.c"
     INCLUDE_DIRS
         "."
         "../core"

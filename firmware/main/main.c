@@ -9,25 +9,21 @@
 #include "jr_wifi.h"
 
 void app_main(void) {
-    ESP_LOGI("jrbot_main", "BOOT %s hardware=%s profile=%s OLED=%s SDA=1 SCL=2",
-             JR_APP_VERSION, JR_PINMAP_REVISION, JR_PROFILE_NAME, JR_OLED_ENABLED ? "enabled" : "disabled");
-    ESP_LOGI("jrbot_main", "Audio HW04: BCLK=%d WS=%d DOUT=%d enabled=%d",
-             JR_AUDIO_BCLK_GPIO, JR_AUDIO_LRC_GPIO, JR_AUDIO_DIN_GPIO, JR_AUDIO_ENABLED);
-    ESP_LOGI("jrbot_main", "Mic pinout: %s SCK=%d WS=%d SD=%d driver=disabled",
-             JR_MIC_MODEL, JR_MIC_SCK_GPIO, JR_MIC_WS_GPIO, JR_MIC_SD_GPIO);
+    ESP_LOGI("jrbot_main", "BOOT %s build_sp=%s hardware=%s profile=%s",
+             JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
+    ESP_LOGI("jrbot_main", "OLED SSD1306 enabled SDA=%d SCL=%d",JR_OLED_SDA_GPIO,JR_OLED_SCL_GPIO);
+    ESP_LOGI("jrbot_main", "MAX98357A enabled BCLK=%d WS=%d DIN=%d",JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO);
+    ESP_LOGI("jrbot_main", "MS3625 enabled SCK=%d WS=%d SD=%d",JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
+    ESP_LOGI("jrbot_main", "OV5640 enabled on board camera connector");
+
     jr_wifi_prepare();
-    if (jr_commands_init() != ESP_OK)
-        ESP_LOGE("jrbot_main", "Command mutex unavailable");
+    if (jr_commands_init() != ESP_OK) ESP_LOGE("jrbot_main", "Command mutex unavailable");
     jr_terminal_start();
-    if (JR_OLED_ENABLED) {
-        if (jr_face_start() != ESP_OK)
-            ESP_LOGW("jrbot_main", "OLED offline; automatic retry enabled; panel remains available");
-    } else {
-        ESP_LOGW("jrbot_main", "OLED disabled by configuration; no OLED I2C access");
-    }
+    if (jr_face_start() != ESP_OK)
+        ESP_LOGW("jrbot_main", "OLED offline; automatic retry active; terminal remains available");
     jr_wifi_start();
     if (jr_wifi_network_ready()) jr_portal_start();
-    ESP_LOGI("jrbot_main", "JrBot ready: operate through the panel; tests only on demand");
-    if (JR_OLED_ENABLED) jr_face_loop();
+    ESP_LOGI("jrbot_main", "JrBot ready: Atualizar estado detects camera/mic; amplifier test is on demand");
+    jr_face_loop();
     for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
 }
