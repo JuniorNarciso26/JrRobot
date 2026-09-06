@@ -2,16 +2,41 @@
 
 Revisao atual: **JRBOT-V2-DIAG-03 / JRBOT-HW-04**.
 
+## Fluxo padrao
+
 No terminal ESP-IDF 5.5.x:
 
 ```bat
 git switch v2-revisada
 git pull --ff-only origin v2-revisada
-DIAG_V2.bat build
-DIAG_V2.bat flash
-PAINEL.bat
+INSTALAR.bat
 ```
 
-COM6 grava e COM4 e usada pelo painel nesta montagem.
+`INSTALAR.bat` compila, grava pela **COM6** e abre o painel. No painel, use **COM4** para comandos nesta montagem.
 
-O mapa de audio desta revisao e fixo: BCLK=21, WS=47, microfone SD=41 e amplificador DIN=42. O teste do MAX98357A fica desabilitado por padrao ate ser habilitado em `DIAG_V2.bat menuconfig`. O microfone ja tem pinos reservados, mas o driver RX ainda nao foi implementado.
+## Comandos opcionais
+
+```bat
+INSTALAR.bat build
+INSTALAR.bat flash
+INSTALAR.bat panel
+INSTALAR.bat menuconfig
+```
+
+Para usar outra porta de gravacao:
+
+```bat
+set JR_FLASH_PORT=COM7
+INSTALAR.bat flash
+```
+
+## Pinagem HW04
+
+- GPIO21: BCLK/SCK compartilhado entre microfone e amplificador.
+- GPIO47: WS/LRC compartilhado.
+- GPIO41: SD do microfone MS3625 para o ESP32.
+- GPIO42: DOUT do ESP32 para DIN do MAX98357A.
+- OLED: SDA GPIO1 / SCL GPIO2.
+- Camera: OV5640 no conector da placa.
+
+O microfone ja tem a pinagem reservada, mas o driver de captura ainda nao esta implementado.
