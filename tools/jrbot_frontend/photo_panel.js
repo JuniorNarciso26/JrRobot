@@ -1,44 +1,34 @@
-/* Extensao do painel: foto JPEG via Wi-Fi sem alterar o fluxo Serial que ja funciona. */
+/* Camera unificada: um unico botao Testar camera usa a conexao selecionada. */
 let jrPhotoUrl='';
 
 function jrValidIpv4(text){
   return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(text||''));
 }
 
-function jrInstallPhotoButton(){
+function jrNormalizeCameraUi(){
   const box=document.getElementById('camera_box');
   if(!box) return;
-  let button=document.getElementById('take_photo');
-  if(!button){
-    const old=Array.from(box.querySelectorAll('button')).find(b=>/previa/i.test(b.textContent||''));
-    button=document.createElement('button');
-    button.id='take_photo';
-    button.className='yellow';
-    button.setAttribute('data-action','');
-    button.textContent='Ver foto pelo Wi-Fi';
-    button.onclick=()=>takePhoto();
-    if(old) old.replaceWith(button);
-    else box.insertBefore(button,box.querySelector('.msg'));
+  for(const button of Array.from(box.querySelectorAll('button'))){
+    if(button.id==='test_camera') continue;
+    const text=(button.textContent||'').trim();
+    if(/previa|ver foto|testar camera pelo wi-fi/i.test(text)) button.remove();
   }
+  const testButton=document.getElementById('test_camera');
+  if(testButton) testButton.textContent='Testar camera';
 }
 
 const jrBaseRefreshControls=refreshControls;
 refreshControls=function(){
   jrBaseRefreshControls();
-  jrInstallPhotoButton();
-  const ip=val('esp_ip');
-  const valid=currentFirmware();
-  const cameraReady=valid&&device?.camera==='available';
-  const wifiPhotoReady=cameraReady&&device?.wifi==='1'&&jrValidIpv4(ip);
+  jrNormalizeCameraUi();
 
   const testButton=document.getElementById('test_camera');
-  if(testButton){
-    testButton.disabled=busy||(mode==='wifi'?!wifiPhotoReady:!cameraReady);
-    testButton.textContent=mode==='wifi'?'Testar camera pelo Wi-Fi':'Testar camera';
-  }
+  if(!testButton) return;
 
-  const photoButton=document.getElementById('take_photo');
-  if(photoButton) photoButton.disabled=busy||!wifiPhotoReady;
+  const cameraReady=currentFirmware()&&device?.camera==='available';
+  const wifiReady=cameraReady&&device?.wifi==='1'&&jrValidIpv4(val('esp_ip'));
+  testButton.disabled=busy||(mode==='wifi'?!wifiReady:!cameraReady);
+  testButton.textContent='Testar camera';
 };
 
 const jrBaseRenderStatus=renderStatus;
@@ -50,8 +40,8 @@ renderStatus=function(text){
   }
   if(device?.camera==='available'){
     el('cam_msg').textContent=device?.wifi==='1'
-      ? 'OV5640 detectada. Pela Serial o teste valida o quadro; no modo Wi-Fi o mesmo botao Testar camera traz e mostra o JPEG.'
-      : 'OV5640 detectada. Para ver a foto, conecte o Wi-Fi da placa e consulte o IP.';
+      ? 'OV5640 detectada. O mesmo botao Testar camera funciona pela Serial ou pelo Wi-Fi, conforme a conexao selecionada.'
+      : 'OV5640 detectada. Teste pela Serial; quando o Wi-Fi estiver conectado, o mesmo botao tambem testa e mostra a foto pelo Wi-Fi.';
   }
   refreshControls();
   return result;
@@ -65,14 +55,14 @@ async function takePhoto(){
     const ip=val('esp_ip');
     if(!jrValidIpv4(ip)) throw new Error('Consulte o Wi-Fi da placa para obter o IP atual.');
 
-    el('cam_msg').textContent='Buscando uma foto da OV5640 em '+ip+'...';
+    el('cam_msg').textContent='Testando a OV5640 pelo Wi-Fi em '+ip+'...';
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),20000);
     let response;
     try{
       response=await fetch('/camera/capture?ip='+encodeURIComponent(ip)+'&t='+Date.now(),{cache:'no-store',signal:controller.signal});
     }catch(e){
-      if(e.name==='AbortError') throw new Error('Tempo esgotado ao buscar a foto pelo Wi-Fi.');
+      if(e.name==='AbortError') throw new Error('Tempo esgotado ao testar a camera pelo Wi-Fi.');
       throw e;
     }finally{
       clearTimeout(timer);
@@ -93,7 +83,7 @@ async function takePhoto(){
       img.src=jrPhotoUrl;
     });
     img.style.display='block';
-    el('cam_msg').textContent='Foto recebida: '+img.naturalWidth+' x '+img.naturalHeight+', '+blob.size+' bytes, IP '+ip+'.';
+    el('cam_msg').textContent='Camera OK pelo Wi-Fi: '+img.naturalWidth+' x '+img.naturalHeight+', '+blob.size+' bytes, IP '+ip+'.';
     localLine('JR_CAMERA_FOTO ip='+ip+' width='+img.naturalWidth+' height='+img.naturalHeight+' bytes='+blob.size+' exibida=1');
   },'cam_msg');
 }
@@ -110,5 +100,5 @@ function openCameraPortal(){
   window.open('http://'+ip+'/','_blank','noopener');
 }
 
-jrInstallPhotoButton();
+jrNormalizeCameraUi();
 refreshControls();
