@@ -2,11 +2,11 @@
 setlocal
 cd /d "%~dp0"
 echo ========================================
-echo JrBot - Painel V2 estavel / COM4
+echo JrBot - Painel V2 / porta selecionavel
 echo ========================================
-echo Feche a janela do painel antigo e qualquer monitor usando COM4.
+echo Feche qualquer programa que esteja usando a porta da placa.
 echo O navegador abre apos o servidor iniciar. Mantenha esta janela aberta.
-echo COM6 continua reservada para gravacao.
+echo O painel mostra as portas COM detectadas, incluindo COM7 e futuras placas.
 where python >nul 2>nul
 if errorlevel 1 goto sem_python
 python -c "import serial" >nul 2>nul
