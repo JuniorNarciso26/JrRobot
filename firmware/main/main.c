@@ -5,6 +5,7 @@
 #include "jr_config.h"
 #include "jr_board.h"
 #include "jr_commands.h"
+#include "jr_usb_terminal.h"
 #include "jr_face.h"
 #include "jr_portal.h"
 #include "jr_wifi.h"
@@ -26,6 +27,7 @@ void app_main(void) {
     jr_wifi_prepare();
     if (jr_commands_init() != ESP_OK) ESP_LOGE("jrbot_main", "Command mutex unavailable");
     jr_terminal_start();
+    jr_usb_terminal_start();
 
     uint32_t last_oled_probe = now_ms();
     if (jr_face_start() != ESP_OK)
