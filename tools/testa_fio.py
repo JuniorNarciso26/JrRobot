@@ -110,10 +110,22 @@ def command(ser: serial.Serial, text: str, timeout: float = 2.0) -> str:
     raise RuntimeError("sem resposta do firmware")
 
 
+def ensure_off(ser: serial.Serial, announce: bool = True) -> None:
+    reply = command(ser, "off")
+    if not reply.startswith("WIRE_OK off=1"):
+        raise RuntimeError("firmware nao confirmou OFF: " + reply)
+    status = command(ser, "status")
+    if "active_pin=-1" not in status:
+        raise RuntimeError("pino ainda ativo apos OFF: " + status)
+    if announce:
+        print("Pino DESLIGADO confirmado pelo firmware: active_pin=-1 (alta impedancia).")
+
+
 def show_menu(port: str) -> None:
     print("\n========================================")
     print("TESTA_FIO - JrBot ESP32-S3")
     print(f"Porta de comandos: {port}")
+    print("Todos os pinos de teste: DESLIGADOS / alta impedancia")
     print("========================================")
     for index, (pin, label) in enumerate(PINS, start=1):
         print(f"  [{index}] GPIO{pin:<2} - {label}")
@@ -127,20 +139,16 @@ def main() -> int:
 
     ser, port = connect(args.port or None)
     try:
-        try:
-            print(command(ser, "off"))
-        except Exception:
-            pass
+        ensure_off(ser, announce=True)
 
         while True:
+            # Antes de cada menu, confirma novamente que nenhum pino continua ativado.
+            ensure_off(ser, announce=False)
             show_menu(port)
             choice = input("\nEscolha o pino: ").strip().lower()
             if choice in {"0", "q", "sair", "exit"}:
-                try:
-                    print(command(ser, "off"))
-                except Exception:
-                    pass
-                print("Teste encerrado. Todos os pinos de teste ficaram em alta impedancia.")
+                ensure_off(ser, announce=True)
+                print("Teste encerrado. Nenhum pino de teste esta sendo acionado pelo ESP32.")
                 return 0
             if not choice.isdigit() or not (1 <= int(choice) <= len(PINS)):
                 print("Opcao invalida.")
@@ -158,16 +166,22 @@ def main() -> int:
 
             print("\n----------------------------------------")
             print(f"GPIO{pin} - {label}")
-            print("Saida de teste ativa: aproximadamente 3.3 V para medicao com multimetro.")
+            print("Teste ativo: aproximadamente 3.3 V por pull-up interno para medir com multimetro.")
             print("Meça entre o fio/pino e GND.")
-            print("Este sinal usa pull-up seguro e NAO serve para alimentar dispositivos.")
+            print("Pressione ENTER para DESLIGAR o pino e confirmar o desligamento.")
             input("Quando terminar a medicao, pressione ENTER...")
             try:
-                command(ser, "off")
+                ensure_off(ser, announce=True)
             except Exception as exc:
-                print(f"AVISO: nao consegui desligar pelo comando: {exc}")
+                print(f"ERRO: nao foi possivel confirmar o desligamento: {exc}")
                 return 2
     finally:
+        # Mesmo em Ctrl+C/erro, tenta desligar antes de fechar a serial.
+        try:
+            if ser.is_open:
+                ensure_off(ser, announce=False)
+        except Exception:
+            pass
         try:
             ser.close()
         except Exception:
