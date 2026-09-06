@@ -1,6 +1,6 @@
 #pragma once
 
-#define JR_APP_VERSION "JrBotV2-RC-revisado-20260905"
+#define JR_APP_VERSION "JRBOT-V2-DIAG-01"
 
 #if __has_include("wifi_config.local.h")
 #include "wifi_config.local.h"

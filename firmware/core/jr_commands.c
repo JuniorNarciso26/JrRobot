@@ -14,6 +14,7 @@
 #include "jr_audio.h"
 #include "jr_wifi.h"
 #include "jr_face.h"
+#include "jr_camera_diag.h"
 
 static SemaphoreHandle_t command_lock;
 static bool terminal_started;
@@ -97,17 +98,18 @@ bool jr_format_status(char *response, size_t cap) {
     jr_wifi_get_status(&w);
     int n = snprintf(response, cap,
         "JR_STATUS protocol=2 version=%s profile=%s expression=%s demo=%d "
-        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d camera=disabled "
+        "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=%s volume=%d camera=%s mic=not_configured "
         "oled=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu "
         "last_success_ms=%lu last_error=%s",
         JR_APP_VERSION,JR_PROFILE_NAME,f.expression,f.demo,w.configured,w.connected,w.pending_restart,w.ip,
-        jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"offline":"disabled"),jr_audio_volume(),
-        jr_face_state_name(f.state),f.address,JR_OLED_I2C_HZ,
+        jr_audio_ready()?"ready":(JR_AUDIO_ENABLED?"on_demand":"disabled"),jr_audio_volume(),
+        JR_CAMERA_ENABLED?"on_demand":"disabled",
+        JR_OLED_ENABLED?jr_face_state_name(f.state):"disabled",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
         (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
         (unsigned long)f.consecutive_failures,(unsigned long)f.recoveries,
-        (unsigned long)f.last_success_ms,esp_err_to_name(f.last_error));
+        (unsigned long)f.last_success_ms,JR_OLED_ENABLED?esp_err_to_name(f.last_error):"none");
     return n >= 0 && (size_t)n < cap;
 }
 
@@ -140,8 +142,17 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     while (*args==' ') args++;
     if (*args) goto invalid;
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
+    if (!strcmp(verb,"version")) {
+        snprintf(response,cap,"JR_OK version=%s profile=%s",JR_APP_VERSION,JR_PROFILE_NAME);
+        return true;
+    }
+    if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
+    if (!strcmp(verb,"mic_test")) {
+        snprintf(response,cap,"JR_ERROR mic_test=not_configured model_interface_and_wiring_required");
+        return false;
+    }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 status demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_test audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_test audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
@@ -150,7 +161,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     }
     if (!strcmp(verb,"audio_test") || !strcmp(verb,"som") || !strcmp(verb,"beep")) {
         esp_err_t err=jr_audio_test_tone(880,700);
-        snprintf(response,cap,err==ESP_OK?"JR_OK audio_test=completed":"JR_ERROR audio_test=%s",esp_err_to_name(err));
+        snprintf(response,cap,err==ESP_OK?"JR_OK audio_test=tx_completed audible_check=pending":"JR_ERROR audio_test=%s",esp_err_to_name(err));
         return err==ESP_OK;
     }
     if (jr_face_set_expression(verb)) {

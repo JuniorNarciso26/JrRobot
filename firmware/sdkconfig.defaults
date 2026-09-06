@@ -22,8 +22,12 @@ CONFIG_CAMERA_AF_DEFAULT_TIMEOUT_MS=3000
 CONFIG_CAMERA_JPEG_MODE_FRAME_SIZE_CUSTOM=y
 CONFIG_CAMERA_JPEG_MODE_FRAME_SIZE=262144
 
-# Explicit bus separation; camera remains disabled by the application.
+# Explicit bus separation; camera tests are on-demand and opt-in.
 CONFIG_SCCB_HARDWARE_I2C_DRIVER_NEW=y
 CONFIG_SCCB_HARDWARE_I2C_PORT1=y
 # CONFIG_JR_AUDIO_PINS_CONFIRMED is not set
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# Diagnostic starts without OLED; other peripherals need physical confirmation.
+CONFIG_JR_HEADLESS_DIAGNOSTIC=y
+# CONFIG_JR_CAMERA_PINS_CONFIRMED is not set

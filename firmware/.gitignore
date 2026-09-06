@@ -1,0 +1,4 @@
+# Local output for the isolated diagnostic build. Keep sdkconfig.defaults tracked.
+/build-diag/
+/sdkconfig.diag
+/sdkconfig.diag.old

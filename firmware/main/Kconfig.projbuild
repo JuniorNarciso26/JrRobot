@@ -1,9 +1,26 @@
 menu "JrBot V2 - hardware"
+    config JR_HEADLESS_DIAGNOSTIC
+        bool "Run without OLED (no I2C access to GPIO1/2)"
+        default y
+        help
+            Leaves the OLED disconnected from the software while keeping the
+            command terminal and Wi-Fi available. No peripheral starts a test
+            automatically. Power off before disconnecting a suspect OLED.
+
     config JR_AUDIO_PINS_CONFIRMED
-        bool "Enable MAX98357A after verifying GPIO39/40/41 on the physical board"
+        bool "Allow MAX98357A test after verifying GPIO39/40/41"
         default n
         help
-            Default face_only does not drive the proposed audio pins.
-            Enable only after confirming the wiring and external JTAG conflicts.
-            Camera and servo remain disabled in this candidate.
+            Verify BCLK=39, WS/LRC=40, ESP32 DOUT to amplifier DIN=41.
+            These GPIOs must be exposed and free, including external JTAG.
+            This enables audio_test; it does not start audio at boot.
+
+    config JR_CAMERA_PINS_CONFIRMED
+        bool "Allow one-shot camera test after verifying the existing camera pinout"
+        default n
+        help
+            Only for the camera wiring documented in jr_board.h and
+            DIAGNOSTICO_SEM_OLED.md. No autofocus or servo movement.
+            camera_test initializes the sensor, obtains one QVGA JPEG frame
+            and deinitializes the camera. A valid frame is not an optical test.
 endmenu

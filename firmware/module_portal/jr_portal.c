@@ -12,7 +12,7 @@ static httpd_handle_t web_server;
 static const char WEB_HTML[]=
 "<!doctype html><html lang='pt-br'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
 "<title>JrBot V2</title><style>body{max-width:860px;margin:24px auto;padding:16px;font:16px Arial;background:#101520;color:#eee}button,input{margin:5px;padding:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere}section{padding:16px;border:1px solid #485064;margin:16px 0}</style>"
-"<h1>JrBot V2</h1><p>OLED: SDA GPIO1 / SCL GPIO2. Camera e servo desabilitados.</p>"
+"<h1>JrBot V2</h1><p>OLED: SDA GPIO1 / SCL GPIO2. Camera: teste Serial sob demanda; servo desabilitado.</p>"
 "<p>Somente rede local confiavel: este portal nao possui autenticacao/TLS. Nao exponha a Internet. Configure Wi-Fi pela Serial.</p>"
 "<section><pre id='state'></pre><button onclick='refresh()'>Atualizar estado</button></section>"
 "<section><div id='faces'></div></section><section><label>Volume <input id='vol' type='number' min='0' max='100' value='35'></label>"
@@ -23,7 +23,7 @@ static const char WEB_HTML[]=
 "function log(s){const el=document.getElementById('log');el.textContent=(s+'\\n'+el.textContent).slice(0,18000)}"
 "async function send(c){const r=await fetch('/cmd',{method:'POST',headers:{'Content-Type':'text/plain','X-JrBot-Command':'1'},body:c});const t=await r.text();if(!r.ok)throw new Error(t);return t}"
 "async function run(c){try{log(await send(c));await refresh()}catch(e){log('ERRO: '+e.message)}}"
-"async function refresh(){try{const r=await fetch('/status');const t=await r.text();if(!r.ok)throw new Error(t);document.getElementById('state').textContent=t;document.getElementById('audio').disabled=!t.includes('audio=ready')}catch(e){document.getElementById('state').textContent='Indisponivel: '+e.message}}refresh();setInterval(refresh,4000)</script></html>";
+"async function refresh(){try{const r=await fetch('/status');const t=await r.text();if(!r.ok)throw new Error(t);document.getElementById('state').textContent=t;document.getElementById('audio').disabled=!(t.includes('audio=ready')||t.includes('audio=on_demand'))}catch(e){document.getElementById('state').textContent='Indisponivel: '+e.message}}refresh();setInterval(refresh,4000)</script></html>";
 
 static esp_err_t reply(httpd_req_t *req,const char *status,const char *text) {
     httpd_resp_set_status(req,status);
@@ -43,6 +43,12 @@ static esp_err_t web_status_handler(httpd_req_t *req) {
 }
 static bool network_command_allowed(const char *cmd) {
     while (*cmd==' ') cmd++;
+    char verb[32]; size_t n=0;
+    while (cmd[n] && cmd[n]!=' ' && n<sizeof(verb)-1) {
+        verb[n]=(cmd[n]>='A'&&cmd[n]<='Z')?cmd[n]+32:cmd[n]; n++;
+    }
+    verb[n]=0;
+    if (!strcmp(verb,"camera_test")) return false;
     /* Provisioning/clearing credentials is deliberately Serial-only. */
     if (strlen(cmd)>=5) {
         char prefix[6];
@@ -67,7 +73,7 @@ static esp_err_t web_cmd_handler(httpd_req_t *req) {
     }
     if (memchr(cmd,0,read)) return reply(req,"400 Bad Request","JR_ERROR NUL_no_comando");
     cmd[read]='\0';
-    if (!network_command_allowed(cmd)) return reply(req,"403 Forbidden","JR_ERROR configuracao_wifi_somente_serial");
+    if (!network_command_allowed(cmd)) return reply(req,"403 Forbidden","JR_ERROR comando_somente_serial");
     char response[JR_RESPONSE_MAX_BYTES];
     bool ok=jr_handle_command(cmd,response,sizeof(response));
     return reply(req,ok?"200 OK":"400 Bad Request",response);
