@@ -24,7 +24,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Comandos e diagnostico no painel. COM4 para operar; COM6 para gravar.</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Comandos e diagnostico no painel. As portas COM sao detectadas automaticamente.</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -40,18 +40,19 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button data-action onclick="refreshPorts()" class="gray">Atualizar portas</button>
       <button data-action onclick="connect()" class="green">Conectar Serial</button>
       <button data-action onclick="disconnect()" class="red">Desconectar</button>
-      <div class="mini">Nesta montagem: COM4 = painel e comandos; COM6 = gravacao. Nao abra outro monitor na COM4.</div>
+      <div class="mini">Escolha a porta que responde ao firmware JrBot. Nao abra outro monitor na mesma COM.</div>
     </div>
     <div class="modepanel" id="wifibar">
       <span>IP do ESP32:</span><input data-action id="esp_ip" class="ip" value="192.168.0.83" placeholder="192.168.0.83">
       <button data-action onclick="connectWifi()" class="green">Conectar Wi-Fi</button>
       <button data-action onclick="testWifi()" class="yellow">Testar/status</button>
-      <div class="mini">Modo Wi-Fi: a tela não muda; os mesmos botões passam a ler/enviar pelo IP do ESP32.</div>
+      <div class="mini">Use "Consultar Wi-Fi da placa" pela Serial para preencher automaticamente o IP atual antes de mudar para Wi-Fi.</div>
     </div>
     <h2>Diagnostico do robo</h2>
     <div class="diagnostic">
       <div class="diag-actions">
         <button data-action onclick="refreshStatus()">Atualizar estado</button>
+        <button data-action class="yellow" onclick="wifiBoardData()">Consultar Wi-Fi da placa</button>
         <button data-action class="gray" onclick="checkVersion()">Verificar firmware</button>
       </div>
       <dl class="diag-grid">
@@ -89,9 +90,8 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     <h2>Camera</h2>
     <div class="camera" id="camera_box">
       <button id="test_camera" disabled data-action onclick="testCamera()" class="green">Testar camera</button>
-      <button disabled title="A captura Serial retorna metadados, nao a imagem" class="gray">Previa da foto indisponivel</button>
-      
-      <div class="msg" id="cam_msg">Captura de um quadro pela COM4, sem autofocus. O resultado aparece aqui; nao abre monitor externo.</div>
+      <button disabled title="A captura Serial retorna metadados e libera o quadro apos validar o JPEG" class="gray">Previa ainda nao implementada</button>
+      <div class="msg" id="cam_msg">O teste atual captura e valida um JPEG pela camera, informa tamanho e bytes no log e depois libera o quadro. Por isso a foto ainda nao aparece no painel.</div>
       <img id="cam_photo" alt="Foto capturada pela câmera do JrBot" style="display:none">
     </div>
     <h2>Microfone</h2>
@@ -113,10 +113,29 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <div class="full">
         <button data-action onclick="configureWifi()" class="green">Configurar Wi-Fi no ESP32</button>
         <button data-action onclick="clearWifi()" class="red">Limpar Wi-Fi salvo</button><br>
-        <small>Este bloco envia pela Serial. Apos a confirmacao de salvamento, reinicie a placa e confira o IP no log.</small>
+        <small>Este bloco envia pela Serial. Depois de reiniciar, use "Consultar Wi-Fi da placa" para conferir conexao e IP atual.</small>
       </div>
     </div>
   </section>
 </main>
 <script src="/panel.js"></script>
+<script>
+async function wifiBoardData(){
+  return action(async()=>{
+    if(mode!=='serial') throw new Error('Use a conexao Serial para consultar os dados gravados/atuais da placa.');
+    const text=await send('status');
+    const w=fields(text);
+    const configured=w.wifi_config||'?';
+    const connected=w.wifi||'?';
+    const pending=w.pending_restart||'?';
+    const ip=w.ip||'sem_wifi';
+    if(connected==='1' && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)){
+      el('esp_ip').value=ip;
+      localStorage.setItem('jr_esp_ip',ip);
+    }
+    localLine('JR_WIFI_DADOS configured='+configured+' connected='+connected+' pending_restart='+pending+' ip='+ip);
+    el('device_msg').textContent='Wi-Fi da placa: configurado='+configured+', conectado='+connected+', IP='+ip+'. O IP foi copiado para o campo Wi-Fi quando disponivel.';
+  });
+}
+</script>
 </body></html>
