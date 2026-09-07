@@ -11,6 +11,7 @@ idf_component_register(
         "../module_audio/jr_mic.c"
         "../module_brain/jr_brain.c"
         "../module_brain/jr_voice.c"
+        "../module_brain/jr_reply_audio.c"
     INCLUDE_DIRS
         "."
         "../core"
