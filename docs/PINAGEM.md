@@ -53,6 +53,26 @@ Firmware: `JRBotV2_2026-09-06-07:10`.
 - COM4: comandos/painel.
 - COM6: gravacao.
 
+## Memoria do ESP32-S3 N16R8
+
+Na variante ESP32-S3-WROOM-1-N16R8, a memoria e:
+
+- 16 MB de Flash Quad SPI.
+- 8 MB de PSRAM Octal SPI.
+
+Pinos ligados/reservados para memoria no ESP32-S3:
+
+- GPIO26 a GPIO32: barramento SPI0/1 usado normalmente por Flash/PSRAM e nao deve ser reutilizado.
+- GPIO33 a GPIO37: linhas adicionais usadas quando existe memoria Octal.
+- No modulo N16R8, GPIO35, GPIO36 e GPIO37 ficam ligados internamente a PSRAM Octal e nao estao disponiveis para uso externo.
+
+GPIO39 e GPIO40 **nao sao pinos de Flash/PSRAM** na documentacao oficial:
+
+- GPIO39 = MTCK / JTAG, alem de GPIO normal e funcoes alternativas.
+- GPIO40 = MTDO / JTAG, alem de GPIO normal e funcoes alternativas.
+
+Mesmo nao sendo memoria, no JrBot vamos **evitar GPIO39 e GPIO40 para motores**, porque ja apresentaram comportamento estranho nos testes e pertencem ao grupo de debug/JTAG.
+
 ## Etapa futura - movimento do robo
 
 A reserva dos GPIOs foi revisada contra a pinagem atual do JrBot e as restricoes oficiais do ESP32-S3.
@@ -61,21 +81,15 @@ A reserva dos GPIOs foi revisada contra a pinagem atual do JrBot e as restricoes
 |---:|---|---|
 | 14 | **LIVRE / recomendado** | Movimento da cabeca |
 | 38 | **LIVRE / recomendado** | Tracao / roda esquerda |
-| 39 | **NAO reservar como pino principal** | Candidato apenas se necessario |
-| 48 | **Candidato preferencial ao terceiro sinal** | Tracao / roda direita, se estiver fisicamente livre na placa |
-
-### Motivo da revisao
-
-- GPIO14 nao e usado por camera, OLED, audio, microfone, USB, UART0 ou memoria do JrBot. No ESP32-S3 ele e GPIO de prioridade P2, sem restricao especial para uso normal.
-- GPIO38 tambem nao e usado pelo hardware atual. Ele fica fora dos GPIO26-37 reservados para flash/PSRAM e e GPIO P2 no ESP32-S3.
-- GPIO39 nao e usado atualmente pelo JrBot, mas pertence ao grupo JTAG MTCK do ESP32-S3. A Espressif classifica GPIO39-42 como pinos que exigem cautela. Como o JrBot ja usa GPIO41/42 para audio, nao devemos criar outra dependencia futura nesse grupo sem necessidade.
-- GPIO48 e P2 no ESP32-S3 e nao aparece na pinagem funcional atual do JrBot. Porem, antes de reserva-lo definitivamente, deve ser confirmado se a placa fisica nao usa GPIO48 para LED RGB ou outro circuito onboard.
+| 39 | **EVITAR** | JTAG MTCK; nao usar como pino principal |
+| 40 | **EVITAR** | JTAG MTDO; nao usar como pino principal |
+| 48 | **Candidato ao terceiro sinal** | Tracao / roda direita, se estiver fisicamente livre na placa |
 
 ### Reserva atual
 
 - **Reservados desde ja:** GPIO14 e GPIO38.
-- **Terceiro sinal de movimento:** preferir GPIO48 somente depois de confirmar a placa fisica.
-- **GPIO39:** manter livre e evitar como escolha principal por causa do JTAG.
+- **Terceiro sinal de movimento:** preferir GPIO48 somente depois de confirmar que a placa fisica nao usa GPIO48 para LED RGB ou outro circuito onboard.
+- **GPIO39 e GPIO40:** manter livres e evitar para motores por causa do JTAG e do comportamento observado nos testes.
 - Se GPIO48 estiver ocupado ou nao estiver acessivel no conector da placa, estudar driver/expansor externo antes de sacrificar USB, UART, camera, OLED, audio ou microfone.
 - Os GPIOs de movimento serao apenas sinais de controle; motores/servos nao devem ser alimentados pelo 3V3 da ESP32.
 
