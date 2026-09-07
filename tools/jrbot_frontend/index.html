@@ -14,7 +14,7 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
 .modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}.modepanel{display:none;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.modepanel.show{display:flex}.modepanel .ip{width:180px}.mini{color:var(--muted);font-size:12px;width:100%;margin-top:2px}
 #log{height:460px;max-height:55vh;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow-y:scroll;overflow-x:auto;white-space:pre-wrap;scroll-behavior:smooth}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
-.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera,.audio{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg,.audio .msg{color:var(--muted);font-size:13px;width:100%}.audio input[type=range]{min-width:220px}
+.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera,.audio,.autonomous{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg,.audio .msg,.autonomous .msg{color:var(--muted);font-size:13px;width:100%}.audio input[type=range]{min-width:220px}.autonomous .state{font-family:Consolas,Menlo,monospace;color:#b9ffd7}
 @media(max-width:850px){main{grid-template-columns:1fr}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:320px}.modebar .ip{width:100%}}
 button:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .diagnostic{padding:14px}.diag-actions{display:flex;gap:8px;flex-wrap:wrap}.diag-grid{display:grid;grid-template-columns:140px minmax(0,1fr);gap:9px;font-size:14px}.diag-grid dt{color:var(--muted)}.diag-grid dd{margin:0;overflow-wrap:anywhere}#device_msg{font-size:13px;line-height:1.5;overflow-wrap:anywhere}.left,.right{min-width:0}.custom input{min-width:0}.audio input[type=range]{min-width:120px;max-width:100%}.msg{overflow-wrap:anywhere}.diag-actions button{flex:1}#log{overflow-wrap:anywhere}.camera button{max-width:100%}
@@ -64,6 +64,14 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
         <dt>Microfone</dt><dd id="mic_state">Nao configurado</dd>
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
+    </div>
+    <h2>Modo autonomo experimental</h2>
+    <div class="autonomous">
+      <button id="autonomous_toggle" data-action onclick="toggleAutonomous()" class="purple">Ativar autonomo</button>
+      <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular chamado "JrBot"</button>
+      <button data-action onclick="brainStatus()" class="gray">Estado do cerebro</button>
+      <span id="brain_state" class="state">off</span>
+      <div class="msg" id="brain_msg">Modo de bancada. O fluxo de reacao esta implementado; o WakeNet personalizado para reconhecer a palavra falada "JrBot" ainda sera integrado.</div>
     </div>
     <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
     <pre id="log" aria-label="Respostas do robo"></pre>
@@ -120,6 +128,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
 </main>
 <script src="/panel.js"></script>
 <script>
+let autonomousEnabled=false;
 async function wifiBoardData(){
   return action(async()=>{
     if(mode!=='serial') throw new Error('Use a conexao Serial para consultar os dados gravados/atuais da placa.');
@@ -136,6 +145,33 @@ async function wifiBoardData(){
     localLine('JR_WIFI_DADOS configured='+configured+' connected='+connected+' pending_restart='+pending+' ip='+ip);
     el('device_msg').textContent='Wi-Fi da placa: configurado='+configured+', conectado='+connected+', IP='+ip+'. O IP foi copiado para o campo Wi-Fi quando disponivel.';
   });
+}
+function renderBrain(text){
+  const f=fields(text);
+  autonomousEnabled=f.autonomous==='1';
+  el('brain_state').textContent=(f.brain|| (autonomousEnabled?'listening':'off'))+' | autonomous='+(autonomousEnabled?'1':'0');
+  el('autonomous_toggle').textContent=autonomousEnabled?'Desativar autonomo':'Ativar autonomo';
+  el('autonomous_toggle').className=autonomousEnabled?'red':'purple';
+  el('autonomous_test').disabled=!autonomousEnabled;
+  el('brain_msg').textContent=autonomousEnabled?'JrBot em espera. Nesta etapa o botao de simulacao valida a reacao; o reconhecimento falado real depende do WakeNet personalizado.':'Modo autonomo desligado.';
+}
+async function toggleAutonomous(){
+  return action(async()=>{
+    if(mode!=='serial') throw new Error('O teste autonomo experimental esta liberado somente pela Serial USB.');
+    const reply=await send(autonomousEnabled?'autonomo_off':'autonomo_on');
+    renderBrain(reply);
+  },'brain_msg');
+}
+async function brainStatus(){
+  return action(async()=>{const reply=await send('brain_status');renderBrain(reply);},'brain_msg');
+}
+async function testAutonomousWake(){
+  return action(async()=>{
+    if(!autonomousEnabled) throw new Error('Ative o modo autonomo primeiro.');
+    const reply=await send('brain_test');
+    el('brain_msg').textContent='Chamado de bancada executado: o firmware deve registrar wakeword_detected e mudar a face para feliz.';
+    return reply;
+  },'brain_msg');
 }
 </script>
 </body></html>
