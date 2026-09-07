@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-localbrain-voice"
-set "SDKCONFIG_FILE=sdkconfig.localbrain-voice"
+set "BUILD_DIR=build-jrbot-response"
+set "SDKCONFIG_FILE=sdkconfig.jrbot-response"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -80,7 +80,7 @@ if /i "%ACTION%"=="build" (
   goto success
 )
 echo.
-echo Gravando JrBot + modelo WakeNet em %JR_FLASH_PORT%...
+echo Gravando JrBot + modelos WakeNet/MultiNet em %JR_FLASH_PORT%...
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
   popd
@@ -106,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - JrBot Voice atualizado.
-echo Firmware: JRBotV2_VOICE_01
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| WakeNet: Hi ESP
+echo OK - JrBot Response atualizado.
+echo Firmware: JRBotV2_JRBOT_RESPONSE_01
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Nome: JrBot ^| Fallback: Hi ESP
 exit /b 0
 
 :failure
@@ -118,16 +118,18 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Voice - instalador com ESP-SR / WakeNet
+echo JrBot Response - ESP-SR MultiNet + WakeNet fallback
 echo.
-echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelo e abre o painel
-echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelo
+echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
+echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
 echo   INSTALAR.bat flash COM7   Usa diretamente a COM7
-echo   INSTALAR.bat build        Apenas compila e empacota o modelo
+echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
-echo Wake word desta candidata: Hi ESP
-echo O modelo personalizado JrBot sera trocado sem alterar a arquitetura do Local Brain.
+echo Gatilho principal experimental: JrBot via MultiNet6.
+echo Aliases: JR BOT / JUNIOR BOT / J R BOT.
+echo Fallback seguro: Hi ESP via WakeNet.
+echo Resposta: face feliz + bip duplo no alto-falante.
 echo.
 exit /b 0
