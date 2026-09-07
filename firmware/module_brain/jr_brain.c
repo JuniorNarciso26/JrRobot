@@ -3,11 +3,10 @@
 #include <string.h>
 
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 
 #include "jr_brain.h"
 #include "jr_face.h"
+#include "jr_usb_terminal.h"
 
 static const char *TAG = "jrbot_brain";
 static portMUX_TYPE brain_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -24,6 +23,12 @@ static void set_event(const char *event) {
     portENTER_CRITICAL(&brain_lock);
     snprintf(brain_last_event, sizeof(brain_last_event), "%s", event ? event : "unknown");
     portEXIT_CRITICAL(&brain_lock);
+}
+
+static void emit_event(const char *line) {
+    if (!line) return;
+    jr_usb_terminal_emit(line);
+    ESP_LOGI(TAG, "%s", line);
 }
 
 const char *jr_brain_state_name(jr_brain_state_t state) {
@@ -49,15 +54,15 @@ esp_err_t jr_brain_set_enabled(bool enabled) {
 
     if (enabled) {
         set_event("autonomous_on");
-        ESP_LOGI(TAG, "JR_BRAIN event=autonomous_on engine=bench_stub wakeword=JrBot");
+        emit_event("JR_BRAIN event=autonomous_on engine=bench_stub wakeword=JrBot");
         portENTER_CRITICAL(&brain_lock);
         brain_state = JR_BRAIN_LISTENING;
         brain_last_error = ESP_OK;
         portEXIT_CRITICAL(&brain_lock);
-        ESP_LOGI(TAG, "JR_BRAIN event=listening wakeword=JrBot note=custom_wakenet_pending");
+        emit_event("JR_BRAIN event=listening wakeword=JrBot note=custom_wakenet_pending");
     } else {
         set_event("autonomous_off");
-        ESP_LOGI(TAG, "JR_BRAIN event=autonomous_off");
+        emit_event("JR_BRAIN event=autonomous_off");
         portENTER_CRITICAL(&brain_lock);
         brain_state = JR_BRAIN_OFF;
         brain_last_error = ESP_OK;
@@ -99,11 +104,15 @@ esp_err_t jr_brain_trigger_test(void) {
     brain_triggers++;
     brain_last_probability = 1.0f;
     brain_last_error = ESP_OK;
+    uint32_t trigger = brain_triggers;
     portEXIT_CRITICAL(&brain_lock);
     set_event("wakeword_detected");
 
-    ESP_LOGI(TAG, "JR_BRAIN event=wakeword_detected source=bench keyword=JrBot confidence=1.000 trigger=%lu",
-             (unsigned long)brain_triggers);
+    char line[160];
+    snprintf(line, sizeof(line),
+             "JR_BRAIN event=wakeword_detected source=bench keyword=JrBot confidence=1.000 trigger=%lu",
+             (unsigned long)trigger);
+    emit_event(line);
 
     if (!jr_face_set_expression("feliz")) {
         portENTER_CRITICAL(&brain_lock);
@@ -111,13 +120,13 @@ esp_err_t jr_brain_trigger_test(void) {
         brain_state = JR_BRAIN_ERROR;
         portEXIT_CRITICAL(&brain_lock);
         set_event("face_error");
-        ESP_LOGE(TAG, "JR_BRAIN event=face_error expression=feliz");
+        emit_event("JR_BRAIN event=face_error expression=feliz");
         return ESP_FAIL;
     }
 
     jr_face_increment_command_count();
     set_event("reaction_happy");
-    ESP_LOGI(TAG, "JR_BRAIN event=reaction_happy expression=feliz");
-    ESP_LOGI(TAG, "JR_BRAIN event=listening wakeword=JrBot");
+    emit_event("JR_BRAIN event=reaction_happy expression=feliz");
+    emit_event("JR_BRAIN event=listening wakeword=JrBot");
     return ESP_OK;
 }
