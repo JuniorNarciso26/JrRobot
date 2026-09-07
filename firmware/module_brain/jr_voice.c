@@ -8,6 +8,9 @@
 #include "driver/i2s_std.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_mn_iface.h"
+#include "esp_mn_models.h"
+#include "esp_mn_speech_commands.h"
 #include "esp_wn_iface.h"
 #include "esp_wn_models.h"
 #include "freertos/FreeRTOS.h"
@@ -20,7 +23,10 @@
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
 #define JR_VOICE_READ_TIMEOUT_MS 350U
-#define JR_VOICE_TASK_STACK 8192
+#define JR_VOICE_TASK_STACK 10240
+#define JR_MN_DURATION_MS 5000
+#define JR_NAME_COMMAND_ID 1
+#define JR_REPLY_SETTLE_MS 180
 
 static const char *TAG = "jrbot_voice";
 static portMUX_TYPE voice_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -29,11 +35,28 @@ static volatile bool stop_requested = false;
 static bool bus_owned = false;
 static i2s_chan_handle_t rx_chan = NULL;
 static srmodel_list_t *models = NULL;
+
 static const esp_wn_iface_t *wakenet = NULL;
-static model_iface_data_t *model_data = NULL;
+static model_iface_data_t *wn_data = NULL;
+static char wn_model_name[64] = "not_loaded";
+
+static esp_mn_iface_t *multinet = NULL;
+static model_iface_data_t *mn_data = NULL;
+static bool mn_commands_ready = false;
+static char mn_model_name[64] = "not_loaded";
+
 static int32_t *raw_buffer = NULL;
 static int16_t *pcm_buffer = NULL;
 static jr_voice_wake_cb_t wake_callback = NULL;
+
+typedef enum {
+    JR_VOICE_MODE_NONE = 0,
+    JR_VOICE_MODE_MULTINET_NAME,
+    JR_VOICE_MODE_WAKENET_FALLBACK,
+} jr_voice_mode_t;
+
+static jr_voice_mode_t voice_mode = JR_VOICE_MODE_NONE;
+
 static jr_voice_status_t voice_status = {
     .running = false,
     .mic_ready = false,
@@ -43,7 +66,7 @@ static jr_voice_status_t voice_status = {
     .sample_rate = 0,
     .chunk_samples = 0,
     .last_error = ESP_ERR_INVALID_STATE,
-    .engine = "esp-sr-wakenet",
+    .engine = "not_started",
     .model = "not_loaded",
     .wakeword = "not_loaded",
 };
@@ -56,6 +79,12 @@ static int abs16(int16_t value) {
 static void status_error(esp_err_t err) {
     portENTER_CRITICAL(&voice_lock);
     voice_status.last_error = err;
+    portEXIT_CRITICAL(&voice_lock);
+}
+
+static void status_mic(bool ready) {
+    portENTER_CRITICAL(&voice_lock);
+    voice_status.mic_ready = ready;
     portEXIT_CRITICAL(&voice_lock);
 }
 
@@ -76,19 +105,39 @@ static void release_mic_pins(void) {
     quiet_amplifier();
 }
 
-static void voice_cleanup(void) {
+static void close_mic(void) {
     if (rx_chan) {
         (void)i2s_channel_disable(rx_chan);
         (void)i2s_del_channel(rx_chan);
         rx_chan = NULL;
     }
     release_mic_pins();
+    if (bus_owned) {
+        jr_audio_bus_release();
+        bus_owned = false;
+    }
+    status_mic(false);
+}
 
-    if (model_data && wakenet) {
-        wakenet->destroy(model_data);
-        model_data = NULL;
+static void voice_cleanup(void) {
+    close_mic();
+
+    if (mn_commands_ready) {
+        (void)esp_mn_commands_free();
+        mn_commands_ready = false;
+    }
+    if (mn_data && multinet) {
+        multinet->destroy(mn_data);
+        mn_data = NULL;
+    }
+    multinet = NULL;
+
+    if (wn_data && wakenet) {
+        wakenet->destroy(wn_data);
+        wn_data = NULL;
     }
     wakenet = NULL;
+
     if (models) {
         esp_srmodel_deinit(models);
         models = NULL;
@@ -99,11 +148,7 @@ static void voice_cleanup(void) {
     free(pcm_buffer);
     pcm_buffer = NULL;
 
-    if (bus_owned) {
-        jr_audio_bus_release();
-        bus_owned = false;
-    }
-
+    voice_mode = JR_VOICE_MODE_NONE;
     portENTER_CRITICAL(&voice_lock);
     voice_status.running = false;
     voice_status.mic_ready = false;
@@ -136,7 +181,163 @@ static esp_err_t open_mic(int sample_rate) {
     cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
     err = i2s_channel_init_std_mode(rx_chan, &cfg);
     if (err != ESP_OK) return err;
-    return i2s_channel_enable(rx_chan);
+    err = i2s_channel_enable(rx_chan);
+    if (err == ESP_OK) status_mic(true);
+    return err;
+}
+
+static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
+    char *model_name = esp_srmodel_filter(models, ESP_MN_PREFIX, ESP_MN_ENGLISH);
+    if (!model_name) return ESP_ERR_NOT_FOUND;
+
+    multinet = esp_mn_handle_from_name(model_name);
+    if (!multinet) return ESP_ERR_NOT_SUPPORTED;
+
+    mn_data = multinet->create(model_name, JR_MN_DURATION_MS);
+    if (!mn_data) return ESP_ERR_NO_MEM;
+    snprintf(mn_model_name, sizeof(mn_model_name), "%s", model_name);
+
+    esp_err_t err = esp_mn_commands_alloc(multinet, mn_data);
+    if (err != ESP_OK) return err;
+    mn_commands_ready = true;
+
+    (void)esp_mn_commands_clear();
+    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "JR BOT");
+    if (err != ESP_OK) return err;
+    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "JUNIOR BOT");
+    if (err != ESP_OK) return err;
+    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "J R BOT");
+    if (err != ESP_OK) return err;
+
+    esp_mn_error_t *command_errors = esp_mn_commands_update();
+    if (command_errors && command_errors->num >= 3) {
+        ESP_LOGE(TAG, "MultiNet rejected all JrBot aliases count=%d", command_errors->num);
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (command_errors && command_errors->num > 0) {
+        ESP_LOGW(TAG, "MultiNet accepted JrBot aliases with rejected=%d", command_errors->num);
+    }
+
+    int mn_chunk = multinet->get_samp_chunksize(mn_data);
+    int mn_rate = multinet->get_samp_rate(mn_data);
+    if (mn_chunk <= 0 || mn_rate <= 0) return ESP_FAIL;
+
+    *chunk = mn_chunk;
+    *sample_rate = mn_rate;
+    voice_mode = JR_VOICE_MODE_MULTINET_NAME;
+    ESP_LOGI(TAG,
+             "direct name recognizer ready model=%s commands=JR_BOT,JUNIOR_BOT,J_R_BOT mode=continuous_experimental rate=%d chunk=%d",
+             mn_model_name, mn_rate, mn_chunk);
+    return ESP_OK;
+}
+
+static esp_err_t init_wakenet_fallback(int *chunk, int *sample_rate) {
+    char *model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);
+    if (!model_name) return ESP_ERR_NOT_FOUND;
+
+    wakenet = esp_wn_handle_from_name(model_name);
+    if (!wakenet) return ESP_ERR_NOT_SUPPORTED;
+
+    wn_data = wakenet->create(model_name, DET_MODE_90);
+    if (!wn_data) return ESP_ERR_NO_MEM;
+    snprintf(wn_model_name, sizeof(wn_model_name), "%s", model_name);
+
+    int wn_chunk = wakenet->get_samp_chunksize(wn_data);
+    int wn_rate = wakenet->get_samp_rate(wn_data);
+    if (wn_chunk <= 0 || wn_rate <= 0) return ESP_FAIL;
+
+    *chunk = wn_chunk;
+    *sample_rate = wn_rate;
+    voice_mode = JR_VOICE_MODE_WAKENET_FALLBACK;
+    ESP_LOGW(TAG, "JrBot MultiNet unavailable; fallback model=%s wakeword=Hi_ESP rate=%d chunk=%d",
+             wn_model_name, wn_rate, wn_chunk);
+    return ESP_OK;
+}
+
+static void clean_detector(void) {
+    if (voice_mode == JR_VOICE_MODE_MULTINET_NAME && multinet && mn_data) {
+        multinet->clean(mn_data);
+    } else if (voice_mode == JR_VOICE_MODE_WAKENET_FALLBACK && wakenet && wn_data) {
+        wakenet->clean(wn_data);
+    }
+}
+
+static esp_err_t reply_chirp_and_resume(void) {
+    int sample_rate;
+    portENTER_CRITICAL(&voice_lock);
+    sample_rate = voice_status.sample_rate;
+    portEXIT_CRITICAL(&voice_lock);
+
+    close_mic();
+    ESP_LOGI(TAG, "reply begin type=ack_chirp");
+
+    esp_err_t first = jr_audio_test_tone(880, 120);
+    if (first == ESP_OK) vTaskDelay(pdMS_TO_TICKS(30));
+    esp_err_t second = first == ESP_OK ? jr_audio_test_tone(1320, 140) : first;
+
+    vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
+    if (stop_requested) return second;
+
+    esp_err_t reopen = open_mic(sample_rate);
+    if (reopen != ESP_OK) {
+        ESP_LOGE(TAG, "reply completed but mic resume failed: %s", esp_err_to_name(reopen));
+        return reopen;
+    }
+
+    clean_detector();
+    ESP_LOGI(TAG, "reply end type=ack_chirp result=%s listening_resumed=1",
+             esp_err_to_name(second));
+    return second;
+}
+
+static bool handle_multinet_frame(void) {
+    esp_mn_state_t state = multinet->detect(mn_data, pcm_buffer);
+    if (state == ESP_MN_STATE_TIMEOUT) {
+        multinet->clean(mn_data);
+        return false;
+    }
+    if (state != ESP_MN_STATE_DETECTED) return false;
+
+    esp_mn_results_t *result = multinet->get_results(mn_data);
+    if (!result || result->num <= 0 || result->command_id[0] != JR_NAME_COMMAND_ID) {
+        multinet->clean(mn_data);
+        return false;
+    }
+
+    jr_voice_wake_cb_t callback;
+    uint32_t count;
+    float probability = result->prob[0];
+    const char *recognized = result->string[0] ? result->string : "JR BOT";
+
+    portENTER_CRITICAL(&voice_lock);
+    voice_status.detections++;
+    count = voice_status.detections;
+    callback = wake_callback;
+    portEXIT_CRITICAL(&voice_lock);
+
+    ESP_LOGI(TAG,
+             "name detected keyword=JrBot recognized=\"%s\" model=%s probability=%.3f count=%lu",
+             recognized, mn_model_name, probability, (unsigned long)count);
+    if (callback) callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID);
+    return true;
+}
+
+static bool handle_wakenet_frame(void) {
+    wakenet_state_t detected = wakenet->detect(wn_data, pcm_buffer);
+    if (detected != WAKENET_DETECTED) return false;
+
+    jr_voice_wake_cb_t callback;
+    uint32_t count;
+    portENTER_CRITICAL(&voice_lock);
+    voice_status.detections++;
+    count = voice_status.detections;
+    callback = wake_callback;
+    portEXIT_CRITICAL(&voice_lock);
+
+    ESP_LOGI(TAG, "fallback wake word detected keyword=Hi_ESP model=%s count=%lu",
+             wn_model_name, (unsigned long)count);
+    if (callback) callback("Hi ESP", wn_model_name, (int)detected);
+    return true;
 }
 
 static void voice_task(void *arg) {
@@ -173,22 +374,22 @@ static void voice_task(void *arg) {
         voice_status.last_level = chunk ? (uint32_t)(level_sum / (uint64_t)chunk) : 0;
         portEXIT_CRITICAL(&voice_lock);
 
-        wakenet_state_t detected = wakenet->detect(model_data, pcm_buffer);
-        if (detected == WAKENET_DETECTED) {
-            jr_voice_wake_cb_t callback;
-            char keyword[sizeof(voice_status.wakeword)];
-            char model_name[sizeof(voice_status.model)];
+        bool detected = false;
+        if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
+            detected = handle_multinet_frame();
+        } else if (voice_mode == JR_VOICE_MODE_WAKENET_FALLBACK) {
+            detected = handle_wakenet_frame();
+        }
 
-            portENTER_CRITICAL(&voice_lock);
-            voice_status.detections++;
-            callback = wake_callback;
-            snprintf(keyword, sizeof(keyword), "%s", voice_status.wakeword);
-            snprintf(model_name, sizeof(model_name), "%s", voice_status.model);
-            portEXIT_CRITICAL(&voice_lock);
-
-            ESP_LOGI(TAG, "wake word detected keyword=%s model=%s count=%lu",
-                     keyword, model_name, (unsigned long)voice_status.detections);
-            if (callback) callback(keyword, model_name, (int)detected);
+        if (detected) {
+            esp_err_t reply_err = reply_chirp_and_resume();
+            if (stop_requested) break;
+            if (reply_err != ESP_OK) {
+                status_error(reply_err);
+                if (!rx_chan) break;
+            } else {
+                status_error(ESP_OK);
+            }
         }
     }
 
@@ -214,33 +415,29 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
         return ESP_ERR_NOT_FOUND;
     }
 
-    char *model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);
-    if (!model_name) {
-        status_error(ESP_ERR_NOT_FOUND);
-        voice_cleanup();
-        return ESP_ERR_NOT_FOUND;
-    }
+    int chunk = 0;
+    int sample_rate = 0;
+    esp_err_t err = init_multinet_name(&chunk, &sample_rate);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "direct JrBot recognizer init failed: %s; trying WakeNet fallback",
+                 esp_err_to_name(err));
 
-    wakenet = esp_wn_handle_from_name(model_name);
-    if (!wakenet) {
-        status_error(ESP_ERR_NOT_SUPPORTED);
-        voice_cleanup();
-        return ESP_ERR_NOT_SUPPORTED;
-    }
+        if (mn_commands_ready) {
+            (void)esp_mn_commands_free();
+            mn_commands_ready = false;
+        }
+        if (mn_data && multinet) {
+            multinet->destroy(mn_data);
+            mn_data = NULL;
+        }
+        multinet = NULL;
 
-    model_data = wakenet->create(model_name, DET_MODE_90);
-    if (!model_data) {
-        status_error(ESP_ERR_NO_MEM);
-        voice_cleanup();
-        return ESP_ERR_NO_MEM;
-    }
-
-    int chunk = wakenet->get_samp_chunksize(model_data);
-    int sample_rate = wakenet->get_samp_rate(model_data);
-    if (chunk <= 0 || sample_rate <= 0) {
-        status_error(ESP_FAIL);
-        voice_cleanup();
-        return ESP_FAIL;
+        err = init_wakenet_fallback(&chunk, &sample_rate);
+        if (err != ESP_OK) {
+            status_error(err);
+            voice_cleanup();
+            return err;
+        }
     }
 
     raw_buffer = calloc((size_t)chunk, sizeof(int32_t));
@@ -251,14 +448,13 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
         return ESP_ERR_NO_MEM;
     }
 
-    esp_err_t err = open_mic(sample_rate);
+    err = open_mic(sample_rate);
     if (err != ESP_OK) {
         status_error(err);
         voice_cleanup();
         return err;
     }
 
-    const char *wakeword = esp_wn_wakeword_from_name(model_name);
     portENTER_CRITICAL(&voice_lock);
     voice_status.running = true;
     voice_status.mic_ready = true;
@@ -268,9 +464,15 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     voice_status.sample_rate = sample_rate;
     voice_status.chunk_samples = chunk;
     voice_status.last_error = ESP_OK;
-    snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
-    snprintf(voice_status.model, sizeof(voice_status.model), "%s", model_name);
-    snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", wakeword ? wakeword : model_name);
+    if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
+        snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-multinet");
+        snprintf(voice_status.model, sizeof(voice_status.model), "%s", mn_model_name);
+        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "JrBot");
+    } else {
+        snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
+        snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
+        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Hi ESP");
+    }
     portEXIT_CRITICAL(&voice_lock);
 
     if (xTaskCreatePinnedToCore(voice_task, "jr_voice", JR_VOICE_TASK_STACK, NULL, 5,
@@ -280,8 +482,8 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGI(TAG, "voice engine ready model=%s wakeword=%s rate=%d chunk=%d",
-             voice_status.model, voice_status.wakeword, sample_rate, chunk);
+    ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d",
+             voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk);
     return ESP_OK;
 }
 
@@ -295,7 +497,7 @@ void jr_voice_stop(void) {
     }
 
     stop_requested = true;
-    for (int i = 0; i < 30; ++i) {
+    for (int i = 0; i < 40; ++i) {
         portENTER_CRITICAL(&voice_lock);
         bool done = voice_task_handle == NULL;
         portEXIT_CRITICAL(&voice_lock);
