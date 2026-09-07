@@ -7,7 +7,8 @@ JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um co
 - Hardware: `JRBOT-HW-04`
 - MCU: ESP32-S3 N16R8
 - Firmware desta linha de desenvolvimento: `JRBotV2_JRBOT_RESPONSE_05`
-- Branch de desenvolvimento desta etapa: `feature/local-brain-jrbot-response`
+- Branch estável/promovida: `main`
+- Branch de integração: `develop`
 - Reconhecimento de voz atual: ESP-SR MultiNet6 experimental
 - Áudio local: MAX98357A
 - Microfone: MS3625
@@ -15,6 +16,23 @@ JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um co
 - Display: OLED SSD1306
 
 > O reconhecimento contínuo de `JrBot` por MultiNet é experimental. Há detecção acústica real validada, mas a calibração de falsos positivos ainda está em desenvolvimento. Recursos descritos como planejados na documentação não devem ser tratados como implementados.
+
+## Estratégia de branches
+
+```text
+main
+  └── develop
+        ├── feature/runtime-api-v1
+        ├── feature/...
+        └── fix/...
+```
+
+- `main`: somente baselines promovidos após validação adequada.
+- `develop`: integração da próxima versão.
+- `feature/*`: desenvolvimento isolado criado a partir de `develop` e integrado de volta por Pull Request.
+- `fix/*`: correções isoladas, seguindo a mesma regra de revisão.
+
+As branches `feature/local-brain-autonomous`, `feature/local-brain-voice` e `feature/local-brain-jrbot-response` registram a evolução histórica que originou o estado atual de `develop`.
 
 ## Comece pela documentação
 
@@ -31,13 +49,13 @@ Principais documentos:
 - [Flows](docs/FLOWS.md)
 - [Testes e validação](docs/TESTING.md)
 
-## Compilar e gravar a candidata atual
+## Compilar e gravar a integração atual
 
 No terminal ESP-IDF 5.5.x:
 
 ```bat
-git switch feature/local-brain-jrbot-response
-git pull --ff-only origin feature/local-brain-jrbot-response
+git switch develop
+git pull --ff-only origin develop
 INSTALAR.bat build
 INSTALAR.bat flash
 PAINEL.bat
