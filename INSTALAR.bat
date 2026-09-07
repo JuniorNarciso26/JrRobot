@@ -1,68 +1,125 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo ========================================
-echo JrBot - Instalador ESP32-S3
-echo ========================================
-echo.
-echo Este instalador compila e grava o firmware na ESP32-S3.
-echo Para testar via Wi-Fi, rode CONFIGURAR_WIFI.bat antes deste instalador.
-echo.
-echo Uso:
-echo   .\INSTALAR.bat COM6
-echo.
-echo Se nao informar a porta, usa COM6.
-echo Dica: nesta placa a gravacao pode ser COM6 e o painel/log pode ser COM4.
-echo.
-set PORT=%1
-if "%PORT%"=="" set PORT=COM6
 
-where idf.py >nul 2>nul
-if errorlevel 1 call :carregar_espidf
+set "ACTION=%~1"
+if "%ACTION%"=="" set "ACTION=all"
+if not "%~2"=="" set "JR_FLASH_PORT=%~2"
+set "BUILD_DIR=build-final-hw04-dualusb"
+set "SDKCONFIG_FILE=sdkconfig.final-hw04-dualusb"
 
-where idf.py >nul 2>nul
+if /i "%ACTION%"=="help" goto help
+if /i "%ACTION%"=="build" goto prepare
+if /i "%ACTION%"=="flash" goto select_then_prepare
+if /i "%ACTION%"=="all" goto select_then_prepare
+if /i "%ACTION%"=="menuconfig" goto menuconfig
+if /i "%ACTION%"=="panel" goto panel
+
+echo ERRO: opcao invalida: %ACTION%
+goto help
+
+:select_then_prepare
+call :select_port
+if errorlevel 1 goto failure
+goto prepare
+
+:select_port
+if defined JR_FLASH_PORT (
+  echo Porta de gravacao definida: %JR_FLASH_PORT%
+  exit /b 0
+)
+set "PORT_FILE=%TEMP%\jrbot_port_%RANDOM%_%RANDOM%.txt"
+python tools\select_port.py --output "%PORT_FILE%"
 if errorlevel 1 (
-  echo.
-  echo ERRO: idf.py nao encontrado.
-  echo.
-  echo Como resolver:
-  echo 1. Abra pelo menu iniciar: ESP-IDF 5.5 CMD ou ESP-IDF Command Prompt
-  echo 2. Entre na pasta do JrBot
-  echo 3. Rode: .\INSTALAR.bat %PORT%
-  echo.
-  echo Tambem tentei carregar automaticamente em C:\Espressif, mas nao encontrei o ambiente.
-  echo.
-  pause
+  if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>nul
   exit /b 1
 )
-
-echo Porta de gravacao: %PORT%
-echo Target: esp32s3
-echo.
-cd /d "%~dp0firmware"
-call idf.py set-target esp32s3 || goto erro
-call idf.py build || goto erro
-call idf.py -p %PORT% flash || goto erro
-cd /d "%~dp0"
-echo.
-echo Firmware gravado com sucesso.
-echo Se o Wi-Fi foi configurado, veja no log do ESP32 a linha JR_WIFI com o IP.
-echo Para testar por Serial, abra o monitor pela porta de log.
-goto fim
-
-:carregar_espidf
-echo idf.py nao esta no PATH. Tentando carregar ESP-IDF automaticamente...
-set "IDF_TOOLS_PATH=C:\Espressif"
-if exist "C:\Espressif\frameworks\esp-idf-v5.5.5\export.bat" call "C:\Espressif\frameworks\esp-idf-v5.5.5\export.bat"
-if exist "C:\Espressif\frameworks\esp-idf-v5.5\export.bat" call "C:\Espressif\frameworks\esp-idf-v5.5\export.bat"
-if exist "C:\Espressif\frameworks\esp-idf-v5.4\export.bat" call "C:\Espressif\frameworks\esp-idf-v5.4\export.bat"
+set /p JR_FLASH_PORT=<"%PORT_FILE%"
+del /q "%PORT_FILE%" >nul 2>nul
+if not defined JR_FLASH_PORT (
+  echo ERRO: nenhuma porta foi selecionada.
+  exit /b 1
+)
+echo Porta escolhida para esta instalacao: %JR_FLASH_PORT%
 exit /b 0
 
-:erro
+:check
+if not defined IDF_PATH (
+  echo ERRO: abra este arquivo pelo terminal ESP-IDF 5.5.x.
+  exit /b 1
+)
+if not exist "%IDF_PATH%\tools\idf.py" (
+  echo ERRO: IDF_PATH invalido: %IDF_PATH%
+  exit /b 1
+)
+python tools\generate_pinmap.py --check
+if errorlevel 1 exit /b 1
+findstr /b /c:"JRBotV2_" firmware\version.txt >nul 2>nul
+if errorlevel 1 (
+  echo ERRO: versao inesperada em firmware\version.txt.
+  exit /b 1
+)
+exit /b 0
+
+:prepare
+call :check
+if errorlevel 1 goto failure
+pushd firmware
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
+if errorlevel 1 (
+  popd
+  goto failure
+)
+if /i "%ACTION%"=="build" (
+  popd
+  goto success
+)
 echo.
-echo Falhou. Me mande a tela/log do erro para eu corrigir.
-pause
+echo Gravando JrBot em %JR_FLASH_PORT%...
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (
+  popd
+  goto failure
+)
+popd
+if /i "%ACTION%"=="flash" goto success
+goto panel
+
+:menuconfig
+call :check
+if errorlevel 1 goto failure
+pushd firmware
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
+set "RC=%errorlevel%"
+popd
+if not "%RC%"=="0" goto failure
+goto success
+
+:panel
+call "%~dp0PAINEL.bat"
+exit /b %errorlevel%
+
+:success
+echo.
+echo OK - JrBot V2 atualizado.
+echo Firmware: JRBotV2_2026-09-06-18:28
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT%
+exit /b 0
+
+:failure
+echo.
+echo ERRO - processo interrompido. Nada deve ser gravado apos uma falha de build.
 exit /b 1
 
-:fim
-endlocal
+:help
+echo.
+echo JrBot V2 - instalador unico com escolha de porta
+echo.
+echo   INSTALAR.bat              Escolhe a porta, compila, grava e abre o painel
+echo   INSTALAR.bat flash        Escolhe a porta, compila e grava
+echo   INSTALAR.bat flash COM7   Usa diretamente a COM7
+echo   INSTALAR.bat build        Apenas compila
+echo   INSTALAR.bat panel        Abre o painel com portas detectadas
+echo   INSTALAR.bat menuconfig   Abre configuracao do firmware
+echo.
+exit /b 0

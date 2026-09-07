@@ -1,21 +1,15 @@
-# JrBot - diagnostico sem OLED, revisao HW03
+# JrBot - diagnostico sem OLED
 
-Firmware: JRBOT-V2-DIAG-02. Perfil: headless_diagnostic. O OLED nao e inicializado; sua ausencia nao bloqueia o painel. GPIO1 e GPIO2 continuam reservados.
+Firmware atual: **JRBOT-V2-DIAG-03**, hardware **JRBOT-HW-04**.
 
-Toda operacao e pelo painel, em COM4 nesta montagem. Para preparar/gravar use DIAG_V2.bat build e DIAG_V2.bat flash (COM6). Depois PAINEL.bat. Nao e necessario monitor. Ver APLICAR_BRANCH_V2.md.
+O perfil `headless_diagnostic` nao inicializa o OLED. A falta do display nao deve bloquear painel, Wi-Fi, camera ou testes de audio permitidos.
 
-## Mudanca obrigatoria na pinagem
+Pinagem adotada:
+- OLED: SDA=GPIO1, SCL=GPIO2, atualmente desabilitado.
+- MAX98357A: BCLK=GPIO21, WS=GPIO47, DIN=GPIO42.
+- MS3625: SCK=GPIO21, WS=GPIO47, SD=GPIO41.
+- Camera: OV5640 no conector da placa.
 
-GPIO21, GPIO41, GPIO42 e GPIO47 ja estao ocupados. Nenhum deles pode ser usado como nova saida de audio ou servo. O antigo mapa de audio e a antiga aprovacao foram revogados. Esta revisao usa tres campos locais, por padrao -1 (sem atribuicao), e uma aprovacao HW03 nova. Valores bloqueados ou duplicados impedem a compilacao.
+O microfone ainda nao possui driver de captura. Nao interpretar `pinout_defined` como teste de audio de entrada concluido.
 
-A proposta BCLK39/WS40/DOUT14 existe apenas para verificar na placa. Nao e uma ligacao confirmada. Consulte docs/PINAGEM.md para inventario completo e docs/ESQUEMA_LIGACAO.md para todas as redes.
-
-## Sequencia de teste
-
-Desligar todas as fontes antes de manipular cabos. Retirar o OLED suspeito sem modificar os quatro GPIOs ocupados. Gravar DIAG-02 e verificar versao no painel. Conferir cada modulo antes de habilitar: amplificador, depois camera. Microfone precisa de modelo/interface/ligacoes antes do driver. Servo sem implementacao.
-
-Audio nao inicia no boot; a permissao HW03 apenas libera o botao de teste. Saida I2S aceita nao comprova som. Camera nao inicia no boot; testa um quadro e devolve recursos, nao valida foco. Nao usar pinos da camera para audio mesmo quando ela esta desligada.
-
-## Validacao
-
-Testes de politica HW03: `python tests/hardware/test_pin_policy.py`. Sao testes host de compilacao/pinos, nao um build ESP-IDF nem aprovacao eletrica. Os resultados historicos em tests/diagnostic e tests/panel correspondem as revisoes indicadas neles; nao sao automaticamente resultados desta mudanca. Build real e ensaio fisico da revisao nova permanecem necessarios.
+Use `INSTALAR.bat` para compilar, gravar e abrir o painel. Para etapas separadas: `INSTALAR.bat build`, `INSTALAR.bat flash` ou `INSTALAR.bat panel`. Nao e necessario monitor externo.

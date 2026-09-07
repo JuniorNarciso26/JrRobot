@@ -1,0 +1,3 @@
+menu "JrBot V2 - hardware"
+    comment "HW04 final profile: OLED SSD1306 + OV5640 + MAX98357A + MS3625 are enabled"
+endmenu

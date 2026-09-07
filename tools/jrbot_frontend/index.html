@@ -4,78 +4,138 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JrBot</title>
+<title>JrBot - Painel V2</title>
 <style>
 :root{--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f;--yellow:#f3b33d;--purple:#9b62f0}
-*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;height:100vh;overflow:hidden}
-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(10,12,18,.75);backdrop-filter:blur(8px)}
-h1{font-size:20px;margin:0}.version{color:#b9ffd7;font-size:12px;margin-top:4px}.sub{color:var(--muted);font-size:13px;margin-top:3px}.status{display:flex;gap:10px;align-items:center}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}.pill.ok{color:#b9ffd7;border-color:#246b43}.pill.bad{color:#ffcbc6;border-color:#74312c}
-main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;height:calc(100vh - 64px);padding:14px}.card{background:rgba(21,25,35,.88);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.25)}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:#dfe8ff;display:flex;justify-content:space-between;align-items:center}.left,.right{display:flex;flex-direction:column;min-height:0}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+header{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-bottom:1px solid var(--line);background:rgba(10,12,18,.75);backdrop-filter:blur(8px)}
+h1{font-size:20px;margin:0}.version{color:#b9ffd7;font-size:12px;margin-top:4px}.sub{color:var(--muted);font-size:13px;margin-top:3px}.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--muted)}.pill.ok{color:#b9ffd7;border-color:#246b43}.pill.bad{color:#ffcbc6;border-color:#74312c}
+main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card{background:rgba(21,25,35,.88);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.25)}.card h2{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);color:#dfe8ff;display:flex;justify-content:space-between;align-items:center}.left,.right{display:flex;flex-direction:column;min-height:0}
 .toolbar{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}select,input{background:#090b10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}select{min-width:170px}button{border:0;border-radius:12px;padding:10px 13px;color:white;font-weight:700;cursor:pointer;background:var(--blue);transition:.12s transform,.12s opacity}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.82}.green{background:var(--green)}.red{background:var(--red)}.gray{background:#30394d}.yellow{background:var(--yellow);color:#1c1400}.purple{background:var(--purple)}
-#log{flex:1;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow:auto;white-space:pre-wrap}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
-.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}
-@media(max-width:850px){body{overflow:auto;height:auto}main{grid-template-columns:1fr;height:auto}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:380px}}
+.modebar{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.modebar input[type=radio]{accent-color:var(--blue)}.modebar label{background:#10131a;border:1px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}.modebar label.active{border-color:#2f80ed;color:#d8e9ff}.modebar .ip{width:160px}.modepanel{display:none;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.modepanel.show{display:flex}.modepanel .ip{width:180px}.mini{color:var(--muted);font-size:12px;width:100%;margin-top:2px}
+#log{height:460px;max-height:55vh;margin:0;padding:14px;background:#050609;color:#a8ffbf;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.35;overflow-y:scroll;overflow-x:auto;white-space:pre-wrap;scroll-behavior:smooth}.logline .ts{color:#6e7890}.logline .tx{color:#7ab7ff}.logline .err{color:#ff8f86}.logline .ok{color:#a8ffbf}.hint{color:var(--muted);font-size:13px;padding:0 12px 12px}
+.faces{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:auto}.face{display:flex;align-items:center;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px;border-radius:14px;min-height:68px}.face .emoji{font-size:25px;width:34px;text-align:center}.face .name{font-size:15px}.face .cmd{font-size:12px;color:var(--muted);margin-top:2px}.quick{padding:12px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.custom{display:flex;gap:8px;width:100%}.custom input{flex:1}.wifi{padding:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px}.wifi label{font-size:12px;color:var(--muted)}.wifi input,.wifi select{width:100%;margin-top:4px}.wifi .full{grid-column:1/-1}.wifi small{color:var(--muted)}.camera,.audio{padding:12px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center}.camera img{width:100%;max-height:420px;object-fit:contain;background:#050609;border:1px solid var(--line);border-radius:14px}.camera .msg,.audio .msg{color:var(--muted);font-size:13px;width:100%}.audio input[type=range]{min-width:220px}
+@media(max-width:850px){main{grid-template-columns:1fr}.card{min-height:360px}.faces{grid-template-columns:1fr}#log{min-height:320px}.modebar .ip{width:100%}}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.diagnostic{padding:14px}.diag-actions{display:flex;gap:8px;flex-wrap:wrap}.diag-grid{display:grid;grid-template-columns:140px minmax(0,1fr);gap:9px;font-size:14px}.diag-grid dt{color:var(--muted)}.diag-grid dd{margin:0;overflow-wrap:anywhere}#device_msg{font-size:13px;line-height:1.5;overflow-wrap:anywhere}.left,.right{min-width:0}.custom input{min-width:0}.audio input[type=range]{min-width:120px;max-width:100%}.msg{overflow-wrap:anywhere}.diag-actions button{flex:1}#log{overflow-wrap:anywhere}.camera button{max-width:100%}
+@media(max-width:480px){header{align-items:flex-start;flex-direction:column}main{padding:8px}.wifi{grid-template-columns:1fr}.diag-grid{grid-template-columns:100px minmax(0,1fr)}.modepanel select{max-width:100%;min-width:0}.audio label{max-width:100%}}
+summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: 2026-09-01 11:46 UTC</div><div class="sub">Painel local do robô: log serial + seleção de rostos | Wi-Fi no ESP32: http://IP_DO_ESP32/</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Comandos e diagnostico no painel. As portas COM sao detectadas automaticamente.</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
   <section class="card left">
-    <h2>Log serial <span><button class="gray" onclick="clearLog()">limpar</button></span></h2>
-    <div class="toolbar">
-      <select id="port"></select>
-      <button onclick="refreshPorts()" class="gray">Atualizar portas</button>
-      <button onclick="connect()" class="green">Conectar</button>
-      <button onclick="disconnect()" class="red">Desconectar</button>
+    <h2>Conexão e log <span><button class="gray" onclick="clearLog()">limpar</button></span></h2>
+    <div class="modebar">
+      <label id="lbl_serial"><input data-action type="radio" name="mode" value="serial" checked onchange="setMode('serial')"> Serial USB</label>
+      <label id="lbl_wifi"><input data-action type="radio" name="mode" value="wifi" onchange="setMode('wifi')"> Wi-Fi</label>
+      <button data-action onclick="openWifiConfig()" class="yellow">Configurar Wi-Fi</button>
     </div>
-    <pre id="log"></pre>
+    <div class="modepanel show" id="serialbar">
+      <select data-action id="port" aria-label="Porta Serial de comandos"></select>
+      <button data-action onclick="refreshPorts()" class="gray">Atualizar portas</button>
+      <button data-action onclick="connect()" class="green">Conectar Serial</button>
+      <button data-action onclick="disconnect()" class="red">Desconectar</button>
+      <div class="mini">Escolha a porta que responde ao firmware JrBot. Nao abra outro monitor na mesma COM.</div>
+    </div>
+    <div class="modepanel" id="wifibar">
+      <span>IP do ESP32:</span><input data-action id="esp_ip" class="ip" value="192.168.0.83" placeholder="192.168.0.83">
+      <button data-action onclick="connectWifi()" class="green">Conectar Wi-Fi</button>
+      <button data-action onclick="testWifi()" class="yellow">Testar/status</button>
+      <div class="mini">Use "Consultar Wi-Fi da placa" pela Serial para preencher automaticamente o IP atual antes de mudar para Wi-Fi.</div>
+    </div>
+    <h2>Diagnostico do robo</h2>
+    <div class="diagnostic">
+      <div class="diag-actions">
+        <button data-action onclick="refreshStatus()">Atualizar estado</button>
+        <button data-action class="yellow" onclick="wifiBoardData()">Consultar Wi-Fi da placa</button>
+        <button data-action class="gray" onclick="checkVersion()">Verificar firmware</button>
+      </div>
+      <dl class="diag-grid">
+        <dt>Firmware na placa</dt><dd id="fw_version">Nao verificado</dd>
+        <dt>Perfil</dt><dd id="fw_profile">Nao verificado</dd>
+        <dt>OLED</dt><dd id="oled_state">Nao verificado</dd>
+        <dt>Amplificador</dt><dd id="audio_state">Nao verificado</dd>
+        <dt>Camera</dt><dd id="camera_state">Nao verificado</dd>
+        <dt>Microfone</dt><dd id="mic_state">Nao configurado</dd>
+      </dl>
+      <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
+    </div>
+    <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
+    <pre id="log" aria-label="Respostas do robo"></pre>
   </section>
   <section class="card right">
-    <h2>Rostos</h2>
+    <details id="face_controls"><summary>Rostos / OLED</summary>
     <div class="faces" id="faces"></div>
     <div class="quick">
-      <button onclick="send('status')" class="gray">status</button>
-      <button onclick="send('help')" class="gray">help</button>
-      <button onclick="send('demo')" class="purple">demo on/off</button>
-      <div class="custom"><input id="custom" placeholder="comando manual"><button onclick="sendCustom()">enviar</button></div>
+      <button data-action onclick="refreshStatus()" class="gray">Estado</button>
+      <button data-action onclick="action(()=>send('help'))" class="gray">Ajuda</button>
+      <button id="demo" data-action onclick="action(()=>send('demo'))" class="purple">Demo</button>
+      <div class="custom"><input id="custom" placeholder="comando manual"><button data-action onclick="sendCustom()">enviar</button></div>
     </div>
-    <div class="hint">Dica: normalmente grava em COM6 e usa log/comandos em COM4, mas escolha a porta que aparecer no Windows.</div>
+    <div class="hint" id="face_msg">Os controles de rosto dependem do OLED; os outros testes nao.</div>
+    </details>
+    <h2>Audio / caixinha de som</h2>
+    <div class="audio" id="audio_box">
+      <button id="test_audio" disabled data-action onclick="testAudio()" class="green">🔊 Testar audio</button>
+      <label>Volume <input id="audio_volume" type="range" min="0" max="100" value="10" oninput="audioVolText.textContent=this.value+'%'" ></label>
+      <span id="audioVolText">10%</span>
+      <button id="apply_volume" disabled data-action onclick="setAudioVolume()" class="yellow">Aplicar volume</button>
+      <div class="msg" id="audio_msg">Consulte o estado. O teste fica disponivel quando o firmware informa audio habilitado.</div>
+    </div>
+    <h2>Camera</h2>
+    <div class="camera" id="camera_box">
+      <button id="test_camera" disabled data-action onclick="testCamera()" class="green">Testar camera</button>
+      <button disabled title="A captura Serial retorna metadados e libera o quadro apos validar o JPEG" class="gray">Previa ainda nao implementada</button>
+      <div class="msg" id="cam_msg">O teste atual captura e valida um JPEG pela camera, informa tamanho e bytes no log e depois libera o quadro. Por isso a foto ainda nao aparece no painel.</div>
+      <img id="cam_photo" alt="Foto capturada pela câmera do JrBot" style="display:none">
+    </div>
+    <h2>Microfone</h2>
+    <div class="audio">
+      <button id="test_mic" disabled class="gray">Teste ainda nao configurado</button>
+      <div class="msg">Informe o modelo do microfone e seus GPIOs. Esta versao nao possui driver de entrada de audio; testar o amplificador nao testa o microfone.</div>
+    </div>
+    <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
+    <div class="wifi" id="wificfg">
+      <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
+      <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
+      <label>Nome do JrBot<input id="wifi_host" value="jrbot"></label>
+      <label>IP fixo<select id="wifi_static"><option value="0">desativado/DHCP</option><option value="1">ativado</option></select></label>
+      <label>IP do ESP32<input id="wifi_ip" value="192.168.0.83"></label>
+      <label>Gateway<input id="wifi_gw" value="192.168.0.1"></label>
+      <label>Máscara<input id="wifi_mask" value="255.255.255.0"></label>
+      <label>DNS1<input id="wifi_dns1" value="8.8.8.8"></label>
+      <label>DNS2<input id="wifi_dns2" value="8.8.4.4"></label>
+      <div class="full">
+        <button data-action onclick="configureWifi()" class="green">Configurar Wi-Fi no ESP32</button>
+        <button data-action onclick="clearWifi()" class="red">Limpar Wi-Fi salvo</button><br>
+        <small>Este bloco envia pela Serial. Depois de reiniciar, use "Consultar Wi-Fi da placa" para conferir conexao e IP atual.</small>
+      </div>
+    </div>
   </section>
 </main>
+<script src="/panel.js"></script>
 <script>
-const faces=[
- ['🤖','Neutro','neutro'],['😊','Feliz','feliz'],['😢','Triste','triste'],['😃','Animado','animado'],
- ['😠','Bravo','bravo'],['😮','Surpreso','surpreso'],['🤔','Pensando','pensando'],['😒','Cético','cetico'],
- ['😴','Sono','sono'],['😵💫','Confuso','confuso'],['😉','Piscando','piscando'],['😍','Amor','amor'],
- ['😜','Brincalhão','brincalhao'],['😟','Preocupado','preocupado'],['😎','Cool','cool'],['🔋','Bateria baixa','bateria']
-];
-let lastId=0, autoScroll=true;
-const logEl=document.getElementById('log');
-document.getElementById('faces').innerHTML=faces.map(f=>`<button class="face" onclick="send('${f[2]}')"><span class="emoji">${f[0]}</span><span><div class="name">${f[1]}</div><div class="cmd">${f[2]}</div></span></button>`).join('');
-function appendLog(items){
-  for(const it of items){
-    const line=document.createElement('div'); line.className='logline';
-    let cls='ok'; if(it.line.startsWith('>')) cls='tx'; if(it.line.includes('ERROR')||it.line.includes('erro')) cls='err';
-    line.innerHTML=`<span class="ts">[${it.ts}]</span> <span class="${cls}"></span>`;
-    line.querySelector('span:last-child').textContent=it.line;
-    logEl.appendChild(line); lastId=Math.max(lastId,it.id); document.getElementById('last').textContent=it.ts;
-  }
-  if(autoScroll) logEl.scrollTop=logEl.scrollHeight;
+async function wifiBoardData(){
+  return action(async()=>{
+    if(mode!=='serial') throw new Error('Use a conexao Serial para consultar os dados gravados/atuais da placa.');
+    const text=await send('status');
+    const w=fields(text);
+    const configured=w.wifi_config||'?';
+    const connected=w.wifi||'?';
+    const pending=w.pending_restart||'?';
+    const ip=w.ip||'sem_wifi';
+    if(connected==='1' && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)){
+      el('esp_ip').value=ip;
+      localStorage.setItem('jr_esp_ip',ip);
+    }
+    localLine('JR_WIFI_DADOS configured='+configured+' connected='+connected+' pending_restart='+pending+' ip='+ip);
+    el('device_msg').textContent='Wi-Fi da placa: configurado='+configured+', conectado='+connected+', IP='+ip+'. O IP foi copiado para o campo Wi-Fi quando disponivel.';
+  });
 }
-function clearLog(){logEl.textContent=''; lastId=0}
-async function api(path, opts){const r=await fetch(path,opts); const t=await r.text(); if(!r.ok) throw new Error(t); return t}
-async function refreshPorts(){try{let r=await fetch('/ports');let j=await r.json();let s=document.getElementById('port');s.innerHTML='';j.ports.forEach(p=>{let o=document.createElement('option');o.value=p;o.textContent=p;s.appendChild(o)}); appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line:'portas: '+(j.ports.join(', ')||'nenhuma')}]);}catch(e){alert(e)}}
-async function connect(){try{let port=document.getElementById('port').value;let t=await api('/connect',{method:'POST',body:new URLSearchParams({port})});document.getElementById('conn').textContent='conectado '+port;document.getElementById('conn').className='pill ok';appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line:t}]);}catch(e){alert(e.message)}}
-async function disconnect(){try{let t=await api('/disconnect',{method:'POST'});document.getElementById('conn').textContent='desconectado';document.getElementById('conn').className='pill bad';appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line:t}]);}catch(e){alert(e.message)}}
-async function send(command){try{let t=await api('/send',{method:'POST',body:new URLSearchParams({command})});appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line:'> '+command}]); if(t.trim()) appendLog([{id:++lastId,ts:new Date().toLocaleTimeString(),line:t.trim()}]);}catch(e){alert(e.message)}}
-function sendCustom(){let v=document.getElementById('custom').value.trim(); if(v) send(v)}
-document.getElementById('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom()});
-logEl.addEventListener('scroll',()=>{autoScroll=(logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20)});
-async function poll(){try{let r=await fetch('/logs?after='+lastId);let j=await r.json(); if(j.connected){document.getElementById('conn').textContent='conectado';document.getElementById('conn').className='pill ok'} if(j.logs.length) appendLog(j.logs);}catch(e){} finally{setTimeout(poll,600)}}
-refreshPorts(); poll();
 </script>
-</body>
-</html>
+</body></html>

@@ -1,0 +1,5 @@
+{
+  "scope": "HW04 tests updated but not executed in this GitHub edit session.",
+  "status": "not_run",
+  "note": "Run python tests/hardware/test_pin_policy.py after pulling the branch."
+}

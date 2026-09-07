@@ -1,0 +1,26 @@
+{
+  "scope": "Host mocks + UBSan in GCC only. No ESP-IDF build or physical validation. Windows batch script not executed here.",
+  "passed": 19,
+  "failed": 0,
+  "tests": [
+    {"test": "boot_headless/offline", "passed": true},
+    {"test": "boot_headless/network", "passed": true},
+    {"test": "boot_headless/mutex_error", "passed": true},
+    {"test": "boot_opted_in/offline", "passed": true},
+    {"test": "boot_oled_failure/offline", "passed": true},
+    {"test": "boot_oled_failure/network", "passed": true},
+    {"test": "camera_off/disabled", "passed": true},
+    {"test": "camera_on/success", "passed": true},
+    {"test": "camera_on/repeat", "passed": true},
+    {"test": "camera_on/psram", "passed": true},
+    {"test": "camera_on/init_error", "passed": true},
+    {"test": "camera_on/sensor_missing", "passed": true},
+    {"test": "camera_on/no_frame", "passed": true},
+    {"test": "camera_on/corrupt", "passed": true},
+    {"test": "camera_on/null_buffer", "passed": true},
+    {"test": "camera_on/wrong_format", "passed": true},
+    {"test": "camera_on/zero_dimensions", "passed": true},
+    {"test": "camera_on/deinit_error", "passed": true},
+    {"test": "camera_on/small_buffer", "passed": true}
+  ]
+}

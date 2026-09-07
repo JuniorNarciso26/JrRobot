@@ -1,0 +1,8 @@
+{
+  "scope": "Python host mocks/local HTTP + offline Chromium simulated device. No physical ESP32, no Windows batch execution, no new C firmware build.",
+  "python_passed": 33,
+  "python_failed": 0,
+  "browser_passed": 13,
+  "browser_failed": 0,
+  "firmware_unchanged_base": "f38ba2c9caea99641539262c5cdd771c78f51430"
+}
