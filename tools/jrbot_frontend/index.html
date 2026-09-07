@@ -24,7 +24,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Response | ESP-SR MultiNet + WakeNet fallback | diagnostico por Serial</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Response | ESP-SR MultiNet6 | comando unico JR BOT | diagnostico por Serial</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -71,7 +71,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular evento (diagnostico)</button>
       <button data-action onclick="brainStatus()" class="gray">Estado do cerebro</button>
       <span id="brain_state" class="state">off</span>
-      <div class="msg" id="brain_msg">Ao ativar, o MS3625 tenta reconhecer "JrBot" pelo MultiNet6. Se o MultiNet nao iniciar, o firmware usa "Hi ESP" como fallback. Ao reconhecer, muda a face para feliz, emite um bip duplo e volta a escutar.</div>
+      <div class="msg" id="brain_msg">Ao ativar, o MS3625 reconhece somente "JrBot" pelo MultiNet6. Comando interno: JR BOT. Confianca minima: 0.70. Ao reconhecer, muda a face para feliz, responde "Oi" e volta a escutar.</div>
     </div>
     <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
     <pre id="log" aria-label="Respostas do robo"></pre>
@@ -157,10 +157,8 @@ function renderBrain(text){
   el('autonomous_test').disabled=!autonomousEnabled;
   if(!autonomousEnabled){
     el('brain_msg').textContent='Modo autonomo desligado.';
-  }else if(f.engine==='esp-sr-wakenet'){
-    el('brain_msg').textContent='Fallback WakeNet ativo. Diga "Hi ESP". Ao reconhecer, o JrBot fica feliz, responde com bip duplo e volta a escutar.';
   }else{
-    el('brain_msg').textContent='Reconhecedor de nome ativo. Diga "JrBot" (tambem aceitamos "Junior Bot" / "J R Bot"). Ao reconhecer, o JrBot fica feliz, responde com bip duplo e volta a escutar.';
+    el('brain_msg').textContent='Reconhecedor ativo somente para "JrBot" (JR BOT), confianca minima 0.70. Ao reconhecer, fica feliz, responde "Oi" e volta a escutar.';
   }
 }
 async function toggleAutonomous(){
@@ -179,7 +177,7 @@ async function testAutonomousWake(){
   return action(async()=>{
     if(!autonomousEnabled) throw new Error('Ative o modo autonomo primeiro.');
     const reply=await send('brain_test');
-    el('brain_msg').textContent='Evento de bancada executado. A simulacao valida a reacao da face; o bip automatico e a troca I2S sao testados pela deteccao de voz real.';
+    el('brain_msg').textContent='Evento de bancada executado. A simulacao valida a reacao da face; a resposta "Oi" e a troca I2S sao testadas pela deteccao de voz real.';
     return reply;
   },'brain_msg');
 }
