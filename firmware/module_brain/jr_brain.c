@@ -100,7 +100,7 @@ esp_err_t jr_brain_set_enabled(bool enabled) {
 
     if (enabled) {
         set_event("autonomous_starting");
-        emit_event("JR_BRAIN event=autonomous_starting engine=esp-sr-wakenet");
+        emit_event("JR_BRAIN event=autonomous_starting engine=esp-sr");
 
         esp_err_t err = jr_voice_start(voice_wake_detected);
         if (err != ESP_OK) {
@@ -185,7 +185,7 @@ void jr_brain_get_status(jr_brain_status_t *out) {
         .last_probability = probability,
         .last_error = last_error,
     };
-    snprintf(out->engine, sizeof(out->engine), "%s", voice.engine[0] ? voice.engine : "esp-sr-wakenet");
+    snprintf(out->engine, sizeof(out->engine), "%s", voice.engine[0] ? voice.engine : "esp-sr");
     snprintf(out->last_event, sizeof(out->last_event), "%s", last_event);
 }
 
