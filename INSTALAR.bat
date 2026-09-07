@@ -107,7 +107,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot Response atualizado.
-echo Firmware: JRBotV2_JRBOT_RESPONSE_01
+echo Firmware: JRBotV2_JRBOT_RESPONSE_02
 if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Nome: JrBot ^| Fallback: Hi ESP
 exit /b 0
 
@@ -130,6 +130,6 @@ echo.
 echo Gatilho principal experimental: JrBot via MultiNet6.
 echo Aliases: JR BOT / JUNIOR BOT / J R BOT.
 echo Fallback seguro: Hi ESP via WakeNet.
-echo Resposta: face feliz + bip duplo no alto-falante.
+echo Resposta: face feliz + "Oi" local; bip curto se o audio falhar.
 echo.
 exit /b 0
