@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JrBot panel: serial simples + diagnostico Wi-Fi + foto JPEG da OV5640."""
+"""JrBot panel: Serial/Wi-Fi, foto OV5640 e gravacao WAV do microfone."""
 from __future__ import annotations
 
 import threading
@@ -12,6 +12,7 @@ import webbrowser
 import app
 
 MAX_JPEG_BYTES = 512 * 1024
+MAX_WAV_BYTES = 1024 * 1024
 
 
 def serial_port_diag(port: str) -> str:
@@ -37,7 +38,12 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
     app.validate_command(command)
     verb = command.strip().lower().split(" ", 1)[0]
     if timeout is None:
-        timeout = 30.0 if verb == "camera_test" else 8.0
+        if verb == "camera_test":
+            timeout = 30.0
+        elif verb in {"audio_play_recording", "play_recording", "tocar_gravacao"}:
+            timeout = 15.0
+        else:
+            timeout = 8.0
     if not app.SEND_LOCK.acquire(timeout=2.0):
         raise RuntimeError("Outro comando esta aguardando confirmacao")
 
@@ -90,6 +96,10 @@ def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
     _original_close_serial(reason, expected)
 
 
+def _opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), app.NoRedirect())
+
+
 def wifi_capture(ip: str) -> tuple[bytes, str]:
     safe = app.safe_ip(ip)
     request = urllib.request.Request(
@@ -98,8 +108,7 @@ def wifi_capture(ip: str) -> tuple[bytes, str]:
         headers={"Accept": "image/jpeg", "Cache-Control": "no-cache"},
     )
     try:
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), app.NoRedirect())
-        with opener.open(request, timeout=12) as reply:
+        with _opener().open(request, timeout=12) as reply:
             ctype = reply.headers.get_content_type()
             body = reply.read(MAX_JPEG_BYTES + 1)
             if len(body) > MAX_JPEG_BYTES:
@@ -113,6 +122,34 @@ def wifi_capture(ip: str) -> tuple[bytes, str]:
         raise RuntimeError("ESP32 recusou a foto: " + detail) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise RuntimeError("Falha buscando foto da camera pelo Wi-Fi") from exc
+
+
+def wifi_mic_record(ip: str, seconds_text: str) -> tuple[bytes, str]:
+    safe = app.safe_ip(ip)
+    try:
+        seconds = int(seconds_text)
+    except (TypeError, ValueError):
+        seconds = 3
+    seconds = max(1, min(10, seconds))
+    request = urllib.request.Request(
+        "http://" + safe + f"/mic-record?seconds={seconds}",
+        method="GET",
+        headers={"Accept": "audio/wav", "Cache-Control": "no-cache"},
+    )
+    try:
+        with _opener().open(request, timeout=seconds + 10) as reply:
+            body = reply.read(MAX_WAV_BYTES + 1)
+            if len(body) > MAX_WAV_BYTES:
+                raise RuntimeError("WAV do microfone excedeu o limite de 1 MiB")
+            if len(body) <= 44 or body[:4] != b"RIFF" or body[8:12] != b"WAVE":
+                raise RuntimeError("ESP32 nao devolveu um WAV valido")
+            app.add_log(f"JR_MIC_WIFI record=received ip={safe} seconds={seconds} bytes={len(body)}")
+            return body, safe
+    except urllib.error.HTTPError as exc:
+        detail = app.sanitize_log_line(exc.read(4096).decode("utf-8", errors="replace"))
+        raise RuntimeError("ESP32 recusou a gravacao: " + detail) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise RuntimeError("Falha gravando microfone pelo Wi-Fi") from exc
 
 
 _original_do_get = app.Handler.do_GET
@@ -145,13 +182,29 @@ def enhanced_do_get(self) -> None:
         except RuntimeError as exc:
             self._send(502, app.sanitize_log_line(str(exc)))
         return
+    if parsed.path == "/mic/record":
+        if not self._allowed():
+            return
+        params = urllib.parse.parse_qs(parsed.query)
+        try:
+            body, safe = wifi_mic_record(
+                params.get("ip", [""])[0],
+                params.get("seconds", ["3"])[0],
+            )
+            self._send(200, body, "audio/wav")
+            app.add_log(f"JR_MIC_PANEL record=delivered ip={safe} bytes={len(body)}")
+        except ValueError as exc:
+            self._send(400, app.sanitize_log_line(str(exc)))
+        except RuntimeError as exc:
+            self._send(502, app.sanitize_log_line(str(exc)))
+        return
     _original_do_get(self)
 
 
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-11-SERIAL-DIAG"
+app.APP_VERSION = "JRBOT-PANEL-V2-12-AUDIO-MIC"
 
 
 def main() -> int:
@@ -160,7 +213,7 @@ def main() -> int:
     except OSError:
         print("Porta 8765 ocupada. Feche o painel anterior antes de abrir esta versao.")
         return 1
-    print(app.APP_VERSION + " - http://127.0.0.1:8765 - diagnostico detalhado de COM + camera Serial/Wi-Fi")
+    print(app.APP_VERSION + " - http://127.0.0.1:8765 - camera + gravacao WAV + reproducao na caixinha")
     app.ensure_reader()
     webbrowser.open("http://127.0.0.1:8765")
     try:

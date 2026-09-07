@@ -6,26 +6,30 @@
 #include "jr_board.h"
 #include "jr_commands.h"
 #include "jr_camera_diag.h"
+#include "jr_mic.h"
 #include "jr_wifi.h"
 #include "jr_portal.h"
 
 static httpd_handle_t web_server;
 static const char WEB_HTML[]=
 "<!doctype html><html lang='pt-br'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-"<title>JrBot V2</title><style>body{max-width:860px;margin:24px auto;padding:16px;font:16px Arial;background:#101520;color:#eee}button,input{margin:5px;padding:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere}section{padding:16px;border:1px solid #485064;margin:16px 0}img{max-width:100%;border:1px solid #485064}</style>"
+"<title>JrBot V2</title><style>body{max-width:860px;margin:24px auto;padding:16px;font:16px Arial;background:#101520;color:#eee}button,input{margin:5px;padding:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere}section{padding:16px;border:1px solid #485064;margin:16px 0}img{max-width:100%;border:1px solid #485064}audio{width:100%;margin-top:10px}</style>"
 "<h1>JrBot - robo com IA em desenvolvimento</h1><p>OLED: SDA GPIO1 / SCL GPIO2. Camera OV5640 disponivel sob demanda.</p>"
 "<p>Somente rede local confiavel: este portal nao possui autenticacao/TLS. Nao exponha a Internet. Configure Wi-Fi pela Serial.</p>"
 "<section><pre id='state'></pre><button onclick='refresh()'>Atualizar estado</button></section>"
 "<section><button onclick='photo()'>Tirar foto</button><br><img id='photo' alt='Foto da OV5640'></section>"
 "<section><div id='faces'></div></section><section><label>Volume <input id='vol' type='number' min='0' max='100' value='35'></label>"
 "<button onclick='run(\"audio_volume \"+document.getElementById(\"vol\").value)'>Aplicar</button><button id='audio' disabled onclick='run(\"audio_test\")'>Testar som</button>"
-"<p>GPIO21/41/42/47 ocupados pelo conjunto de audio; nao reutilizar.</p></section><pre id='log'></pre>"
+"<button onclick='run(\"audio_play_recording\")'>Tocar ultima gravacao</button>"
+"<p>Audio e microfone compartilham BCLK GPIO21 e WS GPIO47; o firmware alterna o barramento sob demanda.</p></section>"
+"<section><button onclick='run(\"mic_test\")'>Testar microfone</button><button onclick='recordMic()'>Gravar 3s WAV</button><audio id='micaudio' controls style='display:none'></audio><p id='micmsg'>MS3625: SCK GPIO21, WS GPIO47, SD GPIO41.</p></section><pre id='log'></pre>"
 "<script>const faces=['neutro','feliz','triste','animado','bravo','surpreso','pensando','cetico','sono','confuso','piscando','amor','brincalhao','preocupado','cool','bateria','demo'];"
 "for(const c of faces){const b=document.createElement('button');b.textContent=c;b.onclick=()=>run(c);document.getElementById('faces').appendChild(b)}"
 "function log(s){const el=document.getElementById('log');el.textContent=(s+'\\n'+el.textContent).slice(0,18000)}"
 "function photo(){document.getElementById('photo').src='/capture?t='+Date.now()}"
 "async function send(c){const r=await fetch('/cmd',{method:'POST',headers:{'Content-Type':'text/plain','X-JrBot-Command':'1'},body:c});const t=await r.text();if(!r.ok)throw new Error(t);return t}"
 "async function run(c){try{log(await send(c));await refresh()}catch(e){log('ERRO: '+e.message)}}"
+"async function recordMic(){const m=document.getElementById('micmsg'),a=document.getElementById('micaudio');m.textContent='Gravando 3 segundos... fale agora.';try{const r=await fetch('/mic-record?seconds=3&t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(await r.text());const b=await r.blob();if(a.dataset.url)URL.revokeObjectURL(a.dataset.url);const u=URL.createObjectURL(b);a.dataset.url=u;a.src=u;a.style.display='block';m.textContent='Gravacao pronta. Use play aqui ou Tocar ultima gravacao na caixinha.';await refresh()}catch(e){m.textContent='Erro: '+e.message}}"
 "async function refresh(){try{const r=await fetch('/status');const t=await r.text();if(!r.ok)throw new Error(t);document.getElementById('state').textContent=t;document.getElementById('audio').disabled=!(t.includes('audio=ready')||t.includes('audio=on_demand'))}catch(e){document.getElementById('state').textContent='Indisponivel: '+e.message}}refresh();setInterval(refresh,4000)</script></html>";
 
 static esp_err_t reply(httpd_req_t *req,const char *status,const char *text) {
@@ -106,41 +110,27 @@ static esp_err_t web_cmd_handler(httpd_req_t *req) {
         read+=(size_t)n;
     }
     if (memchr(cmd,0,read)) return reply(req,"400 Bad Request","JR_ERROR NUL_no_comando");
-    cmd[read]='\0';
-    if (!network_command_allowed(cmd)) return reply(req,"403 Forbidden","JR_ERROR comando_somente_serial");
-    char response[JR_RESPONSE_MAX_BYTES];
-    bool ok=jr_handle_command(cmd,response,sizeof(response));
-    return reply(req,ok?"200 OK":"400 Bad Request",response);
-}
-static esp_err_t legacy_get_handler(httpd_req_t *req) {
-    char query[128],raw[96],cmd[64];
-    if (httpd_req_get_url_query_str(req,query,sizeof(query))!=ESP_OK ||
-        httpd_query_key_value(query,"c",raw,sizeof(raw))!=ESP_OK ||
-        !jr_decode_component(raw,strlen(raw),cmd,sizeof(cmd),true)) return reply(req,"400 Bad Request","JR_ERROR query_invalida");
-    if (strcmp(cmd,"status") && strcmp(cmd,"help")) return reply(req,"405 Method Not Allowed","JR_ERROR use_POST_cmd");
-    char response[JR_RESPONSE_MAX_BYTES]; bool ok=jr_handle_command(cmd,response,sizeof(response));
-    return reply(req,ok?"200 OK":"400 Bad Request",response);
-}
-static esp_err_t disabled_camera_handler(httpd_req_t *req) {
-    return reply(req,"503 Service Unavailable","JR_CAMERA_DISABLED recurso_indisponivel");
-}
-void jr_portal_start(void) {
-    if (web_server || !jr_wifi_network_ready()) return;
-    httpd_config_t config=HTTPD_DEFAULT_CONFIG(); config.server_port=80; config.stack_size=12288;
-    esp_err_t err=httpd_start(&web_server,&config);
-    if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
-    const httpd_uri_t routes[]={
-        {.uri="/",.method=HTTP_GET,.handler=web_root_handler},
-        {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
-        {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler},
-        {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
-        {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
-        {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
-        {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
-    };
-    for (size_t i=0;i<sizeof(routes)/sizeof(routes[0]);i++) {
-        err=httpd_register_uri_handler(web_server,&routes[i]);
-        if (err!=ESP_OK) { httpd_stop(web_server); web_server=NULL; ESP_LOGE("jrbot_portal","register=%s",esp_err_to_name(err)); return; }
-    }
-    ESP_LOGI("jrbot_portal","Portal local iniciado; foto JPEG em /capture; comandos POST; Wi-Fi config somente Serial");
-}
+    cmdD,²H†@Lƒ\ÎÂˆYˆ
+[™]ÛÜš×ØÛÛ[X[™Ø[ÝÙY
+ÛY
+JH™]\›ˆ™\J™\KÈ›Ü˜šY[ˆ‹’”—ÑT”“ÔˆÛÛX[™×ÜÛÛY[WÜÙ\šX[ŠNÂˆÚ\ˆ™\ÜÛœÙVÒ”—Ô‘TÔÓ”ÑWÓPVÐ–UT×NÂˆ›ÛÛÚÏZœ—Ú[™WØÛÛ[X[™
+ÛY™\ÜÛœÙKÚ^™[ÙŠ™\ÜÛœÙJJNÂˆ™]\›ˆ™\J™\KÚÏÈŒŒÒÈŽˆ˜Y™\]Y\Ý‹™\ÜÛœÙJNÂŸBœÝ]XÈ\ÜÙ\œ—ÝYØXÞWÙÙ]Ú[™\ŠÜ™\WÝ
+œ™\JHÂˆÚ\ˆ]Y\žVÌLŽK˜]ÖÎM—KÛYÍNÂˆYˆ
+Ü™\WÙÙ]Ý\›Ü]Y\žWÜÝŠ™\K]Y\žKÚ^™[ÙŠ]Y\žJJHOQTÔÓÒÈˆÜ]Y\žWÚÙ^WÝ˜[YJ]Y\žK˜È‹˜]ËÚ^™[ÙŠ˜]ÊJHOQTÔÓÒÈˆZœ—ÙXÛÙWØÛÛ\Û™[
+˜]ËÝ›[Š˜]ÊKÛYÚ^™[ÙŠÛY
+KYJJH™]\›ˆ™\J™\K˜Y™\]Y\Ý‹’”—ÑT”“Ôˆ]Y\žWÚ[˜[YHŠNÂˆYˆ
+Ý˜Û\
+ÛYœÝ]\ÈŠH	‰ˆÝ˜Û\
+ÛYš[ŠJH™]\›ˆ™\J™\KHY]Ù›Ý[ÝÙY‹’”—ÑT”“Ôˆ\ÙWÔÔÕØÛYŠNÂˆÚ\ˆ™\ÜÛœÙVÒ”—Ô‘TÔÓ”ÑWÓPVÐ–UT×NÈ›ÛÛÚÏZœ—Ú[™WØÛÛ[X[™
+ÛY™\ÜÛœÙKÚ^™[ÙŠ™\ÜÛœÙJJNÂˆ™]\›ˆ™\J™\KÚÏÈŒŒÒÈŽˆ˜Y™\]Y\Ý‹™\ÜÛœÙJNÂŸBœÝ]XÈ\ÜÙ\œ—Ý\ØX›YØØ[Y\˜WÚ[™\ŠÜ™\WÝ
+œ™\JHÂˆ™]\›ˆ™\J™\KLÈÙ\šXÙH[˜]˜Z[X›H‹’”—ÐÐSQTWÑTÐP“Q™XÝ\œÛ×Ú[™\ÜÛš]™[ŠNÂŸB›ÚYœ—ÜÜ[ÜÝ\
+›ÚY
+HÂˆYˆ
+ÙX—ÜÙ\™\ˆZœ—ÝÚYšWÛ™]ÛÜš×Ü™XYJ
+JH™]\›ŽÂˆØÛÛ™šY×ÝÛÛ™šYÏRÑQUSÐÓÓ‘’QÊ
+NÈÛÛ™šYËœÙ\™\—ÜÜNÈÛÛ™šYËœÝXÚ×ÜÚ^™OLLŒŽÂˆ\ÜÙ\œ—Ý\œZÜÝ\
+	ÙX—ÜÙ\™\‹	˜ÛÛ™šYÊNÂˆYˆ
+\œˆOQTÔÓÒÊHÈÙX—ÜÙ\™\S•SÈTÔÓÑÑJšœ˜›ÝÜÜ[‹šÜÝ\I\È‹\ÜÙ\œ—Ý×Û˜[YJ\œŠJNÈ™]\›ŽÈBˆÛÛœÝÝ\šWÝ›Ý]\Ö×O^ÂˆË\šOH‹È‹›Y]ÙRÑÑUš[™\]ÙX—Ü›ÛÝÚ[™\ŸKˆË\šOH‹ÜÝ]\È‹›Y]ÙRÑÑUš[™\]ÙX—ÜÝ]\×Ú[™\ŸKˆË\šOH‹ØÛY‹›Y]ÙRÔÔÕš[™\]ÙX—ØÛYÚ[™\ŸKˆË\šOH‹ØÛY‹›Y]ÙRÑÑUš[™\[YØXÞWÙÙ]Ú[™\ŸKˆË\šOH‹ØØ\\™H‹›Y]ÙRÑÑUš[™\]ÙX—ØØ\\™WÚ[™\ŸKˆË\šOH‹ÛZXË\™XÛÜ™‹›Y]ÙRÑÑUš[™\Zœ—ÛZX×Ü™XÛÜ™ÝØ]—Ú[™\ŸKˆË\šOH‹Ø]]Ù›ØÝ\È‹›Y]ÙRÑÑUš[™\Y\ØX›YØØ[Y\˜WÚ[™\ŸKˆË\šOH‹ÛX[X[Y›ØÝ\È‹›Y]ÙRÑÑUš[™\Y\ØX›YØØ[Y\˜WÚ[™\ŸBˆNÂˆ›Üˆ
+Ú^™WÝOLÚOÚ^™[ÙŠ›Ý]\ÊKÜÚ^™[ÙŠ›Ý]\ÖÌJNÚJÊÊHÂˆ\œZÜ™YÚ\Ý\—Ý\šWÚ[™\ŠÙX—ÜÙ\™\‹	œ›Ý]\ÖÚWJNÂˆYˆ
+\œˆOQTÔÓÒÊHÈÜÝÜ
+ÙX—ÜÙ\™\ŠNÈÙX—ÜÙ\™\S•SÈTÔÓÑÑJšœ˜›ÝÜÜ[‹œ™YÚ\Ý\I\È‹\ÜÙ\œ—Ý×Û˜[YJ\œŠJNÈ™]\›ŽÈBˆBˆTÔÓÑÒJšœ˜›ÝÜÜ[‹”Ü[ØØ[[šXÚXYÎÈ›ÝÈ”QÈØØ\\™NÈZXÜ›Ù›Û™HÐUˆÛZXË\™XÛÜ™ÈÛÛX[™ÜÈÔÕÈÚKQšHÛÛ™šYÈÛÛY[HÙ\šX[ŠNÂŸB

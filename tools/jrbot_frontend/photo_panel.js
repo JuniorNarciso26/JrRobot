@@ -1,5 +1,6 @@
-/* Camera unificada: um unico botao Testar camera usa a conexao selecionada. */
+/* Camera + audio/microfone V2: funcoes unificadas no painel local. */
 let jrPhotoUrl='';
+let jrMicUrl='';
 
 function jrValidIpv4(text){
   return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(text||''));
@@ -17,18 +18,94 @@ function jrNormalizeCameraUi(){
   if(testButton) testButton.textContent='Testar camera';
 }
 
+function jrNormalizeAudioMicUi(){
+  const audioBox=document.getElementById('audio_box');
+  if(audioBox && !document.getElementById('play_recording')){
+    const play=document.createElement('button');
+    play.id='play_recording';
+    play.className='purple';
+    play.dataset.action='1';
+    play.textContent='Tocar gravacao na caixinha';
+    play.onclick=()=>playRecordingOnSpeaker();
+    const msg=document.getElementById('audio_msg');
+    audioBox.insertBefore(play,msg||null);
+  }
+
+  let micBox=document.getElementById('mic_box');
+  if(!micBox){
+    for(const heading of Array.from(document.querySelectorAll('h2'))){
+      if((heading.textContent||'').trim().toLowerCase()==='microfone'){
+        micBox=heading.nextElementSibling;
+        if(micBox) micBox.id='mic_box';
+        break;
+      }
+    }
+  }
+  if(!micBox) return;
+
+  const test=document.getElementById('test_mic');
+  if(test){
+    test.textContent='Testar microfone';
+    test.className='green';
+    test.onclick=()=>testMic();
+    test.dataset.action='1';
+  }
+  if(!document.getElementById('record_mic')){
+    const record=document.createElement('button');
+    record.id='record_mic';
+    record.className='purple';
+    record.dataset.action='1';
+    record.textContent='Gravar 3s';
+    record.onclick=()=>recordMic();
+    micBox.appendChild(record);
+  }
+  let msg=document.getElementById('mic_msg');
+  if(!msg){
+    msg=document.createElement('div');
+    msg.id='mic_msg';
+    msg.className='msg';
+    micBox.appendChild(msg);
+  }
+  if(!document.getElementById('mic_audio')){
+    const audio=document.createElement('audio');
+    audio.id='mic_audio';
+    audio.controls=true;
+    audio.style.width='100%';
+    audio.style.display='none';
+    micBox.appendChild(audio);
+  }
+  if(!document.getElementById('mic_download')){
+    const download=document.createElement('a');
+    download.id='mic_download';
+    download.className='pill';
+    download.download='jrbot-microfone.wav';
+    download.textContent='Baixar WAV';
+    download.style.display='none';
+    micBox.appendChild(download);
+  }
+}
+
 const jrBaseRefreshControls=refreshControls;
 refreshControls=function(){
-  jrBaseRefreshControls();
   jrNormalizeCameraUi();
+  jrNormalizeAudioMicUi();
+  jrBaseRefreshControls();
 
-  const testButton=document.getElementById('test_camera');
-  if(!testButton) return;
+  const cameraButton=document.getElementById('test_camera');
+  if(cameraButton){
+    const cameraReady=currentFirmware()&&device?.camera==='available';
+    const wifiReady=cameraReady&&device?.wifi==='1'&&jrValidIpv4(val('esp_ip'));
+    cameraButton.disabled=busy||(mode==='wifi'?!wifiReady:!cameraReady);
+    cameraButton.textContent='Testar camera';
+  }
 
-  const cameraReady=currentFirmware()&&device?.camera==='available';
-  const wifiReady=cameraReady&&device?.wifi==='1'&&jrValidIpv4(val('esp_ip'));
-  testButton.disabled=busy||(mode==='wifi'?!wifiReady:!cameraReady);
-  testButton.textContent='Testar camera';
+  const valid=currentFirmware();
+  const micButton=document.getElementById('test_mic');
+  if(micButton) micButton.disabled=busy||!valid;
+  const record=document.getElementById('record_mic');
+  if(record) record.disabled=busy||!valid||device?.wifi!=='1'||!jrValidIpv4(val('esp_ip'));
+  const play=document.getElementById('play_recording');
+  if(play) play.disabled=busy||!valid||device?.mic_has_recording!=='1';
 };
 
 const jrBaseRenderStatus=renderStatus;
@@ -42,6 +119,12 @@ renderStatus=function(text){
     el('cam_msg').textContent=device?.wifi==='1'
       ? 'OV5640 detectada. O mesmo botao Testar camera funciona pela Serial ou pelo Wi-Fi, conforme a conexao selecionada.'
       : 'OV5640 detectada. Teste pela Serial; quando o Wi-Fi estiver conectado, o mesmo botao tambem testa e mostra a foto pelo Wi-Fi.';
+  }
+  const micMsg=document.getElementById('mic_msg');
+  if(micMsg){
+    const has=device?.mic_has_recording==='1';
+    const recorded=has?' Ultima gravacao: '+(device.mic_record_seconds||'?')+'s, '+(device.mic_record_samples||'?')+' amostras, pico '+(device.mic_record_peak||'0')+'.':'';
+    micMsg.textContent='MS3625: SCK GPIO21, WS GPIO47, SD GPIO41. Grave 3s pelo Wi-Fi e ouca no painel; depois use Tocar gravacao na caixinha.'+recorded;
   }
   refreshControls();
   return result;
@@ -88,6 +171,53 @@ async function takePhoto(){
   },'cam_msg');
 }
 
+async function recordMic(){
+  return action(async()=>{
+    if(!currentFirmware()) throw new Error('Firmware JrBot V2 nao confirmado.');
+    if(device?.wifi!=='1') throw new Error('A gravacao WAV usa o Wi-Fi da placa. Consulte o Wi-Fi e confirme conexao.');
+    const ip=val('esp_ip');
+    if(!jrValidIpv4(ip)) throw new Error('Consulte o Wi-Fi da placa para obter o IP atual.');
+    const msg=document.getElementById('mic_msg');
+    const audio=document.getElementById('mic_audio');
+    const down=document.getElementById('mic_download');
+    msg.textContent='Gravando 3 segundos no MS3625... fale agora.';
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),15000);
+    let response;
+    try{
+      response=await fetch('/mic/record?ip='+encodeURIComponent(ip)+'&seconds=3&t='+Date.now(),{cache:'no-store',signal:controller.signal});
+    }catch(e){
+      if(e.name==='AbortError') throw new Error('Tempo esgotado ao gravar o microfone.');
+      throw e;
+    }finally{
+      clearTimeout(timer);
+    }
+    if(!response.ok) throw new Error((await response.text())||('Falha HTTP '+response.status));
+    const blob=await response.blob();
+    if(blob.size<=44) throw new Error('A placa devolveu um WAV vazio.');
+    if(jrMicUrl) URL.revokeObjectURL(jrMicUrl);
+    jrMicUrl=URL.createObjectURL(blob);
+    audio.src=jrMicUrl;
+    audio.style.display='block';
+    down.href=jrMicUrl;
+    down.style.display='inline-block';
+    msg.textContent='Gravacao pronta: '+blob.size+' bytes. Use play para ouvir no PC ou Tocar gravacao na caixinha.';
+    localLine('JR_MIC_RECORD ip='+ip+' bytes='+blob.size+' wav=1');
+    await send('status');
+  },'mic_msg');
+}
+
+async function playRecordingOnSpeaker(){
+  return action(async()=>{
+    const msg=document.getElementById('audio_msg');
+    msg.textContent='Reproduzindo a ultima gravacao do microfone na caixinha...';
+    const reply=await send('audio_play_recording');
+    const f=fields(reply);
+    if(f.audio_play_recording!=='completed') throw new Error('Reproducao nao confirmada.');
+    msg.textContent='Gravacao reproduzida na caixinha: '+(f.seconds||'?')+'s, '+(f.samples||'?')+' amostras, volume '+(f.volume||'?')+'%.';
+  },'audio_msg');
+}
+
 const jrBaseTestCamera=testCamera;
 testCamera=async function(){
   if(mode==='wifi') return takePhoto();
@@ -101,4 +231,5 @@ function openCameraPortal(){
 }
 
 jrNormalizeCameraUi();
+jrNormalizeAudioMicUi();
 refreshControls();

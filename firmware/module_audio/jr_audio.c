@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "driver/gpio.h"
 #include "driver/i2s_std.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #include "jr_audio.h"
 #include "jr_board.h"
@@ -18,10 +20,25 @@
 static portMUX_TYPE audio_state_lock=portMUX_INITIALIZER_UNLOCKED;
 static const char *TAG = "jrbot_audio";
 static i2s_chan_handle_t tx_chan = NULL;
+static SemaphoreHandle_t i2s_bus_mutex = NULL;
 static bool audio_ready = false;
 static int audio_volume = 35;
 static jr_audio_diag_t audio_diag = {.running=false,.tests=0,.last_bytes=0,.last_frequency_hz=0,.last_duration_ms=0,.last_error=ESP_ERR_INVALID_STATE};
-static char status_text[160] = "MAX98357A pronto para teste sob demanda";
+static char status_text[192] = "MAX98357A pronto para teste sob demanda";
+
+esp_err_t jr_audio_bus_init(void) {
+    if (!i2s_bus_mutex) i2s_bus_mutex = xSemaphoreCreateMutex();
+    return i2s_bus_mutex ? ESP_OK : ESP_ERR_NO_MEM;
+}
+
+bool jr_audio_bus_acquire(uint32_t timeout_ms) {
+    if (jr_audio_bus_init() != ESP_OK) return false;
+    return xSemaphoreTake(i2s_bus_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+void jr_audio_bus_release(void) {
+    if (i2s_bus_mutex) xSemaphoreGive(i2s_bus_mutex);
+}
 
 static void set_ready(bool ready) {
     portENTER_CRITICAL(&audio_state_lock);
@@ -58,6 +75,17 @@ void jr_audio_get_diag(jr_audio_diag_t *out) {
     portEXIT_CRITICAL(&audio_state_lock);
 }
 
+static void release_shared_pins(void) {
+    (void)gpio_reset_pin((gpio_num_t)JR_AUDIO_BCLK_GPIO);
+    (void)gpio_set_pull_mode((gpio_num_t)JR_AUDIO_BCLK_GPIO, GPIO_FLOATING);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_BCLK_GPIO, GPIO_MODE_INPUT);
+    (void)gpio_reset_pin((gpio_num_t)JR_AUDIO_LRC_GPIO);
+    (void)gpio_set_pull_mode((gpio_num_t)JR_AUDIO_LRC_GPIO, GPIO_FLOATING);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_LRC_GPIO, GPIO_MODE_INPUT);
+    (void)gpio_set_direction((gpio_num_t)JR_AUDIO_DIN_GPIO, GPIO_MODE_OUTPUT);
+    (void)gpio_set_level((gpio_num_t)JR_AUDIO_DIN_GPIO, 0);
+}
+
 void jr_audio_stop(void) {
     if (tx_chan) {
         if (jr_audio_ready()) (void)i2s_channel_disable(tx_chan);
@@ -65,6 +93,7 @@ void jr_audio_stop(void) {
         tx_chan = NULL;
     }
     set_ready(false);
+    release_shared_pins();
 }
 
 esp_err_t jr_audio_start(void) {
@@ -144,6 +173,7 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     if (frequency_hz > 3000) frequency_hz = 3000;
     if (duration_ms < 100) duration_ms = 100;
     if (duration_ms > 5000) duration_ms = 5000;
+    if (!jr_audio_bus_acquire(15000)) return ESP_ERR_TIMEOUT;
 
     uint32_t seq = audio_diag_begin(frequency_hz, duration_ms);
     uint32_t tone_bytes = 0;
@@ -194,18 +224,79 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     }
 
 done:
+    jr_audio_stop();
     audio_diag_finish(tone_bytes, err);
     if (err == ESP_OK) {
-        snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu transmitido bytes=%lu; I2S mantido ativo como V1",
+        snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu transmitido bytes=%lu; I2S liberado para o microfone",
                  (unsigned long)seq,(unsigned long)tone_bytes);
-        ESP_LOGI(TAG, "TEST_END seq=%lu result=ESP_OK tone_bytes=%lu i2s_kept_active=1",
+        ESP_LOGI(TAG, "TEST_END seq=%lu result=ESP_OK tone_bytes=%lu i2s_released=1",
                  (unsigned long)seq,(unsigned long)tone_bytes);
     } else {
-        jr_audio_stop();
         snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu erro=%s bytes=%lu",
                  (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
         ESP_LOGE(TAG, "TEST_END seq=%lu result=%s tone_bytes=%lu",
                  (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
+    }
+    jr_audio_bus_release();
+    return err;
+}
+
+esp_err_t jr_audio_play_pcm16_mono(const int16_t *input, size_t sample_count, int sample_rate_hz) {
+    if (!input || sample_count == 0) return ESP_ERR_INVALID_ARG;
+    if (sample_rate_hz != JR_AUDIO_SAMPLE_RATE) return ESP_ERR_NOT_SUPPORTED;
+    if (!jr_audio_bus_acquire(15000)) return ESP_ERR_TIMEOUT;
+
+    esp_err_t err = jr_audio_start();
+    if (err != ESP_OK) {
+        jr_audio_bus_release();
+        return err;
+    }
+
+    enum { frames_per_chunk = 256 };
+    int16_t stereo[frames_per_chunk * 2];
+    size_t pos = 0;
+    uint32_t bytes_total = 0;
+    int gain = jr_audio_volume();
+
+    ESP_LOGI(TAG, "PLAY_RECORDING_BEGIN samples=%u rate=%d volume=%d",
+             (unsigned)sample_count,sample_rate_hz,gain);
+
+    while (pos < sample_count) {
+        size_t frames = sample_count - pos;
+        if (frames > frames_per_chunk) frames = frames_per_chunk;
+        for (size_t i = 0; i < frames; ++i) {
+            int32_t sample = ((int32_t)input[pos + i] * gain) / 100;
+            if (sample > 32767) sample = 32767;
+            if (sample < -32768) sample = -32768;
+            stereo[i * 2] = (int16_t)sample;
+            stereo[i * 2 + 1] = (int16_t)sample;
+        }
+        size_t bytes_written = 0;
+        size_t requested = frames * 2 * sizeof(int16_t);
+        err = i2s_channel_write(tx_chan, stereo, requested, &bytes_written, pdMS_TO_TICKS(1000));
+        if (err != ESP_OK || bytes_written != requested) {
+            if (err == ESP_OK) err = ESP_ERR_INVALID_SIZE;
+            break;
+        }
+        bytes_total += (uint32_t)bytes_written;
+        pos += frames;
+    }
+
+    memset(stereo, 0, sizeof(stereo));
+    if (err == ESP_OK) {
+        size_t ignored = 0;
+        err = i2s_channel_write(tx_chan, stereo, sizeof(stereo), &ignored, pdMS_TO_TICKS(200));
+    }
+    jr_audio_stop();
+    jr_audio_bus_release();
+
+    if (err == ESP_OK) {
+        snprintf(status_text, sizeof(status_text), "ultima gravacao reproduzida samples=%u bytes=%lu volume=%d",
+                 (unsigned)sample_count,(unsigned long)bytes_total,gain);
+        ESP_LOGI(TAG, "PLAY_RECORDING_END result=ESP_OK bytes=%lu",(unsigned long)bytes_total);
+    } else {
+        snprintf(status_text, sizeof(status_text), "erro reproduzindo gravacao=%s",esp_err_to_name(err));
+        ESP_LOGE(TAG, "PLAY_RECORDING_END result=%s",esp_err_to_name(err));
     }
     return err;
 }

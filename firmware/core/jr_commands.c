@@ -21,6 +21,7 @@ static SemaphoreHandle_t command_lock;
 static bool terminal_started;
 
 esp_err_t jr_commands_init(void) {
+    if (jr_audio_bus_init() != ESP_OK) return ESP_ERR_NO_MEM;
     if (!command_lock) command_lock = xSemaphoreCreateMutex();
     return command_lock ? ESP_OK : ESP_ERR_NO_MEM;
 }
@@ -96,10 +97,12 @@ bool jr_format_status(char *response, size_t cap) {
     jr_face_status_t f;
     jr_wifi_status_t w;
     jr_mic_status_t m = {0};
+    jr_mic_recording_info_t mr = {0};
     jr_audio_diag_t a = {0};
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
     jr_audio_get_diag(&a);
+    jr_mic_get_recording_info(&mr);
     bool oled_present = (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
     unsigned camera_pid = 0;
     bool camera_present = jr_camera_probe_once(&camera_pid);
@@ -114,6 +117,7 @@ bool jr_format_status(char *response, size_t cap) {
         "audio_test_seq=%lu audio_test_running=%d audio_last=%s audio_last_bytes=%lu "
         "camera=%s camera_model=%s camera_pid=0x%04X "
         "mic=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
+        "mic_recording=%d mic_has_recording=%d mic_record_seconds=%u mic_record_samples=%u mic_record_level=%d mic_record_peak=%d "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
         JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
@@ -122,6 +126,7 @@ bool jr_format_status(char *response, size_t cap) {
         (unsigned long)a.tests,a.running?1:0,audio_last,(unsigned long)a.last_bytes,
         camera_state,JR_CAMERA_MODEL,camera_pid,
         mic_state,JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
+        mr.recording?1:0,mr.has_recording?1:0,mr.seconds,(unsigned)mr.samples,mr.level,mr.peak,
         jr_face_state_name(f.state),oled_present?"available":"unavailable",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
         (unsigned long)f.tx_failed,(unsigned long)f.skipped,(unsigned long)f.init_failed,
@@ -164,6 +169,24 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
     if (!strcmp(verb,"mic_test")) return jr_mic_test(response,cap);
+    if (!strcmp(verb,"mic_status")) return jr_mic_status(response,cap);
+    if (!strcmp(verb,"audio_play_recording") || !strcmp(verb,"play_recording") || !strcmp(verb,"tocar_gravacao")) {
+        jr_mic_recording_info_t info;
+        jr_mic_get_recording_info(&info);
+        if (!info.has_recording) {
+            snprintf(response,cap,"JR_ERROR audio_play_recording=no_recording");
+            return false;
+        }
+        esp_err_t err = jr_mic_play_last_recording();
+        if (err == ESP_OK) {
+            snprintf(response,cap,"JR_OK audio_play_recording=completed samples=%u seconds=%u volume=%d",
+                     (unsigned)info.samples,info.seconds,jr_audio_volume());
+            return true;
+        }
+        snprintf(response,cap,"JR_ERROR audio_play_recording=%s samples=%u",
+                 esp_err_to_name(err),(unsigned)info.samples);
+        return false;
+    }
     if (!strcmp(verb,"audio_diag")) {
         jr_audio_diag_t a;
         jr_audio_get_diag(&a);
@@ -173,7 +196,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test audio_test audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
