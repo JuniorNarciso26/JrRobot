@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-jrbot-response04"
-set "SDKCONFIG_FILE=sdkconfig.jrbot-response04"
+set "BUILD_DIR=build-jrbot-response05-baseline01"
+set "SDKCONFIG_FILE=sdkconfig.jrbot-response05-baseline01"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -80,7 +80,7 @@ if /i "%ACTION%"=="build" (
   goto success
 )
 echo.
-echo Gravando JrBot + modelo MultiNet em %JR_FLASH_PORT%...
+echo Gravando JrBot + modelos WakeNet/MultiNet em %JR_FLASH_PORT%...
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
   popd
@@ -106,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - JrBot Response atualizado.
-echo Firmware: JRBotV2_JRBOT_RESPONSE_04
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Comando unico: JR BOT
+echo OK - JrBot Response baseline atualizado.
+echo Firmware: JRBotV2_JRBOT_RESPONSE_05
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Baseline: RESPONSE_01
 exit /b 0
 
 :failure
@@ -118,17 +118,19 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Response - ESP-SR MultiNet6, comando unico JR BOT
+echo JrBot Response 05 - baseline do primeiro teste funcional
 echo.
-echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelo e abre o painel
-echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelo
+echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
+echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
 echo   INSTALAR.bat flash COM7   Usa diretamente a COM7
-echo   INSTALAR.bat build        Apenas compila e empacota o modelo
+echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
-echo Comando de voz unico: JR BOT.
-echo MultiNet usa threshold interno padrao; filtro local de confianca: 0.70.
+echo Reconhecimento restaurado para o baseline RESPONSE_01.
+echo MultiNet: JR BOT / JUNIOR BOT / J R BOT, sem filtro local de probabilidade.
+echo WakeNet Hi ESP permanece somente como fallback se o MultiNet nao iniciar.
+echo A correcao atual do barramento I2S permanece para evitar o reboot visto na RESPONSE_01 original.
 echo Resposta: face feliz + "Oi" local; bip curto se o audio falhar.
 echo.
 exit /b 0
