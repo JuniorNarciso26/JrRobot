@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JrBot - Painel Voice</title>
+<title>JrBot - Painel Response</title>
 <style>
 :root{--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f;--yellow:#f3b33d;--purple:#9b62f0}
 *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
@@ -24,7 +24,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Voice | ESP-SR / WakeNet | diagnostico por Serial</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Response | ESP-SR MultiNet + WakeNet fallback | diagnostico por Serial</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -71,7 +71,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular evento (diagnostico)</button>
       <button data-action onclick="brainStatus()" class="gray">Estado do cerebro</button>
       <span id="brain_state" class="state">off</span>
-      <div class="msg" id="brain_msg">Ao ativar, o MS3625 fica em escuta continua pelo WakeNet. Nesta candidata real, diga "Hi ESP". O botao de simulacao continua disponivel apenas para separar falha de reconhecimento de falha na reacao.</div>
+      <div class="msg" id="brain_msg">Ao ativar, o MS3625 tenta reconhecer "JrBot" pelo MultiNet6. Se o MultiNet nao iniciar, o firmware usa "Hi ESP" como fallback. Ao reconhecer, muda a face para feliz, emite um bip duplo e volta a escutar.</div>
     </div>
     <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
     <pre id="log" aria-label="Respostas do robo"></pre>
@@ -105,7 +105,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     <h2>Microfone</h2>
     <div class="audio">
       <button id="test_mic" disabled class="gray">Teste ainda nao configurado</button>
-      <div class="msg">MS3625 em GPIO21/47/41. No modo autonomo o barramento I2S fica dedicado ao WakeNet; desligue o autonomo antes de executar testes manuais de microfone ou audio.</div>
+      <div class="msg">MS3625 em GPIO21/47/41. No modo autonomo o barramento I2S fica dedicado ao reconhecedor. Na resposta o firmware pausa o microfone, usa o MAX98357A e depois reabre o microfone. Desligue o autonomo antes dos testes manuais.</div>
     </div>
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
@@ -155,7 +155,13 @@ function renderBrain(text){
   el('autonomous_toggle').textContent=autonomousEnabled?'Desativar autonomo':'Ativar autonomo';
   el('autonomous_toggle').className=autonomousEnabled?'red':'purple';
   el('autonomous_test').disabled=!autonomousEnabled;
-  el('brain_msg').textContent=autonomousEnabled?'Escuta real ativa no MS3625. Diga "Hi ESP" e acompanhe wakeword_detected no log. O modelo JrBot personalizado sera a proxima troca.':'Modo autonomo desligado.';
+  if(!autonomousEnabled){
+    el('brain_msg').textContent='Modo autonomo desligado.';
+  }else if(f.engine==='esp-sr-wakenet'){
+    el('brain_msg').textContent='Fallback WakeNet ativo. Diga "Hi ESP". Ao reconhecer, o JrBot fica feliz, responde com bip duplo e volta a escutar.';
+  }else{
+    el('brain_msg').textContent='Reconhecedor de nome ativo. Diga "JrBot" (tambem aceitamos "Junior Bot" / "J R Bot"). Ao reconhecer, o JrBot fica feliz, responde com bip duplo e volta a escutar.';
+  }
 }
 async function toggleAutonomous(){
   return action(async()=>{
@@ -173,7 +179,7 @@ async function testAutonomousWake(){
   return action(async()=>{
     if(!autonomousEnabled) throw new Error('Ative o modo autonomo primeiro.');
     const reply=await send('brain_test');
-    el('brain_msg').textContent='Evento de bancada executado. Se a face ficou feliz, a reacao esta OK; para testar reconhecimento real diga "Hi ESP".';
+    el('brain_msg').textContent='Evento de bancada executado. A simulacao valida a reacao da face; o bip automatico e a troca I2S sao testados pela deteccao de voz real.';
     return reply;
   },'brain_msg');
 }
