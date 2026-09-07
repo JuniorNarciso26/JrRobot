@@ -2,6 +2,11 @@
 setlocal
 cd /d "%~dp0"
 
+rem O ESP-SR imprime caracteres Unicode ao empacotar os modelos.
+rem No Windows, Python pode herdar cp1252 e falhar com UnicodeEncodeError.
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
