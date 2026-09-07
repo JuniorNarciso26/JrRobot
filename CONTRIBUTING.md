@@ -12,13 +12,56 @@ Leia:
 4. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 5. [`docs/TESTING.md`](docs/TESTING.md)
 
-## Fluxo de trabalho
+## Estratégia de branches
 
-- Não desenvolva diretamente em `main` quando a mudança for experimental.
-- Crie uma branch específica para a etapa.
-- Faça mudanças pequenas e rastreáveis.
-- Atualize a documentação na mesma mudança em que alterar um contrato, pinagem, comando, API ou comportamento.
-- Não reescreva módulos estáveis sem necessidade; prefira evolução aditiva.
+O projeto usa três níveis principais:
+
+- `main`: baseline estável/promovido. Não desenvolver diretamente aqui.
+- `develop`: integração da próxima versão.
+- `feature/*` e `fix/*`: mudanças isoladas criadas a partir de `develop`.
+
+Fluxo padrão:
+
+```text
+develop
+   ↓
+feature/minha-funcao
+   ↓
+Pull Request para develop
+   ↓
+build + testes + documentação
+   ↓
+develop
+   ↓
+Pull Request de promoção
+   ↓
+main
+```
+
+Antes de começar uma feature:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/nome-da-feature
+```
+
+Não misture várias capacidades independentes na mesma branch quando puder separá-las.
+
+## Pull Requests
+
+Todo PR deve informar:
+
+- objetivo da mudança;
+- arquivos/módulos afetados;
+- impacto em hardware ou recursos compartilhados;
+- estado de build;
+- testes executados;
+- validação física realizada ou ainda pendente;
+- documentação atualizada;
+- limitações conhecidas.
+
+Uma feature experimental deve entrar primeiro em `develop`. A promoção para `main` só ocorre quando o baseline estiver suficientemente validado para ser tratado como referência estável.
 
 ## Hardware
 
@@ -52,7 +95,7 @@ Exemplos importantes:
 
 ## API e Flows
 
-A API Runtime, o Playground e o Flow Engine possuem documentação de arquitetura antes da implementação completa. Não documente endpoints ou funções planejadas como disponíveis no firmware atual.
+A Runtime API, o Playground e o Flow Engine possuem documentação de arquitetura antes da implementação completa. Não documente endpoints ou funções planejadas como disponíveis no firmware atual.
 
 Ao adicionar uma nova capacidade, documente:
 
