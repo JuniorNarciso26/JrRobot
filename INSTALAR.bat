@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-jrbot-response03"
-set "SDKCONFIG_FILE=sdkconfig.jrbot-response03"
+set "BUILD_DIR=build-jrbot-response04"
+set "SDKCONFIG_FILE=sdkconfig.jrbot-response04"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -107,7 +107,7 @@ exit /b %errorlevel%
 :success
 echo.
 echo OK - JrBot Response atualizado.
-echo Firmware: JRBotV2_JRBOT_RESPONSE_03
+echo Firmware: JRBotV2_JRBOT_RESPONSE_04
 if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Comando unico: JR BOT
 exit /b 0
 
@@ -128,7 +128,7 @@ echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
 echo Comando de voz unico: JR BOT.
-echo Confianca minima: 0.70.
+echo MultiNet usa threshold interno padrao; filtro local de confianca: 0.70.
 echo Resposta: face feliz + "Oi" local; bip curto se o audio falhar.
 echo.
 exit /b 0
