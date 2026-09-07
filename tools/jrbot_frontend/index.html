@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JrBot - Painel V2</title>
+<title>JrBot - Painel Voice</title>
 <style>
 :root{--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f;--yellow:#f3b33d;--purple:#9b62f0}
 *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
@@ -24,7 +24,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">Comandos e diagnostico no painel. As portas COM sao detectadas automaticamente.</div></div>
+  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Voice | ESP-SR / WakeNet | diagnostico por Serial</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -65,13 +65,13 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
-    <h2>Modo autonomo experimental</h2>
+    <h2>Modo autonomo / voz</h2>
     <div class="autonomous">
       <button id="autonomous_toggle" data-action onclick="toggleAutonomous()" class="purple">Ativar autonomo</button>
-      <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular chamado "JrBot"</button>
+      <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular evento (diagnostico)</button>
       <button data-action onclick="brainStatus()" class="gray">Estado do cerebro</button>
       <span id="brain_state" class="state">off</span>
-      <div class="msg" id="brain_msg">Modo de bancada. O fluxo de reacao esta implementado; o WakeNet personalizado para reconhecer a palavra falada "JrBot" ainda sera integrado.</div>
+      <div class="msg" id="brain_msg">Ao ativar, o MS3625 fica em escuta continua pelo WakeNet. Nesta candidata real, diga "Hi ESP". O botao de simulacao continua disponivel apenas para separar falha de reconhecimento de falha na reacao.</div>
     </div>
     <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
     <pre id="log" aria-label="Respostas do robo"></pre>
@@ -105,7 +105,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     <h2>Microfone</h2>
     <div class="audio">
       <button id="test_mic" disabled class="gray">Teste ainda nao configurado</button>
-      <div class="msg">Informe o modelo do microfone e seus GPIOs. Esta versao nao possui driver de entrada de audio; testar o amplificador nao testa o microfone.</div>
+      <div class="msg">MS3625 em GPIO21/47/41. No modo autonomo o barramento I2S fica dedicado ao WakeNet; desligue o autonomo antes de executar testes manuais de microfone ou audio.</div>
     </div>
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
@@ -148,18 +148,22 @@ async function wifiBoardData(){
 }
 function renderBrain(text){
   const f=fields(text);
-  autonomousEnabled=f.autonomous==='1';
-  el('brain_state').textContent=(f.brain|| (autonomousEnabled?'listening':'off'))+' | autonomous='+(autonomousEnabled?'1':'0');
+  if(Object.prototype.hasOwnProperty.call(f,'autonomous')) autonomousEnabled=f.autonomous==='1';
+  else if(Object.prototype.hasOwnProperty.call(f,'enabled')) autonomousEnabled=f.enabled==='1';
+  const state=f.brain||f.brain_state||(autonomousEnabled?'listening':'off');
+  el('brain_state').textContent=state+' | autonomous='+(autonomousEnabled?'1':'0')+(f.engine?' | '+f.engine:'');
   el('autonomous_toggle').textContent=autonomousEnabled?'Desativar autonomo':'Ativar autonomo';
   el('autonomous_toggle').className=autonomousEnabled?'red':'purple';
   el('autonomous_test').disabled=!autonomousEnabled;
-  el('brain_msg').textContent=autonomousEnabled?'JrBot em espera. Nesta etapa o botao de simulacao valida a reacao; o reconhecimento falado real depende do WakeNet personalizado.':'Modo autonomo desligado.';
+  el('brain_msg').textContent=autonomousEnabled?'Escuta real ativa no MS3625. Diga "Hi ESP" e acompanhe wakeword_detected no log. O modelo JrBot personalizado sera a proxima troca.':'Modo autonomo desligado.';
 }
 async function toggleAutonomous(){
   return action(async()=>{
     if(mode!=='serial') throw new Error('O teste autonomo experimental esta liberado somente pela Serial USB.');
     const reply=await send(autonomousEnabled?'autonomo_off':'autonomo_on');
     renderBrain(reply);
+    const status=await send('brain_status');
+    renderBrain(status);
   },'brain_msg');
 }
 async function brainStatus(){
@@ -169,7 +173,7 @@ async function testAutonomousWake(){
   return action(async()=>{
     if(!autonomousEnabled) throw new Error('Ative o modo autonomo primeiro.');
     const reply=await send('brain_test');
-    el('brain_msg').textContent='Chamado de bancada executado: o firmware deve registrar wakeword_detected e mudar a face para feliz.';
+    el('brain_msg').textContent='Evento de bancada executado. Se a face ficou feliz, a reacao esta OK; para testar reconhecimento real diga "Hi ESP".';
     return reply;
   },'brain_msg');
 }
