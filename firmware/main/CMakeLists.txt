@@ -9,6 +9,7 @@ idf_component_register(
         "../module_camera/jr_camera_diag.c"
         "../module_audio/jr_audio.c"
         "../module_audio/jr_mic.c"
+        "../module_brain/jr_brain.c"
     INCLUDE_DIRS
         "."
         "../core"
@@ -16,5 +17,6 @@ idf_component_register(
         "../module_portal"
         "../module_camera"
         "../module_audio"
+        "../module_brain"
     REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_psram esp32-camera nvs_flash log esp_timer heap
 )
