@@ -119,6 +119,52 @@ static void close_mic(void) {
     status_mic(false);
 }
 
+static esp_err_t open_mic(int sample_rate) {
+    if (!jr_audio_bus_acquire(JR_VOICE_BUS_TIMEOUT_MS)) return ESP_ERR_TIMEOUT;
+    bus_owned = true;
+    jr_audio_stop();
+    quiet_amplifier();
+    (void)gpio_set_pull_mode((gpio_num_t)JR_MIC_SD_GPIO, GPIO_PULLDOWN_ONLY);
+
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
+    esp_err_t err = i2s_new_channel(&chan_cfg, NULL, &rx_chan);
+    if (err != ESP_OK) goto fail;
+
+    i2s_std_config_t cfg = {
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sample_rate),
+        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
+        .gpio_cfg = {
+            .mclk = I2S_GPIO_UNUSED,
+            .bclk = JR_MIC_SCK_GPIO,
+            .ws = JR_MIC_WS_GPIO,
+            .dout = I2S_GPIO_UNUSED,
+            .din = JR_MIC_SD_GPIO,
+            .invert_flags = {.mclk_inv=false,.bclk_inv=false,.ws_inv=false},
+        },
+    };
+    cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
+    err = i2s_channel_init_std_mode(rx_chan, &cfg);
+    if (err != ESP_OK) goto fail;
+    err = i2s_channel_enable(rx_chan);
+    if (err != ESP_OK) goto fail;
+
+    status_mic(true);
+    return ESP_OK;
+
+fail:
+    if (rx_chan) {
+        (void)i2s_del_channel(rx_chan);
+        rx_chan = NULL;
+    }
+    release_mic_pins();
+    if (bus_owned) {
+        jr_audio_bus_release();
+        bus_owned = false;
+    }
+    status_mic(false);
+    return err;
+}
+
 static void voice_cleanup(void) {
     close_mic();
 
@@ -155,35 +201,14 @@ static void voice_cleanup(void) {
     portEXIT_CRITICAL(&voice_lock);
 }
 
-static esp_err_t open_mic(int sample_rate) {
-    if (!jr_audio_bus_acquire(JR_VOICE_BUS_TIMEOUT_MS)) return ESP_ERR_TIMEOUT;
-    bus_owned = true;
-    jr_audio_stop();
-    quiet_amplifier();
-    (void)gpio_set_pull_mode((gpio_num_t)JR_MIC_SD_GPIO, GPIO_PULLDOWN_ONLY);
-
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
-    esp_err_t err = i2s_new_channel(&chan_cfg, NULL, &rx_chan);
-    if (err != ESP_OK) return err;
-
-    i2s_std_config_t cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sample_rate),
-        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
-        .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,
-            .bclk = JR_MIC_SCK_GPIO,
-            .ws = JR_MIC_WS_GPIO,
-            .dout = I2S_GPIO_UNUSED,
-            .din = JR_MIC_SD_GPIO,
-            .invert_flags = {.mclk_inv=false,.bclk_inv=false,.ws_inv=false},
-        },
-    };
-    cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
-    err = i2s_channel_init_std_mode(rx_chan, &cfg);
-    if (err != ESP_OK) return err;
-    err = i2s_channel_enable(rx_chan);
-    if (err == ESP_OK) status_mic(true);
-    return err;
+static int add_name_alias(const char *text) {
+    esp_err_t err = esp_mn_commands_add(JR_NAME_COMMAND_ID, text);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "MultiNet alias accepted: %s", text);
+        return 1;
+    }
+    ESP_LOGW(TAG, "MultiNet alias rejected: %s error=%s", text, esp_err_to_name(err));
+    return 0;
 }
 
 static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
@@ -200,22 +225,26 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     esp_err_t err = esp_mn_commands_alloc(multinet, mn_data);
     if (err != ESP_OK) return err;
     mn_commands_ready = true;
-
     (void)esp_mn_commands_clear();
-    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "JR BOT");
-    if (err != ESP_OK) return err;
-    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "JUNIOR BOT");
-    if (err != ESP_OK) return err;
-    err = esp_mn_commands_add(JR_NAME_COMMAND_ID, "J R BOT");
-    if (err != ESP_OK) return err;
+
+    int accepted = 0;
+    accepted += add_name_alias("JR BOT");
+    accepted += add_name_alias("JUNIOR BOT");
+    accepted += add_name_alias("J R BOT");
+    if (accepted == 0) {
+        ESP_LOGE(TAG, "MultiNet rejected every JrBot alias");
+        return ESP_ERR_INVALID_ARG;
+    }
 
     esp_mn_error_t *command_errors = esp_mn_commands_update();
-    if (command_errors && command_errors->num >= 3) {
-        ESP_LOGE(TAG, "MultiNet rejected all JrBot aliases count=%d", command_errors->num);
+    if (command_errors && command_errors->num >= accepted) {
+        ESP_LOGE(TAG, "MultiNet could not activate JrBot aliases accepted=%d update_errors=%d",
+                 accepted, command_errors->num);
         return ESP_ERR_INVALID_ARG;
     }
     if (command_errors && command_errors->num > 0) {
-        ESP_LOGW(TAG, "MultiNet accepted JrBot aliases with rejected=%d", command_errors->num);
+        ESP_LOGW(TAG, "MultiNet active with partial aliases accepted=%d update_errors=%d",
+                 accepted, command_errors->num);
     }
 
     int mn_chunk = multinet->get_samp_chunksize(mn_data);
@@ -226,8 +255,8 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     *sample_rate = mn_rate;
     voice_mode = JR_VOICE_MODE_MULTINET_NAME;
     ESP_LOGI(TAG,
-             "direct name recognizer ready model=%s commands=JR_BOT,JUNIOR_BOT,J_R_BOT mode=continuous_experimental rate=%d chunk=%d",
-             mn_model_name, mn_rate, mn_chunk);
+             "direct name recognizer ready model=%s accepted_aliases=%d mode=continuous_experimental rate=%d chunk=%d",
+             mn_model_name, accepted, mn_rate, mn_chunk);
     return ESP_OK;
 }
 
