@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 
 #include "jr_brain.h"
 #include "jr_face.h"
