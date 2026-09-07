@@ -8,6 +8,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "jr_brain.h"
 #include "jr_commands.h"
 #include "jr_usb_terminal.h"
 
@@ -31,6 +32,38 @@ static void usb_write_all(const char *text) {
     }
     (void)usb_serial_jtag_write_bytes("\n", 1, pdMS_TO_TICKS(200));
     (void)usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(300));
+}
+
+void jr_usb_terminal_emit(const char *text) {
+    usb_write_all(text);
+}
+
+static bool brain_command(const char *cmd, char *response, size_t cap) {
+    if (!strcmp(cmd, "autonomo_on")) {
+        esp_err_t err = jr_brain_set_enabled(true);
+        snprintf(response, cap, err == ESP_OK ? "JR_OK autonomous=1 brain=listening wakeword=JrBot engine=bench_stub" : "JR_ERROR autonomous_on=%s", esp_err_to_name(err));
+        return err == ESP_OK;
+    }
+    if (!strcmp(cmd, "autonomo_off")) {
+        esp_err_t err = jr_brain_set_enabled(false);
+        snprintf(response, cap, err == ESP_OK ? "JR_OK autonomous=0 brain=off" : "JR_ERROR autonomous_off=%s", esp_err_to_name(err));
+        return err == ESP_OK;
+    }
+    if (!strcmp(cmd, "brain_test")) {
+        esp_err_t err = jr_brain_trigger_test();
+        snprintf(response, cap, err == ESP_OK ? "JR_OK brain_test=wakeword_simulated keyword=JrBot expression=feliz" : "JR_ERROR brain_test=%s", esp_err_to_name(err));
+        return err == ESP_OK;
+    }
+    if (!strcmp(cmd, "brain_status")) {
+        jr_brain_status_t s;
+        jr_brain_get_status(&s);
+        snprintf(response, cap,
+                 "JR_OK autonomous=%d brain=%s listening=%d engine=%s triggers=%lu last_event=%s last_error=%s",
+                 s.enabled ? 1 : 0, jr_brain_state_name(s.state), s.listening ? 1 : 0, s.engine,
+                 (unsigned long)s.triggers, s.last_event, esp_err_to_name(s.last_error));
+        return true;
+    }
+    return false;
 }
 
 static void usb_process_line(const char *line) {
@@ -57,7 +90,12 @@ static void usb_process_line(const char *line) {
     }
 
     char response[JR_RESPONSE_MAX_BYTES];
-    bool ok = jr_handle_command(cmd, response, sizeof(response));
+    bool ok;
+    if (!strcmp(cmd, "autonomo_on") || !strcmp(cmd, "autonomo_off") || !strcmp(cmd, "brain_test") || !strcmp(cmd, "brain_status")) {
+        ok = brain_command(cmd, response, sizeof(response));
+    } else {
+        ok = jr_handle_command(cmd, response, sizeof(response));
+    }
 
     if (*id) {
         char wire[JR_RESPONSE_MAX_BYTES + 64];
