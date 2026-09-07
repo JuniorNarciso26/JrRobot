@@ -211,12 +211,6 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (multinet->set_det_threshold) {
-        int threshold_result = multinet->set_det_threshold(mn_data, JR_NAME_MIN_PROBABILITY);
-        ESP_LOGI(TAG, "JR BOT detection threshold=%.2f result=%d",
-                 (double)JR_NAME_MIN_PROBABILITY, threshold_result);
-    }
-
     int mn_chunk = multinet->get_samp_chunksize(mn_data);
     int mn_rate = multinet->get_samp_rate(mn_data);
     if (mn_chunk <= 0 || mn_rate <= 0) return ESP_FAIL;
@@ -224,7 +218,7 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     *chunk = mn_chunk;
     *sample_rate = mn_rate;
     ESP_LOGI(TAG,
-             "direct JrBot recognizer ready model=%s command=JR_BOT min_probability=%.2f rate=%d chunk=%d",
+             "direct JrBot recognizer ready model=%s command=JR_BOT model_threshold=default post_filter=%.2f rate=%d chunk=%d",
              mn_model_name, (double)JR_NAME_MIN_PROBABILITY, mn_rate, mn_chunk);
     return ESP_OK;
 }
