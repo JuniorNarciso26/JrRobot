@@ -19,6 +19,7 @@
 
 #include "jr_audio.h"
 #include "jr_board.h"
+#include "jr_reply_audio.h"
 #include "jr_voice.h"
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
@@ -26,7 +27,7 @@
 #define JR_VOICE_TASK_STACK 10240
 #define JR_MN_DURATION_MS 5000
 #define JR_NAME_COMMAND_ID 1
-#define JR_REPLY_SETTLE_MS 180
+#define JR_REPLY_SETTLE_MS 220
 
 static const char *TAG = "jrbot_voice";
 static portMUX_TYPE voice_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -291,21 +292,25 @@ static void clean_detector(void) {
     }
 }
 
-static esp_err_t reply_chirp_and_resume(void) {
+static esp_err_t reply_and_resume(void) {
     int sample_rate;
     portENTER_CRITICAL(&voice_lock);
     sample_rate = voice_status.sample_rate;
     portEXIT_CRITICAL(&voice_lock);
 
     close_mic();
-    ESP_LOGI(TAG, "reply begin type=ack_chirp");
+    ESP_LOGI(TAG, "reply begin type=spoken_oi");
 
-    esp_err_t first = jr_audio_test_tone(880, 120);
-    if (first == ESP_OK) vTaskDelay(pdMS_TO_TICKS(30));
-    esp_err_t second = first == ESP_OK ? jr_audio_test_tone(1320, 140) : first;
+    esp_err_t reply_err = jr_reply_play_oi();
+    const char *reply_type = "spoken_oi";
+    if (reply_err != ESP_OK) {
+        ESP_LOGW(TAG, "spoken reply failed: %s; using chirp fallback", esp_err_to_name(reply_err));
+        reply_type = "chirp_fallback";
+        reply_err = jr_audio_test_tone(1040, 180);
+    }
 
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
-    if (stop_requested) return second;
+    if (stop_requested) return reply_err;
 
     esp_err_t reopen = open_mic(sample_rate);
     if (reopen != ESP_OK) {
@@ -314,9 +319,9 @@ static esp_err_t reply_chirp_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "reply end type=ack_chirp result=%s listening_resumed=1",
-             esp_err_to_name(second));
-    return second;
+    ESP_LOGI(TAG, "reply end type=%s result=%s listening_resumed=1",
+             reply_type, esp_err_to_name(reply_err));
+    return reply_err;
 }
 
 static bool handle_multinet_frame(void) {
@@ -411,7 +416,7 @@ static void voice_task(void *arg) {
         }
 
         if (detected) {
-            esp_err_t reply_err = reply_chirp_and_resume();
+            esp_err_t reply_err = reply_and_resume();
             if (stop_requested) break;
             if (reply_err != ESP_OK) {
                 status_error(reply_err);
