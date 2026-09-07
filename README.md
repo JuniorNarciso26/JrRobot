@@ -1,30 +1,62 @@
-# JrBot - robo com IA
+# JrBot
 
-Branch ativa: `v2-revisada`.
+JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um controlador local de hardware para uma plataforma híbrida: capacidades essenciais offline no robô e recursos avançados de IA opcionais em serviços remotos.
 
-**Firmware atual:** `JRBotV2_2026-09-06-07:10`  
-**Hardware:** `JRBOT-HW-04`  
-**Perfil:** `full_hardware_test`
+## Estado atual
 
-## Hardware liberado para teste
+- Hardware: `JRBOT-HW-04`
+- MCU: ESP32-S3 N16R8
+- Firmware desta linha de desenvolvimento: `JRBotV2_JRBOT_RESPONSE_05`
+- Branch de desenvolvimento desta etapa: `feature/local-brain-jrbot-response`
+- Reconhecimento de voz atual: ESP-SR MultiNet6 experimental
+- Áudio local: MAX98357A
+- Microfone: MS3625
+- Câmera: OV5640
+- Display: OLED SSD1306
 
-- OLED SSD1306 128x64: SDA GPIO1, SCL GPIO2. Se estiver ausente, o robo continua e o driver tenta recuperar.
-- Camera OV5640: verificada ao usar `Atualizar estado`; o teste libera quando a camera responde.
-- Amplificador MAX98357A: BCLK GPIO21, LRC GPIO47, DIN GPIO42. Presenca fisica nao pode ser detectada; o teste de som fica disponivel.
-- Microfone MS3625: SCK GPIO21, WS GPIO47, SD GPIO41. `Atualizar estado` le amostras I2S e libera o teste quando ha atividade digital.
+> O reconhecimento contínuo de `JrBot` por MultiNet é experimental. Há detecção acústica real validada, mas a calibração de falsos positivos ainda está em desenvolvimento. Recursos descritos como planejados na documentação não devem ser tratados como implementados.
 
-MAX98357A, ordem dos 7 pinos: `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Nesta montagem `GAIN` e `SD` ficam sem ligar.
+## Comece pela documentação
 
-## Instalar
+A documentação oficial fica em [`docs/`](docs/README.md). O painel local também possui uma área **Documentação** que lê esses mesmos arquivos Markdown, sem criar uma segunda fonte de verdade.
+
+Principais documentos:
+
+- [Mapa da documentação](docs/README.md)
+- [Estado do projeto](docs/PROJECT_STATUS.md)
+- [Arquitetura](docs/ARCHITECTURE.md)
+- [Guia de desenvolvimento](docs/DEVELOPMENT.md)
+- [Runtime API v1](docs/API_RUNTIME.md)
+- [Playground](docs/PLAYGROUND.md)
+- [Flows](docs/FLOWS.md)
+- [Testes e validação](docs/TESTING.md)
+
+## Compilar e gravar a candidata atual
 
 No terminal ESP-IDF 5.5.x:
 
 ```bat
-git switch v2-revisada
-git pull --ff-only origin v2-revisada
-INSTALAR.bat
+git switch feature/local-brain-jrbot-response
+git pull --ff-only origin feature/local-brain-jrbot-response
+INSTALAR.bat build
+INSTALAR.bat flash
+PAINEL.bat
 ```
 
-O instalador usa uma configuracao final nova, compila, grava pela COM6 e abre o painel. No seletor do painel aparecem somente COM4 e COM6.
+Confirme no painel que a placa reporta a versão esperada antes de interpretar qualquer teste.
 
-Documentos: [pinagem](docs/PINAGEM.md), [esquema de ligacao](docs/ESQUEMA_LIGACAO.md) e [painel](PAINEL_V2.md).
+## Filosofia técnica
+
+1. Firmware fornece capacidades seguras; configurações definem comportamento.
+2. IA nunca controla GPIO diretamente.
+3. Mudanças de comportamento devem migrar para dados/Flows em runtime sempre que possível.
+4. Teste em computador, build e validação física são estados diferentes e devem ser documentados separadamente.
+5. O robô precisa manter identidade e funções básicas mesmo sem VPS ou internet.
+
+## Contribuição
+
+Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) antes de abrir mudanças.
+
+## Licença
+
+O repositório ainda não possui um arquivo `LICENSE`. Uma licença open source deve ser escolhida explicitamente pelo mantenedor antes de tratar o código como redistribuível sob uma licença específica.

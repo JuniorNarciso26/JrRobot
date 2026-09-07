@@ -1,11 +1,77 @@
-# Contribuir com o JrBot
+# Contribuindo com o JrBot
 
-JrBot e um robo com IA em desenvolvimento. Trabalhe na `v2-revisada` ou em uma branch derivada; nao publique firmware experimental em `main` sem revisao.
+Obrigado pelo interesse no JrBot. O projeto combina firmware embarcado, hardware, áudio, visão, painel local e, futuramente, serviços de IA. Para manter a evolução compreensível, toda contribuição deve deixar claro o que foi apenas implementado, o que compilou e o que foi validado fisicamente.
 
-Toda alteracao de hardware deve atualizar `hardware/pinmap.json`, executar `python tools/generate_pinmap.py` e atualizar materiais/esquema. GPIO21, GPIO41, GPIO42 e GPIO47 sao ocupados e nao podem ser reutilizados. A lista de candidatos do firmware nao substitui o esquema da placa.
+## Antes de começar
 
-Antes de enviar: rode `python tools/generate_pinmap.py --check` e `python tests/hardware/test_pin_policy.py`. Separe testes no computador, build ESP-IDF e teste na placa. Nao apresente resposta positiva de I2S como prova de som audivel, nem quadro JPEG como prova de foco.
+Leia:
 
-Use o painel para operacao e logs. Para cada mudanca, informe versao do firmware, modelo exato da placa, pinagem, alimentacao e resultados. Nao adicione senhas, tokens, credenciais locais ou imagens/audio pessoais. Desligue todas as fontes antes de alterar fios e respeite as alimentacoes dos modulos.
+1. [`docs/README.md`](docs/README.md)
+2. [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)
+3. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+4. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+5. [`docs/TESTING.md`](docs/TESTING.md)
 
-A IA ainda esta no roteiro de desenvolvimento. Nao documente integracoes, APIs ou drivers planejados como se ja existissem. Preserve atribuicoes/licencas de terceiros e nao escolha uma licenca para o projeto sem aprovacao do proprietario.
+## Fluxo de trabalho
+
+- Não desenvolva diretamente em `main` quando a mudança for experimental.
+- Crie uma branch específica para a etapa.
+- Faça mudanças pequenas e rastreáveis.
+- Atualize a documentação na mesma mudança em que alterar um contrato, pinagem, comando, API ou comportamento.
+- Não reescreva módulos estáveis sem necessidade; prefira evolução aditiva.
+
+## Hardware
+
+Toda alteração de pinagem deve atualizar `hardware/pinmap.json` e os documentos de hardware relacionados.
+
+Antes de enviar alterações de hardware, execute:
+
+```text
+python tools/generate_pinmap.py --check
+python tests/hardware/test_pin_policy.py
+```
+
+GPIOs compartilhados, alimentação e conflitos de periféricos precisam ser documentados explicitamente.
+
+## Evidência de teste
+
+Use os níveis definidos em [`docs/TESTING.md`](docs/TESTING.md):
+
+- planejado;
+- implementado;
+- build verificado;
+- teste de bancada/simulado;
+- validado fisicamente.
+
+Exemplos importantes:
+
+- `ESP_OK` em transmissão I2S não prova que o som foi audível.
+- JPEG recebido não prova foco ou qualidade óptica.
+- evento simulado não prova reconhecimento acústico.
+- log de reprodução não substitui confirmação humana de que a resposta foi ouvida.
+
+## API e Flows
+
+A API Runtime, o Playground e o Flow Engine possuem documentação de arquitetura antes da implementação completa. Não documente endpoints ou funções planejadas como disponíveis no firmware atual.
+
+Ao adicionar uma nova capacidade, documente:
+
+- nome público;
+- argumentos;
+- retorno;
+- erros;
+- segurança;
+- persistência;
+- eventos gerados;
+- estado de implementação.
+
+## Segurança
+
+- Não faça a IA controlar GPIO diretamente.
+- Não aceite upload ou comando arbitrário sem validação.
+- Não exponha o portal local atual diretamente à Internet; ele não foi projetado como serviço público autenticado/TLS.
+- Não adicione senhas, tokens, credenciais, áudio pessoal ou imagens privadas ao repositório.
+
+## Licença
+
+O repositório ainda não possui `LICENSE`. Não escolha ou adicione uma licença em nome do mantenedor sem decisão explícita do proprietário do projeto.

@@ -6,7 +6,7 @@ echo JrBot - Painel V2 / porta selecionavel
 echo ========================================
 echo Feche qualquer programa que esteja usando a porta da placa.
 echo O navegador abre apos o servidor iniciar. Mantenha esta janela aberta.
-echo O painel mostra as portas COM detectadas, incluindo COM7 e futuras placas.
+echo O painel mostra as portas COM detectadas e agora inclui a documentacao local em /docs/.
 where python >nul 2>nul
 if errorlevel 1 goto sem_python
 python -c "import serial" >nul 2>nul
@@ -14,7 +14,7 @@ if errorlevel 1 (
   python -m pip install -r "%~dp0tools\jrbot_frontend\requirements.txt"
   if errorlevel 1 goto falha
 )
-python "%~dp0tools\jrbot_frontend\stable_panel.py"
+python "%~dp0tools\jrbot_frontend\docs_panel.py"
 if errorlevel 1 goto falha
 exit /b 0
 :sem_python
