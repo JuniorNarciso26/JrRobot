@@ -7,15 +7,42 @@
 - dependências do painel em `tools/jrbot_frontend/requirements.txt`;
 - placa ESP32-S3 compatível com `JRBOT-HW-04` para validação física.
 
-## Fluxo recomendado
+## Estratégia de branches
 
-### 1. Escolha a branch
+- `main`: baseline estável/promovido;
+- `develop`: integração da próxima versão;
+- `feature/*`: novas capacidades ou etapas;
+- `fix/*`: correções isoladas.
 
-Para a etapa atual de resposta/voz:
+Toda nova etapa deve nascer de `develop` e voltar para `develop` por Pull Request.
+
+Exemplo:
 
 ```bat
-git switch feature/local-brain-jrbot-response
-git pull --ff-only origin feature/local-brain-jrbot-response
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/runtime-api-v1
+```
+
+A promoção `develop -> main` deve ocorrer somente quando o baseline candidato estiver documentado, compilado e validado no nível exigido para aquela versão.
+
+## Fluxo recomendado
+
+### 1. Escolha ou crie a branch
+
+Para apenas reproduzir a integração atual:
+
+```bat
+git switch develop
+git pull --ff-only origin develop
+```
+
+Para desenvolver uma nova capability:
+
+```bat
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/nome-da-feature
 ```
 
 ### 2. Verifique pinagem
@@ -46,6 +73,20 @@ PAINEL.bat
 ### 6. Confirme versão
 
 Não interprete logs de uma candidata sem confirmar primeiro a versão retornada pela placa.
+
+### 7. Abra Pull Request
+
+O PR para `develop` deve registrar:
+
+- objetivo;
+- contratos/API alterados;
+- módulos afetados;
+- build realizado;
+- testes de computador;
+- testes de bancada;
+- validação física;
+- limitações abertas;
+- documentação atualizada.
 
 ## Estrutura principal
 
@@ -84,14 +125,16 @@ Evite reutilizar diretórios de build/config quando a investigação depende de 
 
 1. Defina o contrato público na documentação.
 2. Identifique recursos físicos usados e conflitos.
-3. Implemente a função interna com validação de argumentos.
-4. Adicione observabilidade/logs.
-5. Adicione comando/API de teste.
-6. Compile.
-7. Faça teste de bancada.
-8. Faça validação física.
-9. Atualize `PROJECT_STATUS.md` somente com o nível comprovado.
-10. Depois permita que o Flow Engine use essa capability.
+3. Crie uma branch `feature/*` a partir de `develop`.
+4. Implemente a função interna com validação de argumentos.
+5. Adicione observabilidade/logs.
+6. Adicione comando/API de teste.
+7. Compile.
+8. Faça teste de bancada.
+9. Faça validação física.
+10. Atualize `PROJECT_STATUS.md` somente com o nível comprovado.
+11. Abra PR para `develop`.
+12. Depois permita que o Flow Engine use essa capability.
 
 ## Como alterar comportamento
 
