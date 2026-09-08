@@ -17,6 +17,7 @@
 #include "jr_face.h"
 #include "jr_camera_diag.h"
 #include "jr_brain.h"
+#include "jr_runtime_api.h"
 
 static SemaphoreHandle_t command_lock;
 static bool terminal_started;
@@ -151,6 +152,10 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     const char *args = space ? space+1 : "";
     if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
         return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),response,cap);
+    if (!strcmp(verb,"api")) {
+        while (*args==' ') args++;
+        return jr_runtime_api_handle(args,response,cap);
+    }
     if (!strcmp(verb,"audio_volume") || !strcmp(verb,"volume")) {
         char *end; errno=0;
         long value = strtol(args,&end,10);
@@ -227,7 +232,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
