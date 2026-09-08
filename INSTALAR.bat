@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-runtime-api-v1-01"
-set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-01"
+set "BUILD_DIR=build-runtime-api-v1-02"
+set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-02"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -106,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - candidata JrBot Runtime API v1 preparada.
-echo Firmware: JRBotV2_RUNTIME_API_V1_01
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.0
+echo OK - candidata JrBot Runtime API v1.1 preparada.
+echo Firmware: JRBotV2_RUNTIME_API_V1_02
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.1
 exit /b 0
 
 :failure
@@ -118,7 +118,7 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Runtime API v1 - candidata 01
+echo JrBot Runtime API v1 - candidata 02
 echo.
 echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
 echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
@@ -127,9 +127,9 @@ echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
-echo Base Runtime API v1: comando api + JSON estruturado.
-echo Implementado nesta candidata: capabilities e get de estados seguros.
+echo Runtime API compativel v1, revisao 1.1: capabilities, get e action face.
+echo Audio MAX98357A: framing I2S Philips para validar qualidade do tom e reproducao.
 echo Ainda nao implementado: set persistente, Playground, Flow Engine e banco de comportamento.
-echo O comportamento de voz da candidata anterior foi preservado para evitar misturar calibracao e API.
+echo O comportamento de voz permanece separado desta validacao.
 echo.
 exit /b 0
