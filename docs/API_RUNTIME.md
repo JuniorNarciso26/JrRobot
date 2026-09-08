@@ -1,33 +1,198 @@
 # JrBot Runtime API v1
 
-**Status: PLANEJADO / especificação de arquitetura.**
+**Status da candidata `JRBotV2_RUNTIME_API_V1_01`: BASE IMPLEMENTADA, ainda sem build/validação física registrados.**
 
-Este documento define a direção do contrato público do JrBot. As funções abaixo não devem ser consideradas disponíveis no firmware atual até serem marcadas como implementadas em `PROJECT_STATUS.md`.
+A Runtime API separa capacidades do firmware dos clientes que as utilizam. Painel, CLI, VPS e futuros aplicativos devem consumir o mesmo contrato em vez de criar comandos paralelos para cada interface.
 
-## Objetivo
+## Estado desta candidata
 
-Separar capacidades do firmware da interface que as utiliza.
+Implementado no código:
 
-```text
-Painel ----\
-CLI --------> JrBot Runtime API -> capabilities seguras
-VPS -------/
-```
+- envelope JSON versionado `v=1`;
+- função `capabilities`;
+- função `get` para estados seguros;
+- erros JSON estruturados;
+- transporte pela infraestrutura de comandos já existente:
+  - Serial: `api <JSON>`;
+  - HTTP local: `POST /cmd` com corpo `api <JSON>`;
+- lista de capabilities contendo somente recursos realmente implementados.
 
-## Formato lógico
+Ainda não implementado:
 
-A API pública será orientada a funções e eventos. Transporte (Serial, HTTP local, futuro WebSocket etc.) é uma decisão separada.
+- `set`;
+- persistência de configuração;
+- `say`, `face`, `wait`, `listen` como actions da Runtime API;
+- Voice Registry dinâmico;
+- Playground;
+- Flow Engine;
+- eventos assíncronos da Runtime API;
+- WebSocket;
+- autenticação/TLS para uso fora de rede local confiável.
 
-Uma função conceitual:
+## Envelope da API
 
-```text
-face("happy")
-```
-
-pode ser transportada como JSON sem executar código textual arbitrário:
+Requisição:
 
 ```json
 {
+  "v": 1,
+  "id": "teste01",
+  "fn": "capabilities",
+  "args": {}
+}
+```
+
+Resposta de sucesso:
+
+```text
+JR_API {"v":1,"ok":true,"id":"teste01","result":{...}}
+```
+
+Resposta de erro:
+
+```text
+JR_API {"v":1,"ok":false,"id":"teste01","error":{"code":"not_found","message":"function_not_supported"}}
+```
+
+`id` é opcional e serve para correlação do cliente. Nesta versão aceita apenas letras, números, `_`, `-` e `.` com até 32 caracteres.
+
+## Transporte Serial
+
+O contrato é transportado pelo comando textual legado apenas como envelope de transporte:
+
+```text
+api {"v":1,"id":"c1","fn":"capabilities","args":{}}
+```
+
+Com o envelope correlacionado já existente no terminal:
+
+```text
+@abc123 api {"v":1,"id":"c1","fn":"get","args":{"path":"system.version"}}
+```
+
+O terminal responde primeiro com o protocolo de correlação Serial e, dentro dele, a resposta da Runtime API:
+
+```text
+JR_REPLY id=abc123 ok=1 JR_API {"v":1,"ok":true,"id":"c1","result":{...}}
+```
+
+## Transporte HTTP local
+
+A candidata reutiliza o endpoint local existente:
+
+```text
+POST /cmd
+X-JrBot-Command: 1
+Content-Type: text/plain
+```
+
+Corpo:
+
+```text
+api {"v":1,"fn":"capabilities","args":{}}
+```
+
+O portal atual continua destinado apenas a rede local confiável; não possui autenticação/TLS para exposição pública.
+
+## `capabilities`
+
+A descoberta é a primeira função da API.
+
+```json
+{
+  "v": 1,
+  "fn": "capabilities",
+  "args": {}
+}
+```
+
+O resultado informa:
+
+- versão da API;
+- firmware;
+- hardware e profile;
+- funções disponíveis;
+- caminhos suportados por `get`;
+- transportes disponíveis;
+- flags explícitas indicando que persistência, Flow Engine e Playground ainda estão desativados.
+
+As listas `actions`, `triggers` e `events` ficam vazias nesta candidata. Isso é intencional: `capabilities()` não anuncia funcionalidades planejadas como se estivessem disponíveis.
+
+## `get`
+
+Formato:
+
+```json
+{
+  "v": 1,
+  "id": "estado01",
+  "fn": "get",
+  "args": {
+    "path": "brain.status"
+  }
+}
+```
+
+Caminhos implementados na candidata 01:
+
+```text
+api.version
+system.version
+system.hardware
+system.profile
+brain.status
+voice.status
+audio.volume
+face.current
+wifi.status
+```
+
+Exemplo:
+
+```text
+api {"v":1,"fn":"get","args":{"path":"audio.volume"}}
+```
+
+Resposta conceitual:
+
+```text
+JR_API {"v":1,"ok":true,"result":{"path":"audio.volume","value":35}}
+```
+
+## Erros estruturados
+
+Códigos iniciais:
+
+| Código | Significado |
+|---|---|
+| `invalid_json` | corpo não é um objeto JSON válido |
+| `invalid_request` | envelope inválido |
+| `invalid_args` | argumentos incompatíveis com a função |
+| `unsupported_version` | versão diferente de `v=1` |
+| `not_found` | função ou caminho não disponível |
+| `no_memory` | falha de alocação/serialização |
+| `response_too_large` | resposta não cabe no buffer do protocolo |
+
+O firmware não executa código textual arbitrário. `fn` precisa corresponder a uma função registrada internamente.
+
+## Direção futura
+
+A sintaxe conceitual continuará simples:
+
+```text
+get("system.version")
+set("audio.volume", 35)
+face("happy")
+say("oi")
+wait(300)
+listen()
+```
+
+No transporte, porém, essas operações devem continuar representadas por dados estruturados, por exemplo:
+
+```json
+{
+  "v": 1,
   "fn": "face",
   "args": {
     "expression": "happy"
@@ -35,73 +200,7 @@ pode ser transportada como JSON sem executar código textual arbitrário:
 }
 ```
 
-## Funções de base propostas
-
-### `get(path)`
-
-Lê estado.
-
-```text
-get("system.version")
-get("brain.status")
-get("voice.status")
-get("audio.volume")
-get("face.current")
-get("wifi.status")
-get("camera.status")
-```
-
-### `set(path, value, persist=false)`
-
-Altera uma configuração controlada.
-
-```text
-set("audio.volume", 35)
-set("brain.autonomous", true)
-```
-
-### `say(content)`
-
-Solicita uma resposta falada.
-
-Primeira implementação pode aceitar apenas assets/respostas locais conhecidas, como `oi`. TTS arbitrário é uma capacidade separada e futura.
-
-```text
-say("oi")
-```
-
-### `face(expression, duration_ms?)`
-
-```text
-face("happy")
-face("thinking", duration_ms=1500)
-```
-
-### `wait(ms)`
-
-Pausa um Flow sem bloquear tarefas críticas do firmware.
-
-### `listen(mode?, timeout_ms?)`
-
-Coloca o motor de voz em um modo de escuta suportado.
-
-### `stopListen()`
-
-Interrompe uma sessão de escuta controlada.
-
-### `play(asset)`
-
-Reproduz um asset de áudio conhecido e validado.
-
-### `camera(operation)`
-
-Primeira operação prevista:
-
-```text
-camera("capture")
-```
-
-## Voice API proposta
+## Voice API planejada
 
 ```text
 voice.add(phrase)
@@ -110,9 +209,9 @@ voice.list()
 voice.get(id)
 ```
 
-Configuração de confiança deve ser associada ao trigger/regra, não necessariamente ao threshold global interno do modelo.
+A confiança deve ser associada ao trigger/regra configurável sempre que possível, em vez de depender somente de um threshold global do modelo.
 
-## Playground API proposta
+## Playground planejado
 
 ```text
 playground.start(phrase, interval_ms)
@@ -120,21 +219,9 @@ playground.stop()
 playground.save(confidence)
 ```
 
-Resultados são eventos, por exemplo:
+Durante calibração, o robô deverá coletar candidatos sem executar o Flow normal.
 
-```json
-{
-  "event": "playground.result",
-  "session": "pg_001",
-  "sequence": 14,
-  "expected": "JR BOT",
-  "recognized": "JR BOT",
-  "confidence": 0.624,
-  "timestamp_ms": 487221
-}
-```
-
-## Flow API proposta
+## Flow API planejada
 
 ```text
 flow.save(...)
@@ -146,53 +233,17 @@ flow.disable(id)
 flow.run(id)
 ```
 
-## Descoberta de capabilities
+## Compatibilidade
 
-O painel não deve codificar para sempre uma lista fixa de funções.
+Toda capability futura deve documentar:
 
-```text
-capabilities()
-```
+- versão mínima da API;
+- argumentos;
+- retorno;
+- erros;
+- persistência;
+- recursos físicos utilizados;
+- eventos gerados;
+- nível de validação.
 
-Resposta conceitual:
-
-```json
-{
-  "api": "1.0",
-  "actions": ["say", "face", "wait", "listen", "play", "camera.capture"],
-  "triggers": ["voice"],
-  "faces": ["neutral", "happy", "sad", "thinking", "cool"]
-}
-```
-
-Quando uma nova capability for adicionada ao firmware, clientes podem descobri-la sem assumir que todas as versões possuem o mesmo conjunto.
-
-## Eventos propostos
-
-```text
-voice.candidate
-voice.accepted
-voice.rejected
-playground.started
-playground.result
-playground.stopped
-flow.started
-flow.finished
-flow.error
-action.started
-action.finished
-action.error
-```
-
-## Requisitos de compatibilidade
-
-Toda futura API deve informar:
-
-- versão do protocolo;
-- capability disponível;
-- argumentos aceitos;
-- erro estruturado;
-- se a operação é persistente;
-- se a função exige recurso físico ocupado.
-
-Mudanças incompatíveis exigem nova versão de contrato.
+Mudanças incompatíveis exigem nova versão do contrato. Adições compatíveis permanecem em `v=1` e devem aparecer dinamicamente em `capabilities()`.
