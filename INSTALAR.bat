@@ -2,11 +2,16 @@
 setlocal
 cd /d "%~dp0"
 
+rem O ESP-SR imprime caracteres Unicode ao empacotar os modelos.
+rem No Windows, Python pode herdar cp1252 e falhar com UnicodeEncodeError.
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-final-hw04-dualusb"
-set "SDKCONFIG_FILE=sdkconfig.final-hw04-dualusb"
+set "BUILD_DIR=build-runtime-api-v1-01"
+set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-01"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -75,7 +80,7 @@ if /i "%ACTION%"=="build" (
   goto success
 )
 echo.
-echo Gravando JrBot em %JR_FLASH_PORT%...
+echo Gravando JrBot + modelos WakeNet/MultiNet em %JR_FLASH_PORT%...
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
   popd
@@ -101,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - JrBot V2 atualizado.
-echo Firmware: JRBotV2_2026-09-06-21:30
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT%
+echo OK - candidata JrBot Runtime API v1 preparada.
+echo Firmware: JRBotV2_RUNTIME_API_V1_01
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.0
 exit /b 0
 
 :failure
@@ -113,13 +118,18 @@ exit /b 1
 
 :help
 echo.
-echo JrBot V2 - instalador unico com escolha de porta
+echo JrBot Runtime API v1 - candidata 01
 echo.
-echo   INSTALAR.bat              Escolhe a porta, compila, grava e abre o painel
-echo   INSTALAR.bat flash        Escolhe a porta, compila e grava
+echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
+echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
 echo   INSTALAR.bat flash COM7   Usa diretamente a COM7
-echo   INSTALAR.bat build        Apenas compila
+echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
-echo   INSTALAR.bat menuconfig   Abre configuracao do firmware
+echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
+echo.
+echo Base Runtime API v1: comando api + JSON estruturado.
+echo Implementado nesta candidata: capabilities e get de estados seguros.
+echo Ainda nao implementado: set persistente, Playground, Flow Engine e banco de comportamento.
+echo O comportamento de voz da candidata anterior foi preservado para evitar misturar calibracao e API.
 echo.
 exit /b 0

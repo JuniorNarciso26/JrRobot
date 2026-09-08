@@ -20,24 +20,34 @@
 static portMUX_TYPE audio_state_lock=portMUX_INITIALIZER_UNLOCKED;
 static const char *TAG = "jrbot_audio";
 static i2s_chan_handle_t tx_chan = NULL;
-static SemaphoreHandle_t i2s_bus_mutex = NULL;
+/*
+ * Gate binario, e nao mutex: o modo autonomo abre o microfone durante o
+ * comando de ativacao e depois a tarefa jr_voice assume o ciclo I2S.
+ * FreeRTOS mutex exige give pelo mesmo task que fez take; um semaforo
+ * binario representa melhor este recurso transferivel entre tasks.
+ */
+static SemaphoreHandle_t i2s_bus_gate = NULL;
 static bool audio_ready = false;
 static int audio_volume = 35;
 static jr_audio_diag_t audio_diag = {.running=false,.tests=0,.last_bytes=0,.last_frequency_hz=0,.last_duration_ms=0,.last_error=ESP_ERR_INVALID_STATE};
 static char status_text[192] = "MAX98357A pronto para teste sob demanda";
 
 esp_err_t jr_audio_bus_init(void) {
-    if (!i2s_bus_mutex) i2s_bus_mutex = xSemaphoreCreateMutex();
-    return i2s_bus_mutex ? ESP_OK : ESP_ERR_NO_MEM;
+    if (!i2s_bus_gate) {
+        i2s_bus_gate = xSemaphoreCreateBinary();
+        if (!i2s_bus_gate) return ESP_ERR_NO_MEM;
+        (void)xSemaphoreGive(i2s_bus_gate);
+    }
+    return ESP_OK;
 }
 
 bool jr_audio_bus_acquire(uint32_t timeout_ms) {
     if (jr_audio_bus_init() != ESP_OK) return false;
-    return xSemaphoreTake(i2s_bus_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+    return xSemaphoreTake(i2s_bus_gate, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
 
 void jr_audio_bus_release(void) {
-    if (i2s_bus_mutex) xSemaphoreGive(i2s_bus_mutex);
+    if (i2s_bus_gate) (void)xSemaphoreGive(i2s_bus_gate);
 }
 
 static void set_ready(bool ready) {

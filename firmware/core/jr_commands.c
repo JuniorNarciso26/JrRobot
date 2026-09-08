@@ -16,6 +16,8 @@
 #include "jr_wifi.h"
 #include "jr_face.h"
 #include "jr_camera_diag.h"
+#include "jr_brain.h"
+#include "jr_runtime_api.h"
 
 static SemaphoreHandle_t command_lock;
 static bool terminal_started;
@@ -150,6 +152,10 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     const char *args = space ? space+1 : "";
     if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
         return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),response,cap);
+    if (!strcmp(verb,"api")) {
+        while (*args==' ') args++;
+        return jr_runtime_api_handle(args,response,cap);
+    }
     if (!strcmp(verb,"audio_volume") || !strcmp(verb,"volume")) {
         char *end; errno=0;
         long value = strtol(args,&end,10);
@@ -162,6 +168,36 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     }
     while (*args==' ') args++;
     if (*args) goto invalid;
+    if (!strcmp(verb,"autonomo_on")) {
+        esp_err_t err = jr_brain_set_enabled(true);
+        snprintf(response,cap,err==ESP_OK ? "JR_OK autonomous=1 brain=listening" : "JR_ERROR autonomous_on=%s",esp_err_to_name(err));
+        return err==ESP_OK;
+    }
+    if (!strcmp(verb,"autonomo_off")) {
+        esp_err_t err = jr_brain_set_enabled(false);
+        snprintf(response,cap,err==ESP_OK ? "JR_OK autonomous=0 brain=off" : "JR_ERROR autonomous_off=%s",esp_err_to_name(err));
+        return err==ESP_OK;
+    }
+    if (!strcmp(verb,"brain_status")) {
+        jr_brain_status_t b = {0};
+        jr_brain_get_status(&b);
+        snprintf(response,cap,"JR_OK brain_state=%s enabled=%d listening=%d engine=%s triggers=%lu last_event=%s last_error=%s",
+                 jr_brain_state_name(b.state),b.enabled?1:0,b.listening?1:0,b.engine,
+                 (unsigned long)b.triggers,b.last_event,esp_err_to_name(b.last_error));
+        return true;
+    }
+    if (!strcmp(verb,"brain_test")) {
+        esp_err_t err = jr_brain_trigger_test();
+        if (err==ESP_OK) {
+            jr_brain_status_t b = {0};
+            jr_brain_get_status(&b);
+            snprintf(response,cap,"JR_OK brain_test=wakeword_detected expression=%s triggers=%lu",
+                     jr_face_expression_name(),(unsigned long)b.triggers);
+            return true;
+        }
+        snprintf(response,cap,"JR_ERROR brain_test=%s hint=ative_autonomo_primeiro",esp_err_to_name(err));
+        return false;
+    }
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
     if (!strcmp(verb,"version")) {
         snprintf(response,cap,"JR_OK version=%s build_sp=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
@@ -196,7 +232,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
