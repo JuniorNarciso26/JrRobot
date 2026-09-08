@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #define JR_RUNTIME_API_MAJOR 1
-#define JR_RUNTIME_API_VERSION "1.0"
+#define JR_RUNTIME_API_VERSION "1.1"
 
 /*
  * Processa somente funcoes registradas da Runtime API.

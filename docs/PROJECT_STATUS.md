@@ -1,6 +1,6 @@
 # Estado do projeto
 
-Atualização desta linha de desenvolvimento: 2026-09-07.
+Atualização desta linha de desenvolvimento: 2026-09-08.
 
 ## Hardware de referência
 
@@ -14,24 +14,33 @@ Atualização desta linha de desenvolvimento: 2026-09-07.
 
 Microfone e amplificador compartilham BCLK/WS e precisam arbitrar o recurso I2S.
 
-## Firmware desta candidata
+## Consolidação do histórico
 
-`JRBotV2_RUNTIME_API_V1_01`
+Os heads anteriores foram preservados em branches `archive/2026-09-08/*` antes da consolidação. A cadeia histórica de Local Brain, voz, resposta e Runtime API v1 candidata 01 foi incorporada em `main`; `develop` foi alinhada a essa base antes da candidata 02.
 
-Branch: `feature/runtime-api-v1`.
+## Firmware validado nesta etapa
 
-Objetivo: criar a fundação versionada da Runtime API sem alterar a calibração de voz nesta etapa.
+`JRBotV2_RUNTIME_API_V1_02`
 
-## Runtime API v1 — estado atual
+Branch de origem: `feature/runtime-api-v1-02`.
 
-### Implementado no código
+Objetivos desta revisão:
 
-- envelope JSON `v=1`;
+1. corrigir o framing de saída do MAX98357A de MSB para I2S Philips;
+2. evoluir a Runtime API de forma compatível, mantendo `v=1` e publicando API `1.1`;
+3. adicionar a primeira action segura `face`.
+
+## Runtime API — estado atual
+
+### Implementado
+
+- envelope JSON com major `v=1`;
+- API compatível reportada como `1.1`;
 - `capabilities`;
 - `get`;
+- action `face`;
 - erros estruturados;
-- comando de transporte `api <JSON>`;
-- uso via Serial e via `POST /cmd` do portal local;
+- transporte `api <JSON>` pela Serial e por `POST /cmd`;
 - leitura dos caminhos:
   - `api.version`;
   - `system.version`;
@@ -43,66 +52,77 @@ Objetivo: criar a fundação versionada da Runtime API sem alterar a calibraçã
   - `face.current`;
   - `wifi.status`.
 
-### Ainda não validado nesta candidata
+### Validado fisicamente / em protocolo na candidata 02
 
-O código da Runtime API foi adicionado ao repositório, mas esta revisão ainda precisa passar por:
+- firmware `JRBotV2_RUNTIME_API_V1_02` executando na placa;
+- `capabilities` anunciando API `1.1` e action `face`;
+- `face("thinking")` pela Serial alterando fisicamente o OLED;
+- `get("face.current")` confirmando `thinking`;
+- expressão inválida rejeitada com `invalid_args / face_expression_not_supported`;
+- regressão de `get("system.version")`, `get("audio.volume")` e `get("brain.status")`;
+- `audio.volume` refletindo alteração real de 35 para 100;
+- HTTP local `POST /cmd` para `get("system.version")`;
+- HTTP local `POST /cmd` para `face("happy")`, com alteração física do OLED.
 
-1. build ESP-IDF;
-2. gravação na placa;
-3. teste Serial de `capabilities`;
-4. teste Serial de `get`;
-5. teste HTTP local;
-6. verificação de regressão dos periféricos existentes.
+### Validação herdada da candidata 01, não repetida na 02
 
-Até esses testes ocorrerem, a Runtime API deve ser descrita como **implementada no código**, não como fisicamente validada.
+Na candidata 01 foram validados:
 
-## Validado fisicamente em etapas anteriores
+- versão incompatível -> `unsupported_version`;
+- função inexistente;
+- path inexistente;
+- JSON inválido -> `invalid_json`;
+- correlação de resposta por `id`;
+- coexistência com comandos legados.
 
-### Hardware e periféricos
+Nos logs finais da candidata 02, `unsupported_version` e `invalid_json` não foram repetidos. Essa lacuna permanece documentada e não é contada como nova validação física da revisão 02.
 
-- câmera OV5640 detectada e captura JPEG exercitada;
-- microfone MS3625 fornece amostras I2S;
-- MAX98357A reproduz áudio no hardware;
-- OLED responde no perfil de hardware atual.
+## Áudio MAX98357A
 
-### Voz
+A saída foi alterada de `I2S_STD_MSB_SLOT_DEFAULT_CONFIG` para `I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG`, mantendo:
 
-Foi registrada detecção acústica real pelo MultiNet6:
+- 16 kHz;
+- 16-bit;
+- estéreo duplicado a partir do PCM mono;
+- BCLK GPIO21;
+- WS GPIO47;
+- DIN GPIO42;
+- gate binário de arbitragem I2S.
 
-```text
-recognized="  JR BOT"
-probability=0.751
-```
+### Resultado físico
 
-Também já foi exercitado o ciclo:
+O `audio_test` registrou `format=PHILIPS` e `ESP_OK`. O ruído forte da candidata anterior desapareceu e o som foi avaliado como bom/limpo.
 
-```text
-detecção -> rosto feliz -> reprodução de "Oi" -> reabertura do microfone
-```
+O volume acústico máximo continua baixo mesmo com volume digital em 100%. Nesta etapa isso foi aceito como limitação do alto-falante atual de 20 mm / 4 ohms / 3 W e da montagem acústica. A alimentação do amplificador foi medida em aproximadamente 4,99 V em repouso, com queda momentânea para 4,56 V e cerca de 4,88 V durante reprodução. Ligar `GAIN` ao GND não produziu diferença acústica relevante.
 
-sem o antigo assert `xTaskPriorityDisinherit` após a troca do mutex por gate binário no barramento I2S.
+Melhoria do alto-falante/caixa acústica fica para uma etapa futura e não bloqueia a Runtime API.
 
-## Problema aberto de voz
+## Microfone
 
-O MultiNet6 continua sendo usado experimentalmente como detector contínuo do nome. A candidata anterior apresentou falsos positivos, especialmente pelo alias `J R BOT`.
+O MS3625 foi validado gravando 3 segundos / 48000 samples. Foi observado que o diagnóstico rápido pode mostrar `mic=unavailable` quando o probe não consegue adquirir o barramento I2S dentro do timeout curto; após uma gravação bem-sucedida o status voltou a `mic=available`.
 
-A Runtime API v1 não modifica essa lógica nesta primeira candidata. Isso é intencional para que eventuais regressões de API possam ser separadas dos problemas de calibração do reconhecimento.
+Isso indica uma limitação semântica do diagnóstico atual entre `busy` e `unavailable`, não uma prova de falha física do microfone.
+
+## Voz
+
+O MultiNet6 continua experimental como detector contínuo do nome. Houve detecção acústica real de `JR BOT` e o ciclo de resposta local já foi exercitado, mas falsos positivos continuam como problema aberto.
+
+A candidata 02 não recalibra reconhecimento de voz.
 
 ## Planejado — ainda não implementado
 
-- `set` na Runtime API;
-- persistência de configuração;
+- `set` persistente;
 - Voice Registry dinâmico;
 - Playground de calibração;
 - confiança por frase configurável;
-- `say`, `face`, `wait`, `listen`, `play` como actions registradas;
+- `say`, `wait`, `listen`, `play` como actions da Runtime API;
 - Flow Engine;
 - eventos assíncronos;
 - banco de comportamento/personality data;
 - TTS geral para frases arbitrárias;
 - integração VPS/IA avançada.
 
-Consulte [API_RUNTIME.md](API_RUNTIME.md), [PLAYGROUND.md](PLAYGROUND.md) e [FLOWS.md](FLOWS.md).
+Consulte [API_RUNTIME.md](API_RUNTIME.md), [RUNTIME_API_V1_02_TEST.md](RUNTIME_API_V1_02_TEST.md), [PLAYGROUND.md](PLAYGROUND.md) e [FLOWS.md](FLOWS.md).
 
 ## Regra de evolução
 
