@@ -5,6 +5,7 @@
 #include "esp_err.h"
 
 typedef void (*jr_voice_wake_cb_t)(const char *keyword, const char *model_name, int wake_index);
+typedef void (*jr_voice_calibration_cb_t)(const char *recognized, const char *model_name, float probability);
 
 typedef struct {
     bool running;
@@ -21,5 +22,7 @@ typedef struct {
 } jr_voice_status_t;
 
 esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb);
+esp_err_t jr_voice_start_calibration(jr_voice_calibration_cb_t calibration_cb);
 void jr_voice_stop(void);
 void jr_voice_get_status(jr_voice_status_t *out);
+bool jr_voice_calibration_active(void);
