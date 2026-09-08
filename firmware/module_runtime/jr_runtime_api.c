@@ -87,6 +87,13 @@ static bool emit_error(const char *id, const char *code, const char *message,
     return emit_json(root, false, response, response_len);
 }
 
+static bool add_string_item(cJSON *array, const char *value) {
+    cJSON *item = cJSON_CreateString(value);
+    if (!item) return false;
+    cJSON_AddItemToArray(array, item);
+    return true;
+}
+
 static cJSON *capabilities_result(void) {
     cJSON *result = cJSON_CreateObject();
     if (!result) return NULL;
@@ -126,11 +133,8 @@ static cJSON *capabilities_result(void) {
     };
     cJSON *get_paths = cJSON_AddArrayToObject(result, "get_paths");
     if (!get_paths) goto fail;
-    for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); ++i) {
-        cJSON *item = cJSON_CreateString(paths[i]);
-        if (!item) goto fail;
-        cJSON_AddItemToArray(get_paths, item);
-    }
+    for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); ++i)
+        if (!add_string_item(get_paths, paths[i])) goto fail;
 
     cJSON *actions = cJSON_AddArrayToObject(result, "actions");
     cJSON *triggers = cJSON_AddArrayToObject(result, "triggers");
@@ -138,9 +142,8 @@ static cJSON *capabilities_result(void) {
     if (!actions || !triggers || !events) goto fail;
 
     cJSON *transports = cJSON_AddArrayToObject(result, "transports");
-    if (!transports) goto fail;
-    cJSON_AddItemToArray(transports, cJSON_CreateString("serial.command"));
-    cJSON_AddItemToArray(transports, cJSON_CreateString("http.post./cmd"));
+    if (!transports || !add_string_item(transports, "serial.command") ||
+        !add_string_item(transports, "http.post./cmd")) goto fail;
     return result;
 
 fail:
@@ -245,14 +248,16 @@ bool jr_runtime_api_handle(const char *request_json, char *response, size_t resp
         return emit_error(NULL, "invalid_json", "expected_json_object", response, response_len);
     }
 
-    const cJSON *id_item = cJSON_GetObjectItemCaseSensitive(request, "id");
+    char id_buffer[JR_API_ID_MAX + 1] = {0};
     const char *id = NULL;
+    const cJSON *id_item = cJSON_GetObjectItemCaseSensitive(request, "id");
     if (id_item) {
         if (!cJSON_IsString(id_item) || !valid_token(id_item->valuestring, JR_API_ID_MAX)) {
             cJSON_Delete(request);
             return emit_error(NULL, "invalid_request", "invalid_id", response, response_len);
         }
-        id = id_item->valuestring;
+        snprintf(id_buffer, sizeof(id_buffer), "%s", id_item->valuestring);
+        id = id_buffer;
     }
 
     const cJSON *version = cJSON_GetObjectItemCaseSensitive(request, "v");
