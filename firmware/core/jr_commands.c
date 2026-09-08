@@ -110,7 +110,8 @@ bool jr_format_status(char *response, size_t cap) {
     bool camera_present = jr_camera_probe_once(&camera_pid);
     bool mic_present = jr_mic_probe(&m);
     const char *camera_state = camera_present ? "available" : "unavailable";
-    const char *mic_state = mic_present ? "available" : "unavailable";
+    const char *mic_state = mic_present ? "available" :
+                            (m.last_error == ESP_ERR_TIMEOUT ? "busy" : "unavailable");
     const char *audio_last = a.tests ? esp_err_to_name(a.last_error) : "not_run";
     int n = snprintf(response, cap,
         "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
@@ -118,7 +119,7 @@ bool jr_format_status(char *response, size_t cap) {
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
         "audio_test_seq=%lu audio_test_running=%d audio_last=%s audio_last_bytes=%lu "
         "camera=%s camera_model=%s camera_pid=0x%04X "
-        "mic=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
+        "mic=%s mic_error=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
         "mic_recording=%d mic_has_recording=%d mic_record_seconds=%u mic_record_samples=%u mic_record_level=%d mic_record_peak=%d "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
@@ -127,7 +128,7 @@ bool jr_format_status(char *response, size_t cap) {
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
         (unsigned long)a.tests,a.running?1:0,audio_last,(unsigned long)a.last_bytes,
         camera_state,JR_CAMERA_MODEL,camera_pid,
-        mic_state,JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
+        mic_state,esp_err_to_name(m.last_error),JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
         mr.recording?1:0,mr.has_recording?1:0,mr.seconds,(unsigned)mr.samples,mr.level,mr.peak,
         jr_face_state_name(f.state),oled_present?"available":"unavailable",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
