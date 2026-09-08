@@ -27,7 +27,8 @@ Nunca transforme um item planejado em “disponível” apenas porque existe uma
 ### Plataforma configurável
 
 - [Runtime API v1](API_RUNTIME.md)
-- [Roteiro de teste Runtime API v1](RUNTIME_API_V1_TEST.md)
+- [Roteiro de teste Runtime API v1 — candidata 01](RUNTIME_API_V1_TEST.md)
+- [Roteiro de teste Runtime API v1 — candidata 02](RUNTIME_API_V1_02_TEST.md)
 - [Playground](PLAYGROUND.md)
 - [Flows](FLOWS.md)
 
@@ -60,6 +61,7 @@ docs/
 ├── DOCUMENTATION.md
 ├── API_RUNTIME.md
 ├── RUNTIME_API_V1_TEST.md
+├── RUNTIME_API_V1_02_TEST.md
 ├── PLAYGROUND.md
 ├── FLOWS.md
 └── documentos técnicos/históricos existentes
