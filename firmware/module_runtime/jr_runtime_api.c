@@ -11,6 +11,7 @@
 #include "jr_brain.h"
 #include "jr_config.h"
 #include "jr_face.h"
+#include "jr_playground.h"
 #include "jr_runtime_api.h"
 #include "jr_voice.h"
 #include "jr_wifi.h"
@@ -95,6 +96,18 @@ static bool add_string_item(cJSON *array, const char *value) {
     return true;
 }
 
+static bool add_function(cJSON *functions, const char *name, const char *kind) {
+    cJSON *fn = cJSON_CreateObject();
+    if (!fn) return false;
+    if (!cJSON_AddStringToObject(fn, "name", name) ||
+        !cJSON_AddStringToObject(fn, "kind", kind)) {
+        cJSON_Delete(fn);
+        return false;
+    }
+    cJSON_AddItemToArray(functions, fn);
+    return true;
+}
+
 static cJSON *capabilities_result(void) {
     cJSON *result = cJSON_CreateObject();
     if (!result) return NULL;
@@ -106,25 +119,16 @@ static cJSON *capabilities_result(void) {
     cJSON_AddStringToObject(result, "profile", JR_PROFILE_NAME);
     cJSON_AddBoolToObject(result, "persistent_config", false);
     cJSON_AddBoolToObject(result, "flow_engine", false);
-    cJSON_AddBoolToObject(result, "playground", false);
+    cJSON_AddBoolToObject(result, "playground", true);
 
     cJSON *functions = cJSON_AddArrayToObject(result, "functions");
     if (!functions) goto fail;
-    cJSON *fn = cJSON_CreateObject();
-    if (!fn) goto fail;
-    cJSON_AddStringToObject(fn, "name", "capabilities");
-    cJSON_AddStringToObject(fn, "kind", "query");
-    cJSON_AddItemToArray(functions, fn);
-    fn = cJSON_CreateObject();
-    if (!fn) goto fail;
-    cJSON_AddStringToObject(fn, "name", "get");
-    cJSON_AddStringToObject(fn, "kind", "query");
-    cJSON_AddItemToArray(functions, fn);
-    fn = cJSON_CreateObject();
-    if (!fn) goto fail;
-    cJSON_AddStringToObject(fn, "name", "face");
-    cJSON_AddStringToObject(fn, "kind", "action");
-    cJSON_AddItemToArray(functions, fn);
+    if (!add_function(functions, "capabilities", "query") ||
+        !add_function(functions, "get", "query") ||
+        !add_function(functions, "face", "action") ||
+        !add_function(functions, "playground.start", "action") ||
+        !add_function(functions, "playground.status", "query") ||
+        !add_function(functions, "playground.stop", "action")) goto fail;
 
     static const char *paths[] = {
         "api.version",
@@ -145,7 +149,10 @@ static cJSON *capabilities_result(void) {
     cJSON *actions = cJSON_AddArrayToObject(result, "actions");
     cJSON *triggers = cJSON_AddArrayToObject(result, "triggers");
     cJSON *events = cJSON_AddArrayToObject(result, "events");
-    if (!actions || !triggers || !events || !add_string_item(actions, "face")) goto fail;
+    if (!actions || !triggers || !events ||
+        !add_string_item(actions, "face") ||
+        !add_string_item(actions, "playground.start") ||
+        !add_string_item(actions, "playground.stop")) goto fail;
 
     cJSON *transports = cJSON_AddArrayToObject(result, "transports");
     if (!transports || !add_string_item(transports, "serial.command") ||
@@ -155,6 +162,32 @@ static cJSON *capabilities_result(void) {
 fail:
     cJSON_Delete(result);
     return NULL;
+}
+
+static cJSON *playground_result(void) {
+    jr_playground_status_t status = {0};
+    jr_playground_get_status(&status);
+
+    cJSON *result = cJSON_CreateObject();
+    if (!result) return NULL;
+    cJSON_AddStringToObject(result, "state", jr_playground_state_name(status.state));
+    cJSON_AddStringToObject(result, "phrase", status.phrase);
+    cJSON_AddNumberToObject(result, "interval_ms", status.interval_ms);
+    cJSON_AddNumberToObject(result, "detections", status.detections);
+    cJSON_AddNumberToObject(result, "samples", status.samples);
+    cJSON_AddNumberToObject(result, "skipped_interval", status.skipped_interval);
+    cJSON_AddNumberToObject(result, "min_probability", status.min_probability);
+    cJSON_AddNumberToObject(result, "max_probability", status.max_probability);
+    cJSON_AddNumberToObject(result, "avg_probability", status.avg_probability);
+    cJSON_AddNumberToObject(result, "last_probability", status.last_probability);
+    cJSON_AddStringToObject(result, "last_recognized", status.last_recognized);
+    cJSON_AddStringToObject(result, "model", status.model);
+    cJSON_AddNumberToObject(result, "started_ms", (double)status.started_ms);
+    cJSON_AddNumberToObject(result, "last_sample_ms", (double)status.last_sample_ms);
+    cJSON_AddStringToObject(result, "last_error", esp_err_to_name(status.last_error));
+    cJSON_AddBoolToObject(result, "persistent", false);
+    cJSON_AddStringToObject(result, "scope", "jrbot_name_only_v1");
+    return result;
 }
 
 static cJSON *get_result(const char *path) {
@@ -335,6 +368,60 @@ bool jr_runtime_api_handle(const char *request_json, char *response, size_t resp
             cJSON_Delete(result);
             cJSON_Delete(request);
             return emit_error(id, "no_memory", "face_response_create_failed", response, response_len);
+        }
+    } else if (!strcmp(fn, "playground.start")) {
+        if (!args) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "playground_start_requires_args", response, response_len);
+        }
+        const cJSON *phrase_item = cJSON_GetObjectItemCaseSensitive(args, "phrase");
+        const cJSON *interval_item = cJSON_GetObjectItemCaseSensitive(args, "interval_ms");
+        if (!cJSON_IsString(phrase_item) || !phrase_item->valuestring[0] ||
+            strlen(phrase_item->valuestring) >= JR_PLAYGROUND_PHRASE_MAX ||
+            !cJSON_IsNumber(interval_item) || interval_item->valuedouble != (double)interval_item->valueint ||
+            interval_item->valueint < 0) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "invalid_playground_start_args", response, response_len);
+        }
+
+        esp_err_t err = jr_playground_start(phrase_item->valuestring, (uint32_t)interval_item->valueint);
+        if (err != ESP_OK) {
+            cJSON_Delete(request);
+            if (err == ESP_ERR_NOT_SUPPORTED)
+                return emit_error(id, "invalid_args", "phrase_not_supported_v1", response, response_len);
+            if (err == ESP_ERR_INVALID_ARG)
+                return emit_error(id, "invalid_args", "invalid_playground_start_args", response, response_len);
+            if (err == ESP_ERR_INVALID_STATE)
+                return emit_error(id, "invalid_state", "playground_requires_brain_off_and_idle_voice", response, response_len);
+            if (err == ESP_ERR_TIMEOUT)
+                return emit_error(id, "busy", "audio_bus_busy", response, response_len);
+            return emit_error(id, "internal_error", "playground_start_failed", response, response_len);
+        }
+        result = playground_result();
+        if (!result) {
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "playground_response_create_failed", response, response_len);
+        }
+    } else if (!strcmp(fn, "playground.status")) {
+        result = playground_result();
+        if (!result) {
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "playground_response_create_failed", response, response_len);
+        }
+    } else if (!strcmp(fn, "playground.stop")) {
+        esp_err_t err = jr_playground_stop();
+        if (err != ESP_OK) {
+            cJSON_Delete(request);
+            if (err == ESP_ERR_INVALID_STATE)
+                return emit_error(id, "invalid_state", "playground_not_calibrating", response, response_len);
+            if (err == ESP_ERR_TIMEOUT)
+                return emit_error(id, "busy", "voice_stop_timeout", response, response_len);
+            return emit_error(id, "internal_error", "playground_stop_failed", response, response_len);
+        }
+        result = playground_result();
+        if (!result) {
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "playground_response_create_failed", response, response_len);
         }
     } else {
         cJSON_Delete(request);
