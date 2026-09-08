@@ -122,7 +122,7 @@ esp_err_t jr_audio_start(void) {
 
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(JR_AUDIO_SAMPLE_RATE),
-        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {
             .mclk = I2S_GPIO_UNUSED,
             .bclk = JR_AUDIO_BCLK_GPIO,
@@ -198,7 +198,7 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     if (amplitude < 0) amplitude = 0;
     if (amplitude > 26000) amplitude = 26000;
 
-    ESP_LOGI(TAG, "TEST_BEGIN seq=%lu freq=%d dur=%d volume=%d bclk=%d lrc=%d din=%d rate=%d format=MSB",
+    ESP_LOGI(TAG, "TEST_BEGIN seq=%lu freq=%d dur=%d volume=%d bclk=%d lrc=%d din=%d rate=%d format=PHILIPS",
              (unsigned long)seq,frequency_hz,duration_ms,jr_audio_volume(),
              JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,JR_AUDIO_SAMPLE_RATE);
 

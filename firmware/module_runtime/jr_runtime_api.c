@@ -19,6 +19,7 @@
 #define JR_API_ID_MAX 32
 #define JR_API_FN_MAX 48
 #define JR_API_PATH_MAX 64
+#define JR_API_EXPRESSION_MAX 32
 
 static bool valid_token(const char *value, size_t max_len) {
     if (!value || !value[0]) return false;
@@ -119,6 +120,11 @@ static cJSON *capabilities_result(void) {
     cJSON_AddStringToObject(fn, "name", "get");
     cJSON_AddStringToObject(fn, "kind", "query");
     cJSON_AddItemToArray(functions, fn);
+    fn = cJSON_CreateObject();
+    if (!fn) goto fail;
+    cJSON_AddStringToObject(fn, "name", "face");
+    cJSON_AddStringToObject(fn, "kind", "action");
+    cJSON_AddItemToArray(functions, fn);
 
     static const char *paths[] = {
         "api.version",
@@ -139,7 +145,7 @@ static cJSON *capabilities_result(void) {
     cJSON *actions = cJSON_AddArrayToObject(result, "actions");
     cJSON *triggers = cJSON_AddArrayToObject(result, "triggers");
     cJSON *events = cJSON_AddArrayToObject(result, "events");
-    if (!actions || !triggers || !events) goto fail;
+    if (!actions || !triggers || !events || !add_string_item(actions, "face")) goto fail;
 
     cJSON *transports = cJSON_AddArrayToObject(result, "transports");
     if (!transports || !add_string_item(transports, "serial.command") ||
@@ -302,6 +308,33 @@ bool jr_runtime_api_handle(const char *request_json, char *response, size_t resp
         if (!result) {
             cJSON_Delete(request);
             return emit_error(id, "not_found", "get_path_not_supported", response, response_len);
+        }
+    } else if (!strcmp(fn, "face")) {
+        if (!args) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "face_requires_args", response, response_len);
+        }
+        const cJSON *expression_item = cJSON_GetObjectItemCaseSensitive(args, "expression");
+        if (!cJSON_IsString(expression_item) ||
+            !valid_token(expression_item->valuestring, JR_API_EXPRESSION_MAX)) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "invalid_face_expression", response, response_len);
+        }
+        result = cJSON_CreateObject();
+        if (!result) {
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "face_response_create_failed", response, response_len);
+        }
+        if (!jr_face_set_expression(expression_item->valuestring)) {
+            cJSON_Delete(result);
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "face_expression_not_supported", response, response_len);
+        }
+        jr_face_increment_command_count();
+        if (!cJSON_AddStringToObject(result, "expression", jr_face_expression_name())) {
+            cJSON_Delete(result);
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "face_response_create_failed", response, response_len);
         }
     } else {
         cJSON_Delete(request);

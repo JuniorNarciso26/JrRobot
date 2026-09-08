@@ -6,56 +6,120 @@ JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um co
 
 - Hardware: `JRBOT-HW-04`
 - MCU: ESP32-S3 N16R8
-- Candidata desta branch: `JRBotV2_RUNTIME_API_V1_01`
-- Branch estável/promovida: `main`
+- Baseline promovida: `JRBotV2_RUNTIME_API_V1_02`
+- Branch estável: `main`
 - Branch de integração: `develop`
-- Branch desta etapa: `feature/runtime-api-v1`
-- Runtime API: base v1 implementada no código; build e validação ainda pendentes
-- Reconhecimento de voz: ESP-SR MultiNet6 experimental, preservado da etapa anterior
-- Áudio local: MAX98357A
+- Runtime API: major `v=1`, API compatível `1.1`
+- Funções da API: `capabilities`, `get`, `face`
+- Primeira action física validada: `face`
+- Transporte validado: Serial e HTTP local `POST /cmd`
+- Áudio local: MAX98357A com framing I2S Philips validado fisicamente sem o ruído forte anterior
+- Reconhecimento de voz: ESP-SR MultiNet6 experimental
 - Microfone: MS3625
 - Câmera: OV5640
 - Display: OLED SSD1306
 
-> O reconhecimento contínuo de `JrBot` por MultiNet é experimental. A Runtime API desta candidata não altera a calibração de voz. Recursos descritos como planejados na documentação não devem ser tratados como implementados.
+A candidata `JRBotV2_RUNTIME_API_V1_02` foi exercitada no hardware real. O som ficou limpo após a troca para I2S Philips; o volume acústico máximo continua baixo com o alto-falante atual de 20 mm / 4 ohms / 3 W e essa limitação foi aceita para esta baseline.
+
+O reconhecimento contínuo de `JrBot` continua experimental e não foi recalibrado nesta revisão.
+
+## Histórico consolidado
+
+Os heads anteriores foram preservados em branches `archive/2026-09-08/*` antes das integrações. A evolução acumulada de Local Brain, voz, resposta, documentação, Runtime API candidata 01 e Runtime API candidata 02 foi incorporada pela cadeia de Pull Requests `feature -> develop -> main`.
+
+As branches `archive/*` são referências históricas e não devem receber desenvolvimento novo.
 
 ## Estratégia de branches
 
 ```text
 main
   └── develop
-        ├── feature/runtime-api-v1
         ├── feature/...
         └── fix/...
+
+archive/2026-09-08/*
+  └── snapshots históricos
 ```
 
-- `main`: somente baselines promovidos após validação adequada.
+- `main`: baselines promovidas/consolidadas.
 - `develop`: integração da próxima versão.
 - `feature/*`: desenvolvimento isolado criado a partir de `develop` e integrado de volta por Pull Request.
-- `fix/*`: correções isoladas, seguindo a mesma regra de revisão.
+- `fix/*`: correções isoladas seguindo a mesma regra de revisão.
+- `archive/*`: referências históricas.
 
-As branches `feature/local-brain-autonomous`, `feature/local-brain-voice` e `feature/local-brain-jrbot-response` registram a evolução histórica que originou o estado de base de `develop`.
+## Runtime API v1.1
 
-## Runtime API v1 desta candidata
-
-Implementado no código:
+Disponível:
 
 ```text
 capabilities()
 get(path)
+face(expression)
 ```
 
-Transporte inicial:
+Exemplo pela Serial ou pelo corpo de `POST /cmd`:
 
 ```text
-api {"v":1,"fn":"capabilities","args":{}}
+api {"v":1,"id":"face01","fn":"face","args":{"expression":"thinking"}}
 ```
 
-A resposta usa o prefixo `JR_API` e JSON estruturado. `set`, Playground, Flow Engine, persistência e actions ainda não fazem parte desta candidata.
+Depois é possível conferir o estado real:
+
+```text
+api {"v":1,"id":"face02","fn":"get","args":{"path":"face.current"}}
+```
+
+A API não executa código textual arbitrário nem aceita GPIO direto. `face` chama somente a capability segura registrada no firmware.
+
+Também foi validado pela rede local:
+
+```text
+PC -> Wi-Fi -> HTTP /cmd -> Runtime API -> face() -> OLED físico
+```
+
+O portal HTTP local não possui autenticação/TLS e não deve ser exposto diretamente à Internet.
+
+`set`, Playground, Flow Engine, persistência, `say`, `listen` e outras actions continuam fora desta baseline.
+
+## Áudio
+
+O MAX98357A usa:
+
+```text
+BCLK GPIO21
+WS   GPIO47
+DIN  GPIO42
+16 kHz / 16-bit
+I2S Philips
+```
+
+A troca de MSB para Philips eliminou o ruído forte observado anteriormente. O controle digital de volume continua funcional, mas a saída acústica máxima é limitada pelo alto-falante atual e pela montagem física.
+
+## Validação e ressalvas
+
+Validado nesta baseline:
+
+- firmware `JRBotV2_RUNTIME_API_V1_02` executando na placa;
+- `capabilities` API `1.1`;
+- `get` de estados principais;
+- `face("thinking")` pela Serial com mudança física do OLED;
+- `get("face.current")` confirmando o estado;
+- rejeição de expressão inválida;
+- HTTP local para `get("system.version")`;
+- HTTP local para `face("happy")` com mudança física do OLED;
+- I2S Philips com áudio limpo.
+
+Ressalvas registradas:
+
+- o log completo da etapa de compilação ESP-IDF não foi anexado ao registro final, embora a candidata tenha sido gravada e executada fisicamente;
+- `unsupported_version` e `invalid_json` foram validados na candidata 01, mas não repetidos especificamente nos logs finais da candidata 02;
+- o diagnóstico rápido do microfone ainda pode confundir barramento I2S ocupado com `mic=unavailable`;
+- falsos positivos de reconhecimento contínuo de voz continuam em aberto;
+- volume acústico do alto-falante atual é baixo.
 
 ## Comece pela documentação
 
-A documentação oficial fica em [`docs/`](docs/README.md). O painel local também possui uma área **Documentação** que lê esses mesmos arquivos Markdown, sem criar uma segunda fonte de verdade.
+A documentação oficial fica em [`docs/`](docs/README.md). O painel local possui uma área **Documentação** que lê esses mesmos arquivos Markdown.
 
 Principais documentos:
 
@@ -64,24 +128,29 @@ Principais documentos:
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Guia de desenvolvimento](docs/DEVELOPMENT.md)
 - [Runtime API v1](docs/API_RUNTIME.md)
-- [Roteiro de teste Runtime API v1](docs/RUNTIME_API_V1_TEST.md)
+- [Teste da candidata 02](docs/RUNTIME_API_V1_02_TEST.md)
 - [Playground](docs/PLAYGROUND.md)
 - [Flows](docs/FLOWS.md)
 - [Testes e validação](docs/TESTING.md)
 
-## Compilar e gravar a candidata
+## Compilar e gravar a baseline atual
 
 No terminal ESP-IDF 5.5.x:
 
 ```bat
-git switch feature/runtime-api-v1
-git pull --ff-only origin feature/runtime-api-v1
+git fetch --all --prune
+git switch main
+git pull --ff-only origin main
 INSTALAR.bat build
 INSTALAR.bat flash
 PAINEL.bat
 ```
 
-Confirme no painel que a placa reporta `JRBotV2_RUNTIME_API_V1_01` antes de interpretar qualquer teste.
+Confirme no painel:
+
+```text
+JRBotV2_RUNTIME_API_V1_02
+```
 
 ## Filosofia técnica
 
