@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-jrbot-response05-baseline01"
-set "SDKCONFIG_FILE=sdkconfig.jrbot-response05-baseline01"
+set "BUILD_DIR=build-runtime-api-v1-01"
+set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-01"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -106,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - JrBot Response baseline atualizado.
-echo Firmware: JRBotV2_JRBOT_RESPONSE_05
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Baseline: RESPONSE_01
+echo OK - candidata JrBot Runtime API v1 preparada.
+echo Firmware: JRBotV2_RUNTIME_API_V1_01
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.0
 exit /b 0
 
 :failure
@@ -118,7 +118,7 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Response 05 - baseline do primeiro teste funcional
+echo JrBot Runtime API v1 - candidata 01
 echo.
 echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
 echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
@@ -127,10 +127,9 @@ echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
-echo Reconhecimento restaurado para o baseline RESPONSE_01.
-echo MultiNet: JR BOT / JUNIOR BOT / J R BOT, sem filtro local de probabilidade.
-echo WakeNet Hi ESP permanece somente como fallback se o MultiNet nao iniciar.
-echo A correcao atual do barramento I2S permanece para evitar o reboot visto na RESPONSE_01 original.
-echo Resposta: face feliz + "Oi" local; bip curto se o audio falhar.
+echo Base Runtime API v1: comando api + JSON estruturado.
+echo Implementado nesta candidata: capabilities e get de estados seguros.
+echo Ainda nao implementado: set persistente, Playground, Flow Engine e banco de comportamento.
+echo O comportamento de voz da candidata anterior foi preservado para evitar misturar calibracao e API.
 echo.
 exit /b 0
