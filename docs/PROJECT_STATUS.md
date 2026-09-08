@@ -16,15 +16,51 @@ Microfone e amplificador compartilham BCLK/WS e precisam arbitrar o recurso I2S.
 
 ## Firmware desta candidata
 
-`JRBotV2_JRBOT_RESPONSE_05`
+`JRBotV2_RUNTIME_API_V1_01`
 
-Objetivo desta revisão: recuperar o comportamento de reconhecimento da primeira candidata que detectou `JR BOT`, preservando a correção posterior do barramento I2S.
+Branch: `feature/runtime-api-v1`.
 
-## Validado fisicamente
+Objetivo: criar a fundação versionada da Runtime API sem alterar a calibração de voz nesta etapa.
+
+## Runtime API v1 — estado atual
+
+### Implementado no código
+
+- envelope JSON `v=1`;
+- `capabilities`;
+- `get`;
+- erros estruturados;
+- comando de transporte `api <JSON>`;
+- uso via Serial e via `POST /cmd` do portal local;
+- leitura dos caminhos:
+  - `api.version`;
+  - `system.version`;
+  - `system.hardware`;
+  - `system.profile`;
+  - `brain.status`;
+  - `voice.status`;
+  - `audio.volume`;
+  - `face.current`;
+  - `wifi.status`.
+
+### Ainda não validado nesta candidata
+
+O código da Runtime API foi adicionado ao repositório, mas esta revisão ainda precisa passar por:
+
+1. build ESP-IDF;
+2. gravação na placa;
+3. teste Serial de `capabilities`;
+4. teste Serial de `get`;
+5. teste HTTP local;
+6. verificação de regressão dos periféricos existentes.
+
+Até esses testes ocorrerem, a Runtime API deve ser descrita como **implementada no código**, não como fisicamente validada.
+
+## Validado fisicamente em etapas anteriores
 
 ### Hardware e periféricos
 
-- câmera OV5640 detectada e captura JPEG já exercitada;
+- câmera OV5640 detectada e captura JPEG exercitada;
 - microfone MS3625 fornece amostras I2S;
 - MAX98357A reproduz áudio no hardware;
 - OLED responde no perfil de hardware atual.
@@ -38,40 +74,36 @@ recognized="  JR BOT"
 probability=0.751
 ```
 
-O ciclo atual também já executou repetidamente:
+Também já foi exercitado o ciclo:
 
 ```text
 detecção -> rosto feliz -> reprodução de "Oi" -> reabertura do microfone
 ```
 
-sem reproduzir o antigo assert `xTaskPriorityDisinherit` após a troca do mutex por um gate binário para o I2S.
+sem o antigo assert `xTaskPriorityDisinherit` após a troca do mutex por gate binário no barramento I2S.
 
-## Problema aberto principal
+## Problema aberto de voz
 
-O MultiNet6 está sendo usado continuamente como detector experimental do nome. Ele é um reconhecedor de comandos e pode classificar fala/ruído como um dos comandos cadastrados.
+O MultiNet6 continua sendo usado experimentalmente como detector contínuo do nome. A candidata anterior apresentou falsos positivos, especialmente pelo alias `J R BOT`.
 
-Na candidata baseline com aliases `JR BOT`, `JUNIOR BOT` e `J R BOT`, foram observados falsos positivos frequentes, especialmente `J R BOT`, com probabilidades em diferentes faixas.
+A Runtime API v1 não modifica essa lógica nesta primeira candidata. Isso é intencional para que eventuais regressões de API possam ser separadas dos problemas de calibração do reconhecimento.
 
-Portanto:
+## Planejado — ainda não implementado
 
-- captura de áudio: funcional;
-- resposta e retomada do microfone: funcional;
-- decisão “isso realmente foi JrBot?”: ainda em calibração.
-
-## Planejado — ainda não implementado como contrato Runtime API
-
+- `set` na Runtime API;
+- persistência de configuração;
+- Voice Registry dinâmico;
 - Playground de calibração;
 - confiança por frase configurável;
-- persistência de frases e Flows;
-- Runtime API v1 (`get`, `set`, `say`, `face`, `listen`, etc.);
-- `capabilities()`;
+- `say`, `face`, `wait`, `listen`, `play` como actions registradas;
 - Flow Engine;
+- eventos assíncronos;
 - banco de comportamento/personality data;
 - TTS geral para frases arbitrárias;
 - integração VPS/IA avançada.
 
-As especificações estão em [API_RUNTIME.md](API_RUNTIME.md), [PLAYGROUND.md](PLAYGROUND.md) e [FLOWS.md](FLOWS.md).
+Consulte [API_RUNTIME.md](API_RUNTIME.md), [PLAYGROUND.md](PLAYGROUND.md) e [FLOWS.md](FLOWS.md).
 
 ## Regra de evolução
 
-Nova capacidade física ou sistêmica pode exigir firmware novo. Novo comportamento composto apenas por capacidades já disponíveis deve, no futuro, ser criado como Flow/configuração sem recompilar o firmware.
+Nova capacidade física ou sistêmica pode exigir firmware novo. Novo comportamento composto apenas por capabilities já disponíveis deve migrar para configuração/Flow em runtime, sem recompilar o firmware.
