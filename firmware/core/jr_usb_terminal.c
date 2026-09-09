@@ -19,6 +19,8 @@
 static const char *TAG = "jrbot_usb_terminal";
 static bool started;
 static QueueHandle_t event_queue;
+static TaskHandle_t event_task_handle;
+static TaskHandle_t terminal_task_handle;
 static uint32_t event_dropped;
 
 typedef struct {
@@ -193,13 +195,15 @@ void jr_usb_terminal_start(void) {
         ESP_LOGW(TAG, "Fila de telemetria USB indisponivel");
         return;
     }
-    if (xTaskCreate(usb_event_task, "usb_event_tx", 4096, NULL, 3, NULL) != pdPASS) {
+    if (xTaskCreate(usb_event_task, "usb_event_tx", 4096, NULL, 3, &event_task_handle) != pdPASS) {
         vQueueDelete(event_queue);
         event_queue = NULL;
         ESP_LOGW(TAG, "Falha criando tarefa de telemetria USB");
         return;
     }
-    if (xTaskCreate(usb_terminal_task, "usb_terminal", 6144, NULL, 5, NULL) != pdPASS) {
+    if (xTaskCreate(usb_terminal_task, "usb_terminal", 6144, NULL, 5, &terminal_task_handle) != pdPASS) {
+        vTaskDelete(event_task_handle);
+        event_task_handle = NULL;
         vQueueDelete(event_queue);
         event_queue = NULL;
         ESP_LOGW(TAG, "Falha criando tarefa USB Serial/JTAG");
