@@ -65,7 +65,10 @@ static jr_voice_status_t voice_status = {
     .mic_ready = false,
     .frames = 0,
     .detections = 0,
+    .rejected_low_confidence = 0,
     .last_level = 0,
+    .last_probability = 0.0f,
+    .min_probability = JR_VOICE_JRBOT_MIN_PROBABILITY,
     .sample_rate = 0,
     .chunk_samples = 0,
     .last_error = ESP_ERR_INVALID_STATE,
@@ -171,10 +174,12 @@ fail:
 static void voice_cleanup(void) {
     close_mic();
 
-    if (mn_commands_ready) {
-        (void)esp_mn_commands_free();
-        mn_commands_ready = false;
-    }
+    /*
+     * O registry global do esp-sr sera limpo pelo proximo
+     * esp_mn_commands_alloc(). Evita o erro esp_mn_commands_clear() observado
+     * no stop quando o registry ja havia sido desalocado internamente.
+     */
+    mn_commands_ready = false;
     if (mn_data && multinet) {
         multinet->destroy(mn_data);
         mn_data = NULL;
@@ -235,7 +240,6 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
 
     int accepted = 0;
     accepted += add_name_alias("JR BOT");
-    accepted += add_name_alias("JUNIOR BOT");
     accepted += add_name_alias("J R BOT");
     if (accepted == 0) {
         ESP_LOGE(TAG, "MultiNet rejected every JrBot alias");
@@ -261,8 +265,8 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     *sample_rate = mn_rate;
     voice_mode = JR_VOICE_MODE_MULTINET_NAME;
     ESP_LOGI(TAG,
-             "direct name recognizer ready model=%s accepted_aliases=%d mode=continuous_experimental rate=%d chunk=%d",
-             mn_model_name, accepted, mn_rate, mn_chunk);
+             "direct name recognizer ready model=%s accepted_aliases=%d min_probability=%.2f mode=continuous_experimental rate=%d chunk=%d",
+             mn_model_name, accepted, (double)JR_VOICE_JRBOT_MIN_PROBABILITY, mn_rate, mn_chunk);
     return ESP_OK;
 }
 
@@ -352,20 +356,35 @@ static bool handle_multinet_frame(void) {
 
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
+    voice_status.last_probability = probability;
     count = voice_status.detections;
     callback = wake_callback;
     calibration_cb = calibration_callback;
     calibration = calibration_mode;
+    if (!calibration && probability < JR_VOICE_JRBOT_MIN_PROBABILITY)
+        voice_status.rejected_low_confidence++;
     portEXIT_CRITICAL(&voice_lock);
 
-    ESP_LOGI(TAG,
-             "name detected keyword=JrBot recognized=\"%s\" model=%s probability=%.3f count=%lu calibration=%d",
-             recognized, mn_model_name, probability, (unsigned long)count, calibration ? 1 : 0);
     if (calibration) {
+        ESP_LOGI(TAG,
+                 "name sample recognized=\"%s\" model=%s probability=%.3f count=%lu calibration=1",
+                 recognized, mn_model_name, probability, (unsigned long)count);
         if (calibration_cb) calibration_cb(recognized, mn_model_name, probability);
-    } else if (callback) {
-        callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID);
+        return true;
     }
+
+    if (probability < JR_VOICE_JRBOT_MIN_PROBABILITY) {
+        ESP_LOGI(TAG,
+                 "name rejected recognized=\"%s\" probability=%.3f threshold=%.3f count=%lu reason=low_confidence",
+                 recognized, probability, (double)JR_VOICE_JRBOT_MIN_PROBABILITY, (unsigned long)count);
+        multinet->clean(mn_data);
+        return false;
+    }
+
+    ESP_LOGI(TAG,
+             "name accepted keyword=JrBot recognized=\"%s\" model=%s probability=%.3f threshold=%.3f count=%lu",
+             recognized, mn_model_name, probability, (double)JR_VOICE_JRBOT_MIN_PROBABILITY, (unsigned long)count);
+    if (callback) callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID, probability);
     return true;
 }
 
@@ -377,13 +396,14 @@ static bool handle_wakenet_frame(void) {
     uint32_t count;
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
+    voice_status.last_probability = 1.0f;
     count = voice_status.detections;
     callback = wake_callback;
     portEXIT_CRITICAL(&voice_lock);
 
     ESP_LOGI(TAG, "fallback wake word detected keyword=Hi_ESP model=%s count=%lu",
              wn_model_name, (unsigned long)count);
-    if (callback) callback("Hi ESP", wn_model_name, (int)detected);
+    if (callback) callback("Hi ESP", wn_model_name, (int)detected, 1.0f);
     return true;
 }
 
@@ -526,15 +546,19 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     voice_status.mic_ready = true;
     voice_status.frames = 0;
     voice_status.detections = 0;
+    voice_status.rejected_low_confidence = 0;
     voice_status.last_level = 0;
+    voice_status.last_probability = 0.0f;
     voice_status.sample_rate = sample_rate;
     voice_status.chunk_samples = chunk;
     voice_status.last_error = ESP_OK;
     if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
+        voice_status.min_probability = JR_VOICE_JRBOT_MIN_PROBABILITY;
         snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-multinet");
         snprintf(voice_status.model, sizeof(voice_status.model), "%s", mn_model_name);
         snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "JrBot");
     } else {
+        voice_status.min_probability = 0.0f;
         snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
         snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
         snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Hi ESP");
@@ -548,9 +572,9 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d calibration=%d",
+    ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d calibration=%d min_probability=%.2f",
              voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk,
-             calibration_mode ? 1 : 0);
+             calibration_mode ? 1 : 0, (double)voice_status.min_probability);
     return ESP_OK;
 }
 
