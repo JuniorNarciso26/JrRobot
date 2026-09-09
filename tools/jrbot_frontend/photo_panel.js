@@ -241,6 +241,24 @@ function openCameraPortal(){
   window.open('http://'+ip+'/','_blank','noopener');
 }
 
+/* index.html ainda contem o texto historico 0.70; esta extensao roda depois dele
+ * e mostra o limiar realmente compilado nesta candidata. */
+const jrBaseRenderBrain=(typeof renderBrain==='function')?renderBrain:null;
+if(jrBaseRenderBrain){
+  renderBrain=function(text){
+    jrBaseRenderBrain(text);
+    const f=fields(text);
+    const enabled=(f.autonomous==='1'||f.enabled==='1'||(typeof autonomousEnabled!=='undefined'&&autonomousEnabled));
+    if(enabled){
+      const threshold=f.min_probability||device?.voice_min_probability||'0.600';
+      const rejected=f.rejected||device?.voice_rejected||'0';
+      el('brain_msg').textContent='Reconhecedor: somente JR BOT / J R BOT. Confianca minima '+threshold+'. Abaixo do limite nao muda a face nem fala. Rejeitadas: '+rejected+'.';
+    }else{
+      el('brain_msg').textContent='Modo autonomo desligado. Playground pode medir probabilidades sem executar face ou audio.';
+    }
+  };
+}
+
 jrNormalizeCameraUi();
 jrNormalizeAudioMicUi();
 refreshControls();
