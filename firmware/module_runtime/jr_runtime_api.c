@@ -126,6 +126,7 @@ static cJSON *capabilities_result(void) {
     if (!add_function(functions, "capabilities", "query") ||
         !add_function(functions, "get", "query") ||
         !add_function(functions, "face", "action") ||
+        !add_function(functions, "voice.threshold", "action") ||
         !add_function(functions, "playground.start", "action") ||
         !add_function(functions, "playground.status", "query") ||
         !add_function(functions, "playground.stop", "action")) goto fail;
@@ -137,6 +138,7 @@ static cJSON *capabilities_result(void) {
         "system.profile",
         "brain.status",
         "voice.status",
+        "voice.threshold",
         "audio.volume",
         "face.current",
         "wifi.status",
@@ -151,6 +153,7 @@ static cJSON *capabilities_result(void) {
     cJSON *events = cJSON_AddArrayToObject(result, "events");
     if (!actions || !triggers || !events ||
         !add_string_item(actions, "face") ||
+        !add_string_item(actions, "voice.threshold") ||
         !add_string_item(actions, "playground.start") ||
         !add_string_item(actions, "playground.stop")) goto fail;
 
@@ -187,6 +190,16 @@ static cJSON *playground_result(void) {
     cJSON_AddStringToObject(result, "last_error", esp_err_to_name(status.last_error));
     cJSON_AddBoolToObject(result, "persistent", false);
     cJSON_AddStringToObject(result, "scope", "jrbot_name_only_v1");
+    return result;
+}
+
+static cJSON *voice_threshold_result(void) {
+    cJSON *result = cJSON_CreateObject();
+    if (!result) return NULL;
+    cJSON_AddNumberToObject(result, "min_probability", jr_voice_get_min_probability());
+    cJSON_AddNumberToObject(result, "min_allowed", JR_VOICE_JRBOT_MIN_ALLOWED_PROBABILITY);
+    cJSON_AddNumberToObject(result, "max_allowed", JR_VOICE_JRBOT_MAX_ALLOWED_PROBABILITY);
+    cJSON_AddBoolToObject(result, "persistent", false);
     return result;
 }
 
@@ -233,6 +246,7 @@ static cJSON *get_result(const char *path) {
         cJSON_AddNumberToObject(value, "frames", status.frames);
         cJSON_AddNumberToObject(value, "last_level", status.last_level);
         cJSON_AddNumberToObject(value, "last_probability", status.last_probability);
+        cJSON_AddNumberToObject(value, "min_probability", jr_voice_get_min_probability());
         cJSON_AddStringToObject(value, "engine", status.engine);
         cJSON_AddStringToObject(value, "last_event", status.last_event);
         cJSON_AddStringToObject(value, "last_error", esp_err_to_name(status.last_error));
@@ -247,13 +261,22 @@ static cJSON *get_result(const char *path) {
         cJSON_AddBoolToObject(value, "mic_ready", status.mic_ready);
         cJSON_AddNumberToObject(value, "frames", status.frames);
         cJSON_AddNumberToObject(value, "detections", status.detections);
+        cJSON_AddNumberToObject(value, "rejected_low_confidence", status.rejected_low_confidence);
         cJSON_AddNumberToObject(value, "last_level", status.last_level);
+        cJSON_AddNumberToObject(value, "last_probability", status.last_probability);
+        cJSON_AddNumberToObject(value, "min_probability", status.min_probability);
         cJSON_AddNumberToObject(value, "sample_rate", status.sample_rate);
         cJSON_AddNumberToObject(value, "chunk_samples", status.chunk_samples);
         cJSON_AddStringToObject(value, "engine", status.engine);
         cJSON_AddStringToObject(value, "model", status.model);
         cJSON_AddStringToObject(value, "wakeword", status.wakeword);
         cJSON_AddStringToObject(value, "last_error", esp_err_to_name(status.last_error));
+        return result;
+    }
+    if (!strcmp(path, "voice.threshold")) {
+        cJSON *value = voice_threshold_result();
+        if (!value) goto fail;
+        cJSON_AddItemToObject(result, "value", value);
         return result;
     }
     if (!strcmp(path, "wifi.status")) {
@@ -368,6 +391,26 @@ bool jr_runtime_api_handle(const char *request_json, char *response, size_t resp
             cJSON_Delete(result);
             cJSON_Delete(request);
             return emit_error(id, "no_memory", "face_response_create_failed", response, response_len);
+        }
+    } else if (!strcmp(fn, "voice.threshold")) {
+        if (!args) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "voice_threshold_requires_args", response, response_len);
+        }
+        const cJSON *value_item = cJSON_GetObjectItemCaseSensitive(args, "value");
+        if (!cJSON_IsNumber(value_item)) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "voice_threshold_requires_number", response, response_len);
+        }
+        esp_err_t err = jr_voice_set_min_probability((float)value_item->valuedouble);
+        if (err != ESP_OK) {
+            cJSON_Delete(request);
+            return emit_error(id, "invalid_args", "voice_threshold_out_of_range_0.30_0.90", response, response_len);
+        }
+        result = voice_threshold_result();
+        if (!result) {
+            cJSON_Delete(request);
+            return emit_error(id, "no_memory", "voice_threshold_response_create_failed", response, response_len);
         }
     } else if (!strcmp(fn, "playground.start")) {
         if (!args) {
