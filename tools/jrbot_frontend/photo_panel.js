@@ -100,12 +100,13 @@ refreshControls=function(){
   }
 
   const valid=currentFirmware();
+  const voiceBusy=device?.voice_running==='1';
   const micButton=document.getElementById('test_mic');
-  if(micButton) micButton.disabled=busy||!valid;
+  if(micButton) micButton.disabled=busy||!valid||voiceBusy||['busy','error'].includes(device?.mic);
   const record=document.getElementById('record_mic');
-  if(record) record.disabled=busy||!valid||device?.wifi!=='1'||!jrValidIpv4(val('esp_ip'));
+  if(record) record.disabled=busy||!valid||voiceBusy||device?.wifi!=='1'||!jrValidIpv4(val('esp_ip'));
   const play=document.getElementById('play_recording');
-  if(play) play.disabled=busy||!valid||device?.mic_has_recording!=='1';
+  if(play) play.disabled=busy||!valid||voiceBusy||device?.mic_has_recording!=='1';
 };
 
 const jrBaseRenderStatus=renderStatus;
@@ -124,7 +125,15 @@ renderStatus=function(text){
   if(micMsg){
     const has=device?.mic_has_recording==='1';
     const recorded=has?' Ultima gravacao: '+(device.mic_record_seconds||'?')+'s, '+(device.mic_record_samples||'?')+' amostras, pico '+(device.mic_record_peak||'0')+'.':'';
-    micMsg.textContent='MS3625: SCK GPIO21, WS GPIO47, SD GPIO41. Grave 3s pelo Wi-Fi e ouca no painel; depois use Tocar gravacao na caixinha.'+recorded;
+    if(device?.voice_running==='1'||device?.mic==='busy'){
+      micMsg.textContent='MS3625 em uso por '+(device?.mic_owner||'voz')+'. Pare o modo autonomo/Playground antes de testes manuais.'+recorded;
+    }else if(device?.mic==='unknown'){
+      micMsg.textContent='MS3625 ainda indefinido neste boot. Use Testar microfone ou Gravar 3s para confirmar sinal real.'+recorded;
+    }else if(device?.mic==='available'){
+      micMsg.textContent='MS3625 confirmado. Grave 3s pelo Wi-Fi e ouca no painel; depois use Tocar gravacao na caixinha.'+recorded;
+    }else{
+      micMsg.textContent='MS3625 com erro de I/O: '+(device?.mic_error||'desconhecido')+'.'+recorded;
+    }
   }
   refreshControls();
   return result;
@@ -174,6 +183,7 @@ async function takePhoto(){
 async function recordMic(){
   return action(async()=>{
     if(!currentFirmware()) throw new Error('Firmware JrBot V2 nao confirmado.');
+    if(device?.voice_running==='1') throw new Error('Microfone em uso pela voz. Pare autonomo/Playground antes de gravar.');
     if(device?.wifi!=='1') throw new Error('A gravacao WAV usa o Wi-Fi da placa. Consulte o Wi-Fi e confirme conexao.');
     const ip=val('esp_ip');
     if(!jrValidIpv4(ip)) throw new Error('Consulte o Wi-Fi da placa para obter o IP atual.');
@@ -201,7 +211,7 @@ async function recordMic(){
     audio.style.display='block';
     down.href=jrMicUrl;
     down.style.display='inline-block';
-    msg.textContent='Gravacao pronta: '+blob.size+' bytes. Use play para ouvir no PC ou Tocar gravacao na caixinha.';
+    msg.textContent='Gravacao pronta: '+blob.size+' bytes. Microfone confirmado; use play para ouvir no PC.';
     localLine('JR_MIC_RECORD ip='+ip+' bytes='+blob.size+' wav=1');
     await send('status');
   },'mic_msg');
@@ -209,6 +219,7 @@ async function recordMic(){
 
 async function playRecordingOnSpeaker(){
   return action(async()=>{
+    if(device?.voice_running==='1') throw new Error('Audio/I2S em uso pela voz. Pare autonomo/Playground.');
     const msg=document.getElementById('audio_msg');
     msg.textContent='Reproduzindo a ultima gravacao do microfone na caixinha...';
     const reply=await send('audio_play_recording');
