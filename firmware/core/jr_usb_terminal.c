@@ -34,8 +34,19 @@ static void usb_write_all(const char *text) {
     (void)usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(300));
 }
 
+static void usb_write_event_best_effort(const char *text) {
+    if (!text || !usb_serial_jtag_is_driver_installed()) return;
+    size_t len = strlen(text);
+    if (len) (void)usb_serial_jtag_write_bytes(text, len, 0);
+    (void)usb_serial_jtag_write_bytes("\n", 1, 0);
+}
+
 void jr_usb_terminal_emit(const char *text) {
-    usb_write_all(text);
+    /*
+     * Eventos do Brain sao telemetria e nao podem bloquear a tarefa de voz.
+     * Respostas de comandos continuam usando usb_write_all() com confirmacao.
+     */
+    usb_write_event_best_effort(text);
 }
 
 static bool brain_command(const char *cmd, char *response, size_t cap) {
