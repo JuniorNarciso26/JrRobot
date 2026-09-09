@@ -74,8 +74,8 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
 
         if not waiter["event"].wait(timeout):
             app.add_log("JR_SERIAL_DIAG " + serial_port_diag(port) + " error=firmware_timeout")
-            app.close_serial("JR_PANEL_WARN timeout; porta serial fechada automaticamente")
-            raise RuntimeError("Sem confirmacao do firmware. A porta foi fechada automaticamente.")
+            app.add_log("JR_PANEL_WARN timeout; porta serial mantida aberta para diagnostico")
+            raise RuntimeError("Sem confirmacao do firmware. A porta continua aberta; consulte o estado antes de repetir o comando.")
         if not waiter["ok"]:
             raise RuntimeError(app.sanitize_log_line(waiter["response"]))
         return waiter["response"]
@@ -204,7 +204,7 @@ def enhanced_do_get(self) -> None:
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-12-AUDIO-MIC"
+app.APP_VERSION = "JRBOT-PANEL-V2-14-ESSENTIAL-LOG"
 
 
 def main() -> int:
@@ -213,7 +213,7 @@ def main() -> int:
     except OSError:
         print("Porta 8765 ocupada. Feche o painel anterior antes de abrir esta versao.")
         return 1
-    print(app.APP_VERSION + " - http://127.0.0.1:8765 - camera + gravacao WAV + reproducao na caixinha")
+    print(app.APP_VERSION + " - http://127.0.0.1:8765 - camera + audio/mic + log essencial")
     app.ensure_reader()
     webbrowser.open("http://127.0.0.1:8765")
     try:
