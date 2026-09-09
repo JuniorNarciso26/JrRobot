@@ -8,6 +8,7 @@
 #include "jr_usb_terminal.h"
 #include "jr_face.h"
 #include "jr_portal.h"
+#include "jr_reply_audio.h"
 #include "jr_wifi.h"
 
 #define JR_OLED_RETRY_MS 30000U
@@ -28,6 +29,7 @@ void app_main(void) {
     if (jr_commands_init() != ESP_OK) ESP_LOGE("jrbot_main", "Command mutex unavailable");
     jr_terminal_start();
     jr_usb_terminal_start();
+    jr_reply_prepare_oi_async();
 
     uint32_t last_oled_probe = now_ms();
     if (jr_face_start() != ESP_OK)
