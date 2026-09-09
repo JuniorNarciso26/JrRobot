@@ -17,6 +17,7 @@
 #include "jr_face.h"
 #include "jr_camera_diag.h"
 #include "jr_brain.h"
+#include "jr_voice.h"
 #include "jr_runtime_api.h"
 
 static SemaphoreHandle_t command_lock;
@@ -101,25 +102,34 @@ bool jr_format_status(char *response, size_t cap) {
     jr_mic_status_t m = {0};
     jr_mic_recording_info_t mr = {0};
     jr_audio_diag_t a = {0};
+    jr_voice_status_t voice = {0};
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
     jr_audio_get_diag(&a);
     jr_mic_get_recording_info(&mr);
+    jr_mic_get_cached_probe(&m);
+    jr_voice_get_status(&voice);
     bool oled_present = (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
     unsigned camera_pid = 0;
     bool camera_present = jr_camera_probe_once(&camera_pid);
-    bool mic_present = jr_mic_probe(&m);
+    bool mic_confirmed = jr_mic_signal_confirmed();
     const char *camera_state = camera_present ? "available" : "unavailable";
-    const char *mic_state = mic_present ? "available" :
-                            (m.last_error == ESP_ERR_TIMEOUT ? "busy" : "unavailable");
+    const char *mic_owner = mr.recording ? "recording" :
+                            (voice.running && voice.mic_ready ? "voice" : "none");
+    const char *mic_state = strcmp(mic_owner,"none") ? "busy" :
+                            (mic_confirmed ? "available" :
+                             ((m.last_error != ESP_OK && m.last_error != ESP_ERR_INVALID_STATE && m.last_error != ESP_ERR_TIMEOUT)
+                              ? "error" : "unknown"));
+    const char *mic_error = m.last_error == ESP_ERR_INVALID_STATE ? "not_run" : esp_err_to_name(m.last_error);
     const char *audio_last = a.tests ? esp_err_to_name(a.last_error) : "not_run";
     int n = snprintf(response, cap,
         "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
         "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=on_demand volume=%d "
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
         "audio_test_seq=%lu audio_test_running=%d audio_last=%s audio_last_bytes=%lu "
+        "voice_running=%d voice_calibration=%d voice_probability=%.3f voice_min_probability=%.3f voice_rejected=%lu "
         "camera=%s camera_model=%s camera_pid=0x%04X "
-        "mic=%s mic_error=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
+        "mic=%s mic_owner=%s mic_confirmed=%d mic_error=%s mic_model=%s mic_sck=%d mic_ws=%d mic_sd=%d mic_channel=%c mic_samples=%u mic_peak_raw=%lu mic_changes=%u "
         "mic_recording=%d mic_has_recording=%d mic_record_seconds=%u mic_record_samples=%u mic_record_level=%d mic_record_peak=%d "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
@@ -127,8 +137,11 @@ bool jr_format_status(char *response, size_t cap) {
         w.configured,w.connected,w.pending_restart,w.ip,jr_audio_volume(),
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
         (unsigned long)a.tests,a.running?1:0,audio_last,(unsigned long)a.last_bytes,
+        voice.running?1:0,jr_voice_calibration_active()?1:0,(double)voice.last_probability,(double)voice.min_probability,
+        (unsigned long)voice.rejected_low_confidence,
         camera_state,JR_CAMERA_MODEL,camera_pid,
-        mic_state,esp_err_to_name(m.last_error),JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
+        mic_state,mic_owner,mic_confirmed?1:0,mic_error,JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,
+        m.channel?m.channel:'L',m.samples,(unsigned long)m.peak_raw,m.changes,
         mr.recording?1:0,mr.has_recording?1:0,mr.seconds,(unsigned)mr.samples,mr.level,mr.peak,
         jr_face_state_name(f.state),oled_present?"available":"unavailable",f.address,JR_OLED_I2C_HZ,
         (unsigned long)f.commands,(unsigned long)f.rendered,(unsigned long)f.tx_ok,
@@ -136,6 +149,15 @@ bool jr_format_status(char *response, size_t cap) {
         (unsigned long)f.consecutive_failures,(unsigned long)f.recoveries,
         (unsigned long)f.last_success_ms,esp_err_to_name(f.last_error));
     return n >= 0 && (size_t)n < cap;
+}
+
+static bool manual_i2s_blocked(char *response, size_t cap, const char *operation) {
+    jr_voice_status_t voice = {0};
+    jr_voice_get_status(&voice);
+    if (!voice.running) return false;
+    snprintf(response,cap,"JR_ERROR %s=voice_busy owner=%s hint=desative_autonomo_ou_pare_playground",
+             operation,jr_voice_calibration_active()?"playground":"autonomous");
+    return true;
 }
 
 static bool execute_command(const char *cmd, char *response, size_t cap) {
@@ -181,10 +203,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     }
     if (!strcmp(verb,"brain_status")) {
         jr_brain_status_t b = {0};
+        jr_voice_status_t v = {0};
         jr_brain_get_status(&b);
-        snprintf(response,cap,"JR_OK brain_state=%s enabled=%d listening=%d engine=%s triggers=%lu last_event=%s last_error=%s",
+        jr_voice_get_status(&v);
+        snprintf(response,cap,"JR_OK brain_state=%s enabled=%d listening=%d engine=%s triggers=%lu last_probability=%.3f min_probability=%.3f rejected=%lu last_event=%s last_error=%s",
                  jr_brain_state_name(b.state),b.enabled?1:0,b.listening?1:0,b.engine,
-                 (unsigned long)b.triggers,b.last_event,esp_err_to_name(b.last_error));
+                 (unsigned long)b.triggers,(double)b.last_probability,(double)v.min_probability,
+                 (unsigned long)v.rejected_low_confidence,b.last_event,esp_err_to_name(b.last_error));
         return true;
     }
     if (!strcmp(verb,"brain_test")) {
@@ -205,9 +230,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
-    if (!strcmp(verb,"mic_test")) return jr_mic_test(response,cap);
+    if (!strcmp(verb,"mic_test")) {
+        if (manual_i2s_blocked(response,cap,"mic_test")) return false;
+        return jr_mic_test(response,cap);
+    }
     if (!strcmp(verb,"mic_status")) return jr_mic_status(response,cap);
     if (!strcmp(verb,"audio_play_recording") || !strcmp(verb,"play_recording") || !strcmp(verb,"tocar_gravacao")) {
+        if (manual_i2s_blocked(response,cap,"audio_play_recording")) return false;
         jr_mic_recording_info_t info;
         jr_mic_get_recording_info(&info);
         if (!info.has_recording) {
@@ -241,6 +270,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;
     }
     if (!strcmp(verb,"audio_test") || !strcmp(verb,"som") || !strcmp(verb,"beep")) {
+        if (manual_i2s_blocked(response,cap,"audio_test")) return false;
         esp_err_t err=jr_audio_test_tone(880,900);
         jr_audio_diag_t a;
         jr_audio_get_diag(&a);
