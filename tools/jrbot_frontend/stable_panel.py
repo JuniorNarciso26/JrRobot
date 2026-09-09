@@ -86,6 +86,7 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
 
 
 _original_close_serial = app.close_serial
+_original_wifi_request = app.wifi_request
 
 
 def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
@@ -98,6 +99,40 @@ def quiet_close_serial(reason="Serial desconectado", expected=None) -> None:
 
 def _opener() -> urllib.request.OpenerDirector:
     return urllib.request.build_opener(urllib.request.ProxyHandler({}), app.NoRedirect())
+
+
+def stable_wifi_request(ip: str, command: str) -> str:
+    if command.strip().lower().split(" ", 1)[0] != "api":
+        return _original_wifi_request(ip, command)
+
+    app.validate_command(command)
+    safe = app.safe_ip(ip)
+    request = urllib.request.Request(
+        "http://" + safe + "/cmd",
+        data=command.encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "text/plain; charset=utf-8", "X-JrBot-Command": "1"},
+    )
+    try:
+        with _opener().open(request, timeout=5) as reply:
+            body = reply.read(4097)
+            if len(body) > 4096:
+                raise RuntimeError("Resposta Wi-Fi longa demais")
+            text = body.decode("utf-8", errors="replace")
+            if not text.startswith("JR_API "):
+                raise RuntimeError("Resposta Wi-Fi fora da Runtime API")
+            try:
+                payload = app.json.loads(text[len("JR_API "):])
+            except ValueError as exc:
+                raise RuntimeError("Runtime API devolveu JSON invalido") from exc
+            if payload.get("ok") is not True:
+                raise RuntimeError(app.sanitize_log_line(text))
+            return text
+    except urllib.error.HTTPError as exc:
+        detail = app.sanitize_log_line(exc.read(4096).decode("utf-8", errors="replace"))
+        raise RuntimeError("ESP32 recusou a Runtime API: " + detail) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise RuntimeError("Falha de comunicacao Wi-Fi com a Runtime API") from exc
 
 
 def wifi_capture(ip: str) -> tuple[bytes, str]:
@@ -202,9 +237,10 @@ def enhanced_do_get(self) -> None:
 
 
 app.serial_request = stable_serial_request
+app.wifi_request = stable_wifi_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-14-ESSENTIAL-LOG"
+app.APP_VERSION = "JRBOT-PANEL-V2-15-VOICE-TUNING"
 
 
 def main() -> int:
@@ -213,7 +249,7 @@ def main() -> int:
     except OSError:
         print("Porta 8765 ocupada. Feche o painel anterior antes de abrir esta versao.")
         return 1
-    print(app.APP_VERSION + " - http://127.0.0.1:8765 - camera + audio/mic + log essencial")
+    print(app.APP_VERSION + " - http://127.0.0.1:8765 - threshold de voz + log essencial")
     app.ensure_reader()
     webbrowser.open("http://127.0.0.1:8765")
     try:

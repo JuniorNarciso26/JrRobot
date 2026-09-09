@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-runtime-api-v1-04"
-set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-04"
+set "BUILD_DIR=build-runtime-api-v1-05"
+set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -106,9 +106,9 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - candidata JrBot Runtime API v1.2 / estabilidade 04 preparada.
-echo Firmware: JRBotV2_RUNTIME_API_V1_04
-if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.2
+echo OK - candidata JrBot Runtime API 1.3 / threshold e latencia preparada.
+echo Firmware: JRBotV2_RUNTIME_API_V1_05
+if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.3
 exit /b 0
 
 :failure
@@ -118,7 +118,7 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Runtime API v1 - candidata 04 / Playground estabilidade
+echo JrBot Runtime API v1 - candidata 05 / threshold e latencia de voz
 echo.
 echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
 echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
@@ -127,11 +127,11 @@ echo   INSTALAR.bat build        Apenas compila e empacota os modelos
 echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
-echo Runtime API compativel v1, revisao 1.2: capabilities, get, face e Playground start/status/stop.
-echo Voz normal: apenas JR BOT e J R BOT; deteccoes abaixo de 0.60 sao rejeitadas sem face/resposta.
-echo Playground: coleta a probabilidade bruta em RAM sem executar resposta/face durante a calibracao.
-echo Microfone: inicia indefinido, fica disponivel somente apos teste/gravação com sinal confirmado.
-echo Testes manuais de audio/mic sao bloqueados enquanto voz/Playground detem o I2S.
-echo Persistencia, Voice Registry dinamico e Flow Engine continuam fora desta candidata.
+echo Runtime API compativel v1, revisao 1.3: inclui voice.threshold em RAM.
+echo Threshold JR BOT: faixa 0.30 a 0.90, default 0.60 apos reinicio e ajustavel no painel sem reflash.
+echo Voz normal: apenas JR BOT e J R BOT. Playground continua coletando a probabilidade bruta em RAM.
+echo Resposta Oi: PCM preparado em cache no boot para retirar a sintese pesada do caminho de resposta.
+echo Telemetria USB do Brain nao bloqueia mais a tarefa de voz aguardando TX.
+echo Persistencia do threshold, Voice Registry dinamico e Flow Engine continuam fora desta candidata.
 echo.
 exit /b 0

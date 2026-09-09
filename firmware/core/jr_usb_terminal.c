@@ -6,20 +6,32 @@
 #include "driver/usb_serial_jtag.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 
 #include "jr_brain.h"
 #include "jr_commands.h"
 #include "jr_usb_terminal.h"
 
+#define JR_USB_EVENT_QUEUE_LENGTH 24
+#define JR_USB_EVENT_MAX_BYTES 256
+
 static const char *TAG = "jrbot_usb_terminal";
 static bool started;
+static QueueHandle_t event_queue;
+static TaskHandle_t event_task_handle;
+static TaskHandle_t terminal_task_handle;
+static uint32_t event_dropped;
 
 typedef struct {
     char line[JR_SERIAL_LINE_MAX_BYTES + 1];
     size_t size;
     bool discard;
 } usb_parser_t;
+
+typedef struct {
+    char text[JR_USB_EVENT_MAX_BYTES];
+} usb_event_t;
 
 static void usb_write_all(const char *text) {
     if (!text || !usb_serial_jtag_is_driver_installed()) return;
@@ -35,7 +47,30 @@ static void usb_write_all(const char *text) {
 }
 
 void jr_usb_terminal_emit(const char *text) {
-    usb_write_all(text);
+    /*
+     * Eventos do Brain sao telemetria: a tarefa de voz apenas enfileira.
+     * Uma tarefa separada pode aguardar o USB sem aumentar a latencia da resposta.
+     */
+    if (!text || !event_queue) return;
+    usb_event_t event = {0};
+    snprintf(event.text, sizeof(event.text), "%s", text);
+    if (xQueueSend(event_queue, &event, 0) != pdTRUE) event_dropped++;
+}
+
+static void usb_event_task(void *arg) {
+    (void)arg;
+    usb_event_t event;
+    for (;;) {
+        if (xQueueReceive(event_queue, &event, portMAX_DELAY) != pdTRUE) continue;
+        usb_write_all(event.text);
+        if (event_dropped) {
+            uint32_t dropped = event_dropped;
+            event_dropped = 0;
+            char warning[96];
+            snprintf(warning, sizeof(warning), "JR_WARN usb_event_queue dropped=%lu", (unsigned long)dropped);
+            usb_write_all(warning);
+        }
+    }
 }
 
 static bool brain_command(const char *cmd, char *response, size_t cap) {
@@ -155,11 +190,26 @@ void jr_usb_terminal_start(void) {
         }
     }
 
-    if (xTaskCreate(usb_terminal_task, "usb_terminal", 6144, NULL, 5, NULL) != pdPASS) {
+    event_queue = xQueueCreate(JR_USB_EVENT_QUEUE_LENGTH, sizeof(usb_event_t));
+    if (!event_queue) {
+        ESP_LOGW(TAG, "Fila de telemetria USB indisponivel");
+        return;
+    }
+    if (xTaskCreate(usb_event_task, "usb_event_tx", 4096, NULL, 3, &event_task_handle) != pdPASS) {
+        vQueueDelete(event_queue);
+        event_queue = NULL;
+        ESP_LOGW(TAG, "Falha criando tarefa de telemetria USB");
+        return;
+    }
+    if (xTaskCreate(usb_terminal_task, "usb_terminal", 6144, NULL, 5, &terminal_task_handle) != pdPASS) {
+        vTaskDelete(event_task_handle);
+        event_task_handle = NULL;
+        vQueueDelete(event_queue);
+        event_queue = NULL;
         ESP_LOGW(TAG, "Falha criando tarefa USB Serial/JTAG");
         return;
     }
 
     started = true;
-    ESP_LOGI(TAG, "USB Serial/JTAG pronto para comandos bidirecionais");
+    ESP_LOGI(TAG, "USB Serial/JTAG pronto para comandos bidirecionais + telemetria enfileirada");
 }

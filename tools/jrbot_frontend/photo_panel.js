@@ -18,6 +18,100 @@ function jrNormalizeCameraUi(){
   if(testButton) testButton.textContent='Testar camera';
 }
 
+function jrNormalizeVoiceThresholdUi(){
+  const box=document.querySelector('.autonomous');
+  if(!box||document.getElementById('voice_threshold')) return;
+
+  const wrap=document.createElement('div');
+  wrap.id='voice_threshold_box';
+  wrap.className='msg';
+  wrap.style.display='grid';
+  wrap.style.gridTemplateColumns='minmax(130px,1fr) auto auto';
+  wrap.style.gap='8px';
+  wrap.style.alignItems='center';
+  wrap.style.padding='10px';
+  wrap.style.border='1px solid #30384b';
+  wrap.style.borderRadius='12px';
+  wrap.style.background='#10131a';
+
+  const label=document.createElement('label');
+  label.style.display='grid';
+  label.style.gap='5px';
+  label.textContent='Threshold JR BOT';
+  const slider=document.createElement('input');
+  slider.id='voice_threshold';
+  slider.type='range';
+  slider.min='0.30';
+  slider.max='0.90';
+  slider.step='0.01';
+  slider.value='0.60';
+  slider.dataset.action='1';
+  slider.oninput=()=>{
+    const out=document.getElementById('voice_threshold_value');
+    if(out) out.textContent=Number(slider.value).toFixed(2);
+  };
+  label.appendChild(slider);
+
+  const value=document.createElement('strong');
+  value.id='voice_threshold_value';
+  value.textContent='0.60';
+  value.style.fontFamily='Consolas,Menlo,monospace';
+
+  const apply=document.createElement('button');
+  apply.id='apply_voice_threshold';
+  apply.className='yellow';
+  apply.dataset.action='1';
+  apply.textContent='Aplicar';
+  apply.onclick=()=>jrApplyVoiceThreshold();
+
+  const hint=document.createElement('small');
+  hint.style.gridColumn='1/-1';
+  hint.style.color='#9aa7bd';
+  hint.textContent='0.30 = mais sensivel | 0.90 = mais rigoroso. Ajuste em RAM; ao reiniciar volta para 0.60.';
+
+  wrap.appendChild(label);
+  wrap.appendChild(value);
+  wrap.appendChild(apply);
+  wrap.appendChild(hint);
+  const msg=document.getElementById('brain_msg');
+  box.insertBefore(wrap,msg||null);
+}
+
+function jrSyncVoiceThreshold(raw){
+  const value=Number(raw);
+  if(!Number.isFinite(value)||value<0.30||value>0.90) return;
+  const slider=document.getElementById('voice_threshold');
+  const out=document.getElementById('voice_threshold_value');
+  if(slider) slider.value=value.toFixed(2);
+  if(out) out.textContent=value.toFixed(2);
+}
+
+async function jrApplyVoiceThreshold(){
+  return action(async()=>{
+    if(!currentFirmware()) throw new Error('Firmware JrBot V2 nao confirmado.');
+    const slider=document.getElementById('voice_threshold');
+    const value=Number(slider?.value);
+    if(!Number.isFinite(value)||value<0.30||value>0.90) throw new Error('Threshold deve ficar entre 0.30 e 0.90.');
+
+    const request={
+      v:1,
+      id:'thr'+Date.now().toString(36).slice(-10),
+      fn:'voice.threshold',
+      args:{value:Number(value.toFixed(2))}
+    };
+    const reply=await send('api '+JSON.stringify(request));
+    if(!reply.startsWith('JR_API ')) throw new Error('Firmware nao respondeu pela Runtime API.');
+    let payload;
+    try{payload=JSON.parse(reply.slice(7));}catch(_){throw new Error('Resposta JSON invalida da Runtime API.');}
+    if(payload.ok!==true) throw new Error(payload?.error?.message||'Threshold recusado pelo firmware.');
+    const applied=Number(payload?.result?.min_probability);
+    if(!Number.isFinite(applied)) throw new Error('Firmware nao confirmou o threshold aplicado.');
+    jrSyncVoiceThreshold(applied);
+    if(device) device.voice_min_probability=applied.toFixed(3);
+    el('brain_msg').textContent='Threshold aplicado em RAM: '+applied.toFixed(2)+'. Teste JR BOT varias vezes e observe aceitos/rejeitados no log essencial.';
+  },'brain_msg');
+}
+
 function jrNormalizeAudioMicUi(){
   const audioBox=document.getElementById('audio_box');
   if(audioBox && !document.getElementById('play_recording')){
@@ -89,6 +183,7 @@ const jrBaseRefreshControls=refreshControls;
 refreshControls=function(){
   jrNormalizeCameraUi();
   jrNormalizeAudioMicUi();
+  jrNormalizeVoiceThresholdUi();
   jrBaseRefreshControls();
 
   const cameraButton=document.getElementById('test_camera');
@@ -107,6 +202,10 @@ refreshControls=function(){
   if(record) record.disabled=busy||!valid||voiceBusy||device?.wifi!=='1'||!jrValidIpv4(val('esp_ip'));
   const play=document.getElementById('play_recording');
   if(play) play.disabled=busy||!valid||voiceBusy||device?.mic_has_recording!=='1';
+  const threshold=document.getElementById('voice_threshold');
+  const applyThreshold=document.getElementById('apply_voice_threshold');
+  if(threshold) threshold.disabled=busy||!valid;
+  if(applyThreshold) applyThreshold.disabled=busy||!valid;
 };
 
 const jrBaseRenderStatus=renderStatus;
@@ -116,6 +215,7 @@ renderStatus=function(text){
     el('esp_ip').value=device.ip;
     localStorage.setItem('jr_esp_ip',device.ip);
   }
+  jrSyncVoiceThreshold(device?.voice_min_probability);
   if(device?.camera==='available'){
     el('cam_msg').textContent=device?.wifi==='1'
       ? 'OV5640 detectada. O mesmo botao Testar camera funciona pela Serial ou pelo Wi-Fi, conforme a conexao selecionada.'
@@ -241,24 +341,24 @@ function openCameraPortal(){
   window.open('http://'+ip+'/','_blank','noopener');
 }
 
-/* index.html ainda contem o texto historico 0.70; esta extensao roda depois dele
- * e mostra o limiar realmente compilado nesta candidata. */
 const jrBaseRenderBrain=(typeof renderBrain==='function')?renderBrain:null;
 if(jrBaseRenderBrain){
   renderBrain=function(text){
     jrBaseRenderBrain(text);
     const f=fields(text);
     const enabled=(f.autonomous==='1'||f.enabled==='1'||(typeof autonomousEnabled!=='undefined'&&autonomousEnabled));
+    const threshold=f.min_probability||device?.voice_min_probability||'0.600';
+    jrSyncVoiceThreshold(threshold);
     if(enabled){
-      const threshold=f.min_probability||device?.voice_min_probability||'0.600';
       const rejected=f.rejected||device?.voice_rejected||'0';
-      el('brain_msg').textContent='Reconhecedor: somente JR BOT / J R BOT. Confianca minima '+threshold+'. Abaixo do limite nao muda a face nem fala. Rejeitadas: '+rejected+'.';
+      el('brain_msg').textContent='Reconhecedor: somente JR BOT / J R BOT. Threshold atual '+Number(threshold).toFixed(2)+'. Abaixo dele nao muda a face nem fala. Rejeitadas: '+rejected+'.';
     }else{
-      el('brain_msg').textContent='Modo autonomo desligado. Playground pode medir probabilidades sem executar face ou audio.';
+      el('brain_msg').textContent='Modo autonomo desligado. Ajuste o threshold pela barra; o valor fica em RAM e o Playground mede probabilidades sem executar face ou audio.';
     }
   };
 }
 
 jrNormalizeCameraUi();
 jrNormalizeAudioMicUi();
+jrNormalizeVoiceThresholdUi();
 refreshControls();

@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-#define JR_VOICE_JRBOT_MIN_PROBABILITY 0.60f
+#define JR_VOICE_JRBOT_DEFAULT_MIN_PROBABILITY 0.60f
+#define JR_VOICE_JRBOT_MIN_ALLOWED_PROBABILITY 0.30f
+#define JR_VOICE_JRBOT_MAX_ALLOWED_PROBABILITY 0.90f
 
 typedef void (*jr_voice_wake_cb_t)(const char *keyword, const char *model_name, int wake_index, float probability);
 typedef void (*jr_voice_calibration_cb_t)(const char *recognized, const char *model_name, float probability);
@@ -31,3 +33,5 @@ esp_err_t jr_voice_start_calibration(jr_voice_calibration_cb_t calibration_cb);
 void jr_voice_stop(void);
 void jr_voice_get_status(jr_voice_status_t *out);
 bool jr_voice_calibration_active(void);
+esp_err_t jr_voice_set_min_probability(float probability);
+float jr_voice_get_min_probability(void);
