@@ -10,8 +10,8 @@ set "PYTHONIOENCODING=utf-8"
 set "ACTION=%~1"
 if "%ACTION%"=="" set "ACTION=all"
 if not "%~2"=="" set "JR_FLASH_PORT=%~2"
-set "BUILD_DIR=build-runtime-api-v1-03"
-set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-03"
+set "BUILD_DIR=build-runtime-api-v1-04"
+set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-04"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="build" goto prepare
@@ -106,8 +106,8 @@ exit /b %errorlevel%
 
 :success
 echo.
-echo OK - candidata JrBot Runtime API v1.2 preparada.
-echo Firmware: JRBotV2_RUNTIME_API_V1_03
+echo OK - candidata JrBot Runtime API v1.2 / estabilidade 04 preparada.
+echo Firmware: JRBotV2_RUNTIME_API_V1_04
 if defined JR_FLASH_PORT echo Hardware: JRBOT-HW-04 ^| Gravacao: %JR_FLASH_PORT% ^| Runtime API: 1.2
 exit /b 0
 
@@ -118,7 +118,7 @@ exit /b 1
 
 :help
 echo.
-echo JrBot Runtime API v1 - candidata 03 / Playground backend
+echo JrBot Runtime API v1 - candidata 04 / Playground estabilidade
 echo.
 echo   INSTALAR.bat              Escolhe a porta, compila, grava firmware + modelos e abre o painel
 echo   INSTALAR.bat flash        Escolhe a porta, compila e grava firmware + modelos
@@ -128,7 +128,10 @@ echo   INSTALAR.bat panel        Abre o painel com portas detectadas
 echo   INSTALAR.bat menuconfig   Abre configuracao do firmware/ESP-SR
 echo.
 echo Runtime API compativel v1, revisao 1.2: capabilities, get, face e Playground start/status/stop.
-echo Playground desta candidata calibra somente JR BOT em RAM e nao executa resposta/face durante a sessao.
-echo Persistencia, Voice Registry dinamico, Flow Engine e GUI do Playground ainda nao fazem parte desta candidata.
+echo Voz normal: apenas JR BOT e J R BOT; deteccoes abaixo de 0.60 sao rejeitadas sem face/resposta.
+echo Playground: coleta a probabilidade bruta em RAM sem executar resposta/face durante a calibracao.
+echo Microfone: inicia indefinido, fica disponivel somente apos teste/gravação com sinal confirmado.
+echo Testes manuais de audio/mic sao bloqueados enquanto voz/Playground detem o I2S.
+echo Persistencia, Voice Registry dinamico e Flow Engine continuam fora desta candidata.
 echo.
 exit /b 0

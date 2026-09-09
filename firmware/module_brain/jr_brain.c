@@ -31,21 +31,23 @@ static void emit_event(const char *line) {
     ESP_LOGI(TAG, "%s", line);
 }
 
-static void react_happy(const char *source, const char *keyword, const char *model_name) {
+static void react_happy(const char *source, const char *keyword, const char *model_name, float probability) {
     uint32_t trigger;
     portENTER_CRITICAL(&brain_lock);
     brain_triggers++;
+    brain_last_probability = probability;
     brain_last_error = ESP_OK;
     trigger = brain_triggers;
     portEXIT_CRITICAL(&brain_lock);
     set_event("wakeword_detected");
 
-    char line[220];
+    char line[240];
     snprintf(line, sizeof(line),
-             "JR_BRAIN event=wakeword_detected source=%s keyword=%s model=%s trigger=%lu",
+             "JR_BRAIN event=wakeword_detected source=%s keyword=%s model=%s probability=%.3f trigger=%lu",
              source ? source : "unknown",
              keyword ? keyword : "unknown",
              model_name ? model_name : "unknown",
+             (double)probability,
              (unsigned long)trigger);
     emit_event(line);
 
@@ -72,9 +74,9 @@ static void react_happy(const char *source, const char *keyword, const char *mod
     }
 }
 
-static void voice_wake_detected(const char *keyword, const char *model_name, int wake_index) {
+static void voice_wake_detected(const char *keyword, const char *model_name, int wake_index, float probability) {
     (void)wake_index;
-    react_happy("voice", keyword, model_name);
+    react_happy("voice", keyword, model_name, probability);
 }
 
 const char *jr_brain_state_name(jr_brain_state_t state) {
@@ -124,10 +126,11 @@ esp_err_t jr_brain_set_enabled(bool enabled) {
         portEXIT_CRITICAL(&brain_lock);
         set_event("autonomous_on");
 
-        char line[220];
+        char line[240];
         snprintf(line, sizeof(line),
-                 "JR_BRAIN event=autonomous_on engine=%s model=%s wakeword=%s sample_rate=%d chunk=%d",
-                 voice.engine, voice.model, voice.wakeword, voice.sample_rate, voice.chunk_samples);
+                 "JR_BRAIN event=autonomous_on engine=%s model=%s wakeword=%s sample_rate=%d chunk=%d min_probability=%.2f",
+                 voice.engine, voice.model, voice.wakeword, voice.sample_rate, voice.chunk_samples,
+                 (double)voice.min_probability);
         emit_event(line);
         snprintf(line, sizeof(line), "JR_BRAIN event=listening wakeword=%s model=%s",
                  voice.wakeword, voice.model);
@@ -192,10 +195,7 @@ void jr_brain_get_status(jr_brain_status_t *out) {
 esp_err_t jr_brain_trigger_test(void) {
     if (!jr_brain_enabled()) return ESP_ERR_INVALID_STATE;
 
-    portENTER_CRITICAL(&brain_lock);
-    brain_last_probability = 1.0f;
-    portEXIT_CRITICAL(&brain_lock);
-    react_happy("bench", "JrBot", "simulated");
+    react_happy("bench", "JrBot", "simulated", 1.0f);
 
     jr_brain_status_t status = {0};
     jr_brain_get_status(&status);

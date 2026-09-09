@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-typedef void (*jr_voice_wake_cb_t)(const char *keyword, const char *model_name, int wake_index);
+#define JR_VOICE_JRBOT_MIN_PROBABILITY 0.60f
+
+typedef void (*jr_voice_wake_cb_t)(const char *keyword, const char *model_name, int wake_index, float probability);
 typedef void (*jr_voice_calibration_cb_t)(const char *recognized, const char *model_name, float probability);
 
 typedef struct {
@@ -12,7 +14,10 @@ typedef struct {
     bool mic_ready;
     uint32_t frames;
     uint32_t detections;
+    uint32_t rejected_low_confidence;
     uint32_t last_level;
+    float last_probability;
+    float min_probability;
     int sample_rate;
     int chunk_samples;
     esp_err_t last_error;
