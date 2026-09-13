@@ -1,6 +1,6 @@
 # JrBot
 
-JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um controlador local de hardware para uma plataforma híbrida: capacidades essenciais offline no robô e recursos avançados de IA opcionais em serviços remotos.
+JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um controlador local de hardware para uma plataforma híbrida com capacidades locais e recursos avançados de IA opcionais.
 
 ## Estado atual
 
@@ -9,25 +9,63 @@ JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um co
 - Baseline promovida: `JRBotV2_RUNTIME_API_V1_02`
 - Branch estável: `main`
 - Branch de integração: `develop`
-- Runtime API: major `v=1`, API compatível `1.1`
-- Funções da API: `capabilities`, `get`, `face`
-- Primeira action física validada: `face`
-- Transporte validado: Serial e HTTP local `POST /cmd`
-- Áudio local: MAX98357A com framing I2S Philips validado fisicamente sem o ruído forte anterior
-- Reconhecimento de voz: ESP-SR MultiNet6 experimental
+- Trabalho ativo da JrBot V1: `feature/v1-internal-web-panel`
+- Runtime API promovida: major `v=1`, API compatível `1.1`
+- Áudio: MAX98357A
 - Microfone: MS3625
 - Câmera: OV5640
 - Display: OLED SSD1306
 
-A candidata `JRBotV2_RUNTIME_API_V1_02` foi exercitada no hardware real. O som ficou limpo após a troca para I2S Philips; o volume acústico máximo continua baixo com o alto-falante atual de 20 mm / 4 ohms / 3 W e essa limitação foi aceita para esta baseline.
+A baseline técnica promovida continua sendo `JRBotV2_RUNTIME_API_V1_02`. O roadmap do produto, porém, passa a usar JrBot V1, V2 e V3. Essas versões não são equivalentes às versões da Runtime API ou às candidatas de firmware.
 
-O reconhecimento contínuo de `JrBot` continua experimental e não foi recalibrado nesta revisão.
+## Roadmap do produto
 
-## Histórico consolidado
+```text
+JrBot V1  -> painel interno pelo IP
+JrBot V2  -> comandos por voz
+JrBot V3  -> controle programático por API
+JrBrain   -> memória, personalidade, LLM e comportamento
+```
 
-Os heads anteriores foram preservados em branches `archive/2026-09-08/*` antes das integrações. A evolução acumulada de Local Brain, voz, resposta, documentação, Runtime API candidata 01 e Runtime API candidata 02 foi incorporada pela cadeia de Pull Requests `feature -> develop -> main`.
+### JrBot V1
 
-As branches `archive/*` são referências históricas e não devem receber desenvolvimento novo.
+Interface homem-robô servida pelo próprio ESP32-S3 na rede local. O objetivo é controlar rosto, áudio, microfone e câmera pelo navegador, com experiência adequada para celular.
+
+O `PAINEL.bat` e o painel Python continuam sendo ferramentas de instalação, desenvolvimento e diagnóstico. O painel interno do ESP32 é a interface normal de uso da V1.
+
+### JrBot V2
+
+Controle das mesmas capabilities por voz, por exemplo:
+
+```text
+JrBot feliz
+JrBot tocar som abc.wav
+```
+
+Playground, calibração, threshold e latência pertencem a esta frente.
+
+### JrBot V3
+
+Controle programático das mesmas capabilities por software externo. A V3 é definida pelo tipo de integração, não por um transporte específico; HTTP/IP e Serial podem continuar sendo utilizados.
+
+### JrBrain
+
+Depois da fundação V1-V3, o projeto avança para memória, identidade, personalidade, contexto, LLM, skills e comportamento composto por capabilities.
+
+Leia o detalhamento em [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Regra de nomenclatura
+
+```text
+JrBot V1 / V2 / V3
+= versão do produto
+
+Runtime API 1.1 / 1.2 / 1.3
+= versão do protocolo/capabilities
+
+JRBot..._V1_02 / _V1_03 / _V1_04
+= candidata ou revisão técnica de firmware
+```
 
 ## Estratégia de branches
 
@@ -37,128 +75,47 @@ main
         ├── feature/...
         └── fix/...
 
-archive/2026-09-08/*
+archive/*
   └── snapshots históricos
 ```
 
-- `main`: baselines promovidas/consolidadas.
+- `main`: baselines promovidas.
 - `develop`: integração da próxima versão.
-- `feature/*`: desenvolvimento isolado criado a partir de `develop` e integrado de volta por Pull Request.
-- `fix/*`: correções isoladas seguindo a mesma regra de revisão.
-- `archive/*`: referências históricas.
+- `feature/*`: desenvolvimento isolado criado a partir de `develop`.
+- `fix/*`: correções isoladas.
+- `archive/*`: referências históricas, sem desenvolvimento novo.
 
-## Runtime API v1.1
+## Runtime API promovida
 
-Disponível:
+A baseline promovida oferece `capabilities`, `get` e `face`, com transporte Serial e HTTP local já exercitado em hardware.
 
-```text
-capabilities()
-get(path)
-face(expression)
-```
+O portal HTTP local é destinado à rede local confiável.
 
-Exemplo pela Serial ou pelo corpo de `POST /cmd`:
+## Instalação e atualização
 
-```text
-api {"v":1,"id":"face01","fn":"face","args":{"expression":"thinking"}}
-```
+Na linha atual, `INSTALAR.bat` consulta o GitHub, atualiza a lista de branches ativas, permite escolher a versão/branch, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento. Branches `archive/*` não aparecem como canais ativos.
 
-Depois é possível conferir o estado real:
+## Documentação
 
-```text
-api {"v":1,"id":"face02","fn":"get","args":{"path":"face.current"}}
-```
-
-A API não executa código textual arbitrário nem aceita GPIO direto. `face` chama somente a capability segura registrada no firmware.
-
-Também foi validado pela rede local:
-
-```text
-PC -> Wi-Fi -> HTTP /cmd -> Runtime API -> face() -> OLED físico
-```
-
-O portal HTTP local não possui autenticação/TLS e não deve ser exposto diretamente à Internet.
-
-`set`, Playground, Flow Engine, persistência, `say`, `listen` e outras actions continuam fora desta baseline.
-
-## Áudio
-
-O MAX98357A usa:
-
-```text
-BCLK GPIO21
-WS   GPIO47
-DIN  GPIO42
-16 kHz / 16-bit
-I2S Philips
-```
-
-A troca de MSB para Philips eliminou o ruído forte observado anteriormente. O controle digital de volume continua funcional, mas a saída acústica máxima é limitada pelo alto-falante atual e pela montagem física.
-
-## Validação e ressalvas
-
-Validado nesta baseline:
-
-- firmware `JRBotV2_RUNTIME_API_V1_02` executando na placa;
-- `capabilities` API `1.1`;
-- `get` de estados principais;
-- `face("thinking")` pela Serial com mudança física do OLED;
-- `get("face.current")` confirmando o estado;
-- rejeição de expressão inválida;
-- HTTP local para `get("system.version")`;
-- HTTP local para `face("happy")` com mudança física do OLED;
-- I2S Philips com áudio limpo.
-
-Ressalvas registradas:
-
-- o log completo da etapa de compilação ESP-IDF não foi anexado ao registro final, embora a candidata tenha sido gravada e executada fisicamente;
-- `unsupported_version` e `invalid_json` foram validados na candidata 01, mas não repetidos especificamente nos logs finais da candidata 02;
-- o diagnóstico rápido do microfone ainda pode confundir barramento I2S ocupado com `mic=unavailable`;
-- falsos positivos de reconhecimento contínuo de voz continuam em aberto;
-- volume acústico do alto-falante atual é baixo.
-
-## Comece pela documentação
-
-A documentação oficial fica em [`docs/`](docs/README.md). O painel local possui uma área **Documentação** que lê esses mesmos arquivos Markdown.
+A documentação oficial fica em [`docs/`](docs/README.md).
 
 Principais documentos:
 
-- [Mapa da documentação](docs/README.md)
+- [Roadmap oficial](docs/ROADMAP.md)
 - [Estado do projeto](docs/PROJECT_STATUS.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Guia de desenvolvimento](docs/DEVELOPMENT.md)
-- [Runtime API v1](docs/API_RUNTIME.md)
-- [Teste da candidata 02](docs/RUNTIME_API_V1_02_TEST.md)
+- [Runtime API](docs/API_RUNTIME.md)
 - [Playground](docs/PLAYGROUND.md)
 - [Flows](docs/FLOWS.md)
 - [Testes e validação](docs/TESTING.md)
 
-## Compilar e gravar a baseline atual
-
-No terminal ESP-IDF 5.5.x:
-
-```bat
-git fetch --all --prune
-git switch main
-git pull --ff-only origin main
-INSTALAR.bat build
-INSTALAR.bat flash
-PAINEL.bat
-```
-
-Confirme no painel:
-
-```text
-JRBotV2_RUNTIME_API_V1_02
-```
-
 ## Filosofia técnica
 
 1. Firmware fornece capacidades seguras; configurações definem comportamento.
-2. IA nunca controla GPIO diretamente.
-3. Mudanças de comportamento devem migrar para dados/Flows em runtime sempre que possível.
-4. Teste em computador, build e validação física são estados diferentes e devem ser documentados separadamente.
-5. O robô precisa manter identidade e funções básicas mesmo sem VPS ou internet.
+2. IA não controla GPIO diretamente.
+3. Teste em computador, build e validação física são estados diferentes e devem ser documentados separadamente.
+4. O robô precisa manter funções básicas mesmo sem VPS ou internet.
 
 ## Contribuição
 
@@ -166,4 +123,4 @@ Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) antes de abrir mudanças.
 
 ## Licença
 
-O repositório ainda não possui um arquivo `LICENSE`. Uma licença open source deve ser escolhida explicitamente pelo mantenedor antes de tratar o código como redistribuível sob uma licença específica.
+O repositório ainda não possui um arquivo `LICENSE`.
