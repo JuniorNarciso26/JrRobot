@@ -1,5 +1,5 @@
 'use strict';
-const FIRMWARE_PREFIX='JRBotV2_';
+const FIRMWARE_PREFIXES=['JrBot_V1.','JRBotV2_'];
 const faces=[['Neutro','neutro'],['Feliz','feliz'],['Triste','triste'],['Animado','animado'],['Bravo','bravo'],['Surpreso','surpreso'],['Pensando','pensando'],['Cetico','cetico'],['Sono','sono'],['Confuso','confuso'],['Piscando','piscando'],['Amor','amor'],['Brincalhao','brincalhao'],['Preocupado','preocupado'],['Cool','cool'],['Bateria','bateria']];
 const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
@@ -12,7 +12,7 @@ function downloadLog(){const blob=new Blob([Array.from(logEl.children,n=>n.textC
 function openWifiConfig(){el('wifi_config_title').scrollIntoView({behavior:'smooth'});}
 function connection(text,ok){el('conn').textContent=text;el('conn').className='pill '+(ok?'ok':'bad');}
 function fields(text){const result={};for(const token of text.trim().split(/\s+/)){const at=token.indexOf('=');if(at>0)result[token.slice(0,at)]=token.slice(at+1);}return result;}
-function currentFirmware(){return !!device&&typeof device.version==='string'&&device.version.startsWith(FIRMWARE_PREFIX)&&device.hardware==='JRBOT-HW-04';}
+function currentFirmware(){return !!device&&typeof device.version==='string'&&FIRMWARE_PREFIXES.some(prefix=>device.version.startsWith(prefix))&&device.hardware==='JRBOT-HW-04';}
 function oledAvailable(){return !!device&&device.oled_presence==='available'&&['ready','degraded'].includes(device.oled);}
 function refreshControls(){
   document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);
@@ -52,7 +52,7 @@ async function setMode(m){if(busy)return;mode=m==='wifi'?'wifi':'serial';documen
 async function refreshPorts(){try{const j=JSON.parse(await api('/ports'));const available=[...new Set((j.ports||[]).filter(p=>/^COM\d+$/i.test(p)).map(p=>p.toUpperCase()))].sort((a,b)=>Number(a.slice(3))-Number(b.slice(3)));const previous=(val('port')||localStorage.getItem('jr_serial_port')||'').toUpperCase();el('port').textContent='';if(!available.length){const o=document.createElement('option');o.value='';o.textContent='Nenhuma porta COM detectada';el('port').appendChild(o);return;}for(const p of available){const o=document.createElement('option');o.value=p;o.textContent=p;el('port').appendChild(o);}el('port').value=available.includes(previous)?previous:available[0];}catch(e){localLine('ERRO: '+e.message);}}
 async function connect(){return action(async()=>{const port=val('port').toUpperCase();if(!/^COM\d+$/.test(port))throw new Error('Selecione uma porta COM detectada e clique Atualizar portas.');invalidate('Abrindo '+port+' e consultando o firmware...');const t=await api('/connect',{method:'POST',body:new URLSearchParams({port})});serialConnected=true;activePort=port;localStorage.setItem('jr_serial_port',port);connection('Porta aberta; consultando firmware',false);localLine(t);await new Promise(resolve=>setTimeout(resolve,1200));await send('status');});}
 async function disconnect(){return action(async()=>{await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';invalidate('Desconectado.');connection('Desconectado',false);});}
-async function send(command){const verb=command.trim().toLowerCase().split(/\s+/)[0];if(['audio_test','som','beep','mic_test'].includes(verb)&&!currentFirmware())throw new Error('Teste bloqueado: grave uma versao JRBotV2_ / HW04.');if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes.');let t;try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado.');connection('Firmware sem confirmacao',false);}throw e;}if(t.trim())localLine(t.trim());if(command.trim().toLowerCase()==='status')renderStatus(t);if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));return t;}
+async function send(command){const verb=command.trim().toLowerCase().split(/\s+/)[0];if(['audio_test','som','beep','mic_test'].includes(verb)&&!currentFirmware())throw new Error('Teste bloqueado: grave uma versao JrBot_V1.x / HW04.');if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes.');let t;try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado.');connection('Firmware sem confirmacao',false);}throw e;}if(t.trim())localLine(t.trim());if(command.trim().toLowerCase()==='status')renderStatus(t);if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));return t;}
 async function refreshStatus(){return action(()=>send('status'));}
 async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Firmware confirmado: '+device.version+' | '+device.hardware+' | '+device.profile;});}
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
@@ -72,5 +72,5 @@ async function poll(){try{const j=JSON.parse(await api('/logs?after='+serverCurs
 for(const [name,command] of faces){const b=document.createElement('button');b.className='face';b.textContent=name;b.onclick=()=>action(()=>send(command));el('faces').appendChild(b);}
 const micButton=el('test_mic');if(micButton){micButton.textContent='Testar microfone';micButton.className='green';micButton.onclick=()=>testMic();if(micButton.nextElementSibling)micButton.nextElementSibling.textContent='MS3625: o painel libera o teste quando detectar atividade I2S.';}
 el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
-const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot V2 | portas COM detectadas automaticamente';
+const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot | painel de desenvolvimento | portas COM automaticas';
 loadWifiLocal();setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();
