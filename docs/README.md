@@ -18,6 +18,7 @@ Nunca transforme um item planejado em “disponível” apenas porque existe uma
 
 ### Projeto
 
+- [Roadmap oficial](ROADMAP.md)
 - [Estado atual](PROJECT_STATUS.md)
 - [Arquitetura](ARCHITECTURE.md)
 - [Guia de desenvolvimento](DEVELOPMENT.md)
@@ -54,6 +55,7 @@ Esses documentos históricos registram etapas específicas e podem citar versõe
 ```text
 docs/
 ├── README.md
+├── ROADMAP.md
 ├── PROJECT_STATUS.md
 ├── ARCHITECTURE.md
 ├── DEVELOPMENT.md
