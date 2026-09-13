@@ -12,8 +12,8 @@ if /i "%JRBOT_SYNC_DONE%"=="1" goto local_entry
 
 if /i not "%~1"=="--runner" (
     set "RUNNER=%TEMP%\JrBot_Instalar_Runner.bat"
-    copy /y "%~f0" "%TEMP%\JrBot_Instalar_Runner.bat" >nul
-    call "%TEMP%\JrBot_Instalar_Runner.bat" --runner "%~dp0" "%~1" "%~2"
+    copy /y "%~f0" "%RUNNER%" >nul
+    call "%RUNNER%" --runner "%~dp0" "%~1" "%~2"
     exit /b !ERRORLEVEL!
 )
 
@@ -29,11 +29,12 @@ cd /d "%PROJECT_DIR%"
 title JrBot - Atualizador e Instalador
 cls
 echo ============================================================
-echo   JRBOT - ESCOLHA A VERSAO PARA INSTALAR
+echo   JRBOT - ATUALIZADOR / INSTALADOR
  echo ============================================================
 echo.
-echo O instalador consulta o GitHub, atualiza a branch escolhida,
-echo compila, grava o ESP32 e abre o painel de desenvolvimento.
+echo O instalador consulta o GitHub, carrega a lista atual de branches,
+echo permite escolher a versao, atualiza, compila, grava o ESP32 e abre
+echo o painel de desenvolvimento.
 echo.
 
 call :ensure_git
@@ -69,30 +70,75 @@ if errorlevel 1 (
 echo [OK] Git instalado.
 exit /b 0
 
+:refresh_branch_list
+set "BRANCH_COUNT=0"
+for /f "tokens=2" %%R in ('git ls-remote --heads "%REPO_URL%" 2^>nul') do (
+    set "REMOTE_BRANCH=%%R"
+    set "REMOTE_BRANCH=!REMOTE_BRANCH:refs/heads/=!"
+    if /i not "!REMOTE_BRANCH:~0,8!"=="archive/" (
+        set /a BRANCH_COUNT+=1
+        set "BRANCH_!BRANCH_COUNT!=!REMOTE_BRANCH!"
+    )
+)
+if !BRANCH_COUNT! LEQ 0 (
+    echo [ERRO] Nao foi possivel obter a lista de branches ativas do GitHub.
+    exit /b 1
+)
+echo [OK] Lista atualizada: !BRANCH_COUNT! branch(es) ativa(s).
+exit /b 0
+
 :choose_branch
 set "TARGET_BRANCH="
 set "CHANNEL="
 echo.
-echo Escolha a versao/canal:
-if defined CURRENT_BRANCH echo   [1] Branch atual: !CURRENT_BRANCH!
-echo   [2] main    - versao principal/estavel
-echo   [3] develop - versao de integracao/desenvolvimento
-echo   [4] feature/v1-internal-web-panel - JrBot V1 em teste
-echo   [5] Digitar outra branch
+echo [GITHUB] Atualizando lista de branches ativas...
+call :refresh_branch_list
+if errorlevel 1 exit /b 1
+
+echo.
+echo ============================================================
+echo   ESCOLHA A VERSAO / BRANCH
+ echo ============================================================
+echo.
+for /l %%N in (1,1,!BRANCH_COUNT!) do (
+    set "DISPLAY_BRANCH=!BRANCH_%%N!"
+    set "BRANCH_NOTE="
+    if /i "!DISPLAY_BRANCH!"=="main" set "BRANCH_NOTE= - principal / estavel"
+    if /i "!DISPLAY_BRANCH!"=="develop" set "BRANCH_NOTE= - integracao / desenvolvimento"
+    if /i "!DISPLAY_BRANCH:~0,8!"=="feature/" set "BRANCH_NOTE= - feature em desenvolvimento"
+    if /i "!DISPLAY_BRANCH:~0,4!"=="fix/" set "BRANCH_NOTE= - correcao em desenvolvimento"
+    if defined CURRENT_BRANCH if /i "!DISPLAY_BRANCH!"=="!CURRENT_BRANCH!" set "BRANCH_NOTE=!BRANCH_NOTE! [ATUAL]"
+    echo   [%%N] !DISPLAY_BRANCH!!BRANCH_NOTE!
+)
 echo.
 if defined CURRENT_BRANCH (
-    set /p "CHANNEL=Opcao [1-5] (ENTER = atual): "
-    if "!CHANNEL!"=="" set "CHANNEL=1"
-    if "!CHANNEL!"=="1" set "TARGET_BRANCH=!CURRENT_BRANCH!"
+    set /p "CHANNEL=Digite o numero da branch (ENTER = !CURRENT_BRANCH!): "
+    if "!CHANNEL!"=="" (
+        set "TARGET_BRANCH=!CURRENT_BRANCH!"
+        goto branch_selected
+    )
 ) else (
-    set /p "CHANNEL=Opcao [2-5]: "
+    set /p "CHANNEL=Digite o numero da branch: "
 )
-if "!CHANNEL!"=="2" set "TARGET_BRANCH=main"
-if "!CHANNEL!"=="3" set "TARGET_BRANCH=develop"
-if "!CHANNEL!"=="4" set "TARGET_BRANCH=feature/v1-internal-web-panel"
-if "!CHANNEL!"=="5" set /p "TARGET_BRANCH=Nome completo da branch: "
+
+echo(!CHANNEL!| findstr /r "^[0-9][0-9]*$" >nul
+if errorlevel 1 (
+    echo [ERRO] Opcao invalida: !CHANNEL!
+    exit /b 1
+)
+if !CHANNEL! LSS 1 (
+    echo [ERRO] Opcao fora da lista.
+    exit /b 1
+)
+if !CHANNEL! GTR !BRANCH_COUNT! (
+    echo [ERRO] Opcao fora da lista.
+    exit /b 1
+)
+for %%N in (!CHANNEL!) do set "TARGET_BRANCH=!BRANCH_%%N!"
+
+:branch_selected
 if not defined TARGET_BRANCH (
-    echo [ERRO] Opcao invalida.
+    echo [ERRO] Nenhuma branch selecionada.
     exit /b 1
 )
 git check-ref-format --branch "!TARGET_BRANCH!" >nul 2>&1
@@ -100,6 +146,7 @@ if errorlevel 1 (
     echo [ERRO] Nome de branch invalido: !TARGET_BRANCH!
     exit /b 1
 )
+echo [OK] Branch selecionada: !TARGET_BRANCH!
 exit /b 0
 
 :select_and_sync
@@ -114,15 +161,13 @@ set "CURRENT_BRANCH="
 call :choose_branch
 if errorlevel 1 exit /b 1
 
-echo [INFO] Primeira instalacao. Baixando %TARGET_BRANCH%...
-git ls-remote --exit-code --heads "%REPO_URL%" "%TARGET_BRANCH%" >nul 2>&1
+echo [INFO] Primeira instalacao. Baixando !TARGET_BRANCH!...
+if exist "%CLONE_TEMP%" rmdir /s /q "%CLONE_TEMP%"
+git clone --branch "!TARGET_BRANCH!" --single-branch "%REPO_URL%" "%CLONE_TEMP%"
 if errorlevel 1 (
-    echo [ERRO] Branch nao encontrada no GitHub: %TARGET_BRANCH%
+    echo [ERRO] Nao foi possivel baixar a branch !TARGET_BRANCH!.
     exit /b 1
 )
-if exist "%CLONE_TEMP%" rmdir /s /q "%CLONE_TEMP%"
-git clone --branch "%TARGET_BRANCH%" --single-branch "%REPO_URL%" "%CLONE_TEMP%"
-if errorlevel 1 exit /b 1
 xcopy "%CLONE_TEMP%\*" "%PROJECT_DIR%" /E /H /K /Y /I >nul
 if errorlevel 1 (
     rmdir /s /q "%CLONE_TEMP%" >nul 2>&1
@@ -130,7 +175,7 @@ if errorlevel 1 (
     exit /b 1
 )
 rmdir /s /q "%CLONE_TEMP%" >nul 2>&1
-echo [OK] Projeto baixado. Branch: %TARGET_BRANCH%
+echo [OK] Projeto baixado. Branch: !TARGET_BRANCH!
 exit /b 0
 
 :existing_repo
@@ -158,6 +203,7 @@ if not "%STATUS_SIZE%"=="0" (
 )
 if exist "%STATUS_TMP%" del "%STATUS_TMP%" >nul 2>&1
 
+echo [INFO] Atualizando referencias remotas...
 git fetch --prune origin
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel consultar o GitHub.
@@ -171,21 +217,21 @@ if errorlevel 1 (
     exit /b 1
 )
 
-git show-ref --verify --quiet "refs/remotes/origin/%TARGET_BRANCH%"
+git show-ref --verify --quiet "refs/remotes/origin/!TARGET_BRANCH!"
 if errorlevel 1 (
-    echo [ERRO] Branch remota nao encontrada: %TARGET_BRANCH%
+    echo [ERRO] Branch remota nao encontrada: !TARGET_BRANCH!
     popd
     exit /b 1
 )
 
-if /i "%TARGET_BRANCH%"=="%CURRENT_BRANCH%" goto update_target
+if /i "!TARGET_BRANCH!"=="!CURRENT_BRANCH!" goto update_target
 
-echo [INFO] Trocando %CURRENT_BRANCH% -^> %TARGET_BRANCH%...
-git show-ref --verify --quiet "refs/heads/%TARGET_BRANCH%"
+echo [INFO] Trocando !CURRENT_BRANCH! -^> !TARGET_BRANCH!...
+git show-ref --verify --quiet "refs/heads/!TARGET_BRANCH!"
 if errorlevel 1 (
-    git switch --track -c "%TARGET_BRANCH%" "origin/%TARGET_BRANCH%"
+    git switch --track -c "!TARGET_BRANCH!" "origin/!TARGET_BRANCH!"
 ) else (
-    git switch "%TARGET_BRANCH%"
+    git switch "!TARGET_BRANCH!"
 )
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel trocar de branch.
@@ -194,14 +240,14 @@ if errorlevel 1 (
 )
 
 :update_target
-git merge --ff-only "origin/%TARGET_BRANCH%"
+git merge --ff-only "origin/!TARGET_BRANCH!"
 if errorlevel 1 (
     echo [ERRO] A branch local divergiu do GitHub.
     echo Nenhum reset automatico sera realizado.
     popd
     exit /b 1
 )
-for /f "delims=" %%C in ('git rev-parse --short HEAD') do echo [OK] Branch %TARGET_BRANCH% atualizada. Commit: %%C
+for /f "delims=" %%C in ('git rev-parse --short HEAD') do echo [OK] Branch !TARGET_BRANCH! atualizada. Commit: %%C
 popd
 exit /b 0
 
@@ -324,9 +370,11 @@ exit /b 1
 echo.
 echo JrBot - instalador/atualizador
 echo.
-echo   INSTALAR.bat              Escolhe branch, atualiza, compila, grava e abre o painel
-echo   INSTALAR.bat build        Escolhe branch, atualiza e compila
-echo   INSTALAR.bat flash        Escolhe branch, atualiza, compila e grava
-echo   INSTALAR.bat panel        Escolhe branch, atualiza e abre o painel
+echo   INSTALAR.bat              Atualiza lista de branches, escolhe, compila, grava e abre o painel
+echo   INSTALAR.bat build        Atualiza lista de branches, escolhe e compila
+echo   INSTALAR.bat flash        Atualiza lista de branches, escolhe, compila e grava
+echo   INSTALAR.bat panel        Atualiza lista de branches, escolhe e abre o painel
+echo.
+echo Branches archive/* sao historicas e nao aparecem no menu.
 echo.
 exit /b 0
