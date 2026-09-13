@@ -25,9 +25,22 @@ O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
 ## Etapa ativa
 
-A etapa ativa é a JrBot V1, na branch `feature/v1-internal-web-panel`, com PR #18 para `develop`.
+A etapa ativa é a JrBot V1, na branch `v1`, com PR #20 para `develop`.
 
-O painel interno básico já foi exercitado no hardware real. Ainda fazem parte do fechamento da V1 o refinamento para celular, a interface da câmera e o envio de áudio do celular ou computador.
+A candidata atual é `JrBot_V1.4`.
+
+Já estão implementados no GitHub para esta candidata:
+
+- painel local responsivo para celular;
+- controle de expressões e volume;
+- gravação pelo microfone do próprio JrBot, reprodução no navegador, download e reprodução no robô;
+- interface de câmera sem placeholder inicial, com captura sob demanda e opção de salvar a foto;
+- gravação/seleção de uma mensagem no celular ou computador;
+- conversão no navegador para WAV PCM 16-bit, mono, 16 kHz, até 10 segundos;
+- envio da mensagem por `POST /audio` e reprodução no JrBot;
+- manutenção do fluxo de microfone do JrBot sem substituí-lo pelo novo fluxo do celular.
+
+Essas mudanças estão implementadas, mas a candidata `JrBot_V1.4` ainda precisa passar por build, flash e validação física no ESP32-S3 e no celular.
 
 O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diagnóstico. O painel servido pelo ESP32 é a interface de uso da V1.
 
@@ -35,9 +48,9 @@ O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diag
 
 - JrBot V1, V2 e V3: versões do produto.
 - Runtime API 1.x: versão do protocolo.
-- Identificadores como `_V1_02`, `_V1_03` e `_V1_04`: revisões técnicas de firmware.
+- Firmware da linha V1: `JrBot_V1.4`, `JrBot_V1.5`, etc.
 
-Essas numerações são independentes.
+As revisões de firmware avançam dentro da branch `v1`; não é criada uma branch nova para cada revisão.
 
 ## Baseline técnica promovida
 
@@ -49,13 +62,17 @@ O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da 
 
 ## Instalador
 
-Na linha atual, `INSTALAR.bat` consulta o GitHub, carrega as branches remotas ativas, oculta `archive/*`, permite escolher a branch, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento.
+Na organização atual, `INSTALAR.bat` trabalha com os canais oficiais `main`, `develop`, `v1` e `v2`, sincroniza o projeto com o GitHub, compila, grava o ESP32 e abre o painel de desenvolvimento.
 
 O painel de desenvolvimento pode ser encerrado pressionando ENTER na janela do processo.
 
 ## Branches
 
-`feature/*` e `fix/*` seguem para `develop`; depois de validação suficiente, `develop` pode ser promovida para `main`. Branches `archive/*` são históricas.
+- `main`: última versão aprovada;
+- `develop`: integração;
+- `v1`: JrBot V1 em desenvolvimento;
+- `v2`: JrBot V2 preservada/pausada;
+- `archive/*`: histórico.
 
 ## Regra de validação
 
