@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions DisableDelayedExpansion
+setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul
 
 rem ============================================================
@@ -14,7 +14,7 @@ if /i not "%~1"=="--runner" (
     set "RUNNER=%TEMP%\JrBot_Instalar_Runner.bat"
     copy /y "%~f0" "%TEMP%\JrBot_Instalar_Runner.bat" >nul
     call "%TEMP%\JrBot_Instalar_Runner.bat" --runner "%~dp0" "%~1" "%~2"
-    exit /b %ERRORLEVEL%
+    exit /b !ERRORLEVEL!
 )
 
 set "REPO_URL=https://github.com/JuniorNarciso26/JrRobot.git"
@@ -71,32 +71,33 @@ exit /b 0
 
 :choose_branch
 set "TARGET_BRANCH="
+set "CHANNEL="
 echo.
 echo Escolha a versao/canal:
-if defined CURRENT_BRANCH echo   [1] Branch atual: %CURRENT_BRANCH%
+if defined CURRENT_BRANCH echo   [1] Branch atual: !CURRENT_BRANCH!
 echo   [2] main    - versao principal/estavel
 echo   [3] develop - versao de integracao/desenvolvimento
 echo   [4] feature/v1-internal-web-panel - JrBot V1 em teste
 echo   [5] Digitar outra branch
- echo.
+echo.
 if defined CURRENT_BRANCH (
     set /p "CHANNEL=Opcao [1-5] (ENTER = atual): "
-    if "%CHANNEL%"=="" set "CHANNEL=1"
-    if "%CHANNEL%"=="1" set "TARGET_BRANCH=%CURRENT_BRANCH%"
+    if "!CHANNEL!"=="" set "CHANNEL=1"
+    if "!CHANNEL!"=="1" set "TARGET_BRANCH=!CURRENT_BRANCH!"
 ) else (
     set /p "CHANNEL=Opcao [2-5]: "
 )
-if "%CHANNEL%"=="2" set "TARGET_BRANCH=main"
-if "%CHANNEL%"=="3" set "TARGET_BRANCH=develop"
-if "%CHANNEL%"=="4" set "TARGET_BRANCH=feature/v1-internal-web-panel"
-if "%CHANNEL%"=="5" set /p "TARGET_BRANCH=Nome completo da branch: "
+if "!CHANNEL!"=="2" set "TARGET_BRANCH=main"
+if "!CHANNEL!"=="3" set "TARGET_BRANCH=develop"
+if "!CHANNEL!"=="4" set "TARGET_BRANCH=feature/v1-internal-web-panel"
+if "!CHANNEL!"=="5" set /p "TARGET_BRANCH=Nome completo da branch: "
 if not defined TARGET_BRANCH (
     echo [ERRO] Opcao invalida.
     exit /b 1
 )
-git check-ref-format --branch "%TARGET_BRANCH%" >nul 2>&1
+git check-ref-format --branch "!TARGET_BRANCH!" >nul 2>&1
 if errorlevel 1 (
-    echo [ERRO] Nome de branch invalido: %TARGET_BRANCH%
+    echo [ERRO] Nome de branch invalido: !TARGET_BRANCH!
     exit /b 1
 )
 exit /b 0
