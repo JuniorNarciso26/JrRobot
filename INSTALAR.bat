@@ -12,8 +12,8 @@ if /i "%JRBOT_SYNC_DONE%"=="1" goto local_entry
 
 if /i not "%~1"=="--runner" (
     set "RUNNER=%TEMP%\JrBot_Instalar_Runner.bat"
-    copy /y "%~f0" "%RUNNER%" >nul
-    call "%RUNNER%" --runner "%~dp0" "%~1" "%~2"
+    copy /y "%~f0" "!RUNNER!" >nul
+    call "!RUNNER!" --runner "%~dp0" "%~1" "%~2"
     exit /b !ERRORLEVEL!
 )
 
