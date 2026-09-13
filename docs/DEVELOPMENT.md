@@ -9,40 +9,42 @@
 
 ## Estratégia de branches
 
-- `main`: baseline estável/promovido;
-- `develop`: integração da próxima versão;
-- `feature/*`: novas capacidades ou etapas;
-- `fix/*`: correções isoladas.
+As branches oficiais são:
 
-Toda nova etapa deve nascer de `develop` e voltar para `develop` por Pull Request.
+- `main`: última versão aprovada;
+- `develop`: integração antes da promoção;
+- `v1`: JrBot V1, linha ativa;
+- `v2`: JrBot V2, linha preservada e pausada até fechar V1;
+- `archive/*`: histórico.
 
-Exemplo:
+Quando V3 começar, a linha será `v3`.
 
-```bat
-git switch develop
-git pull --ff-only origin develop
-git switch -c feature/runtime-api-v1
+Não crie uma branch nova para cada revisão técnica de firmware. Revisões como `_V1_02`, `_V1_03` e `_V1_04` ficam na branch da versão e são diferenciadas por commit, marcador de firmware e evidência de teste.
+
+A promoção segue:
+
+```text
+v1 -> develop -> main
+v2 -> develop -> main
+v3 -> develop -> main
 ```
-
-A promoção `develop -> main` deve ocorrer somente quando o baseline candidato estiver documentado, compilado e validado no nível exigido para aquela versão.
 
 ## Fluxo recomendado
 
-### 1. Escolha ou crie a branch
+### 1. Escolha a versão
 
-Para apenas reproduzir a integração atual:
+Para a etapa atual:
 
 ```bat
-git switch develop
-git pull --ff-only origin develop
+git switch v1
+git pull --ff-only origin v1
 ```
 
-Para desenvolver uma nova capability:
+Para reproduzir a integração:
 
 ```bat
 git switch develop
 git pull --ff-only origin develop
-git switch -c feature/nome-da-feature
 ```
 
 ### 2. Verifique pinagem
@@ -74,9 +76,13 @@ PAINEL.bat
 
 Não interprete logs de uma candidata sem confirmar primeiro a versão retornada pela placa.
 
-### 7. Abra Pull Request
+### 7. Registre a revisão
 
-O PR para `develop` deve registrar:
+Toda revisão testável deve ter marcador inequívoco no firmware e no procedimento de teste. O commit e a versão técnica identificam a candidata; o nome da branch continua sendo a versão do produto.
+
+### 8. Pull Request
+
+O PR da versão para `develop` deve registrar:
 
 - objetivo;
 - contratos/API alterados;
@@ -109,32 +115,18 @@ tests/                 verificações automatizadas
 
 Os nomes podem variar conforme a evolução; consulte o repositório antes de assumir um módulo.
 
-## Regra de versão
-
-Mudanças físicas/testáveis importantes devem possuir marcador inequívoco no firmware e no procedimento de teste.
-
-Exemplo atual:
-
-```text
-JRBotV2_JRBOT_RESPONSE_05
-```
-
-Evite reutilizar diretórios de build/config quando a investigação depende de eliminar configuração residual.
-
 ## Como desenvolver uma capability nova
 
-1. Defina o contrato público na documentação.
-2. Identifique recursos físicos usados e conflitos.
-3. Crie uma branch `feature/*` a partir de `develop`.
-4. Implemente a função interna com validação de argumentos.
-5. Adicione observabilidade/logs.
-6. Adicione comando/API de teste.
-7. Compile.
-8. Faça teste de bancada.
-9. Faça validação física.
-10. Atualize `PROJECT_STATUS.md` somente com o nível comprovado.
-11. Abra PR para `develop`.
-12. Depois permita que o Flow Engine use essa capability.
+1. Confirme em qual versão do produto a capability pertence.
+2. Defina o contrato público na documentação.
+3. Identifique recursos físicos usados e conflitos.
+4. Implemente na branch da versão atual.
+5. Adicione validação de argumentos e observabilidade.
+6. Compile.
+7. Faça teste de bancada.
+8. Faça validação física.
+9. Atualize `PROJECT_STATUS.md` somente com o nível comprovado.
+10. Registre o resultado no PR da versão para `develop`.
 
 ## Como alterar comportamento
 
