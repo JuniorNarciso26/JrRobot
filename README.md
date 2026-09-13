@@ -1,126 +1,137 @@
 # JrBot
 
-JrBot é um robô experimental baseado em ESP32-S3, criado para evoluir de um controlador local de hardware para uma plataforma híbrida com capacidades locais e recursos avançados de IA opcionais.
+<p align="center">
+  <img src="docs/assets/readme/jrbot-hero.svg" alt="JrBot - presença digital" width="100%">
+</p>
+
+**Uma IA que deixa de ser apenas uma ferramenta e passa a ser presença.**
+
+O JrBot é um projeto em desenvolvimento que une inteligência artificial, voz, expressão digital e presença física. A proposta é ir além de um assistente que apenas responde perguntas: o objetivo é criar uma experiência mais próxima, expressiva, personalizada e progressivamente offline.
+
+> **O JrBot não foi criado apenas para responder. Foi criado para estar com você.**
+
+**Ouve · Entende · Responde · Reage · Expressa**
+
+## Visão do projeto
+
+A visão de longo prazo é desenvolver um robô capaz de ouvir o usuário, reconhecer quando é chamado, conversar por voz, perceber o ambiente por câmera, demonstrar expressões, manter contexto e memória e receber novas capacidades por meio de Skills.
+
+O objetivo não é simular sentimentos humanos reais, mas criar uma experiência de presença por meio de **voz, expressão, contexto, personalidade e continuidade**.
+
+## Um JrBot. Diferentes companheiros.
+
+<p align="center">
+  <img src="docs/assets/readme/jrbot-experiences.svg" alt="Experiências futuras do JrBot" width="900">
+</p>
+
+O mesmo hardware poderá assumir experiências diferentes conforme personalidade, contexto e Skills:
+
+- **Crianças:** histórias, jogos, aprendizado e brincadeiras.
+- **Estudos:** idiomas, exercícios, revisão e prática diária.
+- **Companhia:** conversa, lembretes e presença na rotina.
+- **Entretenimento:** experiências temáticas, jogos e personalidades.
+
+## Plataforma de Skills
+
+O robô físico é a interface. A visão de longo prazo é construir um ecossistema em que uma Skill possa adicionar uma habilidade, personalidade, conteúdo educacional, integração ou serviço sem transformar todo o firmware em um único bloco.
+
+Categorias futuras podem incluir educação, idiomas, companhia, entretenimento, marcas, serviços e integrações. Acessórios físicos com tecnologias como NFC ou RFID também poderão ativar Skills ou personalidades específicas.
+
+> Skills, marketplace e acessórios inteligentes fazem parte da visão futura e não representam funcionalidades já concluídas.
 
 ## Estado atual
 
-- Hardware: `JRBOT-HW-04`
-- MCU: ESP32-S3 N16R8
-- Baseline promovida: `JRBotV2_RUNTIME_API_V1_02`
-- Branch estável: `main`
-- Branch de integração: `develop`
-- Trabalho ativo da JrBot V1: `feature/v1-internal-web-panel`
-- Runtime API promovida: major `v=1`, API compatível `1.1`
-- Áudio: MAX98357A
-- Microfone: MS3625
-- Câmera: OV5640
-- Display: OLED SSD1306
+| Etapa | Objetivo | Estado |
+| --- | --- | --- |
+| **V0** | Hardware, periféricos, painel de desenvolvimento e testes | **Aprovada em `main`** |
+| **V1** | Controle pelo navegador na rede local | **Em desenvolvimento** |
+| **V2** | Controle por voz local | Planejada |
+| **V3** | Controle programático pela Runtime API | Planejada |
+| **JrBrain** | Memória, personalidade, relacionamento, LLM e Skills | Posterior |
 
-A baseline técnica promovida continua sendo `JRBotV2_RUNTIME_API_V1_02`. O roadmap do produto, porém, passa a usar JrBot V1, V2 e V3. Essas versões não são equivalentes às versões da Runtime API ou às candidatas de firmware.
+### V0 — fundação aprovada
 
-## Roadmap do produto
+A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, painel de desenvolvimento e a base inicial da Runtime API. A baseline técnica promovida em `main` é `JRBotV2_RUNTIME_API_V1_02`, com Runtime API compatível `1.1`.
 
-```text
-JrBot V1  -> painel interno pelo IP
-JrBot V2  -> comandos por voz
-JrBot V3  -> controle programático por API
-JrBrain   -> memória, personalidade, LLM e comportamento
-```
+### V1 — etapa ativa
 
-### JrBot V1
-
-Interface homem-robô servida pelo próprio ESP32-S3 na rede local. O objetivo é controlar rosto, áudio, microfone e câmera pelo navegador, com experiência adequada para celular.
-
-O `PAINEL.bat` e o painel Python continuam sendo ferramentas de instalação, desenvolvimento e diagnóstico. O painel interno do ESP32 é a interface normal de uso da V1.
-
-### JrBot V2
-
-Controle das mesmas capabilities por voz, por exemplo:
+A V1 transforma essa base técnica na primeira experiência de produto:
 
 ```text
-JrBot feliz
-JrBot tocar som abc.wav
+PC / celular
+    ↓
+http://IP_DO_JRBOT/
+    ↓
+painel interno do ESP32-S3
+    ↓
+capabilities seguras
+    ↓
+JrBot físico
 ```
 
-Playground, calibração, threshold e latência pertencem a esta frente.
+A linha ativa está em `feature/v1-internal-web-panel`, com integração em `develop` pelo PR #18.
 
-### JrBot V3
-
-Controle programático das mesmas capabilities por software externo. A V3 é definida pelo tipo de integração, não por um transporte específico; HTTP/IP e Serial podem continuar sendo utilizados.
-
-### JrBrain
-
-Depois da fundação V1-V3, o projeto avança para memória, identidade, personalidade, contexto, LLM, skills e comportamento composto por capabilities.
-
-Leia o detalhamento em [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-## Regra de nomenclatura
+## Roadmap oficial
 
 ```text
-JrBot V1 / V2 / V3
-= versão do produto
-
-Runtime API 1.1 / 1.2 / 1.3
-= versão do protocolo/capabilities
-
-JRBot..._V1_02 / _V1_03 / _V1_04
-= candidata ou revisão técnica de firmware
+V0  Fundação de hardware e periféricos
+ ↓
+V1  Controle pelo navegador / IP local
+ ↓
+V2  Controle por voz local
+ ↓
+V3  Controle programático pela Runtime API
+ ↓
+JrBrain  Memória + personalidade + LLM + relacionamento
+ ↓
+Skills / plataforma / ecossistema
 ```
 
-## Estratégia de branches
+O detalhamento oficial fica em [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Arquitetura
 
 ```text
-main
-  └── develop
-        ├── feature/...
-        └── fix/...
+V1 painel web ─┐
+V2 voz        ─┼─> capability registry -> hardware
+V3 API        ─┘
 
-archive/*
-  └── snapshots históricos
+Depois:
+JrBrain -> Action Router -> mesmas capabilities
 ```
 
-- `main`: baselines promovidas.
-- `develop`: integração da próxima versão.
-- `feature/*`: desenvolvimento isolado criado a partir de `develop`.
-- `fix/*`: correções isoladas.
-- `archive/*`: referências históricas, sem desenvolvimento novo.
+A IA não controla GPIO diretamente. O firmware expõe ações limitadas e validadas.
 
-## Runtime API promovida
+## Desenvolvimento
 
-A baseline promovida oferece `capabilities`, `get` e `face`, com transporte Serial e HTTP local já exercitado em hardware.
+```text
+main      = última versão aprovada
+develop   = integração da próxima versão
+feature/* = novas entregas
+fix/*     = correções
+```
 
-O portal HTTP local é destinado à rede local confiável.
-
-## Instalação e atualização
-
-Na linha atual, `INSTALAR.bat` consulta o GitHub, atualiza a lista de branches ativas, permite escolher a versão/branch, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento. Branches `archive/*` não aparecem como canais ativos.
+Features e fixes entram em `develop` por Pull Request. A promoção para `main` ocorre quando a versão estiver suficientemente validada.
 
 ## Documentação
 
-A documentação oficial fica em [`docs/`](docs/README.md).
-
-Principais documentos:
-
-- [Roadmap oficial](docs/ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Estado do projeto](docs/PROJECT_STATUS.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
-- [Guia de desenvolvimento](docs/DEVELOPMENT.md)
+- [Desenvolvimento](docs/DEVELOPMENT.md)
 - [Runtime API](docs/API_RUNTIME.md)
-- [Playground](docs/PLAYGROUND.md)
-- [Flows](docs/FLOWS.md)
-- [Testes e validação](docs/TESTING.md)
-
-## Filosofia técnica
-
-1. Firmware fornece capacidades seguras; configurações definem comportamento.
-2. IA não controla GPIO diretamente.
-3. Teste em computador, build e validação física são estados diferentes e devem ser documentados separadamente.
-4. O robô precisa manter funções básicas mesmo sem VPS ou internet.
+- [Testes](docs/TESTING.md)
 
 ## Contribuição
 
-Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) antes de abrir mudanças.
+Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) e consulte as Issues abertas antes de iniciar uma mudança.
 
-## Licença
+## Status
 
-O repositório ainda não possui um arquivo `LICENSE`.
+**Projeto em desenvolvimento ativo.** Para distinguir o que está implementado, compilado, testado ou validado fisicamente, consulte [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+
+<p align="center">
+  <strong>JrBot</strong><br>
+  Ouvir. Entender. Responder. Reagir. Expressar.<br><br>
+  <em>Project by JrTk Invest</em>
+</p>
