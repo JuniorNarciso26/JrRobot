@@ -10,6 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 
 #include "jr_audio.h"
 #include "jr_board.h"
@@ -22,6 +23,7 @@
 #define JR_MIC_RECORD_BUS_TIMEOUT_MS 15000
 
 static const char *TAG = "jrbot_mic";
+static portMUX_TYPE mic_state_lock = portMUX_INITIALIZER_UNLOCKED;
 static int16_t *last_recording = NULL;
 static size_t last_recording_capacity = 0;
 static size_t last_recording_samples = 0;
@@ -31,6 +33,43 @@ static int last_peak = 0;
 static char last_channel = 'L';
 static bool recording_active = false;
 static esp_err_t last_record_error = ESP_ERR_INVALID_STATE;
+static bool signal_confirmed = false;
+static jr_mic_status_t last_probe_status = {
+    .present = false,
+    .samples = 0,
+    .peak_raw = 0,
+    .changes = 0,
+    .channel = 'L',
+    .last_error = ESP_ERR_INVALID_STATE,
+};
+
+static void cache_probe_status(const jr_mic_status_t *status) {
+    if (!status) return;
+    portENTER_CRITICAL(&mic_state_lock);
+    last_probe_status = *status;
+    if (status->present) signal_confirmed = true;
+    portEXIT_CRITICAL(&mic_state_lock);
+}
+
+static void confirm_signal(void) {
+    portENTER_CRITICAL(&mic_state_lock);
+    signal_confirmed = true;
+    portEXIT_CRITICAL(&mic_state_lock);
+}
+
+void jr_mic_get_cached_probe(jr_mic_status_t *out) {
+    if (!out) return;
+    portENTER_CRITICAL(&mic_state_lock);
+    *out = last_probe_status;
+    portEXIT_CRITICAL(&mic_state_lock);
+}
+
+bool jr_mic_signal_confirmed(void) {
+    portENTER_CRITICAL(&mic_state_lock);
+    bool confirmed = signal_confirmed;
+    portEXIT_CRITICAL(&mic_state_lock);
+    return confirmed;
+}
 
 static uint32_t magnitude32(int32_t value) {
     int64_t v = value;
@@ -134,11 +173,13 @@ bool jr_mic_probe(jr_mic_status_t *out) {
     jr_mic_status_t result = {.present=false,.samples=0,.peak_raw=0,.changes=0,.channel='L',.last_error=ESP_ERR_INVALID_STATE};
     if (!JR_MIC_ENABLED) {
         result.last_error = ESP_ERR_NOT_SUPPORTED;
+        cache_probe_status(&result);
         if (out) *out = result;
         return false;
     }
     if (!jr_audio_bus_acquire(JR_MIC_PROBE_BUS_TIMEOUT_MS)) {
         result.last_error = ESP_ERR_TIMEOUT;
+        cache_probe_status(&result);
         if (out) *out = result;
         return false;
     }
@@ -177,6 +218,7 @@ finish:
     mic_rx_close(rx);
     if (err != ESP_OK) result.last_error = err;
     jr_audio_bus_release();
+    cache_probe_status(&result);
     if (out) *out = result;
     return result.present;
 }
@@ -185,15 +227,21 @@ bool jr_mic_test(char *response, size_t capacity) {
     if (!response || capacity < 160) return false;
     jr_mic_status_t s;
     bool present = jr_mic_probe(&s);
+    if (s.last_error == ESP_ERR_TIMEOUT) {
+        snprintf(response, capacity, "JR_ERROR mic_test=busy error=%s model=%s owner=i2s",
+                 esp_err_to_name(s.last_error),JR_MIC_MODEL);
+        return false;
+    }
     if (s.last_error != ESP_OK) {
         snprintf(response, capacity, "JR_ERROR mic_test=io_error error=%s model=%s sck=%d ws=%d sd=%d",
                  esp_err_to_name(s.last_error),JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
         return false;
     }
     snprintf(response, capacity,
-             present ? "JR_OK mic_test=signal_detected model=%s channel=%c samples=%u peak_raw=%lu changes=%u"
-                     : "JR_ERROR mic_test=no_signal model=%s channel=%c samples=%u peak_raw=%lu changes=%u check=VDD_GND_SCK_WS_SD_LR",
-             JR_MIC_MODEL,s.channel,s.samples,(unsigned long)s.peak_raw,s.changes);
+             present ? "JR_OK mic_test=signal_detected model=%s channel=%c samples=%u peak_raw=%lu changes=%u confirmed=1"
+                     : "JR_ERROR mic_test=no_signal model=%s channel=%c samples=%u peak_raw=%lu changes=%u confirmed=%d check=VDD_GND_SCK_WS_SD_LR",
+             JR_MIC_MODEL,s.channel,s.samples,(unsigned long)s.peak_raw,s.changes,
+             present ? 1 : (jr_mic_signal_confirmed()?1:0));
     return present;
 }
 
@@ -216,8 +264,8 @@ bool jr_mic_status(char *response, size_t capacity) {
     jr_mic_recording_info_t info;
     jr_mic_get_recording_info(&info);
     snprintf(response, capacity,
-             "JR_OK mic_status model=%s sck=%d ws=%d sd=%d recording=%d has_recording=%d seconds=%u samples=%u level=%d peak=%d channel=%c last=%s",
-             JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,
+             "JR_OK mic_status model=%s sck=%d ws=%d sd=%d confirmed=%d recording=%d has_recording=%d seconds=%u samples=%u level=%d peak=%d channel=%c last=%s",
+             JR_MIC_MODEL,JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO,jr_mic_signal_confirmed()?1:0,
              info.recording?1:0,info.has_recording?1:0,info.seconds,(unsigned)info.samples,
              info.level,info.peak,info.channel?info.channel:'L',
              info.last_error==ESP_ERR_INVALID_STATE?"not_run":esp_err_to_name(info.last_error));
@@ -328,6 +376,7 @@ record_done:
         return httpd_resp_sendstr(req, message);
     }
 
+    confirm_signal();
     const uint32_t data_bytes = (uint32_t)(last_recording_samples * sizeof(int16_t));
     uint8_t header[44] = {0};
     make_wav_header(header, JR_MIC_SAMPLE_RATE, data_bytes);
@@ -348,7 +397,7 @@ record_done:
     }
     (void)httpd_resp_send_chunk(req, NULL, 0);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG,"RECORDED seconds=%d samples=%u level=%d peak=%d channel=%c",
+        ESP_LOGI(TAG,"RECORDED seconds=%d samples=%u level=%d peak=%d channel=%c confirmed=1",
                  seconds,(unsigned)last_recording_samples,last_level,last_peak,last_channel);
     }
     return err;

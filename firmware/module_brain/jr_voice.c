@@ -11,6 +11,7 @@
 #include "esp_mn_iface.h"
 #include "esp_mn_models.h"
 #include "esp_mn_speech_commands.h"
+#include "esp_timer.h"
 #include "esp_wn_iface.h"
 #include "esp_wn_models.h"
 #include "freertos/FreeRTOS.h"
@@ -49,6 +50,10 @@ static char mn_model_name[64] = "not_loaded";
 static int32_t *raw_buffer = NULL;
 static int16_t *pcm_buffer = NULL;
 static jr_voice_wake_cb_t wake_callback = NULL;
+static jr_voice_calibration_cb_t calibration_callback = NULL;
+static bool calibration_mode = false;
+static float runtime_min_probability = JR_VOICE_JRBOT_DEFAULT_MIN_PROBABILITY;
+static int64_t last_accepted_us = 0;
 
 typedef enum {
     JR_VOICE_MODE_NONE = 0,
@@ -63,7 +68,10 @@ static jr_voice_status_t voice_status = {
     .mic_ready = false,
     .frames = 0,
     .detections = 0,
+    .rejected_low_confidence = 0,
     .last_level = 0,
+    .last_probability = 0.0f,
+    .min_probability = JR_VOICE_JRBOT_DEFAULT_MIN_PROBABILITY,
     .sample_rate = 0,
     .chunk_samples = 0,
     .last_error = ESP_ERR_INVALID_STATE,
@@ -87,6 +95,29 @@ static void status_mic(bool ready) {
     portENTER_CRITICAL(&voice_lock);
     voice_status.mic_ready = ready;
     portEXIT_CRITICAL(&voice_lock);
+}
+
+float jr_voice_get_min_probability(void) {
+    portENTER_CRITICAL(&voice_lock);
+    float value = runtime_min_probability;
+    portEXIT_CRITICAL(&voice_lock);
+    return value;
+}
+
+esp_err_t jr_voice_set_min_probability(float probability) {
+    if (!(probability >= JR_VOICE_JRBOT_MIN_ALLOWED_PROBABILITY &&
+          probability <= JR_VOICE_JRBOT_MAX_ALLOWED_PROBABILITY)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    portENTER_CRITICAL(&voice_lock);
+    runtime_min_probability = probability;
+    if (voice_mode != JR_VOICE_MODE_WAKENET_FALLBACK)
+        voice_status.min_probability = probability;
+    portEXIT_CRITICAL(&voice_lock);
+
+    ESP_LOGI(TAG, "runtime threshold updated min_probability=%.3f persistent=0", (double)probability);
+    return ESP_OK;
 }
 
 static void quiet_amplifier(void) {
@@ -169,10 +200,12 @@ fail:
 static void voice_cleanup(void) {
     close_mic();
 
-    if (mn_commands_ready) {
-        (void)esp_mn_commands_free();
-        mn_commands_ready = false;
-    }
+    /*
+     * O registry global do esp-sr sera limpo pelo proximo
+     * esp_mn_commands_alloc(). Evita o erro esp_mn_commands_clear() observado
+     * no stop quando o registry ja havia sido desalocado internamente.
+     */
+    mn_commands_ready = false;
     if (mn_data && multinet) {
         multinet->destroy(mn_data);
         mn_data = NULL;
@@ -199,6 +232,10 @@ static void voice_cleanup(void) {
     portENTER_CRITICAL(&voice_lock);
     voice_status.running = false;
     voice_status.mic_ready = false;
+    voice_status.min_probability = runtime_min_probability;
+    wake_callback = NULL;
+    calibration_callback = NULL;
+    calibration_mode = false;
     portEXIT_CRITICAL(&voice_lock);
 }
 
@@ -230,7 +267,6 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
 
     int accepted = 0;
     accepted += add_name_alias("JR BOT");
-    accepted += add_name_alias("JUNIOR BOT");
     accepted += add_name_alias("J R BOT");
     if (accepted == 0) {
         ESP_LOGE(TAG, "MultiNet rejected every JrBot alias");
@@ -256,8 +292,8 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     *sample_rate = mn_rate;
     voice_mode = JR_VOICE_MODE_MULTINET_NAME;
     ESP_LOGI(TAG,
-             "direct name recognizer ready model=%s accepted_aliases=%d mode=continuous_experimental rate=%d chunk=%d",
-             mn_model_name, accepted, mn_rate, mn_chunk);
+             "direct name recognizer ready model=%s accepted_aliases=%d min_probability=%.2f mode=continuous_experimental rate=%d chunk=%d",
+             mn_model_name, accepted, (double)jr_voice_get_min_probability(), mn_rate, mn_chunk);
     return ESP_OK;
 }
 
@@ -294,12 +330,20 @@ static void clean_detector(void) {
 
 static esp_err_t reply_and_resume(void) {
     int sample_rate;
+    int64_t accepted_us;
     portENTER_CRITICAL(&voice_lock);
     sample_rate = voice_status.sample_rate;
+    accepted_us = last_accepted_us;
     portEXIT_CRITICAL(&voice_lock);
 
+    int64_t reply_begin_us = esp_timer_get_time();
     close_mic();
-    ESP_LOGI(TAG, "reply begin type=spoken_oi");
+    int64_t dispatch_us = esp_timer_get_time();
+    uint32_t detect_to_reply_ms = accepted_us > 0 ? (uint32_t)((reply_begin_us - accepted_us) / 1000LL) : 0;
+    uint32_t close_mic_ms = (uint32_t)((dispatch_us - reply_begin_us) / 1000LL);
+    ESP_LOGI(TAG,
+             "reply begin type=spoken_oi detect_to_reply_ms=%lu close_mic_ms=%lu cache_ready=%d",
+             (unsigned long)detect_to_reply_ms, (unsigned long)close_mic_ms, jr_reply_oi_ready() ? 1 : 0);
 
     esp_err_t reply_err = jr_reply_play_oi();
     const char *reply_type = "spoken_oi";
@@ -319,8 +363,10 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "reply end type=%s result=%s listening_resumed=1",
-             reply_type, esp_err_to_name(reply_err));
+    int64_t end_us = esp_timer_get_time();
+    uint32_t detect_to_end_ms = accepted_us > 0 ? (uint32_t)((end_us - accepted_us) / 1000LL) : 0;
+    ESP_LOGI(TAG, "reply end type=%s result=%s listening_resumed=1 detect_to_end_ms=%lu",
+             reply_type, esp_err_to_name(reply_err), (unsigned long)detect_to_end_ms);
     return reply_err;
 }
 
@@ -339,20 +385,51 @@ static bool handle_multinet_frame(void) {
     }
 
     jr_voice_wake_cb_t callback;
+    jr_voice_calibration_cb_t calibration_cb;
+    bool calibration;
     uint32_t count;
+    float threshold;
     float probability = result->prob[0];
     const char *recognized = result->string[0] ? result->string : "JR BOT";
 
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
+    voice_status.last_probability = probability;
+    threshold = runtime_min_probability;
+    voice_status.min_probability = threshold;
     count = voice_status.detections;
     callback = wake_callback;
+    calibration_cb = calibration_callback;
+    calibration = calibration_mode;
+    if (!calibration && probability < threshold)
+        voice_status.rejected_low_confidence++;
+    portEXIT_CRITICAL(&voice_lock);
+
+    if (calibration) {
+        ESP_LOGI(TAG,
+                 "name sample recognized=\"%s\" model=%s probability=%.3f count=%lu calibration=1",
+                 recognized, mn_model_name, probability, (unsigned long)count);
+        if (calibration_cb) calibration_cb(recognized, mn_model_name, probability);
+        return true;
+    }
+
+    if (probability < threshold) {
+        ESP_LOGI(TAG,
+                 "name rejected recognized=\"%s\" probability=%.3f threshold=%.3f count=%lu reason=low_confidence",
+                 recognized, probability, (double)threshold, (unsigned long)count);
+        multinet->clean(mn_data);
+        return false;
+    }
+
+    int64_t accepted_us = esp_timer_get_time();
+    portENTER_CRITICAL(&voice_lock);
+    last_accepted_us = accepted_us;
     portEXIT_CRITICAL(&voice_lock);
 
     ESP_LOGI(TAG,
-             "name detected keyword=JrBot recognized=\"%s\" model=%s probability=%.3f count=%lu",
-             recognized, mn_model_name, probability, (unsigned long)count);
-    if (callback) callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID);
+             "name accepted keyword=JrBot recognized=\"%s\" model=%s probability=%.3f threshold=%.3f count=%lu",
+             recognized, mn_model_name, probability, (double)threshold, (unsigned long)count);
+    if (callback) callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID, probability);
     return true;
 }
 
@@ -364,13 +441,19 @@ static bool handle_wakenet_frame(void) {
     uint32_t count;
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
+    voice_status.last_probability = 1.0f;
     count = voice_status.detections;
     callback = wake_callback;
     portEXIT_CRITICAL(&voice_lock);
 
+    int64_t accepted_us = esp_timer_get_time();
+    portENTER_CRITICAL(&voice_lock);
+    last_accepted_us = accepted_us;
+    portEXIT_CRITICAL(&voice_lock);
+
     ESP_LOGI(TAG, "fallback wake word detected keyword=Hi_ESP model=%s count=%lu",
              wn_model_name, (unsigned long)count);
-    if (callback) callback("Hi ESP", wn_model_name, (int)detected);
+    if (callback) callback("Hi ESP", wn_model_name, (int)detected, 1.0f);
     return true;
 }
 
@@ -416,6 +499,15 @@ static void voice_task(void *arg) {
         }
 
         if (detected) {
+            portENTER_CRITICAL(&voice_lock);
+            bool passive = calibration_mode;
+            portEXIT_CRITICAL(&voice_lock);
+            if (passive) {
+                clean_detector();
+                status_error(ESP_OK);
+                continue;
+            }
+
             esp_err_t reply_err = reply_and_resume();
             if (stop_requested) break;
             if (reply_err != ESP_OK) {
@@ -453,6 +545,16 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     int sample_rate = 0;
     esp_err_t err = init_multinet_name(&chunk, &sample_rate);
     if (err != ESP_OK) {
+        portENTER_CRITICAL(&voice_lock);
+        bool calibration = calibration_mode;
+        portEXIT_CRITICAL(&voice_lock);
+        if (calibration) {
+            ESP_LOGE(TAG, "calibration requires MultiNet JrBot recognizer: %s", esp_err_to_name(err));
+            status_error(err);
+            voice_cleanup();
+            return err;
+        }
+
         ESP_LOGW(TAG, "direct JrBot recognizer init failed: %s; trying WakeNet fallback",
                  esp_err_to_name(err));
 
@@ -494,15 +596,19 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     voice_status.mic_ready = true;
     voice_status.frames = 0;
     voice_status.detections = 0;
+    voice_status.rejected_low_confidence = 0;
     voice_status.last_level = 0;
+    voice_status.last_probability = 0.0f;
     voice_status.sample_rate = sample_rate;
     voice_status.chunk_samples = chunk;
     voice_status.last_error = ESP_OK;
     if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
+        voice_status.min_probability = runtime_min_probability;
         snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-multinet");
         snprintf(voice_status.model, sizeof(voice_status.model), "%s", mn_model_name);
         snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "JrBot");
     } else {
+        voice_status.min_probability = 0.0f;
         snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
         snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
         snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Hi ESP");
@@ -516,9 +622,40 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d",
-             voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk);
+    ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d calibration=%d min_probability=%.2f",
+             voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk,
+             calibration_mode ? 1 : 0, (double)voice_status.min_probability);
     return ESP_OK;
+}
+
+esp_err_t jr_voice_start_calibration(jr_voice_calibration_cb_t calibration_cb) {
+    if (!calibration_cb) return ESP_ERR_INVALID_ARG;
+
+    portENTER_CRITICAL(&voice_lock);
+    if (voice_status.running || voice_task_handle != NULL) {
+        portEXIT_CRITICAL(&voice_lock);
+        return ESP_ERR_INVALID_STATE;
+    }
+    calibration_mode = true;
+    calibration_callback = calibration_cb;
+    wake_callback = NULL;
+    portEXIT_CRITICAL(&voice_lock);
+
+    esp_err_t err = jr_voice_start(NULL);
+    if (err != ESP_OK) {
+        portENTER_CRITICAL(&voice_lock);
+        calibration_mode = false;
+        calibration_callback = NULL;
+        portEXIT_CRITICAL(&voice_lock);
+    }
+    return err;
+}
+
+bool jr_voice_calibration_active(void) {
+    portENTER_CRITICAL(&voice_lock);
+    bool active = calibration_mode && voice_status.running;
+    portEXIT_CRITICAL(&voice_lock);
+    return active;
 }
 
 void jr_voice_stop(void) {
@@ -544,5 +681,7 @@ void jr_voice_get_status(jr_voice_status_t *out) {
     if (!out) return;
     portENTER_CRITICAL(&voice_lock);
     *out = voice_status;
+    if (voice_mode != JR_VOICE_MODE_WAKENET_FALLBACK)
+        out->min_probability = runtime_min_probability;
     portEXIT_CRITICAL(&voice_lock);
 }
