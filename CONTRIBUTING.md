@@ -14,39 +14,40 @@ Leia:
 
 ## Estratégia de branches
 
-O projeto usa três níveis principais:
+O projeto usa branches por versão de produto:
 
-- `main`: baseline estável/promovido. Não desenvolver diretamente aqui.
-- `develop`: integração da próxima versão.
-- `feature/*` e `fix/*`: mudanças isoladas criadas a partir de `develop`.
+- `main`: última versão aprovada. Não desenvolver diretamente aqui.
+- `develop`: integração antes da promoção para `main`.
+- `v1`: linha oficial da JrBot V1.
+- `v2`: linha oficial da JrBot V2; atualmente pausada enquanto V1 é concluída.
+- `archive/*`: histórico; não usar para desenvolvimento.
 
-Fluxo padrão:
+Quando V3 começar, a linha oficial será `v3`.
+
+Não é criada uma branch nova para cada revisão de firmware. Candidatas como `_V1_02`, `_V1_03` e `_V1_04` são controladas por commits, marcadores de versão e evidências de teste dentro da branch da versão.
+
+Fluxo padrão da V1:
 
 ```text
-develop
-   ↓
-feature/minha-funcao
-   ↓
+v1
+ ↓
 Pull Request para develop
-   ↓
-build + testes + documentação
-   ↓
+ ↓
+build + testes + validação + documentação
+ ↓
 develop
-   ↓
+ ↓
 Pull Request de promoção
-   ↓
+ ↓
 main
 ```
 
-Antes de começar uma feature:
+Para trabalhar na versão atual:
 
 ```bash
-git switch develop
-git pull --ff-only origin develop
-git switch -c feature/nome-da-feature
+git switch v1
+git pull --ff-only origin v1
 ```
-
-Não misture várias capacidades independentes na mesma branch quando puder separá-las.
 
 ## Pull Requests
 
@@ -61,7 +62,7 @@ Todo PR deve informar:
 - documentação atualizada;
 - limitações conhecidas.
 
-Uma feature experimental deve entrar primeiro em `develop`. A promoção para `main` só ocorre quando o baseline estiver suficientemente validado para ser tratado como referência estável.
+A promoção para `main` só ocorre quando o baseline estiver suficientemente validado para ser tratado como referência estável.
 
 ## Hardware
 
@@ -97,16 +98,7 @@ Exemplos importantes:
 
 A Runtime API, o Playground e o Flow Engine possuem documentação de arquitetura antes da implementação completa. Não documente endpoints ou funções planejadas como disponíveis no firmware atual.
 
-Ao adicionar uma nova capacidade, documente:
-
-- nome público;
-- argumentos;
-- retorno;
-- erros;
-- segurança;
-- persistência;
-- eventos gerados;
-- estado de implementação.
+Ao adicionar uma nova capacidade, documente nome público, argumentos, retorno, erros, segurança, persistência, eventos gerados e estado de implementação.
 
 ## Segurança
 
