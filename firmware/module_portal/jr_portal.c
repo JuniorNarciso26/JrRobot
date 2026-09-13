@@ -9,6 +9,7 @@
 #include "jr_mic.h"
 #include "jr_wifi.h"
 #include "jr_portal.h"
+#include "jr_portal_web_v1.h"
 
 static httpd_handle_t web_server;
 static const char WEB_HTML[]=
@@ -39,7 +40,7 @@ static esp_err_t reply(httpd_req_t *req,const char *status,const char *text) {
 static esp_err_t web_root_handler(httpd_req_t *req) {
     httpd_resp_set_type(req,"text/html; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
-    return httpd_resp_send(req,WEB_HTML,HTTPD_RESP_USE_STRLEN);
+    return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t web_status_handler(httpd_req_t *req) {
