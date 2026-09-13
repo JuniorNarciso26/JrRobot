@@ -24,6 +24,7 @@ set "JR_FLASH_PORT=%~4"
 if "%ACTION%"=="" set "ACTION=all"
 set "CLONE_TEMP=%TEMP%\JrRobot_update"
 set "STATUS_TMP=%TEMP%\jrbot_git_status.txt"
+set "STATUS_FILTERED_TMP=%TEMP%\jrbot_git_status_filtered.txt"
 
 cd /d "%PROJECT_DIR%"
 title JrBot - Atualizador e Instalador
@@ -192,16 +193,25 @@ rem verificar alteracoes locais, seguindo o mesmo principio do Locker_Cpgas.
 git restore --source=HEAD --worktree -- "INSTALAR.bat" >nul 2>&1
 if errorlevel 1 git checkout -- "INSTALAR.bat" >nul 2>&1
 
-git status --porcelain > "%STATUS_TMP%"
-for %%A in ("%STATUS_TMP%") do set "STATUS_SIZE=%%~zA"
-if not "%STATUS_SIZE%"=="0" (
+rem O ESP-IDF Component Manager pode gerar firmware/dependencies.lock.
+rem Enquanto ele estiver apenas como arquivo local nao rastreado, nao deve
+rem impedir a atualizacao. Se um dia passar a ser rastreado e modificado,
+rem a protecao normal do Git continua bloqueando a atualizacao.
+git status --porcelain > "!STATUS_TMP!"
+findstr /l /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" >nul 2>&1
+if not errorlevel 1 echo [INFO] Lockfile local do ESP-IDF detectado; ele nao bloqueia a atualizacao.
+findstr /l /v /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" > "!STATUS_FILTERED_TMP!"
+for %%A in ("!STATUS_FILTERED_TMP!") do set "STATUS_SIZE=%%~zA"
+if not "!STATUS_SIZE!"=="0" (
     echo [ERRO] Existem alteracoes locais. Nada sera sobrescrito.
-    type "%STATUS_TMP%"
-    del "%STATUS_TMP%" >nul 2>&1
+    type "!STATUS_FILTERED_TMP!"
+    del "!STATUS_TMP!" >nul 2>&1
+    del "!STATUS_FILTERED_TMP!" >nul 2>&1
     popd
     exit /b 1
 )
-if exist "%STATUS_TMP%" del "%STATUS_TMP%" >nul 2>&1
+if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
+if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
 
 echo [INFO] Atualizando referencias remotas...
 git fetch --prune origin
@@ -252,6 +262,8 @@ popd
 exit /b 0
 
 :updater_failure
+if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
+if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
 echo.
 echo ============================================================
 echo [FALHA] Nao foi possivel atualizar o projeto.
