@@ -9,6 +9,7 @@
 #include "jr_mic.h"
 #include "jr_wifi.h"
 #include "jr_portal.h"
+#include "jr_audio_receive.h"
 #include "jr_portal_web_v1.h"
 
 static httpd_handle_t web_server;
@@ -119,7 +120,10 @@ static esp_err_t disabled_camera_handler(httpd_req_t *req) {
 
 void jr_portal_start(void) {
     if (web_server || !jr_wifi_network_ready()) return;
-    httpd_config_t config=HTTPD_DEFAULT_CONFIG(); config.server_port=80; config.stack_size=12288;
+    httpd_config_t config=HTTPD_DEFAULT_CONFIG();
+    config.server_port=80;
+    config.stack_size=12288;
+    config.max_uri_handlers=10;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
     const httpd_uri_t routes[]={
@@ -129,6 +133,7 @@ void jr_portal_start(void) {
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
         {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
+        {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
     };
@@ -136,5 +141,5 @@ void jr_portal_start(void) {
         err=httpd_register_uri_handler(web_server,&routes[i]);
         if (err!=ESP_OK) { httpd_stop(web_server); web_server=NULL; ESP_LOGE("jrbot_portal","register=%s",esp_err_to_name(err)); return; }
     }
-    ESP_LOGI("jrbot_portal","Portal V1 iniciado; painel interno em /; WAV do microfone em /mic-record; comandos POST; Wi-Fi config somente Serial");
+    ESP_LOGI("jrbot_portal","Portal V1 iniciado; painel=/ camera=/capture mic=/mic-record audio=/audio");
 }
