@@ -10,6 +10,18 @@ Atualizado em 2026-09-13.
 
 Essas numerações são independentes.
 
+## Branches oficiais
+
+```text
+main    -> última versão aprovada
+develop -> integração
+v1      -> JrBot V1 em desenvolvimento
+v2      -> JrBot V2, linha preservada e pausada até fechar V1
+archive/* -> histórico
+```
+
+As revisões técnicas de firmware são controladas dentro da branch da versão. Não é criada uma branch nova para cada candidata.
+
 ## Direção do produto
 
 ```text
@@ -24,17 +36,7 @@ JrBrain   -> memória, personalidade, LLM e comportamento
 
 Objetivo: criar e validar a fundação técnica do robô antes das versões de produto voltadas à interação normal do usuário.
 
-A V0 consolidou:
-
-- ESP32-S3 N16R8;
-- OLED SSD1306 e expressões;
-- áudio MAX98357A;
-- microfone MS3625;
-- câmera OV5640;
-- Wi-Fi e portal local;
-- painel de desenvolvimento e diagnóstico;
-- testes dos principais periféricos;
-- base inicial da Runtime API e capabilities seguras.
+A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, portal local, painel de desenvolvimento e a base inicial da Runtime API.
 
 A V0 é a versão atualmente aprovada em `main`.
 
@@ -54,22 +56,17 @@ Escopo:
 - envio de áudio do celular/computador quando o formato suportado estiver definido;
 - interface responsiva e amigável para celular.
 
-Linha atual: `feature/v1-internal-web-panel`, PR #18 para `develop`.
+Linha oficial: `v1`, PR #20 para `develop`.
 
 O `PAINEL.bat` e o painel Python são ferramentas de instalação, desenvolvimento e diagnóstico. O painel interno do ESP32 é a interface homem-robô da V1.
 
-## JrBot V2
+## JrBot V2 — linha preservada
 
 Objetivo: acionar as mesmas capabilities do robô por voz.
 
-Exemplos:
+O trabalho de Playground, threshold, calibração e latência de voz está preservado em `v2`, PR #21 para `develop`.
 
-```text
-JrBot feliz
-JrBot tocar som abc.wav
-```
-
-O trabalho de Playground, threshold, calibração e latência de voz pertence a esta versão. O PR #13 é a linha consolidada dessa frente.
+A V2 fica pausada enquanto a V1 é fechada.
 
 ## JrBot V3
 
@@ -83,24 +80,12 @@ A existência da Runtime API atual não significa que a JrBot V3 esteja concluí
 
 Depois da fundação V1-V3, o projeto avança para memória, identidade, personalidade, contexto, LLM, relacionamento e skills. Esse sistema deve continuar usando apenas as capabilities seguras disponibilizadas pelo firmware.
 
-## Visão de longo prazo
-
-```text
-JrBrain
-   ↓
-Skills carregáveis
-   ↓
-Acessórios inteligentes
-   ↓
-Plataforma / ecossistema
-```
-
-Skills, acessórios e marketplace representam a visão futura do projeto e não devem ser confundidos com funcionalidades já concluídas.
-
 ## Promoção
 
 ```text
-feature/* ou fix/* -> develop -> main
+v1 -> develop -> main
+v2 -> develop -> main
+v3 -> develop -> main
 ```
 
-`main` representa a última versão de produto aprovada. `develop` integra a próxima versão. Implementação, build, teste de bancada e validação física devem continuar documentados separadamente.
+`main` representa a última versão de produto aprovada. `develop` integra a versão candidata antes da promoção. Implementação, build, teste de bancada e validação física continuam documentados separadamente.
