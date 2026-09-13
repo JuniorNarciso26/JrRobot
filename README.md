@@ -44,8 +44,8 @@ Categorias futuras podem incluir educação, idiomas, companhia, entretenimento,
 | Etapa | Objetivo | Estado |
 | --- | --- | --- |
 | **V0** | Hardware, periféricos, painel de desenvolvimento e testes | **Aprovada em `main`** |
-| **V1** | Controle pelo navegador na rede local | **Em desenvolvimento** |
-| **V2** | Controle por voz local | Planejada |
+| **V1** | Controle pelo navegador na rede local | **Em desenvolvimento em `v1`** |
+| **V2** | Controle por voz local | **Linha preservada em `v2`, pausada até fechar V1** |
 | **V3** | Controle programático pela Runtime API | Planejada |
 | **JrBrain** | Memória, personalidade, relacionamento, LLM e Skills | Posterior |
 
@@ -69,7 +69,7 @@ capabilities seguras
 JrBot físico
 ```
 
-A linha ativa está em `feature/v1-internal-web-panel`, com integração em `develop` pelo PR #18.
+A linha oficial da versão é `v1`, com integração em `develop` pelo PR #20.
 
 ## Roadmap oficial
 
@@ -104,14 +104,18 @@ A IA não controla GPIO diretamente. O firmware expõe ações limitadas e valid
 
 ## Desenvolvimento
 
+As branches oficiais de trabalho são:
+
 ```text
-main      = última versão aprovada
-develop   = integração da próxima versão
-feature/* = novas entregas
-fix/*     = correções
+main    = última versão aprovada
+develop = integração entre versões
+v1      = JrBot V1, linha ativa
+v2      = JrBot V2, linha preservada/pausada
 ```
 
-Features e fixes entram em `develop` por Pull Request. A promoção para `main` ocorre quando a versão estiver suficientemente validada.
+As revisões de firmware (`_V1_02`, `_V1_03`, etc.) são controladas por commits e marcadores de versão dentro da branch da versão de produto. Não é criada uma branch nova para cada candidata. Branches `archive/*` são somente histórico.
+
+A versão em desenvolvimento entra em `develop` por Pull Request e só depois é promovida para `main` quando estiver suficientemente validada.
 
 ## Documentação
 
