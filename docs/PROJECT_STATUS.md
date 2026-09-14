@@ -27,20 +27,11 @@ O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
 A etapa ativa é a JrBot V1, na branch `v1`, com PR #20 para `develop`.
 
-A candidata atual é `JrBot_V1.4`.
+A candidata atual é `JrBot_V1.4.1`.
 
-Já estão implementados no GitHub para esta candidata:
+O painel interno básico já foi exercitado no hardware real. A candidata atual acrescenta a interface de câmera e o fluxo de áudio do celular para o JrBot, preservando integralmente a gravação pelo microfone do próprio JrBot.
 
-- painel local responsivo para celular;
-- controle de expressões e volume;
-- gravação pelo microfone do próprio JrBot, reprodução no navegador, download e reprodução no robô;
-- interface de câmera sem placeholder inicial, com captura sob demanda e opção de salvar a foto;
-- gravação/seleção de uma mensagem no celular ou computador;
-- conversão no navegador para WAV PCM 16-bit, mono, 16 kHz, até 10 segundos;
-- envio da mensagem por `POST /audio` e reprodução no JrBot;
-- manutenção do fluxo de microfone do JrBot sem substituí-lo pelo novo fluxo do celular.
-
-Essas mudanças estão implementadas, mas a candidata `JrBot_V1.4` ainda precisa passar por build, flash e validação física no ESP32-S3 e no celular.
+Correção `1.4.1`: o botão `Gravar mensagem` não usa mais `input capture`, que no Safari/iPhone pode abrir a câmera de vídeo. A gravação direta passa a solicitar somente áudio via `getUserMedia({audio:true, video:false})` quando o navegador permite. Em conexões HTTP locais onde o navegador bloqueia acesso ao microfone, a interface não abre a câmera e orienta usar `Escolher áudio` como alternativa.
 
 O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diagnóstico. O painel servido pelo ESP32 é a interface de uso da V1.
 
@@ -48,9 +39,9 @@ O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diag
 
 - JrBot V1, V2 e V3: versões do produto.
 - Runtime API 1.x: versão do protocolo.
-- Firmware da linha V1: `JrBot_V1.4`, `JrBot_V1.5`, etc.
+- Revisões de firmware da V1 seguem o padrão `JrBot_V1.x` e correções incrementais usam `JrBot_V1.x.y`.
 
-As revisões de firmware avançam dentro da branch `v1`; não é criada uma branch nova para cada revisão.
+Exemplo: `JrBot_V1.4` e a correção `JrBot_V1.4.1`.
 
 ## Baseline técnica promovida
 
@@ -62,16 +53,16 @@ O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da 
 
 ## Instalador
 
-Na organização atual, `INSTALAR.bat` trabalha com os canais oficiais `main`, `develop`, `v1` e `v2`, sincroniza o projeto com o GitHub, compila, grava o ESP32 e abre o painel de desenvolvimento.
+Na linha atual, `INSTALAR.bat` consulta o GitHub, permite escolher os canais oficiais `main`, `develop`, `v1` e `v2`, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento.
 
 O painel de desenvolvimento pode ser encerrado pressionando ENTER na janela do processo.
 
 ## Branches
 
-- `main`: última versão aprovada;
-- `develop`: integração;
-- `v1`: JrBot V1 em desenvolvimento;
-- `v2`: JrBot V2 preservada/pausada;
+- `main`: última versão aprovada.
+- `develop`: integração.
+- `v1`: JrBot V1 em desenvolvimento.
+- `v2`: JrBot V2 voz.
 - `archive/*`: histórico.
 
 ## Regra de validação
