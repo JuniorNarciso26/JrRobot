@@ -56,7 +56,6 @@ static esp_err_t web_capture_handler(httpd_req_t *req) {
         snprintf(message,sizeof(message),"JR_CAMERA_ERROR capture=%s",esp_err_to_name(err));
         return reply(req,"503 Service Unavailable",message);
     }
-
     char width[16],height[16],pid[16],bytes[24];
     snprintf(width,sizeof(width),"%u",frame.width);
     snprintf(height,sizeof(height),"%u",frame.height);
@@ -70,12 +69,8 @@ static esp_err_t web_capture_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req,"X-JrBot-PID",pid);
     httpd_resp_set_hdr(req,"X-JrBot-Bytes",bytes);
     err = httpd_resp_send(req,(const char *)frame.data,(ssize_t)frame.len);
-    if (err == ESP_OK) {
-        ESP_LOGI("jrbot_portal","Foto OV5640 enviada %ux%u bytes=%u pid=0x%04X",
-                 frame.width,frame.height,(unsigned)frame.len,frame.pid);
-    } else {
-        ESP_LOGW("jrbot_portal","Falha enviando foto OV5640: %s",esp_err_to_name(err));
-    }
+    if (err == ESP_OK) ESP_LOGI("jrbot_portal","Foto OV5640 enviada %ux%u bytes=%u pid=0x%04X",frame.width,frame.height,(unsigned)frame.len,frame.pid);
+    else ESP_LOGW("jrbot_portal","Falha enviando foto OV5640: %s",esp_err_to_name(err));
     jr_camera_jpeg_release(&frame);
     return err;
 }
@@ -83,9 +78,7 @@ static esp_err_t web_capture_handler(httpd_req_t *req) {
 static bool network_command_allowed(const char *cmd) {
     while (*cmd==' ') cmd++;
     char verb[32]; size_t n=0;
-    while (cmd[n] && cmd[n]!=' ' && n<sizeof(verb)-1) {
-        verb[n]=(cmd[n]>='A'&&cmd[n]<='Z')?cmd[n]+32:cmd[n]; n++;
-    }
+    while (cmd[n] && cmd[n]!=' ' && n<sizeof(verb)-1) { verb[n]=(cmd[n]>='A'&&cmd[n]<='Z')?cmd[n]+32:cmd[n]; n++; }
     verb[n]=0;
     if (!strcmp(verb,"camera_test")) return false;
     if (strlen(cmd)>=5) {
@@ -98,12 +91,8 @@ static bool network_command_allowed(const char *cmd) {
 
 static esp_err_t web_cmd_handler(httpd_req_t *req) {
     char flag[4];
-    if (httpd_req_get_hdr_value_str(req,"X-JrBot-Command",flag,sizeof(flag))!=ESP_OK || strcmp(flag,"1"))
-        return reply(req,"403 Forbidden","JR_ERROR cabecalho_obrigatorio");
-    if (req->content_len==0 || req->content_len>JR_COMMAND_MAX_BYTES) {
-        reply(req,"413 Payload Too Large","JR_ERROR tamanho_comando");
-        return ESP_FAIL;
-    }
+    if (httpd_req_get_hdr_value_str(req,"X-JrBot-Command",flag,sizeof(flag))!=ESP_OK || strcmp(flag,"1")) return reply(req,"403 Forbidden","JR_ERROR cabecalho_obrigatorio");
+    if (req->content_len==0 || req->content_len>JR_COMMAND_MAX_BYTES) { reply(req,"413 Payload Too Large","JR_ERROR tamanho_comando"); return ESP_FAIL; }
     char cmd[JR_COMMAND_MAX_BYTES+1]; size_t read=0;
     while (read<req->content_len) {
         int n=httpd_req_recv(req,cmd+read,req->content_len-read);
@@ -120,17 +109,13 @@ static esp_err_t web_cmd_handler(httpd_req_t *req) {
 
 static esp_err_t legacy_get_handler(httpd_req_t *req) {
     char query[128],raw[96],cmd[64];
-    if (httpd_req_get_url_query_str(req,query,sizeof(query))!=ESP_OK ||
-        httpd_query_key_value(query,"c",raw,sizeof(raw))!=ESP_OK ||
-        !jr_decode_component(raw,strlen(raw),cmd,sizeof(cmd),true)) return reply(req,"400 Bad Request","JR_ERROR query_invalida");
+    if (httpd_req_get_url_query_str(req,query,sizeof(query))!=ESP_OK || httpd_query_key_value(query,"c",raw,sizeof(raw))!=ESP_OK || !jr_decode_component(raw,strlen(raw),cmd,sizeof(cmd),true)) return reply(req,"400 Bad Request","JR_ERROR query_invalida");
     if (strcmp(cmd,"status") && strcmp(cmd,"help")) return reply(req,"405 Method Not Allowed","JR_ERROR use_POST_cmd");
     char response[JR_RESPONSE_MAX_BYTES]; bool ok=jr_handle_command(cmd,response,sizeof(response));
     return reply(req,ok?"200 OK":"400 Bad Request",response);
 }
 
-static esp_err_t disabled_camera_handler(httpd_req_t *req) {
-    return reply(req,"503 Service Unavailable","JR_CAMERA_DISABLED recurso_indisponivel");
-}
+static esp_err_t disabled_camera_handler(httpd_req_t *req) { return reply(req,"503 Service Unavailable","JR_CAMERA_DISABLED recurso_indisponivel"); }
 
 static esp_err_t register_routes(httpd_handle_t server) {
     const httpd_uri_t routes[]={
@@ -145,10 +130,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
     };
-    for (size_t i=0;i<sizeof(routes)/sizeof(routes[0]);i++) {
-        esp_err_t err=httpd_register_uri_handler(server,&routes[i]);
-        if (err!=ESP_OK) return err;
-    }
+    for (size_t i=0;i<sizeof(routes)/sizeof(routes[0]);i++) { esp_err_t err=httpd_register_uri_handler(server,&routes[i]); if (err!=ESP_OK) return err; }
     return ESP_OK;
 }
 
@@ -167,7 +149,8 @@ static void start_http(void) {
 static void start_https(void) {
 #if JR_HTTPS_LOCAL_MATERIAL_AVAILABLE
     httpd_ssl_config_t config=HTTPD_SSL_CONFIG_DEFAULT();
-    config.httpd.server_port=443;
+    config.port_secure=443;
+    config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
     config.httpd.max_uri_handlers=12;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
@@ -178,7 +161,7 @@ static void start_https(void) {
     if (err!=ESP_OK) { https_server=NULL; ESP_LOGE("jrbot_portal","https_start=%s",esp_err_to_name(err)); return; }
     err=register_routes(https_server);
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","https_register=%s",esp_err_to_name(err)); return; }
-    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 test=/https-test cert=local_experimental");
+    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 test=/https-test cert=local_experimental");
 #else
     ESP_LOGW("jrbot_portal","JR_HTTPS_DISABLED material_local_ausente execute_generate_https_cert");
 #endif
@@ -188,8 +171,5 @@ void jr_portal_start(void) {
     if ((web_server || https_server) || !jr_wifi_network_ready()) return;
     start_http();
     start_https();
-    if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal EXP iniciado http=%d https=%d camera=/capture mic=/mic-record audio=/audio",
-                 web_server?1:0,https_server?1:0);
-    }
+    if (web_server || https_server) ESP_LOGI("jrbot_portal","Portal EXP iniciado http=%d https=%d camera=/capture mic=/mic-record audio=/audio",web_server?1:0,https_server?1:0);
 }
