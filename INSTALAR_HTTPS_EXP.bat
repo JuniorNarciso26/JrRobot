@@ -4,7 +4,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ========================================
-echo JrBot - Experimento HTTPS local
+echo JrBot - Experimento HTTPS local EXP 02
 echo ========================================
 echo.
 
@@ -46,7 +46,18 @@ python tools\generate_https_cert.py --ip "%JRBOT_HTTPS_IP%"
 if errorlevel 1 goto falha
 
 echo.
-echo [INFO] Compilando e gravando JrBot_HTTPS_EXP_01...
+echo ========================================
+echo ETAPA IMPORTANTE - CONFIAR NA CA LOCAL
+echo ========================================
+echo Arquivo publico da CA:
+echo   %CD%\firmware\certs\local\jrbot-dev-ca.pem
+echo.
+echo A chave privada da CA NAO deve ser copiada nem instalada em outros dispositivos.
+echo Para o primeiro teste no Windows, importe jrbot-dev-ca.pem em
+necho "Autoridades de Certificacao Raiz Confiaveis" do usuario atual.
+echo Depois feche e reabra o navegador.
+echo.
+echo [INFO] Compilando e gravando JrBot_HTTPS_EXP_02...
 set "JRBOT_SYNC_DONE=1"
 call INSTALAR.bat flash
 if errorlevel 1 goto falha
@@ -55,16 +66,17 @@ echo.
 echo ========================================
 echo [SUCESSO] EXPERIMENTO HTTPS GRAVADO
 echo ========================================
-echo Firmware esperado: JrBot_HTTPS_EXP_01
+echo Firmware esperado: JrBot_HTTPS_EXP_02
 echo.
-echo Primeiro teste de recuperacao:
+echo Recuperacao HTTP:
 echo   http://%JRBOT_HTTPS_IP%/https-test
 echo.
-echo Depois teste HTTPS:
+echo Teste HTTPS:
 echo   https://%JRBOT_HTTPS_IP%/https-test
 echo.
-echo Aceite o aviso do certificado apenas para este experimento.
-echo Depois confira Secure Context, getUserMedia e MediaRecorder.
+echo Para o teste de microfone, a barra do navegador deve deixar de indicar
+necho certificado inseguro depois de confiar na CA local.
+echo Confira na pagina: Secure Context, mediaDevices, getUserMedia e MediaRecorder.
 echo.
 pause
 exit /b 0
