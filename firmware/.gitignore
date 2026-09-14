@@ -6,3 +6,4 @@ sdkconfig.*
 !sdkconfig.defaults
 !sdkconfig.defaults.*
 main/wifi_config.local.h
+certs/local/
