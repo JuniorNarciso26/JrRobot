@@ -16,3 +16,6 @@ dist/
 erro-build.txt
 __pycache__/
 *.pyc
+
+# Resultado gerado localmente pelos testes de hardware
+tests/hardware/results.json

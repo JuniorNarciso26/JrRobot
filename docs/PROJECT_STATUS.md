@@ -1,129 +1,70 @@
 # Estado do projeto
 
-Atualização desta linha de desenvolvimento: 2026-09-08.
+Atualização: 2026-09-13.
 
 ## Hardware de referência
 
 `JRBOT-HW-04`
 
-- ESP32-S3 N16R8: 16 MB flash + 8 MB OPI PSRAM
-- OLED SSD1306: SDA GPIO1 / SCL GPIO2
-- OV5640: câmera no conector da placa
-- MAX98357A: BCLK GPIO21 / WS GPIO47 / DIN GPIO42
-- MS3625: SCK GPIO21 / WS GPIO47 / SD GPIO41
+- ESP32-S3 N16R8
+- OLED SSD1306
+- OV5640
+- MAX98357A
+- MS3625
 
-Microfone e amplificador compartilham BCLK/WS e precisam arbitrar o recurso I2S.
+## Direção atual
 
-## Consolidação do histórico
+O projeto está organizado em quatro etapas de produto:
 
-Os heads anteriores foram preservados em branches `archive/2026-09-08/*` antes da consolidação. A cadeia histórica de Local Brain, voz, resposta e Runtime API v1 candidata 01 foi incorporada em `main`; `develop` foi alinhada a essa base antes da candidata 02.
+1. JrBot V1: painel interno pelo IP.
+2. JrBot V2: comandos por voz.
+3. JrBot V3: controle programático por API.
+4. JrBrain: memória e comportamento avançado.
 
-## Firmware validado nesta etapa
+O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
-`JRBotV2_RUNTIME_API_V1_02`
+## Etapa ativa
 
-Branch de origem: `feature/runtime-api-v1-02`.
+A etapa ativa é a JrBot V1, na branch `v1`, com PR #20 para `develop`.
 
-Objetivos desta revisão:
+A candidata atual é `JrBot_V1.4.1`.
 
-1. corrigir o framing de saída do MAX98357A de MSB para I2S Philips;
-2. evoluir a Runtime API de forma compatível, mantendo `v=1` e publicando API `1.1`;
-3. adicionar a primeira action segura `face`.
+O painel interno básico já foi exercitado no hardware real. A candidata atual acrescenta a interface de câmera e o fluxo de áudio do celular para o JrBot, preservando integralmente a gravação pelo microfone do próprio JrBot.
 
-## Runtime API — estado atual
+Correção `1.4.1`: o botão `Gravar mensagem` não usa mais `input capture`, que no Safari/iPhone pode abrir a câmera de vídeo. A gravação direta passa a solicitar somente áudio via `getUserMedia({audio:true, video:false})` quando o navegador permite. Em conexões HTTP locais onde o navegador bloqueia acesso ao microfone, a interface não abre a câmera e orienta usar `Escolher áudio` como alternativa.
 
-### Implementado
+O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diagnóstico. O painel servido pelo ESP32 é a interface de uso da V1.
 
-- envelope JSON com major `v=1`;
-- API compatível reportada como `1.1`;
-- `capabilities`;
-- `get`;
-- action `face`;
-- erros estruturados;
-- transporte `api <JSON>` pela Serial e por `POST /cmd`;
-- leitura dos caminhos:
-  - `api.version`;
-  - `system.version`;
-  - `system.hardware`;
-  - `system.profile`;
-  - `brain.status`;
-  - `voice.status`;
-  - `audio.volume`;
-  - `face.current`;
-  - `wifi.status`.
+## Nomenclatura
 
-### Validado fisicamente / em protocolo na candidata 02
+- JrBot V1, V2 e V3: versões do produto.
+- Runtime API 1.x: versão do protocolo.
+- Revisões de firmware da V1 seguem o padrão `JrBot_V1.x` e correções incrementais usam `JrBot_V1.x.y`.
 
-- firmware `JRBotV2_RUNTIME_API_V1_02` executando na placa;
-- `capabilities` anunciando API `1.1` e action `face`;
-- `face("thinking")` pela Serial alterando fisicamente o OLED;
-- `get("face.current")` confirmando `thinking`;
-- expressão inválida rejeitada com `invalid_args / face_expression_not_supported`;
-- regressão de `get("system.version")`, `get("audio.volume")` e `get("brain.status")`;
-- `audio.volume` refletindo alteração real de 35 para 100;
-- HTTP local `POST /cmd` para `get("system.version")`;
-- HTTP local `POST /cmd` para `face("happy")`, com alteração física do OLED.
+Exemplo: `JrBot_V1.4` e a correção `JrBot_V1.4.1`.
 
-### Validação herdada da candidata 01, não repetida na 02
+## Baseline técnica promovida
 
-Na candidata 01 foram validados:
+A baseline promovida em `main` continua sendo `JRBotV2_RUNTIME_API_V1_02`, com Runtime API `1.1`.
 
-- versão incompatível -> `unsupported_version`;
-- função inexistente;
-- path inexistente;
-- JSON inválido -> `invalid_json`;
-- correlação de resposta por `id`;
-- coexistência com comandos legados.
+Os testes já registrados incluem mudança de face, leitura de estados, HTTP local, microfone e áudio I2S Philips.
 
-Nos logs finais da candidata 02, `unsupported_version` e `invalid_json` não foram repetidos. Essa lacuna permanece documentada e não é contada como nova validação física da revisão 02.
+O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da JrBot V2.
 
-## Áudio MAX98357A
+## Instalador
 
-A saída foi alterada de `I2S_STD_MSB_SLOT_DEFAULT_CONFIG` para `I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG`, mantendo:
+Na linha atual, `INSTALAR.bat` consulta o GitHub, permite escolher os canais oficiais `main`, `develop`, `v1` e `v2`, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento.
 
-- 16 kHz;
-- 16-bit;
-- estéreo duplicado a partir do PCM mono;
-- BCLK GPIO21;
-- WS GPIO47;
-- DIN GPIO42;
-- gate binário de arbitragem I2S.
+O painel de desenvolvimento pode ser encerrado pressionando ENTER na janela do processo.
 
-### Resultado físico
+## Branches
 
-O `audio_test` registrou `format=PHILIPS` e `ESP_OK`. O ruído forte da candidata anterior desapareceu e o som foi avaliado como bom/limpo.
+- `main`: última versão aprovada.
+- `develop`: integração.
+- `v1`: JrBot V1 em desenvolvimento.
+- `v2`: JrBot V2 voz.
+- `archive/*`: histórico.
 
-O volume acústico máximo continua baixo mesmo com volume digital em 100%. Nesta etapa isso foi aceito como limitação do alto-falante atual de 20 mm / 4 ohms / 3 W e da montagem acústica. A alimentação do amplificador foi medida em aproximadamente 4,99 V em repouso, com queda momentânea para 4,56 V e cerca de 4,88 V durante reprodução. Ligar `GAIN` ao GND não produziu diferença acústica relevante.
+## Regra de validação
 
-Melhoria do alto-falante/caixa acústica fica para uma etapa futura e não bloqueia a Runtime API.
-
-## Microfone
-
-O MS3625 foi validado gravando 3 segundos / 48000 samples. Foi observado que o diagnóstico rápido pode mostrar `mic=unavailable` quando o probe não consegue adquirir o barramento I2S dentro do timeout curto; após uma gravação bem-sucedida o status voltou a `mic=available`.
-
-Isso indica uma limitação semântica do diagnóstico atual entre `busy` e `unavailable`, não uma prova de falha física do microfone.
-
-## Voz
-
-O MultiNet6 continua experimental como detector contínuo do nome. Houve detecção acústica real de `JR BOT` e o ciclo de resposta local já foi exercitado, mas falsos positivos continuam como problema aberto.
-
-A candidata 02 não recalibra reconhecimento de voz.
-
-## Planejado — ainda não implementado
-
-- `set` persistente;
-- Voice Registry dinâmico;
-- Playground de calibração;
-- confiança por frase configurável;
-- `say`, `wait`, `listen`, `play` como actions da Runtime API;
-- Flow Engine;
-- eventos assíncronos;
-- banco de comportamento/personality data;
-- TTS geral para frases arbitrárias;
-- integração VPS/IA avançada.
-
-Consulte [API_RUNTIME.md](API_RUNTIME.md), [RUNTIME_API_V1_02_TEST.md](RUNTIME_API_V1_02_TEST.md), [PLAYGROUND.md](PLAYGROUND.md) e [FLOWS.md](FLOWS.md).
-
-## Regra de evolução
-
-Nova capacidade física ou sistêmica pode exigir firmware novo. Novo comportamento composto apenas por capabilities já disponíveis deve migrar para configuração/Flow em runtime, sem recompilar o firmware.
+Implementação, build, teste de bancada e validação física devem continuar documentados separadamente.

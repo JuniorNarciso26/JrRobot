@@ -1,23 +1,22 @@
 # Documentação do JrBot
 
-Este diretório é a **fonte oficial de documentação do projeto**. O navegador de documentação do painel local lê estes mesmos arquivos Markdown.
+Este diretório é a fonte oficial de documentação do projeto. O navegador de documentação do painel local lê estes mesmos arquivos Markdown.
 
 ## Como ler a documentação
 
 Cada documento deve distinguir claramente:
 
 - **Implementado** — código existe no repositório.
-- **Build verificado** — compilação/empacotamento foi verificado.
-- **Bancada/simulado** — comportamento foi exercitado sem provar o fenômeno físico final.
+- **Build verificado** — compilação foi verificada.
+- **Bancada/simulado** — comportamento foi exercitado sem provar o efeito físico final.
 - **Validado fisicamente** — houve teste real no hardware.
-- **Planejado** — arquitetura aprovada para desenvolvimento, mas ainda não implementada.
-
-Nunca transforme um item planejado em “disponível” apenas porque existe uma especificação.
+- **Planejado** — aprovado para desenvolvimento, mas ainda não implementado.
 
 ## Guia rápido
 
-### Projeto
+### Produto e projeto
 
+- [Roadmap oficial](ROADMAP.md)
 - [Estado atual](PROJECT_STATUS.md)
 - [Arquitetura](ARCHITECTURE.md)
 - [Guia de desenvolvimento](DEVELOPMENT.md)
@@ -27,12 +26,12 @@ Nunca transforme um item planejado em “disponível” apenas porque existe uma
 ### Plataforma configurável
 
 - [Runtime API v1](API_RUNTIME.md)
-- [Roteiro de teste Runtime API v1 — candidata 01](RUNTIME_API_V1_TEST.md)
-- [Roteiro de teste Runtime API v1 — candidata 02](RUNTIME_API_V1_02_TEST.md)
+- [Teste Runtime API candidata 01](RUNTIME_API_V1_TEST.md)
+- [Teste Runtime API candidata 02](RUNTIME_API_V1_02_TEST.md)
 - [Playground](PLAYGROUND.md)
 - [Flows](FLOWS.md)
 
-### Hardware e histórico técnico existente
+### Hardware e histórico técnico
 
 - [Pinagem](PINAGEM.md)
 - [Esquema de ligação](ESQUEMA_LIGACAO.md)
@@ -47,24 +46,12 @@ Nunca transforme um item planejado em “disponível” apenas porque existe uma
 - [Voice Wake Test](VOICE_WAKE_TEST.md)
 - [JrBot Response Test](JRBOT_RESPONSE_TEST.md)
 
-Esses documentos históricos registram etapas específicas e podem citar versões anteriores. Para saber o estado vigente, consulte primeiro [PROJECT_STATUS.md](PROJECT_STATUS.md).
+Para saber o estado vigente, consulte primeiro [ROADMAP.md](ROADMAP.md) e [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## Estrutura desejada a longo prazo
+## Regra de versões
 
-```text
-docs/
-├── README.md
-├── PROJECT_STATUS.md
-├── ARCHITECTURE.md
-├── DEVELOPMENT.md
-├── TESTING.md
-├── DOCUMENTATION.md
-├── API_RUNTIME.md
-├── RUNTIME_API_V1_TEST.md
-├── RUNTIME_API_V1_02_TEST.md
-├── PLAYGROUND.md
-├── FLOWS.md
-└── documentos técnicos/históricos existentes
-```
+- `JrBot V1 / V2 / V3` = versão do produto.
+- `Runtime API 1.x` = versão técnica do protocolo.
+- `_V1_02`, `_V1_03`, `_V1_04` etc. = candidata ou revisão técnica de firmware.
 
-À medida que o projeto crescer, os documentos podem ser migrados para subdiretórios por domínio sem quebrar a regra principal: uma única fonte de verdade em `docs/`.
+Essas numerações são independentes.

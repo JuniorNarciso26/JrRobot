@@ -199,6 +199,7 @@ if not defined CURRENT_BRANCH (
     exit /b 1
 )
 
+rem O runner temporario permite restaurar o instalador antes da verificacao.
 git restore --source=HEAD --worktree -- "INSTALAR.bat" >nul 2>&1
 if errorlevel 1 git checkout -- "INSTALAR.bat" >nul 2>&1
 
@@ -275,6 +276,9 @@ echo Nenhum reset automatico foi executado.
 pause
 exit /b 1
 
+rem ============================================================
+rem EXECUCAO LOCAL DA VERSAO SELECIONADA
+rem ============================================================
 :local_entry
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
