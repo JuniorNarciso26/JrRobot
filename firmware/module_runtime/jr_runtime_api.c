@@ -232,6 +232,7 @@ static cJSON *get_result(const char *path) {
         cJSON_AddBoolToObject(value, "connected", status.connected);
         cJSON_AddBoolToObject(value, "network_ready", status.network_ready);
         cJSON_AddBoolToObject(value, "pending_restart", status.pending_restart);
+        cJSON_AddStringToObject(value, "ssid", jr_wifi_ssid());
         cJSON_AddStringToObject(value, "ip", status.ip);
         cJSON_AddStringToObject(value, "last_error", esp_err_to_name(status.last_error));
         return result;
