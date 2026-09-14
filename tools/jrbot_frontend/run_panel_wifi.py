@@ -7,6 +7,7 @@ import webbrowser
 import app
 import docs_panel  # noqa: F401
 import wifi_panel  # noqa: F401
+import wifi_diag_panel  # noqa: F401
 
 
 def _wait_for_enter(server: app.ThreadingHTTPServer) -> None:
