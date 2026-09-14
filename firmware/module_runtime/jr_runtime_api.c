@@ -11,6 +11,7 @@
 #include "jr_brain.h"
 #include "jr_config.h"
 #include "jr_face.h"
+#include "jr_net_diag.h"
 #include "jr_runtime_api.h"
 #include "jr_voice.h"
 #include "jr_wifi.h"
@@ -136,6 +137,7 @@ static cJSON *capabilities_result(void) {
         "audio.volume",
         "face.current",
         "wifi.status",
+        "wifi.diagnostics",
     };
     cJSON *get_paths = cJSON_AddArrayToObject(result, "get_paths");
     if (!get_paths) goto fail;
@@ -235,6 +237,38 @@ static cJSON *get_result(const char *path) {
         cJSON_AddStringToObject(value, "ssid", jr_wifi_ssid());
         cJSON_AddStringToObject(value, "ip", status.ip);
         cJSON_AddStringToObject(value, "last_error", esp_err_to_name(status.last_error));
+        return result;
+    }
+    if (!strcmp(path, "wifi.diagnostics")) {
+        jr_net_diag_t diag = {0};
+        jr_net_diag_snapshot(&diag);
+        cJSON *value = cJSON_AddObjectToObject(result, "value");
+        if (!value) goto fail;
+        cJSON_AddBoolToObject(value, "saved_record_found", diag.saved_record_found);
+        cJSON_AddBoolToObject(value, "saved_record_valid", diag.saved_record_valid);
+        cJSON_AddStringToObject(value, "source", diag.source);
+        cJSON_AddStringToObject(value, "ssid", diag.ssid);
+        cJSON_AddStringToObject(value, "hostname", diag.hostname);
+        cJSON_AddStringToObject(value, "mode", diag.static_mode ? "IP_FIXO" : "DHCP");
+        cJSON_AddStringToObject(value, "configured_ip", diag.configured_ip);
+        cJSON_AddStringToObject(value, "gateway", diag.gateway);
+        cJSON_AddStringToObject(value, "mask", diag.mask);
+        cJSON_AddStringToObject(value, "dns1", diag.dns1);
+        cJSON_AddStringToObject(value, "dns2", diag.dns2);
+        cJSON_AddBoolToObject(value, "connected", diag.connected);
+        cJSON_AddBoolToObject(value, "network_ready", diag.network_ready);
+        cJSON_AddBoolToObject(value, "pending_restart", diag.pending_restart);
+        cJSON_AddStringToObject(value, "runtime_ip", diag.runtime_ip);
+        cJSON_AddStringToObject(value, "last_error", esp_err_to_name(diag.last_error));
+        cJSON_AddBoolToObject(value, "event_watch_active", diag.event_watch_active);
+        cJSON_AddNumberToObject(value, "disconnect_events", diag.disconnect_events);
+        cJSON_AddNumberToObject(value, "disconnect_reason_code", diag.last_disconnect_reason);
+        cJSON_AddStringToObject(value, "disconnect_reason", diag.disconnect_reason);
+        cJSON_AddBoolToObject(value, "ap_available", diag.ap_available);
+        cJSON_AddStringToObject(value, "bssid", diag.bssid);
+        cJSON_AddNumberToObject(value, "channel", diag.channel);
+        cJSON_AddNumberToObject(value, "rssi", diag.rssi);
+        cJSON_AddNumberToObject(value, "authmode", diag.authmode);
         return result;
     }
 
