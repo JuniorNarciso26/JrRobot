@@ -15,7 +15,7 @@ if errorlevel 1 (
   python -m pip install -r "%~dp0tools\jrbot_frontend\requirements.txt"
   if errorlevel 1 goto falha
 )
-python "%~dp0tools\jrbot_frontend\run_panel.py"
+python "%~dp0tools\jrbot_frontend\run_panel_wifi.py"
 if errorlevel 1 goto falha
 exit /b 0
 
