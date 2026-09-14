@@ -12,6 +12,11 @@ typedef struct {
     esp_err_t last_error;
     uint16_t last_disconnect_reason;
     uint32_t reconnect_attempts;
+    bool ap_info_valid;
+    int8_t rssi;
+    uint8_t channel;
+    uint8_t authmode;
+    char bssid[18];
 } jr_wifi_status_t;
 
 typedef struct {
