@@ -54,7 +54,7 @@ echo   %CD%\firmware\certs\local\jrbot-dev-ca.pem
 echo.
 echo A chave privada da CA NAO deve ser copiada nem instalada em outros dispositivos.
 echo Para o primeiro teste no Windows, importe jrbot-dev-ca.pem em
-necho "Autoridades de Certificacao Raiz Confiaveis" do usuario atual.
+echo "Autoridades de Certificacao Raiz Confiaveis" do usuario atual.
 echo Depois feche e reabra o navegador.
 echo.
 echo [INFO] Compilando e gravando JrBot_HTTPS_EXP_02...
@@ -75,7 +75,7 @@ echo Teste HTTPS:
 echo   https://%JRBOT_HTTPS_IP%/https-test
 echo.
 echo Para o teste de microfone, a barra do navegador deve deixar de indicar
-necho certificado inseguro depois de confiar na CA local.
+echo certificado inseguro depois de confiar na CA local.
 echo Confira na pagina: Secure Context, mediaDevices, getUserMedia e MediaRecorder.
 echo.
 pause
