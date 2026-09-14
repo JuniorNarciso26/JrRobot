@@ -44,39 +44,61 @@ Categorias futuras podem incluir educação, idiomas, companhia, entretenimento,
 | Etapa | Objetivo | Estado |
 | --- | --- | --- |
 | **V0** | Hardware, periféricos, painel de desenvolvimento e testes | **Aprovada em `main`** |
-| **V1** | Controle pelo navegador na rede local | **Em desenvolvimento em `v1`** |
-| **V2** | Controle por voz local | **Linha preservada em `v2`, pausada até fechar V1** |
+| **V1** | Controle pelo navegador na rede local | **Funcionalmente concluída em `JrBot_V1.6.1` e integrada em `develop`** |
+| **V2** | Controle por voz local | **Linha preservada em `v2`, aguardando estabilização/promoção da V1** |
 | **V3** | Controle programático pela Runtime API | Planejada |
 | **JrBrain** | Memória, personalidade, relacionamento, LLM e Skills | Posterior |
 
 ### V0 — fundação aprovada
 
-A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, painel de desenvolvimento e a base inicial da Runtime API. A baseline técnica promovida em `main` é `JRBotV2_RUNTIME_API_V1_02`, com Runtime API compatível `1.1`.
+A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, painel de desenvolvimento e a base inicial da Runtime API. A baseline técnica promovida em `main` continua sendo `JRBotV2_RUNTIME_API_V1_02`, com Runtime API compatível `1.1`.
 
-### V1 — etapa ativa
+### V1 — primeira experiência de produto
 
-A V1 transforma essa base técnica na primeira experiência de produto:
+A V1 transformou a fundação técnica da V0 em uma experiência de uso direto pelo navegador, dentro da rede local.
+
+Versão final da linha: **`JrBot_V1.6.1`**.
+
+Entregas consolidadas:
+
+- painel interno servido pelo próprio ESP32-S3;
+- interface responsiva para PC e celular;
+- estado do robô, Wi-Fi, IP, face, áudio e microfone;
+- controle de expressões e volume;
+- gravação do microfone do JrBot;
+- reprodução e download das gravações;
+- envio de mensagens de áudio do celular/computador para o JrBot;
+- PTT half-duplex para falar pelo celular e reproduzir no alto-falante;
+- câmera OV5640 com foto e modo ao vivo;
+- resoluções e qualidade JPEG selecionáveis;
+- orientação física padrão da câmera em 90 graus;
+- configuração e diagnóstico de Wi-Fi;
+- DHCP como comportamento normal de rede;
+- HTTPS local para permitir APIs seguras do navegador, incluindo microfone;
+- arbitragem do barramento I2S compartilhado entre microfone e áudio.
+
+Fluxo atual:
 
 ```text
-PC / celular
-    ↓
-http://IP_DO_JRBOT/
-    ↓
-painel interno do ESP32-S3
-    ↓
-capabilities seguras
-    ↓
-JrBot físico
+v1
+ ↓
+PR #20 — concluído
+ ↓
+develop
+ ↓
+observação / estabilização / correções de campo
+ ↓
+main
 ```
 
-A linha oficial da versão é `v1`, com integração em `develop` pelo PR #20.
+A V1 está funcionalmente encerrada e integrada em `develop`. A `main` ainda representa a V0 aprovada até a promoção final da V1.
 
 ## Roadmap oficial
 
 ```text
 V0  Fundação de hardware e periféricos
  ↓
-V1  Controle pelo navegador / IP local
+V1  Controle pelo navegador / rede local
  ↓
 V2  Controle por voz local
  ↓
@@ -107,15 +129,27 @@ A IA não controla GPIO diretamente. O firmware expõe ações limitadas e valid
 As branches oficiais de trabalho são:
 
 ```text
-main    = última versão aprovada
-develop = integração entre versões
-v1      = JrBot V1, linha ativa
-v2      = JrBot V2, linha preservada/pausada
+main    = última versão aprovada; atualmente V0
+develop = integração; atualmente contém a V1 final
+v1      = linha fechada da JrBot V1
+v2      = JrBot V2, preservada/pausada até a V1 estabilizar
 ```
 
-As revisões de firmware (`_V1_02`, `_V1_03`, etc.) são controladas por commits e marcadores de versão dentro da branch da versão de produto. Não é criada uma branch nova para cada candidata. Branches `archive/*` são somente histórico.
+Novas melhorias ou correções da V1 devem nascer de branches `feature/*` ou `fix/*` criadas a partir de `develop`, mantendo a linha `v1` como referência fechada da versão entregue.
 
-A versão em desenvolvimento entra em `develop` por Pull Request e só depois é promovida para `main` quando estiver suficientemente validada.
+As revisões técnicas de firmware são controladas por commits e marcadores de versão. Branches `archive/*` são somente histórico.
+
+A versão integrada em `develop` só é promovida para `main` depois de observação, correções necessárias e validação suficiente.
+
+## Frentes paralelas
+
+Além do firmware, o projeto mantém frentes complementares como:
+
+- investigação e correções de áudio;
+- desenvolvimento mecânico e impressão 3D do corpo;
+- testes físicos e refinamento de montagem.
+
+Essas frentes são rastreadas por Issues próprias e só bloqueiam uma versão quando afetarem diretamente seu critério de aceite.
 
 ## Documentação
 
