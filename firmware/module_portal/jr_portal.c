@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_http_server.h"
+#include "esp_https_server.h"
 #include "esp_log.h"
 #include "jr_board.h"
 #include "jr_commands.h"
@@ -11,8 +12,16 @@
 #include "jr_portal.h"
 #include "jr_audio_receive.h"
 #include "jr_portal_web_v1.h"
+#include "jr_https_test_page.h"
+
+#if __has_include("jr_https_material_local.h")
+#include "jr_https_material_local.h"
+#else
+#define JR_HTTPS_LOCAL_MATERIAL_AVAILABLE 0
+#endif
 
 static httpd_handle_t web_server;
+static httpd_handle_t https_server;
 
 static esp_err_t reply(httpd_req_t *req,const char *status,const char *text) {
     httpd_resp_set_status(req,status);
@@ -25,6 +34,12 @@ static esp_err_t web_root_handler(httpd_req_t *req) {
     httpd_resp_set_type(req,"text/html; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t https_test_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req,"text/html; charset=utf-8");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_send(req,JR_HTTPS_TEST_HTML,HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t web_status_handler(httpd_req_t *req) {
@@ -73,7 +88,6 @@ static bool network_command_allowed(const char *cmd) {
     }
     verb[n]=0;
     if (!strcmp(verb,"camera_test")) return false;
-    /* Provisioning/clearing credentials is deliberately Serial-only. */
     if (strlen(cmd)>=5) {
         char prefix[6];
         for(int i=0;i<5;i++) prefix[i]=(cmd[i]>='A'&&cmd[i]<='Z')?cmd[i]+32:cmd[i];
@@ -118,16 +132,10 @@ static esp_err_t disabled_camera_handler(httpd_req_t *req) {
     return reply(req,"503 Service Unavailable","JR_CAMERA_DISABLED recurso_indisponivel");
 }
 
-void jr_portal_start(void) {
-    if (web_server || !jr_wifi_network_ready()) return;
-    httpd_config_t config=HTTPD_DEFAULT_CONFIG();
-    config.server_port=80;
-    config.stack_size=12288;
-    config.max_uri_handlers=10;
-    esp_err_t err=httpd_start(&web_server,&config);
-    if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
+static esp_err_t register_routes(httpd_handle_t server) {
     const httpd_uri_t routes[]={
         {.uri="/",.method=HTTP_GET,.handler=web_root_handler},
+        {.uri="/https-test",.method=HTTP_GET,.handler=https_test_handler},
         {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
         {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler},
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
@@ -138,8 +146,50 @@ void jr_portal_start(void) {
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
     };
     for (size_t i=0;i<sizeof(routes)/sizeof(routes[0]);i++) {
-        err=httpd_register_uri_handler(web_server,&routes[i]);
-        if (err!=ESP_OK) { httpd_stop(web_server); web_server=NULL; ESP_LOGE("jrbot_portal","register=%s",esp_err_to_name(err)); return; }
+        esp_err_t err=httpd_register_uri_handler(server,&routes[i]);
+        if (err!=ESP_OK) return err;
     }
-    ESP_LOGI("jrbot_portal","Portal V1 iniciado; painel=/ camera=/capture mic=/mic-record audio=/audio");
+    return ESP_OK;
+}
+
+static void start_http(void) {
+    httpd_config_t config=HTTPD_DEFAULT_CONFIG();
+    config.server_port=80;
+    config.stack_size=12288;
+    config.max_uri_handlers=12;
+    esp_err_t err=httpd_start(&web_server,&config);
+    if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
+    err=register_routes(web_server);
+    if (err!=ESP_OK) { httpd_stop(web_server); web_server=NULL; ESP_LOGE("jrbot_portal","http_register=%s",esp_err_to_name(err)); return; }
+    ESP_LOGI("jrbot_portal","HTTP experimental mantido em port=80 test=/https-test");
+}
+
+static void start_https(void) {
+#if JR_HTTPS_LOCAL_MATERIAL_AVAILABLE
+    httpd_ssl_config_t config=HTTPD_SSL_CONFIG_DEFAULT();
+    config.httpd.server_port=443;
+    config.httpd.stack_size=16384;
+    config.httpd.max_uri_handlers=12;
+    config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
+    config.servercert_len=sizeof(JR_HTTPS_CERT_PEM);
+    config.prvtkey_pem=(const uint8_t *)JR_HTTPS_KEY_PEM;
+    config.prvtkey_len=sizeof(JR_HTTPS_KEY_PEM);
+    esp_err_t err=httpd_ssl_start(&https_server,&config);
+    if (err!=ESP_OK) { https_server=NULL; ESP_LOGE("jrbot_portal","https_start=%s",esp_err_to_name(err)); return; }
+    err=register_routes(https_server);
+    if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","https_register=%s",esp_err_to_name(err)); return; }
+    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 test=/https-test cert=local_experimental");
+#else
+    ESP_LOGW("jrbot_portal","JR_HTTPS_DISABLED material_local_ausente execute_generate_https_cert");
+#endif
+}
+
+void jr_portal_start(void) {
+    if ((web_server || https_server) || !jr_wifi_network_ready()) return;
+    start_http();
+    start_https();
+    if (web_server || https_server) {
+        ESP_LOGI("jrbot_portal","Portal EXP iniciado http=%d https=%d camera=/capture mic=/mic-record audio=/audio",
+                 web_server?1:0,https_server?1:0);
+    }
 }
