@@ -4,7 +4,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ========================================
-echo JrBot - Experimento HTTPS local EXP 02
+echo JrBot - Experimento HTTPS local EXP 03
 echo ========================================
 echo.
 
@@ -45,19 +45,29 @@ if "%JRBOT_HTTPS_IP%"=="" goto falha
 python tools\generate_https_cert.py --ip "%JRBOT_HTTPS_IP%"
 if errorlevel 1 goto falha
 
+set "JRBOT_CA=%CD%\firmware\certs\local\jrbot-dev-ca.pem"
+if not exist "%JRBOT_CA%" (
+  echo [ERRO] CA local nao foi gerada: %JRBOT_CA%
+  goto falha
+)
+
 echo.
 echo ========================================
-echo ETAPA IMPORTANTE - CONFIAR NA CA LOCAL
+echo INSTALANDO CONFIANCA DA CA NO WINDOWS
 echo ========================================
-echo Arquivo publico da CA:
-echo   %CD%\firmware\certs\local\jrbot-dev-ca.pem
+echo [INFO] Importando JrBot Dev CA no repositorio Root do usuario atual...
+certutil -user -addstore -f Root "%JRBOT_CA%"
+if errorlevel 1 (
+  echo [ERRO] O Windows nao aceitou a CA local.
+  echo Instale manualmente este arquivo como Autoridade Raiz Confiavel:
+  echo   %JRBOT_CA%
+  goto falha
+)
+echo [OK] JrBot Dev CA adicionada ao usuario atual.
+echo [INFO] Feche TODAS as janelas do Chrome/Edge e abra novamente apos o flash.
+
 echo.
-echo A chave privada da CA NAO deve ser copiada nem instalada em outros dispositivos.
-echo Para o primeiro teste no Windows, importe jrbot-dev-ca.pem em
-echo "Autoridades de Certificacao Raiz Confiaveis" do usuario atual.
-echo Depois feche e reabra o navegador.
-echo.
-echo [INFO] Compilando e gravando JrBot_HTTPS_EXP_02...
+echo [INFO] Compilando e gravando JrBot_HTTPS_EXP_03...
 set "JRBOT_SYNC_DONE=1"
 call INSTALAR.bat flash
 if errorlevel 1 goto falha
@@ -66,24 +76,26 @@ echo.
 echo ========================================
 echo [SUCESSO] EXPERIMENTO HTTPS GRAVADO
 echo ========================================
-echo Firmware esperado: JrBot_HTTPS_EXP_02
+echo Firmware esperado: JrBot_HTTPS_EXP_03
 echo.
-echo Recuperacao HTTP:
-echo   http://%JRBOT_HTTPS_IP%/https-test
+echo 1. Feche completamente Chrome/Edge e abra novamente.
+echo 2. Recuperacao HTTP:
+echo    http://%JRBOT_HTTPS_IP%/https-test
+echo 3. Teste HTTPS:
+echo    https://%JRBOT_HTTPS_IP%/https-test
+echo 4. Diagnostico JavaScript direto:
+echo    https://%JRBOT_HTTPS_IP%/https-test.js
 echo.
-echo Teste HTTPS:
-echo   https://%JRBOT_HTTPS_IP%/https-test
-echo.
-echo Para o teste de microfone, a barra do navegador deve deixar de indicar
-echo certificado inseguro depois de confiar na CA local.
-echo Confira na pagina: Secure Context, mediaDevices, getUserMedia e MediaRecorder.
+echo O HTTPS deve deixar de aparecer como certificado invalido.
+echo A pagina deve mostrar JavaScript externo: SIM.
+echo Depois confira Secure Context, mediaDevices, getUserMedia e MediaRecorder.
 echo.
 pause
 exit /b 0
 
 :falha
 echo.
-echo [FALHA] Experimento HTTPS nao foi instalado.
+echo [FALHA] Experimento HTTPS nao foi instalado corretamente.
 echo Nenhuma alteracao foi feita na branch v1.
 pause
 exit /b 1
