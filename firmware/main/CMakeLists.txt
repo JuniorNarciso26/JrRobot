@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "main.c"
         "../core/jr_wifi.c"
+        "../core/jr_net_diag.c"
         "../core/jr_commands.c"
         "../core/jr_usb_terminal.c"
         "../module_face/jr_face.c"
