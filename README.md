@@ -1,4 +1,4 @@
-# JrBot
+# JrBot V1
 
 <p align="center">
   <img src="docs/assets/readme/jrbot-hero.svg" alt="JrBot - presença digital" width="100%">
@@ -6,118 +6,202 @@
 
 **Uma IA que deixa de ser apenas uma ferramenta e passa a ser presença.**
 
-O JrBot é um projeto em desenvolvimento que une inteligência artificial, voz, expressão digital e presença física. A proposta é ir além de um assistente que apenas responde perguntas: o objetivo é criar uma experiência mais próxima, expressiva, personalizada e progressivamente offline.
+O **JrBot V1** é a primeira versão comercial do projeto JrBot: um robô físico, conectado à rede local, com expressão digital, câmera, microfone, alto-falante e uma interface própria acessível pelo celular ou computador.
+
+A proposta do JrBot é criar uma experiência de presença: você vê, escuta, fala, observa o ambiente e controla o robô por uma interface simples, enquanto a plataforma continua evoluindo em direção a voz local, memória, personalidade e Skills.
 
 > **O JrBot não foi criado apenas para responder. Foi criado para estar com você.**
 
-**Ouve · Entende · Responde · Reage · Expressa**
+## JrBot V1 — o que já está disponível
 
-## Visão do projeto
+Versão da linha: **`JrBot_V1.6.1`**
 
-A visão de longo prazo é desenvolver um robô capaz de ouvir o usuário, reconhecer quando é chamado, conversar por voz, perceber o ambiente por câmera, demonstrar expressões, manter contexto e memória e receber novas capacidades por meio de Skills.
+A V1 transforma a base eletrônica do JrBot em um produto utilizável diretamente pelo navegador.
 
-O objetivo não é simular sentimentos humanos reais, mas criar uma experiência de presença por meio de **voz, expressão, contexto, personalidade e continuidade**.
+### Controle pelo celular ou computador
 
-## Um JrBot. Diferentes companheiros.
+O JrBot possui um painel web servido pelo próprio ESP32-S3. Na mesma rede local, o usuário pode acessar o robô pelo navegador sem depender do painel Python de desenvolvimento.
 
-<p align="center">
-  <img src="docs/assets/readme/jrbot-experiences.svg" alt="Experiências futuras do JrBot" width="900">
-</p>
+A interface foi preparada para **PC e celular** e permite acompanhar o estado do robô e executar suas principais funções.
 
-O mesmo hardware poderá assumir experiências diferentes conforme personalidade, contexto e Skills:
+### Expressões no rosto
 
-- **Crianças:** histórias, jogos, aprendizado e brincadeiras.
-- **Estudos:** idiomas, exercícios, revisão e prática diária.
-- **Companhia:** conversa, lembretes e presença na rotina.
-- **Entretenimento:** experiências temáticas, jogos e personalidades.
+O rosto do JrBot usa um display OLED SSD1306 e pode exibir diferentes expressões.
 
-## Plataforma de Skills
+Pelo painel é possível:
 
-O robô físico é a interface. A visão de longo prazo é construir um ecossistema em que uma Skill possa adicionar uma habilidade, personalidade, conteúdo educacional, integração ou serviço sem transformar todo o firmware em um único bloco.
+- selecionar expressões;
+- alterar o rosto do JrBot em tempo real;
+- visualizar qual expressão está ativa;
+- usar as expressões como base para futuras respostas emocionais e comportamentais.
 
-Categorias futuras podem incluir educação, idiomas, companhia, entretenimento, marcas, serviços e integrações. Acessórios físicos com tecnologias como NFC ou RFID também poderão ativar Skills ou personalidades específicas.
+### Câmera OV5640
 
-> Skills, marketplace e acessórios inteligentes fazem parte da visão futura e não representam funcionalidades já concluídas.
+A V1 integra a câmera ao painel do JrBot.
 
-## Estado atual
+Recursos disponíveis:
 
-| Etapa | Objetivo | Estado |
-| --- | --- | --- |
-| **V0** | Hardware, periféricos, painel de desenvolvimento e testes | **Aprovada em `main`** |
-| **V1** | Controle pelo navegador na rede local | **Em desenvolvimento em `v1`** |
-| **V2** | Controle por voz local | **Linha preservada em `v2`, pausada até fechar V1** |
-| **V3** | Controle programático pela Runtime API | Planejada |
-| **JrBrain** | Memória, personalidade, relacionamento, LLM e Skills | Posterior |
+- captura de fotos;
+- visualização da imagem no navegador;
+- modo de câmera ao vivo;
+- resoluções QVGA, VGA e SVGA;
+- ajuste de qualidade JPEG;
+- métricas de FPS e tamanho dos quadros;
+- orientação física padrão da câmera em 90 graus;
+- geração do JPEG respeitando a orientação definida no firmware.
 
-### V0 — fundação aprovada
+### Microfone do JrBot
 
-A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, painel de desenvolvimento e a base inicial da Runtime API. A baseline técnica promovida em `main` é `JRBotV2_RUNTIME_API_V1_02`, com Runtime API compatível `1.1`.
+O microfone MS3625 pode ser utilizado diretamente pela interface.
 
-### V1 — etapa ativa
+A V1 permite:
 
-A V1 transforma essa base técnica na primeira experiência de produto:
+- gravar áudio pelo próprio JrBot;
+- escolher a duração da gravação dentro dos limites definidos;
+- ouvir a gravação no navegador;
+- baixar o arquivo WAV;
+- reproduzir a última gravação pelo alto-falante do próprio JrBot;
+- acompanhar informações de estado do microfone.
+
+### Enviar áudio para o JrBot
+
+O usuário também pode enviar mensagens de áudio do celular ou computador para o robô.
+
+Isso permite usar o JrBot como um ponto físico de reprodução de mensagens, aproveitando o amplificador MAX98357A e o alto-falante integrado.
+
+### Interfone PTT
+
+A V1 possui um modo **Push-to-Talk (PTT) half-duplex**.
+
+O usuário pode falar pelo microfone do celular e reproduzir sua voz no alto-falante do JrBot. O sistema controla a troca entre captura e reprodução para preservar o barramento I2S compartilhado.
+
+### Áudio e volume
+
+Pelo painel é possível:
+
+- ajustar o volume;
+- executar teste de som;
+- reproduzir gravações;
+- reproduzir mensagens recebidas;
+- acompanhar o estado do sistema de áudio.
+
+A arquitetura utiliza o MAX98357A para saída e mantém arbitragem entre reprodução e microfone.
+
+### Wi-Fi e acesso local
+
+O JrBot V1 foi projetado para entrar na rede de forma simples.
+
+Recursos:
+
+- DHCP como comportamento padrão;
+- IP atribuído automaticamente pelo roteador;
+- exibição do IP atual no painel;
+- estado da conexão Wi-Fi;
+- configuração e diagnóstico de rede;
+- leitura dos parâmetros persistidos;
+- reconexão automática prevista pela camada de Wi-Fi.
+
+O produto não depende de um IP fixo configurado manualmente para funcionar.
+
+### HTTPS local
+
+A V1 inclui HTTPS local para liberar recursos seguros dos navegadores modernos.
+
+Isso é especialmente importante no celular para funções como:
+
+- acesso ao microfone;
+- `getUserMedia`;
+- `MediaRecorder`;
+- gravação de voz pelo navegador.
+
+O HTTPS local foi incorporado para permitir uma experiência mais completa sem depender de serviços externos para o controle básico do robô.
+
+## Hardware da V1
+
+A plataforma atual utiliza:
+
+- **ESP32-S3 N16R8** — processamento principal;
+- **OLED SSD1306** — rosto e expressões;
+- **OV5640** — câmera;
+- **MS3625** — microfone;
+- **MAX98357A** — amplificador de áudio;
+- **alto-falante integrado**;
+- Wi-Fi para comunicação local.
+
+## Como a V1 funciona
 
 ```text
-PC / celular
-    ↓
-http://IP_DO_JRBOT/
-    ↓
-painel interno do ESP32-S3
-    ↓
-capabilities seguras
-    ↓
-JrBot físico
+Celular / computador
+        ↓
+      Wi-Fi
+        ↓
+ painel web local
+        ↓
+    ESP32-S3
+   ↙   ↓    ↘
+OLED câmera  áudio
+      ↓       ↓
+ microfone  alto-falante
 ```
 
-A linha oficial da versão é `v1`, com integração em `develop` pelo PR #20.
+O painel conversa apenas com capacidades controladas do firmware. O projeto evita expor GPIO bruto ou execução arbitrária como parte da experiência normal do usuário.
 
-## Roadmap oficial
+## O que diferencia a V1
+
+A V1 reúne em um único robô físico:
+
+**Ver** — câmera com foto e transmissão ao vivo.  
+**Ouvir** — microfone integrado e gravação.  
+**Falar** — mensagens de áudio e PTT pelo alto-falante.  
+**Expressar** — rosto digital com diferentes expressões.  
+**Conectar** — controle direto pelo navegador na rede local.
+
+Tudo isso forma a base sobre a qual serão adicionadas as próximas camadas de inteligência do JrBot.
+
+## Estado do produto
+
+| Versão | Objetivo | Estado |
+| --- | --- | --- |
+| **V0** | Fundação de hardware e periféricos | Concluída |
+| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.1`** |
+| **V2** | Controle por voz local | Próxima etapa |
+| **V3** | Controle programático pela Runtime API | Planejada |
+| **JrBrain** | Memória, personalidade, contexto, LLM e Skills | Futuro |
+
+A V1 já foi integrada em `develop`. A branch `v1` permanece como referência fechada da versão entregue. A promoção para `main` deve ocorrer conforme o fluxo de validação do projeto.
+
+## Próximas evoluções
+
+A evolução planejada preserva as capacidades construídas na V1:
 
 ```text
-V0  Fundação de hardware e periféricos
+V1 — navegador e controle local
  ↓
-V1  Controle pelo navegador / IP local
+V2 — voz local
  ↓
-V2  Controle por voz local
+V3 — controle programático
  ↓
-V3  Controle programático pela Runtime API
- ↓
-JrBrain  Memória + personalidade + LLM + relacionamento
+JrBrain — memória + personalidade + LLM
  ↓
 Skills / plataforma / ecossistema
 ```
 
-O detalhamento oficial fica em [`docs/ROADMAP.md`](docs/ROADMAP.md).
+A V2 deverá reutilizar as mesmas capacidades físicas já consolidadas na V1, mas acionadas por voz.
 
-## Arquitetura
+O JrBrain será a camada futura de memória, personalidade, contexto e inteligência. Skills e experiências especializadas pertencem à visão de longo prazo e **não são funcionalidades da V1 atual**.
 
-```text
-V1 painel web ─┐
-V2 voz        ─┼─> capability registry -> hardware
-V3 API        ─┘
+## Desenvolvimento e documentação
 
-Depois:
-JrBrain -> Action Router -> mesmas capabilities
-```
-
-A IA não controla GPIO diretamente. O firmware expõe ações limitadas e validadas.
-
-## Desenvolvimento
-
-As branches oficiais de trabalho são:
+Branches principais:
 
 ```text
-main    = última versão aprovada
-develop = integração entre versões
-v1      = JrBot V1, linha ativa
-v2      = JrBot V2, linha preservada/pausada
+main    = última versão oficialmente promovida
+develop = integração das próximas entregas
+v1      = referência fechada da JrBot V1
+v2      = desenvolvimento da JrBot V2
 ```
 
-As revisões de firmware (`_V1_02`, `_V1_03`, etc.) são controladas por commits e marcadores de versão dentro da branch da versão de produto. Não é criada uma branch nova para cada candidata. Branches `archive/*` são somente histórico.
-
-A versão em desenvolvimento entra em `develop` por Pull Request e só depois é promovida para `main` quando estiver suficientemente validada.
-
-## Documentação
+Documentação técnica:
 
 - [Roadmap](docs/ROADMAP.md)
 - [Estado do projeto](docs/PROJECT_STATUS.md)
@@ -126,13 +210,11 @@ A versão em desenvolvimento entra em `develop` por Pull Request e só depois é
 - [Runtime API](docs/API_RUNTIME.md)
 - [Testes](docs/TESTING.md)
 
-## Contribuição
+## Visão
 
-Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) e consulte as Issues abertas antes de iniciar uma mudança.
+O JrBot começa como um robô controlável, expressivo e conectado.
 
-## Status
-
-**Projeto em desenvolvimento ativo.** Para distinguir o que está implementado, compilado, testado ou validado fisicamente, consulte [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+A visão é evoluir para uma presença digital física capaz de ouvir, conversar, perceber o ambiente, manter continuidade e receber novas habilidades sem perder a simplicidade de interação.
 
 <p align="center">
   <strong>JrBot</strong><br>
