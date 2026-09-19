@@ -4,7 +4,7 @@ chcp 65001 >nul
 
 rem ============================================================
 rem JRBOT - ATUALIZADOR / BUILD / FLASH / PAINEL
-rem Branches oficiais: main, develop, v1, v2
+rem O menu lista dinamicamente todas as branches remotas ativas
 rem ============================================================
 
 if /i "%JRBOT_SYNC_DONE%"=="1" goto local_entry
@@ -33,11 +33,8 @@ echo ============================================================
 echo   JRBOT - ATUALIZADOR / INSTALADOR
 echo ============================================================
 echo.
-echo Canais oficiais:
-echo   main    - ultima versao aprovada
-echo   develop - integracao
-echo   v1      - JrBot V1 em desenvolvimento
-echo   v2      - JrBot V2 voz
+echo Branches ativas sao consultadas diretamente no GitHub.
+echo Branches archive/* ficam ocultas do menu.
 echo.
 
 call :ensure_git
@@ -73,24 +70,21 @@ if errorlevel 1 (
 echo [OK] Git instalado.
 exit /b 0
 
-:add_branch_if_remote
-git ls-remote --exit-code --heads "%REPO_URL%" "refs/heads/%~1" >nul 2>&1
-if errorlevel 1 exit /b 0
-set /a BRANCH_COUNT+=1
-set "BRANCH_!BRANCH_COUNT!=%~1"
-exit /b 0
-
 :refresh_branch_list
 set "BRANCH_COUNT=0"
-call :add_branch_if_remote main
-call :add_branch_if_remote develop
-call :add_branch_if_remote v1
-call :add_branch_if_remote v2
+for /f "tokens=2" %%R in ('git ls-remote --heads "%REPO_URL%" 2^>nul') do (
+    set "REMOTE_REF=%%R"
+    set "REMOTE_BRANCH=!REMOTE_REF:refs/heads/=!"
+    if /i not "!REMOTE_BRANCH:~0,8!"=="archive/" (
+        set /a BRANCH_COUNT+=1
+        set "BRANCH_!BRANCH_COUNT!=!REMOTE_BRANCH!"
+    )
+)
 if !BRANCH_COUNT! LEQ 0 (
-    echo [ERRO] Nenhum canal oficial foi encontrado no GitHub.
+    echo [ERRO] Nenhuma branch ativa foi encontrada no GitHub.
     exit /b 1
 )
-echo [OK] !BRANCH_COUNT! canal(is) oficial(is) disponivel(is).
+echo [OK] !BRANCH_COUNT! branch(es) ativa(s) disponivel(is).
 exit /b 0
 
 :is_current_active
@@ -105,7 +99,7 @@ exit /b 0
 set "TARGET_BRANCH="
 set "CHANNEL="
 echo.
-echo [GITHUB] Consultando canais oficiais...
+echo [GITHUB] Consultando branches ativas...
 call :refresh_branch_list
 if errorlevel 1 exit /b 1
 call :is_current_active
@@ -122,6 +116,9 @@ for /l %%N in (1,1,!BRANCH_COUNT!) do (
     if /i "!DISPLAY_BRANCH!"=="develop" set "BRANCH_NOTE= - integracao"
     if /i "!DISPLAY_BRANCH!"=="v1" set "BRANCH_NOTE= - JrBot V1"
     if /i "!DISPLAY_BRANCH!"=="v2" set "BRANCH_NOTE= - JrBot V2 voz"
+    if /i "!DISPLAY_BRANCH:~0,8!"=="feature/" set "BRANCH_NOTE= - desenvolvimento / teste"
+    if /i "!DISPLAY_BRANCH:~0,7!"=="hotfix/" set "BRANCH_NOTE= - correcao"
+    if /i "!DISPLAY_BRANCH:~0,4!"=="fix/" set "BRANCH_NOTE= - correcao"
     if defined CURRENT_BRANCH if /i "!DISPLAY_BRANCH!"=="!CURRENT_BRANCH!" set "BRANCH_NOTE=!BRANCH_NOTE! [ATUAL]"
     echo   [%%N] !DISPLAY_BRANCH!!BRANCH_NOTE!
 )
@@ -429,7 +426,7 @@ echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
 echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
 echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
 echo.
-echo Canais oficiais: main, develop, v1 e v2.
-echo Branches antigas e archive/* nao aparecem no menu.
+echo O menu consulta todas as branches remotas ativas no GitHub.
+echo Branches archive/* nao aparecem no menu.
 echo.
 exit /b 0
