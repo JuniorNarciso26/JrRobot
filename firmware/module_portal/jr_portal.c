@@ -191,6 +191,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
         {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
+        {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler},
         {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
