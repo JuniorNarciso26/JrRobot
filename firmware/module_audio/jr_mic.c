@@ -25,7 +25,7 @@
 #define JR_MIC_RECORD_BUS_TIMEOUT_MS 15000
 #define JR_MIC_STREAM_CHUNK_MS 80
 #define JR_MIC_STREAM_SAMPLES ((JR_MIC_SAMPLE_RATE * JR_MIC_STREAM_CHUNK_MS) / 1000)
-#define JR_MIC_STREAM_TASK_STACK 8192
+#define JR_MIC_STREAM_TASK_STACK 12288
 
 static const char *TAG = "jrbot_mic";
 static int16_t *last_recording = NULL;
@@ -304,6 +304,7 @@ static void jr_mic_stream_task(void *arg) {
     jr_mic_stream_ctx_t *ctx = (jr_mic_stream_ctx_t *)arg;
     httpd_req_t *req = ctx ? ctx->req : NULL;
     bool bus_owned = false;
+    bool chunked_started = false;
     i2s_chan_handle_t rx = NULL;
     esp_err_t err = ESP_FAIL;
 
@@ -336,6 +337,7 @@ static void jr_mic_stream_task(void *arg) {
     httpd_resp_set_hdr(req, "X-JrBot-Stream-Chunk-Ms", "80");
     httpd_resp_set_hdr(req, "X-JrBot-Live-Session", ctx->session);
 
+    chunked_started = true;
     ESP_LOGI(TAG, "LIVE_STREAM_START session=%s chunk_ms=%d", ctx->session, JR_MIC_STREAM_CHUNK_MS);
 
     int32_t raw[JR_MIC_FRAMES];
@@ -395,7 +397,7 @@ finish:
     if (rx) mic_rx_close(rx);
     if (bus_owned) jr_audio_bus_release();
     if (req) {
-        (void)httpd_resp_send_chunk(req, NULL, 0);
+        if (chunked_started) (void)httpd_resp_send_chunk(req, NULL, 0);
         (void)httpd_req_async_handler_complete(req);
     }
     if (ctx) free(ctx);
@@ -437,10 +439,13 @@ esp_err_t jr_mic_stream_handler(httpd_req_t *req) {
     BaseType_t created = xTaskCreate(jr_mic_stream_task, "jr_mic_stream",
                                      JR_MIC_STREAM_TASK_STACK, ctx, 5, NULL);
     if (created != pdPASS) {
+        httpd_resp_set_status(ctx->req, "500 Internal Server Error");
+        httpd_resp_set_type(ctx->req, "text/plain; charset=utf-8");
+        (void)httpd_resp_sendstr(ctx->req, "JR_MIC_STREAM_ERROR task_create");
         (void)httpd_req_async_handler_complete(ctx->req);
         free(ctx);
         live_stream_release();
-        return ESP_ERR_NO_MEM;
+        return ESP_OK;
     }
     return ESP_OK;
 }
