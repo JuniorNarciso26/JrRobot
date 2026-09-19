@@ -94,6 +94,8 @@ O PR da versão para `develop` deve registrar:
 - limitações abertas;
 - documentação atualizada.
 
+Ao promover qualquer versão para `develop`, a documentação faz parte da entrega. No mesmo ciclo devem ser revisados, quando aplicável, `firmware/version.txt`, `README.md`, `docs/ROADMAP.md`, `docs/PROJECT_STATUS.md`, `docs/CHANGELOG.md` e os documentos técnicos afetados. A versão não deve ser considerada integrada enquanto o histórico público da mudança estiver desatualizado.
+
 ## Estrutura principal
 
 ```text

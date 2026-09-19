@@ -14,9 +14,21 @@ A proposta do JrBot é criar uma experiência de presença: você vê, escuta, f
 
 ## JrBot V1 — o que já está disponível
 
-Versão da linha: **`JrBot_V1.6.1`**
+Versão da linha: **`JrBot_V1.6.2`**
 
 A V1 transforma a base eletrônica do JrBot em um produto utilizável diretamente pelo navegador.
+
+### Novidades da V1.6.2
+
+Em relação à `JrBot_V1.6.1`, a `JrBot_V1.6.2` melhora o fluxo de instalação e teste das versões em desenvolvimento:
+
+- o `INSTALAR.bat` passa a consultar dinamicamente todas as branches remotas ativas do GitHub;
+- branches `feature/*`, `fix/*` e `hotfix/*` podem aparecer no menu de instalação sem editar manualmente a lista;
+- branches `archive/*` permanecem ocultas do menu;
+- a branch atual continua identificada com `[ATUAL]`;
+- o usuário pode trocar, atualizar, compilar e gravar uma branch ativa pelo mesmo instalador.
+
+Esta revisão não altera o comportamento do interfone PTT nem a arquitetura de áudio da V1. O estudo de áudio ao vivo/full-duplex continua como evolução posterior.
 
 ### Controle pelo celular ou computador
 
@@ -163,7 +175,7 @@ Tudo isso forma a base sobre a qual serão adicionadas as próximas camadas de i
 | Versão | Objetivo | Estado |
 | --- | --- | --- |
 | **V0** | Fundação de hardware e periféricos | Concluída |
-| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.1`** |
+| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.2`** |
 | **V2** | Controle por voz local | Próxima etapa |
 | **V3** | Controle programático pela Runtime API | Planejada |
 | **JrBrain** | Memória, personalidade, contexto, LLM e Skills | Futuro |
