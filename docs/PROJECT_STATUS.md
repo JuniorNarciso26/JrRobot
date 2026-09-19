@@ -1,6 +1,6 @@
 # Estado do projeto
 
-Atualização: 2026-09-13.
+Atualização: 2026-09-19.
 
 ## Hardware de referência
 
@@ -25,46 +25,57 @@ O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
 ## Etapa ativa
 
-A etapa ativa é a JrBot V1, na branch `v1`, com PR #20 para `develop`.
+A JrBot V1 está funcionalmente concluída e integrada em `develop`.
 
-A candidata atual é `JrBot_V1.4.1`.
+A revisão atual é **`JrBot_V1.6.2`**, promovida como manutenção da `JrBot_V1.6.1`.
 
-O painel interno básico já foi exercitado no hardware real. A candidata atual acrescenta a interface de câmera e o fluxo de áudio do celular para o JrBot, preservando integralmente a gravação pelo microfone do próprio JrBot.
+### O que mudou na V1.6.2
 
-Correção `1.4.1`: o botão `Gravar mensagem` não usa mais `input capture`, que no Safari/iPhone pode abrir a câmera de vídeo. A gravação direta passa a solicitar somente áudio via `getUserMedia({audio:true, video:false})` quando o navegador permite. Em conexões HTTP locais onde o navegador bloqueia acesso ao microfone, a interface não abre a câmera e orienta usar `Escolher áudio` como alternativa.
+- `INSTALAR.bat` consulta dinamicamente as branches remotas ativas;
+- branches de desenvolvimento/correção podem ser selecionadas pelo instalador;
+- `archive/*` permanece fora do menu;
+- a branch atual é identificada no seletor;
+- o fluxo de sincronização, compilação, gravação e abertura do painel continua centralizado no instalador.
 
-O `PAINEL.bat` continua sendo ferramenta de instalação, desenvolvimento e diagnóstico. O painel servido pelo ESP32 é a interface de uso da V1.
+A V1.6.2 não altera o PTT half-duplex nem o caminho de áudio. O estudo de comunicação de voz ao vivo/full-duplex permanece separado.
 
 ## Nomenclatura
 
 - JrBot V1, V2 e V3: versões do produto.
 - Runtime API 1.x: versão do protocolo.
-- Revisões de firmware da V1 seguem o padrão `JrBot_V1.x` e correções incrementais usam `JrBot_V1.x.y`.
-
-Exemplo: `JrBot_V1.4` e a correção `JrBot_V1.4.1`.
+- Revisões da V1 seguem o padrão `JrBot_V1.x.y` quando forem correções/refinamentos incrementais.
 
 ## Baseline técnica promovida
 
-A baseline promovida em `main` continua sendo `JRBotV2_RUNTIME_API_V1_02`, com Runtime API `1.1`.
-
-Os testes já registrados incluem mudança de face, leitura de estados, HTTP local, microfone e áudio I2S Philips.
+A baseline oficialmente promovida em `main` continua separada da integração em `develop`. A promoção de uma revisão para `main` exige validação própria.
 
 O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da JrBot V2.
 
 ## Instalador
 
-Na linha atual, `INSTALAR.bat` consulta o GitHub, permite escolher os canais oficiais `main`, `develop`, `v1` e `v2`, sincroniza o projeto, compila, grava o ESP32 e abre o painel de desenvolvimento.
+O `INSTALAR.bat` consulta o GitHub e monta o menu a partir das branches remotas ativas. Branches `archive/*` não são exibidas.
 
-O painel de desenvolvimento pode ser encerrado pressionando ENTER na janela do processo.
+O instalador pode sincronizar a branch selecionada, compilar, gravar o ESP32 e abrir o painel de desenvolvimento.
 
 ## Branches
 
-- `main`: última versão aprovada.
-- `develop`: integração.
-- `v1`: JrBot V1 em desenvolvimento.
+- `main`: última versão oficialmente promovida.
+- `develop`: integração das entregas validadas.
+- `v1`: referência da linha JrBot V1.
 - `v2`: JrBot V2 voz.
-- `archive/*`: histórico.
+- `feature/*`: desenvolvimento temporário.
+- `fix/*` / `hotfix/*`: correções temporárias.
+- `archive/*`: histórico, oculto do instalador.
 
-## Regra de validação
+## Regra de promoção e documentação
 
-Implementação, build, teste de bancada e validação física devem continuar documentados separadamente.
+Sempre que uma versão for promovida para `develop`, devem ser atualizados no mesmo ciclo:
+
+1. marcador de versão do firmware;
+2. `README.md`;
+3. `docs/ROADMAP.md`;
+4. `docs/PROJECT_STATUS.md`;
+5. `docs/CHANGELOG.md`;
+6. documentação técnica afetada pela mudança.
+
+Implementação, build, teste de bancada e validação física continuam documentados separadamente.
