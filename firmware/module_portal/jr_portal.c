@@ -192,6 +192,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
         {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
         {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler},
+        {.uri="/live-diag",.method=HTTP_GET,.handler=jr_mic_live_diag_handler},
         {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
@@ -208,6 +209,7 @@ static void start_http(void) {
     config.server_port=80;
     config.stack_size=12288;
     config.max_uri_handlers=12;
+    config.lru_purge_enable=true;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
     err=register_routes(web_server);
@@ -222,6 +224,7 @@ static void start_https(void) {
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
     config.httpd.max_uri_handlers=12;
+    config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
     config.servercert_len=sizeof(JR_HTTPS_CERT_PEM);
     config.prvtkey_pem=(const uint8_t *)JR_HTTPS_KEY_PEM;
@@ -241,7 +244,7 @@ void jr_portal_start(void) {
     start_http();
     start_https();
     if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal V1.6 iniciado http=%d https=%d camera=/capture mic=/mic-record audio=/audio",
+        ESP_LOGI("jrbot_portal","Portal V1.6.3.2 iniciado http=%d https=%d camera=/capture mic_live=/mic-live diag=/live-diag audio=/audio",
                  web_server?1:0,https_server?1:0);
     }
 }
