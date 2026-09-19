@@ -238,6 +238,82 @@ static int16_t *allocate_recording(size_t samples) {
     return last_recording;
 }
 
+esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
+    int milliseconds = 200;
+    char query[80] = {0};
+    char value[16] = {0};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "ms", value, sizeof(value)) == ESP_OK) {
+        milliseconds = atoi(value);
+    }
+    if (milliseconds < 80) milliseconds = 80;
+    if (milliseconds > 500) milliseconds = 500;
+
+    if (!jr_audio_bus_acquire(1500)) {
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR audio_bus_busy");
+    }
+
+    jr_audio_stop();
+    i2s_chan_handle_t rx = NULL;
+    esp_err_t err = mic_rx_open(&rx);
+    if (err != ESP_OK) {
+        mic_rx_close(rx);
+        jr_audio_bus_release();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR i2s_open");
+    }
+
+    const size_t target = ((size_t)JR_MIC_SAMPLE_RATE * (size_t)milliseconds) / 1000u;
+    int16_t *pcm = (int16_t *)heap_caps_malloc(target * sizeof(int16_t), MALLOC_CAP_8BIT);
+    if (!pcm) {
+        mic_rx_close(rx);
+        jr_audio_bus_release();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR no_memory");
+    }
+
+    int32_t raw[JR_MIC_FRAMES];
+    size_t written = 0;
+    while (written < target) {
+        size_t bytes_read = 0;
+        err = i2s_channel_read(rx, raw, sizeof(raw), &bytes_read, pdMS_TO_TICKS(250));
+        if (err != ESP_OK) break;
+        size_t frames = bytes_read / sizeof(int32_t);
+        size_t take = target - written;
+        if (take > frames) take = frames;
+        for (size_t i = 0; i < take; ++i) {
+            int32_t v = raw[i] >> 14;
+            if (v > 32767) v = 32767;
+            if (v < -32768) v = -32768;
+            pcm[written + i] = (int16_t)v;
+        }
+        written += take;
+    }
+
+    mic_rx_close(rx);
+    jr_audio_bus_release();
+
+    if (err != ESP_OK || written == 0) {
+        heap_caps_free(pcm);
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR capture");
+    }
+
+    char samples[24];
+    snprintf(samples, sizeof(samples), "%u", (unsigned)written);
+    httpd_resp_set_type(req, "application/octet-stream");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-JrBot-Audio-Format", "pcm_s16le");
+    httpd_resp_set_hdr(req, "X-JrBot-Sample-Rate", "16000");
+    httpd_resp_set_hdr(req, "X-JrBot-Channels", "1");
+    httpd_resp_set_hdr(req, "X-JrBot-Samples", samples);
+    err = httpd_resp_send(req, (const char *)pcm, written * sizeof(int16_t));
+    heap_caps_free(pcm);
+    return err;
+}
+
 esp_err_t jr_mic_record_wav_handler(httpd_req_t *req) {
     int seconds = 3;
     char query[80] = {0};
