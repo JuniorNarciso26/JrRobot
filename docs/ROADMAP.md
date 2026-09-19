@@ -1,6 +1,6 @@
 # Roadmap oficial do JrBot
 
-Atualizado em 2026-09-14.
+Atualizado em 2026-09-19.
 
 ## Nomenclatura
 
@@ -44,9 +44,21 @@ A V0 continua sendo a versão aprovada em `main` até a promoção da V1.
 
 Objetivo: permitir que uma pessoa controle o JrBot pelo navegador na rede local, usando o painel servido pelo próprio ESP32-S3.
 
-Versão final da linha: **`JrBot_V1.6.1`**.
+Versão final da linha: **`JrBot_V1.6.2`**.
 
 PR #20 foi concluído e integrado em `develop` em 2026-09-14.
+
+### Revisão V1.6.2 — instalador e fluxo de branches
+
+A revisão `JrBot_V1.6.2` consolida uma melhoria de manutenção sobre a `JrBot_V1.6.1`:
+
+- descoberta dinâmica das branches remotas ativas pelo `INSTALAR.bat`;
+- instalação e troca direta para branches de desenvolvimento e correção;
+- exclusão de `archive/*` do menu de versões;
+- identificação da branch atual no seletor;
+- remoção da lista fixa de apenas `main`, `develop`, `v1` e `v2`.
+
+Não houve alteração funcional do PTT ou do caminho de áudio nesta revisão.
 
 Entregas consolidadas:
 
@@ -73,7 +85,7 @@ A implementação funcional está encerrada, mas a V1 ainda não foi promovida p
 ```text
 v1 fechada
    ↓
-develop com JrBot_V1.6.1
+develop com JrBot_V1.6.2
    ↓
 uso real / observação
    ↓
