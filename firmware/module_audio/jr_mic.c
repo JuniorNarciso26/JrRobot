@@ -39,6 +39,7 @@ static uint32_t live_busy_count = 0;
 static uint64_t live_bytes_sent = 0;
 static uint32_t live_last_capture_ms = 0;
 static uint32_t live_max_capture_ms = 0;
+static uint32_t live_last_block_ms = 0;
 
 static uint32_t magnitude32(int32_t value) {
     int64_t v = value;
@@ -258,6 +259,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
     if (milliseconds > 500) milliseconds = 500;
 
     uint32_t seq = ++live_request_count;
+    live_last_block_ms = (uint32_t)milliseconds;
     int64_t started_us = esp_timer_get_time();
 
     if (!jr_audio_bus_acquire(1500)) {
@@ -355,7 +357,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
 esp_err_t jr_mic_live_diag_handler(httpd_req_t *req) {
     char body[512];
     snprintf(body, sizeof(body),
-             "JR_LIVE_DIAG requests=%lu ok=%lu errors=%lu busy=%lu bytes=%llu last_capture_ms=%lu max_capture_ms=%lu sample_rate=%d channels=1 format=pcm_s16le block_ms=200",
+             "JR_LIVE_DIAG requests=%lu ok=%lu errors=%lu busy=%lu bytes=%llu last_capture_ms=%lu max_capture_ms=%lu sample_rate=%d channels=1 format=pcm_s16le last_block_ms=%lu",
              (unsigned long)live_request_count,
              (unsigned long)live_ok_count,
              (unsigned long)live_error_count,
@@ -363,7 +365,8 @@ esp_err_t jr_mic_live_diag_handler(httpd_req_t *req) {
              (unsigned long long)live_bytes_sent,
              (unsigned long)live_last_capture_ms,
              (unsigned long)live_max_capture_ms,
-             JR_MIC_SAMPLE_RATE);
+             JR_MIC_SAMPLE_RATE,
+             (unsigned long)live_last_block_ms);
     httpd_resp_set_type(req, "text/plain; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_sendstr(req, body);
