@@ -361,7 +361,13 @@ if errorlevel 1 goto failure
 pushd firmware
 if exist "%SDKCONFIG_FILE%" (
     echo [INFO] Garantindo suporte WebSocket no sdkconfig existente...
-    python -c "from pathlib import Path; import re; p=Path(r'%SDKCONFIG_FILE%'); s=p.read_text(encoding='utf-8',errors='ignore'); s=re.sub(r'(?m)^# CONFIG_HTTPD_WS_SUPPORT is not set\s*
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HTTPD_WS_SUPPORT" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd
     goto failure
