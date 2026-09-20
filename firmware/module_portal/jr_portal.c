@@ -193,6 +193,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
         {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler},
         {.uri="/mic-stream",.method=HTTP_GET,.handler=jr_mic_stream_handler},
+        {.uri="/mic-ws",.method=HTTP_GET,.handler=jr_mic_ws_handler,.is_websocket=true},
         {.uri="/live-diag",.method=HTTP_GET,.handler=jr_mic_live_diag_handler},
         {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
@@ -245,7 +246,7 @@ void jr_portal_start(void) {
     start_http();
     start_https();
     if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal V1.6.3.5 iniciado http=%d https=%d camera=/capture mic_stream=/mic-stream diag=/live-diag audio=/audio",
+        ESP_LOGI("jrbot_portal","Portal V1.6.3.6 iniciado http=%d https=%d camera=/capture mic_ws=/mic-ws diag=/live-diag audio=/audio",
                  web_server?1:0,https_server?1:0);
     }
 }
