@@ -130,6 +130,16 @@ A versão em desenvolvimento entra em `develop` por Pull Request e só depois é
 
 Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) e consulte as Issues abertas antes de iniciar uma mudança.
 
+Contribuições aceitas são disponibilizadas sob a mesma **MIT License** do projeto.
+
+## Licença
+
+O conteúdo original deste repositório é disponibilizado sob a [MIT License](LICENSE), salvo indicação explícita em contrário. Isso permite uso, modificação, distribuição e uso comercial, preservados os avisos exigidos pela licença.
+
+Dependências e componentes de terceiros continuam sujeitos às respectivas licenças.
+
+A licença do código não concede automaticamente direito de apresentar produtos derivados como oficiais nem direitos sobre a marca **JrBot**.
+
 ## Status
 
 **Projeto em desenvolvimento ativo.** Para distinguir o que está implementado, compilado, testado ou validado fisicamente, consulte [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
