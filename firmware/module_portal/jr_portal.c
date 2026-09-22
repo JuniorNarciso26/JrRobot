@@ -250,7 +250,7 @@ void jr_portal_start(void) {
     start_http();
     start_https();
     if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal V1.6.3.7 iniciado http=%d https=%d camera=/capture WebRTCAudio=/webrtc-audio legacy_mic_ws=/mic-ws",
+        ESP_LOGI("jrbot_portal","Portal V1.6.3.8 iniciado http=%d https=%d camera=/capture WebRTCAudio=/webrtc-audio legacy_mic_ws=/mic-ws",
                  web_server?1:0,https_server?1:0);
     }
 }
