@@ -22,7 +22,7 @@
 #include "jr_audio.h"
 #include "jr_board.h"
 #include "jr_brain.h"
-#include "jr_webrtc_audio_test.h"
+#include "jr_webrtc_audio.h"
 #include "jr_wifi.h"
 
 #define JR_WA_I2S_RATE                  16000
