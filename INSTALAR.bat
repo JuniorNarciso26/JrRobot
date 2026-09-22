@@ -288,7 +288,11 @@ cd /d "%~dp0"
 set "CURRENT_BRANCH="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 
-if /i "%CURRENT_BRANCH%"=="v2" (
+if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
+    rem V1.6.3.7 integra video Live existente + audio WebRTC full-duplex.
+    set "BUILD_DIR=build-feature-v1.6.3-live-v07"
+    set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-v07"
+) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"
 ) else (
