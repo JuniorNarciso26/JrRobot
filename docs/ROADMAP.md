@@ -1,6 +1,6 @@
 # Roadmap oficial do JrBot
 
-Atualizado em 2026-09-19.
+Atualizado em 2026-09-23.
 
 ## Nomenclatura
 
@@ -44,21 +44,26 @@ A V0 continua sendo a versão aprovada em `main` até a promoção da V1.
 
 Objetivo: permitir que uma pessoa controle o JrBot pelo navegador na rede local, usando o painel servido pelo próprio ESP32-S3.
 
-Versão final da linha: **`JrBot_V1.6.2`**.
+Versão final da linha: **`JrBot_V1.6.3`**.
 
 PR #20 foi concluído e integrado em `develop` em 2026-09-14.
 
-### Revisão V1.6.2 — instalador e fluxo de branches
+### Revisão V1.6.3 — Live WebRTC local
 
-A revisão `JrBot_V1.6.2` consolida uma melhoria de manutenção sobre a `JrBot_V1.6.1`:
+A `JrBot_V1.6.3` incorpora a pesquisa registrada na Issue #26 e substitui o fluxo principal PTT/HTTPS de Live por uma sessão WebRTC local:
 
-- descoberta dinâmica das branches remotas ativas pelo `INSTALAR.bat`;
-- instalação e troca direta para branches de desenvolvimento e correção;
-- exclusão de `archive/*` do menu de versões;
-- identificação da branch atual no seletor;
-- remoção da lista fixa de apenas `main`, `develop`, `v1` e `v2`.
+- I2S full-duplex real no HW04 com BCLK GPIO21 e WS GPIO47 compartilhados;
+- PCMA/G.711A 8 kHz mono em `SEND_RECV`;
+- JPEG da OV5640 transportado por DataChannel/SCTP;
+- sinalização local por HTTPS + SSE/POST;
+- perfis de vídeo rápido, equilibrado e qualidade;
+- mute independente do microfone do celular e do áudio do JrBot;
+- telemetria de memória no painel;
+- política de PSRAM ajustada para permitir ICE/DTLS/SCTP simultaneamente à câmera e ao áudio.
 
-Não houve alteração funcional do PTT ou do caminho de áudio nesta revisão.
+A validação física confirmou áudio bidirecional, vídeo contínuo e mutes no HW04. O eco acústico/AEC permanece para estudo posterior. A comunicação pela Internet continua fora desta revisão e deve evoluir pela mesma linha WebRTC com sinalização remota/STUN/TURN quando for implementada.
+
+O hotfix `JrBot_V1.6.2.1` de orientação da câmera não foi promovido separadamente; a orientação fisicamente confirmada de -90°/270° está absorvida nesta V1.6.3.
 
 Entregas consolidadas:
 
@@ -69,14 +74,14 @@ Entregas consolidadas:
 - gravação do microfone do JrBot;
 - reprodução e download das gravações;
 - envio de mensagens de áudio do celular/computador para o JrBot;
-- PTT half-duplex entre celular e alto-falante;
+- Live WebRTC full-duplex entre celular e JrBot;
 - câmera OV5640 com foto e modo ao vivo;
 - resoluções e qualidade JPEG selecionáveis;
-- orientação padrão da câmera em 90 graus;
+- orientação física da câmera em -90 graus / 270 graus;
 - configuração e diagnóstico de Wi-Fi;
 - DHCP como comportamento padrão de rede;
 - HTTPS local para APIs seguras do navegador, incluindo microfone;
-- arbitragem do barramento I2S compartilhado entre microfone e reprodução.
+- I2S full-duplex com BCLK/WS compartilhados entre microfone e amplificador.
 
 ### Fase atual da V1
 
@@ -85,7 +90,7 @@ A implementação funcional está encerrada, mas a V1 ainda não foi promovida p
 ```text
 v1 fechada
    ↓
-develop com JrBot_V1.6.2
+develop com JrBot_V1.6.3
    ↓
 uso real / observação
    ↓

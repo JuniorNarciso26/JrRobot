@@ -1,6 +1,6 @@
 # Estado do projeto
 
-Atualização: 2026-09-19.
+Atualização: 2026-09-23.
 
 ## Hardware de referência
 
@@ -27,17 +27,32 @@ O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
 A JrBot V1 está funcionalmente concluída e integrada em `develop`.
 
-A revisão atual é **`JrBot_V1.6.2`**, promovida como manutenção da `JrBot_V1.6.1`.
+A revisão atual é **`JrBot_V1.6.3`**, com Live WebRTC local full-duplex validada no HW04.
 
-### O que mudou na V1.6.2
+### O que mudou na V1.6.3
 
-- `INSTALAR.bat` consulta dinamicamente as branches remotas ativas;
-- branches de desenvolvimento/correção podem ser selecionadas pelo instalador;
-- `archive/*` permanece fora do menu;
-- a branch atual é identificada no seletor;
-- o fluxo de sincronização, compilação, gravação e abertura do painel continua centralizado no instalador.
+- áudio WebRTC PCMA/G.711A bidirecional entre JrBot e navegador;
+- vídeo OV5640 em JPEG pelo WebRTC DataChannel/SCTP;
+- perfis rápido/QVGA, equilibrado/VGA e qualidade/SVGA;
+- mute independente nas duas direções de áudio;
+- I2S full-duplex real no ESP32-S3 usando BCLK/WS compartilhados;
+- sinalização local HTTPS + SSE/POST;
+- monitor de RAM interna e PSRAM durante a Live;
+- política de alocação em PSRAM alinhada ao exemplo oficial `local_jpeg_stream`;
+- orientação física da câmera preservada em -90°/270°.
 
-A V1.6.2 não altera o PTT half-duplex nem o caminho de áudio. O estudo de comunicação de voz ao vivo/full-duplex permanece separado.
+Validação física confirmada:
+- JrBot → celular audível;
+- celular → JrBot audível;
+- vídeo contínuo;
+- mute do celular e mute do JrBot funcionais.
+
+Limitações conhecidas:
+- eco acústico/AEC ainda não tratado;
+- foram observados eventos `VIDEO_DC_DROP buffer_full` sem perda perceptível no teste A/B;
+- a Live é local; comunicação remota pela Internet continua como evolução da Issue #26.
+
+O hotfix `JrBot_V1.6.2.1` de rotação ficou aberto fora de `develop`, mas sua correção está absorvida pela V1.6.3.
 
 ## Nomenclatura
 
