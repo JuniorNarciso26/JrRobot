@@ -21,7 +21,12 @@ CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_BOOT_INIT=y
-CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+# Alinhado ao local_jpeg_stream oficial: malloc() pode usar PSRAM.
+# Alocacoes pequenas (<=256 B) preferem DRAM; maiores preferem PSRAM.
+# CONFIG_SPIRAM_USE_CAPS_ALLOC is not set
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 
 # ESP-SR: MultiNet6 reconhece o nome JrBot como comando local experimental.
 # WakeNet Hi ESP permanece embarcado como fallback seguro.

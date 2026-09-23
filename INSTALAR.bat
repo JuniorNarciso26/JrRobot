@@ -289,9 +289,13 @@ set "CURRENT_BRANCH="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 
 if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
-    rem V1.6.3.8 unifica Iniciar ao vivo com video + audio WebRTC.
-    set "BUILD_DIR=build-feature-v1.6.3-live-v08"
-    set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-v08"
+    rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
+    set "BUILD_DIR=build-feature-v1.6.3-live-final"
+    set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
+) else if /i "%CURRENT_BRANCH%"=="develop" (
+    rem Integracao da JrBot_V1.6.3.
+    set "BUILD_DIR=build-develop-v1.6.3"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"

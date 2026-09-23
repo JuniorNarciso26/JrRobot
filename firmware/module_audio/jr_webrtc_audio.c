@@ -22,6 +22,7 @@
 #include "jr_audio.h"
 #include "jr_board.h"
 #include "jr_brain.h"
+#include "jr_camera_diag.h"
 #include "jr_webrtc_audio.h"
 #include "jr_wifi.h"
 
@@ -39,6 +40,18 @@
 #define JR_WA_PEER_TASK_PRIORITY        18
 #define JR_WA_STOP_WAIT_MS              2500
 #define JR_WA_SIGNAL_POST_MAX           (16 * 1024)
+#define JR_WA_VIDEO_DC_CHUNK_SIZE        10000
+#define JR_WA_VIDEO_DC_HEADER_SIZE       5
+#define JR_WA_VIDEO_DC_END               0x80
+#define JR_WA_VIDEO_DC_SEQ_MASK          0x7F
+#define JR_WA_VIDEO_TASK_STACK           6144
+#define JR_WA_VIDEO_DC_LABEL             "jrbot-video"
+
+typedef enum {
+    JR_WA_VIDEO_PROFILE_FAST = 0,
+    JR_WA_VIDEO_PROFILE_BALANCED,
+    JR_WA_VIDEO_PROFILE_QUALITY,
+} jr_wa_video_profile_t;
 
 static const char *TAG = "jrbot_webrtc_audio";
 
@@ -75,6 +88,12 @@ typedef struct {
     uint32_t webrtc_rx_drops;
     uint64_t speaker_i2s_frames;
     uint32_t speaker_i2s_errors;
+    bool video_dc_open;
+    uint16_t video_dc_stream_id;
+    uint32_t video_frames;
+    uint32_t video_bytes;
+    uint32_t video_drops;
+    uint32_t video_send_errors;
 } jr_wa_status_t;
 
 static portMUX_TYPE state_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -91,9 +110,44 @@ static esp_peer_handle_t peer;
 static TaskHandle_t peer_task_handle;
 static TaskHandle_t mic_task_handle;
 static TaskHandle_t play_task_handle;
+static TaskHandle_t video_task_handle;
 
 static volatile bool session_running;
 static volatile bool peer_loop_running;
+static volatile bool video_dc_open;
+static uint16_t video_dc_stream_id;
+static jr_wa_video_profile_t video_profile = JR_WA_VIDEO_PROFILE_BALANCED;
+
+static void video_send_task(void *arg);
+
+static void video_profile_params(jr_wa_video_profile_t profile,
+                                 jr_camera_size_t *size,
+                                 int *quality,
+                                 int *fps,
+                                 const char **name)
+{
+    switch (profile) {
+        case JR_WA_VIDEO_PROFILE_FAST:
+            if (size) *size = JR_CAMERA_SIZE_QVGA;
+            if (quality) *quality = 16;
+            if (fps) *fps = 15;
+            if (name) *name = "fast";
+            break;
+        case JR_WA_VIDEO_PROFILE_QUALITY:
+            if (size) *size = JR_CAMERA_SIZE_SVGA;
+            if (quality) *quality = 16;
+            if (fps) *fps = 7;
+            if (name) *name = "quality";
+            break;
+        case JR_WA_VIDEO_PROFILE_BALANCED:
+        default:
+            if (size) *size = JR_CAMERA_SIZE_VGA;
+            if (quality) *quality = 14;
+            if (fps) *fps = 10;
+            if (name) *name = "balanced";
+            break;
+    }
+}
 
 static httpd_req_t *event_stream_req;
 static volatile bool event_stream_connected;
@@ -101,6 +155,11 @@ static volatile bool event_stream_stopping;
 
 static esp_peer_default_cfg_t peer_extra_cfg = {
     .agent_recv_timeout = 200,
+    .data_ch_cfg = {
+        .cache_timeout = 1000,
+        .send_cache_size = 24 * 1024,
+        .recv_cache_size = 4 * 1024,
+    },
     .rtp_cfg = {
         .audio_recv_jitter = {
             .cache_timeout = 120,
@@ -219,6 +278,12 @@ static void reset_session_counters(void)
     status_state.webrtc_rx_drops = 0;
     status_state.speaker_i2s_frames = 0;
     status_state.speaker_i2s_errors = 0;
+    status_state.video_dc_open = false;
+    status_state.video_dc_stream_id = 0;
+    status_state.video_frames = 0;
+    status_state.video_bytes = 0;
+    status_state.video_drops = 0;
+    status_state.video_send_errors = 0;
     status_state.peer_state = ESP_PEER_STATE_CLOSED;
     portEXIT_CRITICAL(&state_lock);
 }
@@ -419,7 +484,7 @@ static int peer_state_handler(esp_peer_state_t state, void *ctx)
 
     if (state == ESP_PEER_STATE_CONNECTED) {
         set_peer_connected(true);
-        ESP_LOGI(TAG, "WEBRTC_CONNECTED codec=PCMA rate=8000 mono=1");
+        ESP_LOGI(TAG, "WEBRTC_CONNECTED codec=PCMA rate=8000 mono=1 video=JPEG_DATA_CHANNEL");
     } else if (state == ESP_PEER_STATE_DISCONNECTED ||
                state == ESP_PEER_STATE_CONNECT_FAILED ||
                state == ESP_PEER_STATE_CLOSED) {
@@ -498,6 +563,190 @@ static int peer_video_data_handler(esp_peer_video_frame_t *frame, void *ctx)
     (void)frame;
     (void)ctx;
     return 0;
+}
+
+static int peer_channel_open_handler(esp_peer_data_channel_info_t *ch, void *ctx)
+{
+    (void)ctx;
+    if (!ch || !ch->label) return 0;
+    ESP_LOGI(TAG, "DATA_CHANNEL_OPEN label=%s stream_id=%u", ch->label, ch->stream_id);
+    if (strcmp(ch->label, JR_WA_VIDEO_DC_LABEL) == 0) {
+        video_dc_stream_id = ch->stream_id;
+        video_dc_open = true;
+        portENTER_CRITICAL(&state_lock);
+        status_state.video_dc_open = true;
+        status_state.video_dc_stream_id = ch->stream_id;
+        portEXIT_CRITICAL(&state_lock);
+        log_heap_state("video_dc_open");
+        if (!video_task_handle) {
+            BaseType_t created = xTaskCreate(
+                video_send_task, "jr_wa_video", JR_WA_VIDEO_TASK_STACK,
+                NULL, JR_WA_TASK_PRIORITY, &video_task_handle);
+            if (created != pdPASS) {
+                ESP_LOGE(TAG, "VIDEO_DC task allocation failed");
+                video_task_handle = NULL;
+            }
+        }
+    }
+    return 0;
+}
+
+static int peer_data_handler(esp_peer_data_frame_t *frame, void *ctx)
+{
+    (void)frame;
+    (void)ctx;
+    return 0;
+}
+
+static int peer_channel_close_handler(esp_peer_data_channel_info_t *ch, void *ctx)
+{
+    (void)ctx;
+    if (ch) {
+        ESP_LOGI(TAG, "DATA_CHANNEL_CLOSE label=%s stream_id=%u",
+                 ch->label ? ch->label : "?", ch->stream_id);
+    }
+    video_dc_open = false;
+    portENTER_CRITICAL(&state_lock);
+    status_state.video_dc_open = false;
+    portEXIT_CRITICAL(&state_lock);
+    return 0;
+}
+
+static int send_jpeg_data_channel(const uint8_t *jpeg, size_t jpeg_size, uint8_t *chunk_buf)
+{
+    if (!peer || !video_dc_open || !jpeg || !jpeg_size || !chunk_buf) {
+        return ESP_PEER_ERR_WRONG_STATE;
+    }
+
+    uint32_t chunk_count = (uint32_t)((jpeg_size + JR_WA_VIDEO_DC_CHUNK_SIZE - 1U) /
+                                      JR_WA_VIDEO_DC_CHUNK_SIZE);
+    if (chunk_count > (JR_WA_VIDEO_DC_SEQ_MASK + 1U)) {
+        return ESP_PEER_ERR_INVALID_ARG;
+    }
+
+    size_t offset = 0;
+    uint8_t seq = 0;
+    while (offset < jpeg_size && session_running && video_dc_open) {
+        size_t payload = jpeg_size - offset;
+        if (payload > JR_WA_VIDEO_DC_CHUNK_SIZE) payload = JR_WA_VIDEO_DC_CHUNK_SIZE;
+
+        uint8_t chunk_id = seq & JR_WA_VIDEO_DC_SEQ_MASK;
+        if (offset + payload >= jpeg_size) chunk_id |= JR_WA_VIDEO_DC_END;
+
+        chunk_buf[0] = chunk_id;
+        chunk_buf[1] = (uint8_t)((payload >> 24) & 0xFF);
+        chunk_buf[2] = (uint8_t)((payload >> 16) & 0xFF);
+        chunk_buf[3] = (uint8_t)((payload >> 8) & 0xFF);
+        chunk_buf[4] = (uint8_t)(payload & 0xFF);
+        memcpy(chunk_buf + JR_WA_VIDEO_DC_HEADER_SIZE, jpeg + offset, payload);
+
+        esp_peer_data_frame_t data_frame = {
+            .type = ESP_PEER_DATA_CHANNEL_DATA,
+            .stream_id = video_dc_stream_id,
+            .data = chunk_buf,
+            .size = (int)(JR_WA_VIDEO_DC_HEADER_SIZE + payload),
+        };
+
+        int ret = esp_peer_send_data(peer, &data_frame);
+        if (ret != ESP_PEER_ERR_NONE) return ret;
+
+        offset += payload;
+        seq++;
+    }
+    return ESP_PEER_ERR_NONE;
+}
+
+static void video_send_task(void *arg)
+{
+    (void)arg;
+    uint8_t *chunk_buf = heap_caps_malloc(JR_WA_VIDEO_DC_HEADER_SIZE + JR_WA_VIDEO_DC_CHUNK_SIZE,
+                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!chunk_buf) {
+        ESP_LOGE(TAG, "VIDEO_DC chunk buffer allocation failed");
+        video_task_handle = NULL;
+        vTaskDelete(NULL);
+        return;
+    }
+
+    jr_camera_size_t initial_size;
+    int initial_quality = 14;
+    int initial_fps = 10;
+    const char *initial_name = "balanced";
+    portENTER_CRITICAL(&state_lock);
+    jr_wa_video_profile_t initial_profile = video_profile;
+    portEXIT_CRITICAL(&state_lock);
+    video_profile_params(initial_profile, &initial_size, &initial_quality, &initial_fps, &initial_name);
+
+    ESP_LOGI(TAG, "VIDEO_DC_TASK_READY profile=%s size=%s quality=%d fps=%d chunk=%d",
+             initial_name, jr_camera_size_name(initial_size), initial_quality,
+             initial_fps, JR_WA_VIDEO_DC_CHUNK_SIZE);
+
+    while (session_running) {
+        if (!get_peer_connected() || !video_dc_open || !peer) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        jr_wa_video_profile_t profile;
+        portENTER_CRITICAL(&state_lock);
+        profile = video_profile;
+        portEXIT_CRITICAL(&state_lock);
+
+        jr_camera_size_t frame_size;
+        int frame_quality = 14;
+        int frame_fps = 10;
+        const char *profile_name = "balanced";
+        video_profile_params(profile, &frame_size, &frame_quality, &frame_fps, &profile_name);
+
+        int64_t started_us = esp_timer_get_time();
+        jr_camera_jpeg_t frame = {0};
+        esp_err_t cam_err = jr_camera_capture_jpeg_ex(&frame, frame_size, frame_quality);
+        if (cam_err != ESP_OK) {
+            portENTER_CRITICAL(&state_lock);
+            status_state.video_drops++;
+            portEXIT_CRITICAL(&state_lock);
+            ESP_LOGW(TAG, "VIDEO_CAPTURE_DROP err=%s", esp_err_to_name(cam_err));
+            int retry_ms = frame_fps > 0 ? (1000 / frame_fps) : 100;
+            vTaskDelay(pdMS_TO_TICKS(retry_ms));
+            continue;
+        }
+
+        int ret = send_jpeg_data_channel(frame.data, frame.len, chunk_buf);
+        portENTER_CRITICAL(&state_lock);
+        if (ret == ESP_PEER_ERR_NONE) {
+            status_state.video_frames++;
+            status_state.video_bytes += (uint32_t)frame.len;
+        } else {
+            status_state.video_drops++;
+            status_state.video_send_errors++;
+        }
+        uint32_t sent_frames = status_state.video_frames;
+        portEXIT_CRITICAL(&state_lock);
+
+        if (ret == ESP_PEER_ERR_WOULD_BLOCK) {
+            ESP_LOGW(TAG, "VIDEO_DC_DROP buffer_full bytes=%u", (unsigned)frame.len);
+        } else if (ret != ESP_PEER_ERR_NONE) {
+            ESP_LOGW(TAG, "VIDEO_DC_SEND_ERROR ret=%d bytes=%u", ret, (unsigned)frame.len);
+        } else if ((sent_frames % 25U) == 0U) {
+            ESP_LOGI(TAG, "WEBRTC_JPEG frames=%lu profile=%s size=%ux%u quality=%d bytes=%u",
+                     (unsigned long)sent_frames, profile_name, frame.width, frame.height,
+                     frame.jpeg_quality, (unsigned)frame.len);
+        }
+
+        jr_camera_jpeg_release(&frame);
+
+        int frame_ms = frame_fps > 0 ? (1000 / frame_fps) : 100;
+        int64_t elapsed_ms = (esp_timer_get_time() - started_us) / 1000;
+        if (elapsed_ms < frame_ms) {
+            vTaskDelay(pdMS_TO_TICKS(frame_ms - (int)elapsed_ms));
+        } else {
+            taskYIELD();
+        }
+    }
+
+    heap_caps_free(chunk_buf);
+    video_task_handle = NULL;
+    vTaskDelete(NULL);
 }
 
 static void peer_loop_task(void *arg)
@@ -631,7 +880,7 @@ static void wait_worker_tasks(void)
 {
     TickType_t start = xTaskGetTickCount();
     TickType_t limit = pdMS_TO_TICKS(JR_WA_STOP_WAIT_MS);
-    while ((peer_task_handle || mic_task_handle || play_task_handle) &&
+    while ((peer_task_handle || mic_task_handle || play_task_handle || video_task_handle) &&
            (xTaskGetTickCount() - start) < limit) {
         vTaskDelay(pdMS_TO_TICKS(20));
     }
@@ -644,13 +893,17 @@ static void stop_session_unlocked(void)
     has_resources = status_state.bus_owned || status_state.active;
     portEXIT_CRITICAL(&state_lock);
     has_resources = has_resources || peer || tx_chan || rx_chan ||
-                    peer_task_handle || mic_task_handle || play_task_handle;
+                    peer_task_handle || mic_task_handle || play_task_handle || video_task_handle;
     if (!has_resources) return;
 
     ESP_LOGI(TAG, "SESSION_STOP begin");
     session_running = false;
     peer_loop_running = false;
+    video_dc_open = false;
     set_peer_connected(false);
+    portENTER_CRITICAL(&state_lock);
+    status_state.video_dc_open = false;
+    portEXIT_CRITICAL(&state_lock);
     set_active(false);
 
     wait_worker_tasks();
@@ -709,7 +962,8 @@ static esp_err_t start_session_unlocked(void)
         },
         .audio_dir = ESP_PEER_MEDIA_DIR_SEND_RECV,
         .video_dir = ESP_PEER_MEDIA_DIR_NONE,
-        .enable_data_channel = false,
+        .enable_data_channel = true,
+        .manual_ch_create = true,
         .no_auto_reconnect = true,
         .on_state = peer_state_handler,
         .on_msg = peer_msg_handler,
@@ -717,6 +971,9 @@ static esp_err_t start_session_unlocked(void)
         .on_audio_data = peer_audio_data_handler,
         .on_video_info = peer_video_info_handler,
         .on_video_data = peer_video_data_handler,
+        .on_channel_open = peer_channel_open_handler,
+        .on_data = peer_data_handler,
+        .on_channel_close = peer_channel_close_handler,
         .extra_cfg = &peer_extra_cfg,
         .extra_size = sizeof(peer_extra_cfg),
     };
@@ -766,9 +1023,20 @@ static esp_err_t start_session_unlocked(void)
         goto fail;
     }
 
+    jr_camera_size_t session_video_size;
+    int session_video_quality = 14;
+    int session_video_fps = 10;
+    const char *session_video_name = "balanced";
+    portENTER_CRITICAL(&state_lock);
+    jr_wa_video_profile_t session_profile = video_profile;
+    portEXIT_CRITICAL(&state_lock);
+    video_profile_params(session_profile, &session_video_size, &session_video_quality,
+                         &session_video_fps, &session_video_name);
+
     ESP_LOGI(TAG,
-             "SESSION_START WebRTC=PCMA/8000/mono I2S=PHILIPS/16000/32x2 ip=%s",
-             jr_wifi_ip());
+             "SESSION_START WebRTC=PCMA/8000/mono video=JPEG_DC profile=%s size=%s quality=%d fps=%d I2S=PHILIPS/16000/32x2 ip=%s",
+             session_video_name, jr_camera_size_name(session_video_size),
+             session_video_quality, session_video_fps, jr_wifi_ip());
     return ESP_OK;
 
 fail:
@@ -855,7 +1123,27 @@ static void signal_sender_task(void *arg)
         uint32_t now = (uint32_t)(esp_timer_get_time() / 1000ULL);
         if ((uint32_t)(now - last_heartbeat) >= 5000U) {
             last_heartbeat = now;
-            if (send_sse(event_stream_req, "{\"type\":\"heartbeat\"}") != ESP_OK) {
+            jr_wa_status_t s;
+            portENTER_CRITICAL(&state_lock);
+            s = status_state;
+            portEXIT_CRITICAL(&state_lock);
+            char heartbeat[384];
+            snprintf(heartbeat, sizeof(heartbeat),
+                     "{\"type\":\"heartbeat\",\"heap_internal_free\":%u,"
+                     "\"heap_internal_largest\":%u,\"heap_internal_min\":%u,"
+                     "\"heap_psram_free\":%u,\"heap_psram_largest\":%u,"
+                     "\"heap_psram_min\":%u,\"video_frames\":%lu,\"video_drops\":%lu,"
+                     "\"video_dc\":%d}",
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                     (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                     (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                     (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+                     (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
+                     (unsigned long)s.video_frames,
+                     (unsigned long)s.video_drops,
+                     s.video_dc_open ? 1 : 0);
+            if (send_sse(event_stream_req, heartbeat) != ESP_OK) {
                 break;
             }
         }
@@ -966,6 +1254,37 @@ static esp_err_t signal_post_handler(httpd_req_t *req)
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "missing candidate");
         }
         ret = send_remote_candidate(cand->valuestring);
+    } else if (strcmp(type->valuestring, "video_profile") == 0) {
+        cJSON *profile = cJSON_GetObjectItem(root, "profile");
+        if (!cJSON_IsString(profile)) {
+            cJSON_Delete(root);
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "missing profile");
+        }
+
+        jr_wa_video_profile_t next_profile;
+        if (strcmp(profile->valuestring, "fast") == 0) {
+            next_profile = JR_WA_VIDEO_PROFILE_FAST;
+        } else if (strcmp(profile->valuestring, "balanced") == 0) {
+            next_profile = JR_WA_VIDEO_PROFILE_BALANCED;
+        } else if (strcmp(profile->valuestring, "quality") == 0) {
+            next_profile = JR_WA_VIDEO_PROFILE_QUALITY;
+        } else {
+            cJSON_Delete(root);
+            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid video profile");
+        }
+
+        portENTER_CRITICAL(&state_lock);
+        video_profile = next_profile;
+        portEXIT_CRITICAL(&state_lock);
+
+        jr_camera_size_t size;
+        int quality = 14;
+        int fps = 10;
+        const char *name = "balanced";
+        video_profile_params(next_profile, &size, &quality, &fps, &name);
+        ESP_LOGI(TAG, "VIDEO_PROFILE profile=%s size=%s quality=%d fps=%d",
+                 name, jr_camera_size_name(size), quality, fps);
+        ret = 0;
     } else if (strcmp(type->valuestring, "bye") == 0) {
         event_stream_stopping = true;
         stop_session();
@@ -989,7 +1308,7 @@ static esp_err_t status_handler(httpd_req_t *req)
     s = status_state;
     portEXIT_CRITICAL(&state_lock);
 
-    char text[640];
+    char text[1024];
     snprintf(text, sizeof(text),
              "JR_WEBRTC_AUDIO_TEST active=%d peer_connected=%d peer_state=%d sessions=%lu "
              "codec=PCMA rate=8000 channel=1 "
@@ -998,7 +1317,10 @@ static esp_err_t status_handler(httpd_req_t *req)
              "mic_frames=%llu mic_errors=%lu "
              "tx_packets=%lu tx_bytes=%lu tx_errors=%lu "
              "rx_packets=%lu rx_bytes=%lu rx_drops=%lu "
-             "speaker_frames=%llu speaker_errors=%lu",
+             "speaker_frames=%llu speaker_errors=%lu "
+             "video_dc=%d video_stream_id=%u video_frames=%lu video_bytes=%lu video_drops=%lu video_errors=%lu "
+             "heap_internal_free=%u heap_internal_largest=%u heap_internal_min=%u "
+             "heap_psram_free=%u heap_psram_largest=%u heap_psram_min=%u",
              s.active ? 1 : 0,
              s.peer_connected ? 1 : 0,
              s.peer_state,
@@ -1013,7 +1335,19 @@ static esp_err_t status_handler(httpd_req_t *req)
              (unsigned long)s.webrtc_rx_bytes,
              (unsigned long)s.webrtc_rx_drops,
              (unsigned long long)s.speaker_i2s_frames,
-             (unsigned long)s.speaker_i2s_errors);
+             (unsigned long)s.speaker_i2s_errors,
+             s.video_dc_open ? 1 : 0,
+             (unsigned)s.video_dc_stream_id,
+             (unsigned long)s.video_frames,
+             (unsigned long)s.video_bytes,
+             (unsigned long)s.video_drops,
+             (unsigned long)s.video_send_errors,
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
 
     httpd_resp_set_type(req, "text/plain; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
@@ -1042,7 +1376,7 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
     }
 
     ESP_LOGI(TAG,
-             "WEBRTC_AUDIO_READY url=https://%s/webrtc-audio codec=PCMA audio_only=1",
+             "WEBRTC_JPEG_READY url=https://%s/webrtc-audio audio=PCMA video=JPEG_DC",
              jr_wifi_ip());
     return ESP_OK;
 }
