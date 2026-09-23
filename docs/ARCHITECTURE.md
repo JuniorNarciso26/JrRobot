@@ -98,6 +98,29 @@ Isso permite reutilização por:
 - IA;
 - automações.
 
+## Live local WebRTC — V1.6.3
+
+A Live local da V1.6.3 usa uma única PeerConnection para áudio bidirecional e transporte do JPEG da câmera.
+
+```text
+OV5640 -> JPEG -> DataChannel/SCTP -> navegador
+MS3625 -> I2S RX -> G.711A/PCMA -> RTP/SRTP -> navegador
+navegador -> RTP/SRTP -> G.711A/PCMA -> I2S TX -> MAX98357A
+```
+
+No HW04, RX e TX I2S operam simultaneamente compartilhando:
+
+- BCLK GPIO21;
+- WS/LRCLK GPIO47;
+- RX SD GPIO41;
+- TX DIN GPIO42.
+
+O HTTPS local serve página e signaling. O vídeo da Live não usa mais uma requisição HTTPS por quadro.
+
+A sessão usa ICE local, DTLS-SRTP e SCTP. O caminho foi validado fisicamente com áudio nas duas direções e vídeo contínuo. A arquitetura atual é local; evolução para Internet deverá preservar WebRTC e acrescentar sinalização remota, STUN/TURN ou infraestrutura equivalente.
+
+O cancelamento de eco acústico não faz parte da V1.6.3 e permanece como pesquisa futura.
+
 ## Princípios de segurança
 
 1. IA não escreve GPIO diretamente.

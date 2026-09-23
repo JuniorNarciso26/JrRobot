@@ -14,21 +14,24 @@ A proposta do JrBot é criar uma experiência de presença: você vê, escuta, f
 
 ## JrBot V1 — o que já está disponível
 
-Versão da linha: **`JrBot_V1.6.2`**
+Versão da linha: **`JrBot_V1.6.3`**
 
 A V1 transforma a base eletrônica do JrBot em um produto utilizável diretamente pelo navegador.
 
-### Novidades da V1.6.2
+### Novidades da V1.6.3
 
-Em relação à `JrBot_V1.6.1`, a `JrBot_V1.6.2` melhora o fluxo de instalação e teste das versões em desenvolvimento:
+A `JrBot_V1.6.3` promove a Live local validada no HW04:
 
-- o `INSTALAR.bat` passa a consultar dinamicamente todas as branches remotas ativas do GitHub;
-- branches `feature/*`, `fix/*` e `hotfix/*` podem aparecer no menu de instalação sem editar manualmente a lista;
-- branches `archive/*` permanecem ocultas do menu;
-- a branch atual continua identificada com `[ATUAL]`;
-- o usuário pode trocar, atualizar, compilar e gravar uma branch ativa pelo mesmo instalador.
+- um único botão **Iniciar ao vivo** abre vídeo e áudio;
+- áudio WebRTC full-duplex PCMA/G.711A em 8 kHz, com JrBot → celular e celular → JrBot simultâneos;
+- vídeo JPEG da OV5640 transportado pelo WebRTC DataChannel/SCTP, sem requisição HTTPS por quadro;
+- perfis **rápido** (QVGA), **equilibrado** (VGA) e **qualidade** (SVGA);
+- controles para mutar o microfone do celular e o áudio recebido do JrBot;
+- monitor de RAM interna, maior bloco e PSRAM durante a Live;
+- I2S full-duplex real no ESP32-S3 com BCLK/WS compartilhados entre MS3625 e MAX98357A;
+- política de alocação em PSRAM ajustada para preservar RAM interna durante ICE/DTLS/SCTP.
 
-Esta revisão não altera o comportamento do interfone PTT nem a arquitetura de áudio da V1. O estudo de áudio ao vivo/full-duplex continua como evolução posterior.
+A validação física confirmou vídeo contínuo, áudio bidirecional e os dois controles de mute. O eco acústico/AEC permanece como estudo futuro e não faz parte desta promoção. A Live desta versão é local; evolução para Internet, STUN/TURN e sinalização remota continua na Issue #26.
 
 ### Controle pelo celular ou computador
 
@@ -59,7 +62,7 @@ Recursos disponíveis:
 - resoluções QVGA, VGA e SVGA;
 - ajuste de qualidade JPEG;
 - métricas de FPS e tamanho dos quadros;
-- orientação física padrão da câmera em 90 graus;
+- orientação física confirmada da câmera em -90 graus / 270 graus;
 - geração do JPEG respeitando a orientação definida no firmware.
 
 ### Microfone do JrBot
@@ -81,11 +84,19 @@ O usuário também pode enviar mensagens de áudio do celular ou computador para
 
 Isso permite usar o JrBot como um ponto físico de reprodução de mensagens, aproveitando o amplificador MAX98357A e o alto-falante integrado.
 
-### Interfone PTT
+### Live WebRTC full-duplex
 
-A V1 possui um modo **Push-to-Talk (PTT) half-duplex**.
+O fluxo principal de comunicação da V1.6.3 é uma Live local bidirecional.
 
-O usuário pode falar pelo microfone do celular e reproduzir sua voz no alto-falante do JrBot. O sistema controla a troca entre captura e reprodução para preservar o barramento I2S compartilhado.
+Ao iniciar a Live:
+
+- o microfone MS3625 envia áudio para o navegador por WebRTC;
+- o microfone do celular envia áudio para o MAX98357A por WebRTC;
+- a câmera OV5640 envia JPEGs pelo DataChannel da mesma sessão;
+- os clocks I2S BCLK e WS permanecem compartilhados entre RX e TX;
+- o usuário pode mutar cada direção de áudio sem encerrar a sessão.
+
+O PTT legado deixa de ser o fluxo principal da interface. O transporte atual foi validado na rede local e foi desenhado para permitir evolução futura da arquitetura WebRTC.
 
 ### Áudio e volume
 
@@ -175,7 +186,7 @@ Tudo isso forma a base sobre a qual serão adicionadas as próximas camadas de i
 | Versão | Objetivo | Estado |
 | --- | --- | --- |
 | **V0** | Fundação de hardware e periféricos | Concluída |
-| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.2`** |
+| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.3`** |
 | **V2** | Controle por voz local | Próxima etapa |
 | **V3** | Controle programático pela Runtime API | Planejada |
 | **JrBrain** | Memória, personalidade, contexto, LLM e Skills | Futuro |

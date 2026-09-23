@@ -2,6 +2,47 @@
 
 Este arquivo registra as mudanças promovidas para a linha de integração do produto.
 
+## JrBot_V1.6.3 — 2026-09-23
+
+Base: `JrBot_V1.6.2`.
+
+### Live local
+
+- substitui o fluxo principal PTT pela Live WebRTC full-duplex;
+- áudio PCMA/G.711A 8 kHz mono em `SEND_RECV`;
+- vídeo JPEG da OV5640 via WebRTC DataChannel/SCTP;
+- sinalização HTTPS local por SSE/POST;
+- perfis de vídeo rápido, equilibrado e qualidade;
+- mute independente das duas direções;
+- monitor de memória durante a sessão.
+
+### Hardware e memória
+
+- valida I2S RX/TX simultâneo no HW04 com BCLK GPIO21 e WS GPIO47 compartilhados;
+- mantém mic SD GPIO41 e MAX98357A DIN GPIO42;
+- ajusta a política de PSRAM para preservar RAM interna durante ICE/DTLS/SCTP;
+- preserva orientação física da câmera em -90°/270°.
+
+### Validação física
+
+Confirmados em hardware real:
+- JrBot → celular;
+- celular → JrBot;
+- vídeo contínuo;
+- mute do microfone do celular;
+- mute do áudio do JrBot.
+
+### Limitações
+
+- AEC/eco acústico adiado;
+- comunicação WebRTC pela Internet ainda não implementada;
+- eventos ocasionais de backpressure do DataChannel foram observados sem impacto perceptível no teste A/B.
+
+### Histórico absorvido
+
+O hotfix `JrBot_V1.6.2.1` de rotação não foi integrado separadamente; sua orientação correta está incluída nesta revisão.
+
+
 ## JrBot_V1.6.2 — 2026-09-19
 
 Base: `JrBot_V1.6.1`.

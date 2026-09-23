@@ -12,6 +12,7 @@
 #include "jr_wifi.h"
 #include "jr_portal.h"
 #include "jr_audio_receive.h"
+#include "jr_webrtc_audio.h"
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
@@ -191,6 +192,10 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
         {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
+        {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler},
+        {.uri="/mic-stream",.method=HTTP_GET,.handler=jr_mic_stream_handler},
+        {.uri="/mic-ws",.method=HTTP_GET,.handler=jr_mic_ws_handler,.is_websocket=true},
+        {.uri="/live-diag",.method=HTTP_GET,.handler=jr_mic_live_diag_handler},
         {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
         {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
         {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
@@ -206,7 +211,8 @@ static void start_http(void) {
     httpd_config_t config=HTTPD_DEFAULT_CONFIG();
     config.server_port=80;
     config.stack_size=12288;
-    config.max_uri_handlers=12;
+    config.max_uri_handlers=16;
+    config.lru_purge_enable=true;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
     err=register_routes(web_server);
@@ -220,7 +226,9 @@ static void start_https(void) {
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
-    config.httpd.max_uri_handlers=12;
+    config.httpd.max_uri_handlers=20;
+    config.httpd.max_open_sockets=7;
+    config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
     config.servercert_len=sizeof(JR_HTTPS_CERT_PEM);
     config.prvtkey_pem=(const uint8_t *)JR_HTTPS_KEY_PEM;
@@ -229,7 +237,9 @@ static void start_https(void) {
     if (err!=ESP_OK) { https_server=NULL; ESP_LOGE("jrbot_portal","https_start=%s",esp_err_to_name(err)); return; }
     err=register_routes(https_server);
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","https_register=%s",esp_err_to_name(err)); return; }
-    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 cert=local V1.6");
+    err=jr_webrtc_audio_register_routes(https_server);
+    if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","webrtc_audio_register=%s",esp_err_to_name(err)); return; }
+    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 cert=local V1.6 WebRTCAudio=/webrtc-audio");
 #else
     ESP_LOGW("jrbot_portal","JR_HTTPS_DISABLED material_local_ausente execute_CONFIGURAR_HTTPS_V1");
 #endif
@@ -240,7 +250,7 @@ void jr_portal_start(void) {
     start_http();
     start_https();
     if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal V1.6 iniciado http=%d https=%d camera=/capture mic=/mic-record audio=/audio",
+        ESP_LOGI("jrbot_portal","Portal V1.6.3 iniciado http=%d https=%d camera=/capture WebRTCAudio=/webrtc-audio legacy_mic_ws=/mic-ws",
                  web_server?1:0,https_server?1:0);
     }
 }

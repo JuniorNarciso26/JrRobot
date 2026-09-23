@@ -11,11 +11,22 @@ CONFIG_PARTITION_TABLE_FILENAME="partitions_sr.csv"
 # CONFIG_PARTITION_TABLE_SINGLE_APP is not set
 CONFIG_FREERTOS_HZ=1000
 
+# Live V1.6.3: WebSocket binario para audio em tempo real.
+CONFIG_HTTPD_WS_SUPPORT=y
+
+# Live V1.6.3.7: margem para HTTP/HTTPS + SSE/POST + ICE/UDP WebRTC.
+CONFIG_LWIP_MAX_SOCKETS=16
+
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_BOOT_INIT=y
-CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+# Alinhado ao local_jpeg_stream oficial: malloc() pode usar PSRAM.
+# Alocacoes pequenas (<=256 B) preferem DRAM; maiores preferem PSRAM.
+# CONFIG_SPIRAM_USE_CAPS_ALLOC is not set
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 
 # ESP-SR: MultiNet6 reconhece o nome JrBot como comando local experimental.
 # WakeNet Hi ESP permanece embarcado como fallback seguro.
@@ -47,3 +58,12 @@ CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 # CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
 
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# WebRTC / esp_peer: DTLS-SRTP para audio bidirecional.
+CONFIG_MBEDTLS_SSL_PROTO_DTLS=y
+CONFIG_MBEDTLS_SSL_DTLS_SRTP=y
+CONFIG_MBEDTLS_X509_CREATE_C=y
+
+# Manter RAM interna para DMA da camera/I2S e mover buffers TLS para PSRAM.
+# CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC is not set
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y

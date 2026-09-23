@@ -288,7 +288,15 @@ cd /d "%~dp0"
 set "CURRENT_BRANCH="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 
-if /i "%CURRENT_BRANCH%"=="v2" (
+if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
+    rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
+    set "BUILD_DIR=build-feature-v1.6.3-live-final"
+    set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
+) else if /i "%CURRENT_BRANCH%"=="develop" (
+    rem Integracao da JrBot_V1.6.3.
+    set "BUILD_DIR=build-develop-v1.6.3"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"
 ) else (
@@ -359,6 +367,162 @@ exit /b 0
 call :check
 if errorlevel 1 goto failure
 pushd firmware
+if exist "%SDKCONFIG_FILE%" (
+    echo [INFO] Garantindo suporte WebSocket no sdkconfig existente...
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HTTPD_WS_SUPPORT" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
+if errorlevel 1 (
+    popd
+    goto failure
+)
+if /i "%ACTION%"=="build" (
+    popd
+    goto success
+)
+echo.
+echo Gravando JrBot em %JR_FLASH_PORT%...
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (
+    popd
+    goto failure
+)
+popd
+if /i "%ACTION%"=="flash" goto success
+goto panel
+
+:menuconfig
+call :check
+if errorlevel 1 goto failure
+pushd firmware
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
+set "RC=%errorlevel%"
+popd
+if not "%RC%"=="0" goto failure
+goto success
+
+:panel
+call "%~dp0PAINEL.bat"
+exit /b %errorlevel%
+
+:success
+echo.
+echo ============================================================
+echo [SUCESSO] JRBOT PREPARADO
+echo ============================================================
+if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
+if exist firmware\version.txt (
+    set /p FW_VERSION=<firmware\version.txt
+    echo Firmware: !FW_VERSION!
+)
+if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
+exit /b 0
+
+:failure
+if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
+echo.
+echo ============================================================
+echo [FALHA] Processo interrompido.
+echo ============================================================
+echo Nenhum reset automatico do repositorio foi executado.
+pause
+exit /b 1
+
+:help
+echo.
+echo JrBot - instalador/atualizador
+echo.
+echo   INSTALAR.bat              escolhe versao, atualiza, compila, grava e abre painel
+echo   INSTALAR.bat build        escolhe versao, atualiza e compila
+echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
+echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
+echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
+echo.
+echo O menu consulta todas as branches remotas ativas no GitHub.
+echo Branches archive/* nao aparecem no menu.
+echo.
+exit /b 0
+, 'CONFIG_HTTPD_WS_SUPPORT=y', s); s=re.sub(r'(?m)^CONFIG_HTTPD_WS_SUPPORT=.*
+if errorlevel 1 (
+    popd
+    goto failure
+)
+if /i "%ACTION%"=="build" (
+    popd
+    goto success
+)
+echo.
+echo Gravando JrBot em %JR_FLASH_PORT%...
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (
+    popd
+    goto failure
+)
+popd
+if /i "%ACTION%"=="flash" goto success
+goto panel
+
+:menuconfig
+call :check
+if errorlevel 1 goto failure
+pushd firmware
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
+set "RC=%errorlevel%"
+popd
+if not "%RC%"=="0" goto failure
+goto success
+
+:panel
+call "%~dp0PAINEL.bat"
+exit /b %errorlevel%
+
+:success
+echo.
+echo ============================================================
+echo [SUCESSO] JRBOT PREPARADO
+echo ============================================================
+if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
+if exist firmware\version.txt (
+    set /p FW_VERSION=<firmware\version.txt
+    echo Firmware: !FW_VERSION!
+)
+if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
+exit /b 0
+
+:failure
+if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
+echo.
+echo ============================================================
+echo [FALHA] Processo interrompido.
+echo ============================================================
+echo Nenhum reset automatico do repositorio foi executado.
+pause
+exit /b 1
+
+:help
+echo.
+echo JrBot - instalador/atualizador
+echo.
+echo   INSTALAR.bat              escolhe versao, atualiza, compila, grava e abre painel
+echo   INSTALAR.bat build        escolhe versao, atualiza e compila
+echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
+echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
+echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
+echo.
+echo O menu consulta todas as branches remotas ativas no GitHub.
+echo Branches archive/* nao aparecem no menu.
+echo.
+exit /b 0
+, 'CONFIG_HTTPD_WS_SUPPORT=y', s); p.write_text(s if 'CONFIG_HTTPD_WS_SUPPORT=y' in s else s.rstrip()+'\nCONFIG_HTTPD_WS_SUPPORT=y\n',encoding='utf-8')"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd

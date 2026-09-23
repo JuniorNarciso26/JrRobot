@@ -10,6 +10,9 @@
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "jr_audio.h"
 #include "jr_board.h"
@@ -20,6 +23,13 @@
 #define JR_MIC_MAX_RECORD_SECONDS 10
 #define JR_MIC_PROBE_BUS_TIMEOUT_MS 1200
 #define JR_MIC_RECORD_BUS_TIMEOUT_MS 15000
+#define JR_MIC_STREAM_CHUNK_MS 80
+#define JR_MIC_STREAM_SAMPLES ((JR_MIC_SAMPLE_RATE * JR_MIC_STREAM_CHUNK_MS) / 1000)
+#define JR_MIC_STREAM_TASK_STACK 12288
+#define JR_MIC_WS_FRAME_MS 80
+#define JR_MIC_WS_SAMPLES ((JR_MIC_SAMPLE_RATE * JR_MIC_WS_FRAME_MS) / 1000)
+#define JR_MIC_WS_MAX_PENDING 3
+#define JR_MIC_WS_TASK_STACK 12288
 
 static const char *TAG = "jrbot_mic";
 static int16_t *last_recording = NULL;
@@ -31,6 +41,55 @@ static int last_peak = 0;
 static char last_channel = 'L';
 static bool recording_active = false;
 static esp_err_t last_record_error = ESP_ERR_INVALID_STATE;
+static uint32_t live_request_count = 0;
+static uint32_t live_ok_count = 0;
+static uint32_t live_error_count = 0;
+static uint32_t live_busy_count = 0;
+static uint64_t live_bytes_sent = 0;
+static uint32_t live_last_capture_ms = 0;
+static uint32_t live_max_capture_ms = 0;
+static uint32_t live_last_block_ms = 0;
+static uint32_t live_stream_count = 0;
+static uint32_t live_stream_chunks = 0;
+static uint32_t live_stream_errors = 0;
+static uint64_t live_stream_bytes = 0;
+static uint32_t live_stream_last_chunk_ms = 0;
+static uint32_t live_stream_max_chunk_ms = 0;
+static bool live_stream_active = false;
+static char live_session[32] = "none";
+static portMUX_TYPE live_stream_lock = portMUX_INITIALIZER_UNLOCKED;
+static uint32_t live_ws_sessions = 0;
+static uint32_t live_ws_frames = 0;
+static uint32_t live_ws_send_errors = 0;
+static uint32_t live_ws_drops = 0;
+static uint64_t live_ws_bytes = 0;
+static uint32_t live_ws_last_frame_ms = 0;
+static uint32_t live_ws_max_frame_ms = 0;
+static uint32_t live_ws_pending = 0;
+static bool live_ws_active = false;
+static bool live_ws_stop_requested = false;
+static httpd_handle_t live_ws_server = NULL;
+static int live_ws_fd = -1;
+
+typedef struct {
+    httpd_req_t *req;
+    char session[32];
+} jr_mic_stream_ctx_t;
+
+typedef struct {
+    httpd_handle_t hd;
+    int fd;
+    char session[32];
+} jr_mic_ws_task_ctx_t;
+
+typedef struct {
+    httpd_handle_t hd;
+    int fd;
+    bool audio;
+    uint32_t capture_ms;
+    size_t len;
+    uint8_t payload[];
+} jr_mic_ws_send_ctx_t;
 
 static uint32_t magnitude32(int32_t value) {
     int64_t v = value;
@@ -236,6 +295,719 @@ static int16_t *allocate_recording(size_t samples) {
     last_recording = fresh;
     last_recording_capacity = samples;
     return last_recording;
+}
+
+
+static bool live_stream_claim(void) {
+    bool ok = false;
+    portENTER_CRITICAL(&live_stream_lock);
+    if (!live_stream_active) {
+        live_stream_active = true;
+        live_stream_count++;
+        ok = true;
+    }
+    portEXIT_CRITICAL(&live_stream_lock);
+    return ok;
+}
+
+static void live_stream_release(void) {
+    portENTER_CRITICAL(&live_stream_lock);
+    live_stream_active = false;
+    portEXIT_CRITICAL(&live_stream_lock);
+}
+
+static void live_stream_note_chunk(size_t bytes, uint32_t elapsed_ms) {
+    portENTER_CRITICAL(&live_stream_lock);
+    live_stream_chunks++;
+    live_stream_bytes += bytes;
+    live_stream_last_chunk_ms = elapsed_ms;
+    if (elapsed_ms > live_stream_max_chunk_ms) live_stream_max_chunk_ms = elapsed_ms;
+    portEXIT_CRITICAL(&live_stream_lock);
+}
+
+static void live_stream_note_error(void) {
+    portENTER_CRITICAL(&live_stream_lock);
+    live_stream_errors++;
+    portEXIT_CRITICAL(&live_stream_lock);
+}
+
+static void jr_mic_stream_task(void *arg) {
+    jr_mic_stream_ctx_t *ctx = (jr_mic_stream_ctx_t *)arg;
+    httpd_req_t *req = ctx ? ctx->req : NULL;
+    bool bus_owned = false;
+    bool chunked_started = false;
+    i2s_chan_handle_t rx = NULL;
+    esp_err_t err = ESP_FAIL;
+
+    if (!req) goto finish;
+
+    if (!jr_audio_bus_acquire(1500)) {
+        live_stream_note_error();
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        (void)httpd_resp_sendstr(req, "JR_MIC_STREAM_ERROR audio_bus_busy");
+        goto finish;
+    }
+    bus_owned = true;
+
+    jr_audio_stop();
+    err = mic_rx_open(&rx);
+    if (err != ESP_OK) {
+        live_stream_note_error();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        (void)httpd_resp_sendstr(req, "JR_MIC_STREAM_ERROR i2s_open");
+        goto finish;
+    }
+
+    httpd_resp_set_type(req, "application/octet-stream");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-JrBot-Audio-Format", "pcm_s16le");
+    httpd_resp_set_hdr(req, "X-JrBot-Sample-Rate", "16000");
+    httpd_resp_set_hdr(req, "X-JrBot-Channels", "1");
+    httpd_resp_set_hdr(req, "X-JrBot-Stream-Chunk-Ms", "80");
+    httpd_resp_set_hdr(req, "X-JrBot-Live-Session", ctx->session);
+
+    chunked_started = true;
+    ESP_LOGI(TAG, "LIVE_STREAM_START session=%s chunk_ms=%d", ctx->session, JR_MIC_STREAM_CHUNK_MS);
+
+    int32_t raw[JR_MIC_FRAMES];
+    int16_t pcm[JR_MIC_STREAM_SAMPLES];
+
+    while (true) {
+        int64_t chunk_started = esp_timer_get_time();
+        size_t written = 0;
+
+        while (written < JR_MIC_STREAM_SAMPLES) {
+            size_t bytes_read = 0;
+            err = i2s_channel_read(rx, raw, sizeof(raw), &bytes_read, pdMS_TO_TICKS(200));
+            if (err != ESP_OK) break;
+
+            size_t frames = bytes_read / sizeof(int32_t);
+            size_t take = JR_MIC_STREAM_SAMPLES - written;
+            if (take > frames) take = frames;
+
+            for (size_t i = 0; i < take; ++i) {
+                int32_t v = raw[i] >> 14;
+                if (v > 32767) v = 32767;
+                if (v < -32768) v = -32768;
+                pcm[written + i] = (int16_t)v;
+            }
+            written += take;
+        }
+
+        if (err != ESP_OK || written == 0) {
+            live_stream_note_error();
+            ESP_LOGW(TAG, "LIVE_STREAM_CAPTURE_ERROR session=%s error=%s samples=%u",
+                     ctx->session, esp_err_to_name(err), (unsigned)written);
+            break;
+        }
+
+        err = httpd_resp_send_chunk(req, (const char *)pcm, written * sizeof(int16_t));
+        uint32_t elapsed_ms = (uint32_t)((esp_timer_get_time() - chunk_started + 500) / 1000);
+        if (err != ESP_OK) {
+            ESP_LOGI(TAG, "LIVE_STREAM_CLIENT_END session=%s send=%s",
+                     ctx->session, esp_err_to_name(err));
+            break;
+        }
+
+        live_stream_note_chunk(written * sizeof(int16_t), elapsed_ms);
+
+        uint32_t chunks_snapshot;
+        portENTER_CRITICAL(&live_stream_lock);
+        chunks_snapshot = live_stream_chunks;
+        portEXIT_CRITICAL(&live_stream_lock);
+        if ((chunks_snapshot % 50u) == 0u) {
+            ESP_LOGI(TAG, "LIVE_STREAM session=%s chunks=%lu last_ms=%lu bytes=%u",
+                     ctx->session, (unsigned long)chunks_snapshot,
+                     (unsigned long)elapsed_ms, (unsigned)(written * sizeof(int16_t)));
+        }
+    }
+
+finish:
+    if (rx) mic_rx_close(rx);
+    if (bus_owned) jr_audio_bus_release();
+    if (req) {
+        if (chunked_started) (void)httpd_resp_send_chunk(req, NULL, 0);
+        (void)httpd_req_async_handler_complete(req);
+    }
+    if (ctx) free(ctx);
+    live_stream_release();
+    vTaskDelete(NULL);
+}
+
+esp_err_t jr_mic_stream_handler(httpd_req_t *req) {
+    if (!req) return ESP_ERR_INVALID_ARG;
+    if (!live_stream_claim()) {
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        return httpd_resp_sendstr(req, "JR_MIC_STREAM_ERROR already_active");
+    }
+
+    jr_mic_stream_ctx_t *ctx = (jr_mic_stream_ctx_t *)calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        live_stream_release();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_STREAM_ERROR no_memory");
+    }
+
+    strncpy(ctx->session, live_session, sizeof(ctx->session) - 1);
+    char query[128] = {0};
+    char session[32] = {0};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "session", session, sizeof(session)) == ESP_OK &&
+        session[0]) {
+        strncpy(ctx->session, session, sizeof(ctx->session) - 1);
+    }
+
+    esp_err_t err = httpd_req_async_handler_begin(req, &ctx->req);
+    if (err != ESP_OK) {
+        free(ctx);
+        live_stream_release();
+        return err;
+    }
+
+    BaseType_t created = xTaskCreate(jr_mic_stream_task, "jr_mic_stream",
+                                     JR_MIC_STREAM_TASK_STACK, ctx, 5, NULL);
+    if (created != pdPASS) {
+        httpd_resp_set_status(ctx->req, "500 Internal Server Error");
+        httpd_resp_set_type(ctx->req, "text/plain; charset=utf-8");
+        (void)httpd_resp_sendstr(ctx->req, "JR_MIC_STREAM_ERROR task_create");
+        (void)httpd_req_async_handler_complete(ctx->req);
+        free(ctx);
+        live_stream_release();
+        return ESP_OK;
+    }
+    return ESP_OK;
+}
+
+
+static void jr_mic_ws_send_work(void *arg) {
+    jr_mic_ws_send_ctx_t *ctx = (jr_mic_ws_send_ctx_t *)arg;
+    esp_err_t err = ESP_ERR_INVALID_ARG;
+
+    if (ctx && httpd_ws_get_fd_info(ctx->hd, ctx->fd) == HTTPD_WS_CLIENT_WEBSOCKET) {
+        httpd_ws_frame_t frame = {0};
+        frame.type = ctx->audio ? HTTPD_WS_TYPE_BINARY : HTTPD_WS_TYPE_TEXT;
+        frame.payload = ctx->payload;
+        frame.len = ctx->len;
+        err = httpd_ws_send_frame_async(ctx->hd, ctx->fd, &frame);
+    }
+
+    portENTER_CRITICAL(&live_stream_lock);
+    if (live_ws_pending > 0) live_ws_pending--;
+    if (ctx && ctx->audio) {
+        if (err == ESP_OK) {
+            live_ws_frames++;
+            live_ws_bytes += ctx->len;
+            live_ws_last_frame_ms = ctx->capture_ms;
+            if (ctx->capture_ms > live_ws_max_frame_ms) live_ws_max_frame_ms = ctx->capture_ms;
+        } else {
+            live_ws_send_errors++;
+            live_ws_stop_requested = true;
+        }
+    } else if (err != ESP_OK) {
+        live_ws_send_errors++;
+        live_ws_stop_requested = true;
+    }
+    portEXIT_CRITICAL(&live_stream_lock);
+
+    if (ctx) free(ctx);
+}
+
+static esp_err_t jr_mic_ws_queue_frame(httpd_handle_t hd, int fd, httpd_ws_type_t type,
+                                        const void *payload, size_t len, uint32_t capture_ms) {
+    bool audio = type == HTTPD_WS_TYPE_BINARY;
+
+    portENTER_CRITICAL(&live_stream_lock);
+    bool full = audio && live_ws_pending >= JR_MIC_WS_MAX_PENDING;
+    if (full) {
+        live_ws_drops++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        return ESP_ERR_TIMEOUT;
+    }
+    live_ws_pending++;
+    portEXIT_CRITICAL(&live_stream_lock);
+
+    jr_mic_ws_send_ctx_t *ctx =
+        (jr_mic_ws_send_ctx_t *)malloc(sizeof(*ctx) + len + (audio ? 0 : 1));
+    if (!ctx) {
+        portENTER_CRITICAL(&live_stream_lock);
+        if (live_ws_pending > 0) live_ws_pending--;
+        if (audio) live_ws_drops++;
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        return ESP_ERR_NO_MEM;
+    }
+
+    ctx->hd = hd;
+    ctx->fd = fd;
+    ctx->audio = audio;
+    ctx->capture_ms = capture_ms;
+    ctx->len = len;
+    if (len && payload) memcpy(ctx->payload, payload, len);
+    if (!audio) ctx->payload[len] = 0;
+
+    esp_err_t err = httpd_queue_work(hd, jr_mic_ws_send_work, ctx);
+    if (err != ESP_OK) {
+        portENTER_CRITICAL(&live_stream_lock);
+        if (live_ws_pending > 0) live_ws_pending--;
+        if (audio) live_ws_drops++;
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        free(ctx);
+    }
+    return err;
+}
+
+static esp_err_t jr_mic_ws_queue_text(httpd_handle_t hd, int fd, const char *text) {
+    return jr_mic_ws_queue_frame(hd, fd, HTTPD_WS_TYPE_TEXT,
+                                 text, text ? strlen(text) : 0, 0);
+}
+
+static bool jr_mic_ws_should_stop(void) {
+    bool stop;
+    portENTER_CRITICAL(&live_stream_lock);
+    stop = live_ws_stop_requested;
+    portEXIT_CRITICAL(&live_stream_lock);
+    return stop;
+}
+
+static void jr_mic_ws_request_stop(int fd) {
+    portENTER_CRITICAL(&live_stream_lock);
+    if (live_ws_active && live_ws_fd == fd) live_ws_stop_requested = true;
+    portEXIT_CRITICAL(&live_stream_lock);
+}
+
+static void jr_mic_ws_task(void *arg) {
+    jr_mic_ws_task_ctx_t *ctx = (jr_mic_ws_task_ctx_t *)arg;
+    bool bus_owned = false;
+    i2s_chan_handle_t rx = NULL;
+    esp_err_t err = ESP_FAIL;
+
+    if (!ctx) goto finish;
+
+    if (!jr_audio_bus_acquire(1500)) {
+        (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, "JRBOT_WS_ERROR audio_bus_busy");
+        portENTER_CRITICAL(&live_stream_lock);
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        goto finish;
+    }
+    bus_owned = true;
+
+    jr_audio_stop();
+    err = mic_rx_open(&rx);
+    if (err != ESP_OK) {
+        (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, "JRBOT_WS_ERROR i2s_open");
+        portENTER_CRITICAL(&live_stream_lock);
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        goto finish;
+    }
+
+    {
+        char ready[96];
+        snprintf(ready, sizeof(ready), "JRBOT_WS_READY session=%s frame_ms=%d",
+                 ctx->session, JR_MIC_WS_FRAME_MS);
+        (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, ready);
+    }
+
+    ESP_LOGI(TAG, "LIVE_WS_START session=%s fd=%d frame_ms=%d",
+             ctx->session, ctx->fd, JR_MIC_WS_FRAME_MS);
+
+    int32_t raw[JR_MIC_FRAMES];
+    int16_t pcm[JR_MIC_WS_SAMPLES];
+
+    while (!jr_mic_ws_should_stop()) {
+        int64_t started_us = esp_timer_get_time();
+        size_t written = 0;
+
+        while (written < JR_MIC_WS_SAMPLES && !jr_mic_ws_should_stop()) {
+            size_t bytes_read = 0;
+            err = i2s_channel_read(rx, raw, sizeof(raw), &bytes_read, pdMS_TO_TICKS(200));
+            if (err != ESP_OK) break;
+
+            size_t frames = bytes_read / sizeof(int32_t);
+            size_t take = JR_MIC_WS_SAMPLES - written;
+            if (take > frames) take = frames;
+            for (size_t i = 0; i < take; ++i) {
+                int32_t v = raw[i] >> 14;
+                if (v > 32767) v = 32767;
+                if (v < -32768) v = -32768;
+                pcm[written + i] = (int16_t)v;
+            }
+            written += take;
+        }
+
+        if (jr_mic_ws_should_stop()) break;
+        if (err != ESP_OK || written == 0) {
+            portENTER_CRITICAL(&live_stream_lock);
+            live_ws_send_errors++;
+            portEXIT_CRITICAL(&live_stream_lock);
+            ESP_LOGW(TAG, "LIVE_WS_CAPTURE_ERROR session=%s error=%s samples=%u",
+                     ctx->session, esp_err_to_name(err), (unsigned)written);
+            break;
+        }
+
+        uint32_t capture_ms =
+            (uint32_t)((esp_timer_get_time() - started_us + 500) / 1000);
+
+        err = jr_mic_ws_queue_frame(ctx->hd, ctx->fd, HTTPD_WS_TYPE_BINARY,
+                                    pcm, written * sizeof(int16_t), capture_ms);
+        if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
+            ESP_LOGW(TAG, "LIVE_WS_QUEUE_ERROR session=%s error=%s",
+                     ctx->session, esp_err_to_name(err));
+            break;
+        }
+    }
+
+finish:
+    if (rx) mic_rx_close(rx);
+    if (bus_owned) jr_audio_bus_release();
+
+    if (ctx) {
+        (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, "JRBOT_WS_STOPPED");
+        ESP_LOGI(TAG, "LIVE_WS_STOP session=%s fd=%d", ctx->session, ctx->fd);
+    }
+
+    portENTER_CRITICAL(&live_stream_lock);
+    live_ws_active = false;
+    live_ws_stop_requested = false;
+    live_ws_server = NULL;
+    live_ws_fd = -1;
+    portEXIT_CRITICAL(&live_stream_lock);
+
+    if (ctx) free(ctx);
+    vTaskDelete(NULL);
+}
+
+static esp_err_t jr_mic_ws_start(httpd_handle_t hd, int fd, const char *session) {
+    if (!hd || fd < 0) return ESP_ERR_INVALID_ARG;
+
+    portENTER_CRITICAL(&live_stream_lock);
+    bool busy = live_ws_active || live_stream_active;
+    if (!busy) {
+        live_ws_active = true;
+        live_ws_stop_requested = false;
+        live_ws_server = hd;
+        live_ws_fd = fd;
+        live_ws_sessions++;
+        if (session && session[0]) {
+            strncpy(live_session, session, sizeof(live_session) - 1);
+            live_session[sizeof(live_session) - 1] = 0;
+        }
+    }
+    portEXIT_CRITICAL(&live_stream_lock);
+
+    if (busy) return ESP_ERR_INVALID_STATE;
+
+    jr_mic_ws_task_ctx_t *ctx = (jr_mic_ws_task_ctx_t *)calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        portENTER_CRITICAL(&live_stream_lock);
+        live_ws_active = false;
+        live_ws_server = NULL;
+        live_ws_fd = -1;
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        return ESP_ERR_NO_MEM;
+    }
+
+    ctx->hd = hd;
+    ctx->fd = fd;
+    strncpy(ctx->session, live_session, sizeof(ctx->session) - 1);
+
+    BaseType_t created =
+        xTaskCreate(jr_mic_ws_task, "jr_mic_ws", JR_MIC_WS_TASK_STACK, ctx, 5, NULL);
+    if (created != pdPASS) {
+        free(ctx);
+        portENTER_CRITICAL(&live_stream_lock);
+        live_ws_active = false;
+        live_ws_server = NULL;
+        live_ws_fd = -1;
+        live_ws_send_errors++;
+        portEXIT_CRITICAL(&live_stream_lock);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+esp_err_t jr_mic_ws_handler(httpd_req_t *req) {
+    if (!req) return ESP_ERR_INVALID_ARG;
+
+    if (req->method == HTTP_GET) {
+        ESP_LOGI(TAG, "LIVE_WS_HANDSHAKE fd=%d", httpd_req_to_sockfd(req));
+        return ESP_OK;
+    }
+
+    httpd_ws_frame_t pkt = {0};
+    esp_err_t err = httpd_ws_recv_frame(req, &pkt, 0);
+    if (err != ESP_OK) return err;
+    if (pkt.len >= 160) return ESP_ERR_INVALID_SIZE;
+
+    uint8_t payload[160] = {0};
+    pkt.payload = payload;
+    err = httpd_ws_recv_frame(req, &pkt, sizeof(payload) - 1);
+    if (err != ESP_OK) return err;
+    payload[pkt.len] = 0;
+
+    if (pkt.type != HTTPD_WS_TYPE_TEXT) return ESP_OK;
+
+    int fd = httpd_req_to_sockfd(req);
+    const char *text = (const char *)payload;
+
+    if (!strncmp(text, "START", 5)) {
+        const char *session = text + 5;
+        while (*session == ' ') session++;
+        err = jr_mic_ws_start(req->handle, fd, session);
+        const char *reply = err == ESP_OK ? "JRBOT_WS_STARTING" :
+                            err == ESP_ERR_INVALID_STATE ? "JRBOT_WS_BUSY" :
+                            "JRBOT_WS_ERROR start_failed";
+        httpd_ws_frame_t out = {0};
+        out.type = HTTPD_WS_TYPE_TEXT;
+        out.payload = (uint8_t *)reply;
+        out.len = strlen(reply);
+        (void)httpd_ws_send_frame(req, &out);
+        return ESP_OK;
+    }
+
+    if (!strcmp(text, "STOP")) {
+        jr_mic_ws_request_stop(fd);
+        static const char stopping[] = "JRBOT_WS_STOPPING";
+        httpd_ws_frame_t out = {0};
+        out.type = HTTPD_WS_TYPE_TEXT;
+        out.payload = (uint8_t *)stopping;
+        out.len = sizeof(stopping) - 1;
+        (void)httpd_ws_send_frame(req, &out);
+        return ESP_OK;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
+    int milliseconds = 200;
+    char query[80] = {0};
+    char value[16] = {0};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "ms", value, sizeof(value)) == ESP_OK) {
+        milliseconds = atoi(value);
+    }
+    if (milliseconds < 80) milliseconds = 80;
+    if (milliseconds > 500) milliseconds = 500;
+
+    uint32_t seq = ++live_request_count;
+    live_last_block_ms = (uint32_t)milliseconds;
+    int64_t started_us = esp_timer_get_time();
+
+    if (!jr_audio_bus_acquire(1500)) {
+        live_busy_count++;
+        live_error_count++;
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR audio_bus_busy");
+    }
+
+    jr_audio_stop();
+    i2s_chan_handle_t rx = NULL;
+    esp_err_t err = mic_rx_open(&rx);
+    if (err != ESP_OK) {
+        live_error_count++;
+        mic_rx_close(rx);
+        jr_audio_bus_release();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR i2s_open");
+    }
+
+    const size_t target = ((size_t)JR_MIC_SAMPLE_RATE * (size_t)milliseconds) / 1000u;
+    int16_t *pcm = (int16_t *)heap_caps_malloc(target * sizeof(int16_t), MALLOC_CAP_8BIT);
+    if (!pcm) {
+        live_error_count++;
+        mic_rx_close(rx);
+        jr_audio_bus_release();
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR no_memory");
+    }
+
+    int32_t raw[JR_MIC_FRAMES];
+    size_t written = 0;
+    while (written < target) {
+        size_t bytes_read = 0;
+        err = i2s_channel_read(rx, raw, sizeof(raw), &bytes_read, pdMS_TO_TICKS(250));
+        if (err != ESP_OK) break;
+        size_t frames = bytes_read / sizeof(int32_t);
+        size_t take = target - written;
+        if (take > frames) take = frames;
+        for (size_t i = 0; i < take; ++i) {
+            int32_t v = raw[i] >> 14;
+            if (v > 32767) v = 32767;
+            if (v < -32768) v = -32768;
+            pcm[written + i] = (int16_t)v;
+        }
+        written += take;
+    }
+
+    mic_rx_close(rx);
+    jr_audio_bus_release();
+
+    uint32_t capture_ms = (uint32_t)((esp_timer_get_time() - started_us + 500) / 1000);
+    live_last_capture_ms = capture_ms;
+    if (capture_ms > live_max_capture_ms) live_max_capture_ms = capture_ms;
+
+    if (err != ESP_OK || written == 0) {
+        live_error_count++;
+        heap_caps_free(pcm);
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        ESP_LOGW(TAG, "LIVE_PCM seq=%lu capture_ms=%lu error=%s samples=%u",
+                 (unsigned long)seq, (unsigned long)capture_ms, esp_err_to_name(err), (unsigned)written);
+        return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR capture");
+    }
+
+    char samples[24], seq_text[24], capture_text[24];
+    snprintf(samples, sizeof(samples), "%u", (unsigned)written);
+    snprintf(seq_text, sizeof(seq_text), "%lu", (unsigned long)seq);
+    snprintf(capture_text, sizeof(capture_text), "%lu", (unsigned long)capture_ms);
+    httpd_resp_set_type(req, "application/octet-stream");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-JrBot-Audio-Format", "pcm_s16le");
+    httpd_resp_set_hdr(req, "X-JrBot-Sample-Rate", "16000");
+    httpd_resp_set_hdr(req, "X-JrBot-Channels", "1");
+    httpd_resp_set_hdr(req, "X-JrBot-Samples", samples);
+    httpd_resp_set_hdr(req, "X-JrBot-Live-Seq", seq_text);
+    httpd_resp_set_hdr(req, "X-JrBot-Capture-Ms", capture_text);
+    err = httpd_resp_send(req, (const char *)pcm, written * sizeof(int16_t));
+    if (err == ESP_OK) {
+        live_ok_count++;
+        live_bytes_sent += written * sizeof(int16_t);
+        if ((seq % 20u) == 0u) {
+            ESP_LOGI(TAG, "LIVE_PCM seq=%lu ok=%lu errors=%lu busy=%lu capture_ms=%lu bytes_total=%llu",
+                     (unsigned long)seq, (unsigned long)live_ok_count, (unsigned long)live_error_count,
+                     (unsigned long)live_busy_count, (unsigned long)capture_ms,
+                     (unsigned long long)live_bytes_sent);
+        }
+    } else {
+        live_error_count++;
+    }
+    heap_caps_free(pcm);
+    return err;
+}
+
+esp_err_t jr_mic_live_diag_handler(httpd_req_t *req) {
+    char query[160] = {0};
+    char reset[8] = {0};
+    char session[32] = {0};
+    bool do_reset = false;
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        if (httpd_query_key_value(query, "reset", reset, sizeof(reset)) == ESP_OK) {
+            do_reset = !strcmp(reset, "1") || !strcmp(reset, "true");
+        }
+        (void)httpd_query_key_value(query, "session", session, sizeof(session));
+    }
+
+    if (do_reset) {
+        portENTER_CRITICAL(&live_stream_lock);
+        live_request_count = 0;
+        live_ok_count = 0;
+        live_error_count = 0;
+        live_busy_count = 0;
+        live_bytes_sent = 0;
+        live_last_capture_ms = 0;
+        live_max_capture_ms = 0;
+        live_last_block_ms = 0;
+        live_stream_count = 0;
+        live_stream_chunks = 0;
+        live_stream_errors = 0;
+        live_stream_bytes = 0;
+        live_stream_last_chunk_ms = 0;
+        live_stream_max_chunk_ms = 0;
+        live_ws_sessions = 0;
+        live_ws_frames = 0;
+        live_ws_send_errors = 0;
+        live_ws_drops = 0;
+        live_ws_bytes = 0;
+        live_ws_last_frame_ms = 0;
+        live_ws_max_frame_ms = 0;
+        if (session[0]) {
+            strncpy(live_session, session, sizeof(live_session) - 1);
+            live_session[sizeof(live_session) - 1] = 0;
+        } else {
+            strcpy(live_session, "none");
+        }
+        portEXIT_CRITICAL(&live_stream_lock);
+        ESP_LOGI(TAG, "LIVE_DIAG_RESET session=%s", live_session);
+    }
+
+    uint32_t request_count, ok_count, error_count, busy_count;
+    uint64_t legacy_bytes, stream_bytes, ws_bytes;
+    uint32_t last_capture, max_capture, last_block;
+    uint32_t stream_count, stream_chunks, stream_errors, stream_last_ms, stream_max_ms;
+    uint32_t ws_sessions, ws_frames, ws_send_errors, ws_drops, ws_last_ms, ws_max_ms, ws_pending;
+    bool stream_active, ws_active;
+    char session_copy[32];
+
+    portENTER_CRITICAL(&live_stream_lock);
+    request_count = live_request_count;
+    ok_count = live_ok_count;
+    error_count = live_error_count;
+    busy_count = live_busy_count;
+    legacy_bytes = live_bytes_sent;
+    last_capture = live_last_capture_ms;
+    max_capture = live_max_capture_ms;
+    last_block = live_last_block_ms;
+    stream_count = live_stream_count;
+    stream_chunks = live_stream_chunks;
+    stream_errors = live_stream_errors;
+    stream_bytes = live_stream_bytes;
+    stream_last_ms = live_stream_last_chunk_ms;
+    stream_max_ms = live_stream_max_chunk_ms;
+    stream_active = live_stream_active;
+    ws_sessions = live_ws_sessions;
+    ws_frames = live_ws_frames;
+    ws_send_errors = live_ws_send_errors;
+    ws_drops = live_ws_drops;
+    ws_bytes = live_ws_bytes;
+    ws_last_ms = live_ws_last_frame_ms;
+    ws_max_ms = live_ws_max_frame_ms;
+    ws_pending = live_ws_pending;
+    ws_active = live_ws_active;
+    strncpy(session_copy, live_session, sizeof(session_copy) - 1);
+    session_copy[sizeof(session_copy) - 1] = 0;
+    portEXIT_CRITICAL(&live_stream_lock);
+
+    char body[1024];
+    snprintf(body, sizeof(body),
+             "JR_LIVE_DIAG session=%s mode=websocket ws_active=%d ws_sessions=%lu ws_frames=%lu ws_send_errors=%lu ws_drops=%lu ws_bytes=%llu ws_pending=%lu ws_last_frame_ms=%lu ws_max_frame_ms=%lu frame_ms=%d sample_rate=%d channels=1 format=pcm_s16le stream_active=%d streams=%lu chunks=%lu stream_errors=%lu stream_bytes=%llu last_chunk_ms=%lu max_chunk_ms=%lu legacy_requests=%lu legacy_ok=%lu legacy_errors=%lu legacy_busy=%lu legacy_bytes=%llu legacy_last_capture_ms=%lu legacy_max_capture_ms=%lu legacy_last_block_ms=%lu",
+             session_copy,
+             ws_active ? 1 : 0,
+             (unsigned long)ws_sessions,
+             (unsigned long)ws_frames,
+             (unsigned long)ws_send_errors,
+             (unsigned long)ws_drops,
+             (unsigned long long)ws_bytes,
+             (unsigned long)ws_pending,
+             (unsigned long)ws_last_ms,
+             (unsigned long)ws_max_ms,
+             JR_MIC_WS_FRAME_MS,
+             JR_MIC_SAMPLE_RATE,
+             stream_active ? 1 : 0,
+             (unsigned long)stream_count,
+             (unsigned long)stream_chunks,
+             (unsigned long)stream_errors,
+             (unsigned long long)stream_bytes,
+             (unsigned long)stream_last_ms,
+             (unsigned long)stream_max_ms,
+             (unsigned long)request_count,
+             (unsigned long)ok_count,
+             (unsigned long)error_count,
+             (unsigned long)busy_count,
+             (unsigned long long)legacy_bytes,
+             (unsigned long)last_capture,
+             (unsigned long)max_capture,
+             (unsigned long)last_block);
+    httpd_resp_set_type(req, "text/plain; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, body);
 }
 
 esp_err_t jr_mic_record_wav_handler(httpd_req_t *req) {
