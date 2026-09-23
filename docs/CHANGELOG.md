@@ -32,6 +32,13 @@ Confirmados em hardware real:
 - mute do microfone do celular;
 - mute do áudio do JrBot.
 
+### Licenciamento
+
+- adiciona a MIT License ao repositório;
+- documenta que contribuições aceitas usam a mesma licença MIT;
+- preserva licenças próprias de dependências e componentes de terceiros;
+- esclarece que a licença do código não concede automaticamente direitos sobre a marca JrBot.
+
 ### Limitações
 
 - AEC/eco acústico adiado;
