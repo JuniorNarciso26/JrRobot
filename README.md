@@ -233,6 +233,16 @@ Documentação técnica:
 - [Runtime API](docs/API_RUNTIME.md)
 - [Testes](docs/TESTING.md)
 
+## Licença
+
+O conteúdo original deste repositório é disponibilizado sob a [MIT License](LICENSE), salvo indicação explícita em contrário. Isso permite uso, modificação, distribuição e uso comercial, preservados os avisos exigidos pela licença.
+
+Contribuições aceitas são disponibilizadas sob a mesma licença MIT do projeto.
+
+Dependências e componentes de terceiros continuam sujeitos às respectivas licenças.
+
+A licença do código não concede automaticamente direito de apresentar produtos derivados como oficiais nem direitos sobre a marca **JrBot**.
+
 ## Visão
 
 O JrBot começa como um robô controlável, expressivo e conectado.

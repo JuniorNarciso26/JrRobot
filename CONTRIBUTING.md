@@ -107,6 +107,20 @@ Ao adicionar uma nova capacidade, documente nome público, argumentos, retorno, 
 - Não exponha o portal local atual diretamente à Internet; ele não foi projetado como serviço público autenticado/TLS.
 - Não adicione senhas, tokens, credenciais, áudio pessoal ou imagens privadas ao repositório.
 
-## Licença
+## Licença das contribuições
 
-O repositório ainda não possui `LICENSE`. Não escolha ou adicione uma licença em nome do mantenedor sem decisão explícita do proprietário do projeto.
+O JrBot é distribuído sob a [MIT License](LICENSE).
+
+Ao enviar uma contribuição (incluindo Pull Requests), você concorda em disponibilizar essa contribuição sob a mesma licença MIT utilizada pelo projeto.
+
+O colaborador mantém os direitos autorais sobre o código que criou, mas concede os direitos previstos pela MIT a todos os usuários do projeto, inclusive para:
+
+- uso pessoal ou comercial;
+- modificação;
+- distribuição;
+- sublicenciamento;
+- inclusão em produtos e firmwares comerciais.
+
+Ao contribuir, você também declara que possui os direitos necessários para disponibilizar o material enviado e que não está incluindo código, mídia ou outros conteúdos incompatíveis com a licença do projeto.
+
+Atualmente o projeto não exige um CLA separado. Caso isso mude no futuro, a política será documentada antes de novas contribuições sujeitas ao novo processo.
