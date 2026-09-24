@@ -217,7 +217,7 @@ static void start_http(void) {
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
     err=register_routes(web_server);
     if (err!=ESP_OK) { httpd_stop(web_server); web_server=NULL; ESP_LOGE("jrbot_portal","http_register=%s",esp_err_to_name(err)); return; }
-    ESP_LOGI("jrbot_portal","Portal HTTP iniciado port=80 V1.6");
+    ESP_LOGI("jrbot_portal","Portal HTTP iniciado port=80 V1.7");
 }
 
 static void start_https(void) {
@@ -239,7 +239,7 @@ static void start_https(void) {
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","https_register=%s",esp_err_to_name(err)); return; }
     err=jr_webrtc_audio_register_routes(https_server);
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","webrtc_audio_register=%s",esp_err_to_name(err)); return; }
-    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 cert=local V1.6 WebRTCAudio=/webrtc-audio");
+    ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 cert=local V1.7 WebRTCAudio=/webrtc-audio");
 #else
     ESP_LOGW("jrbot_portal","JR_HTTPS_DISABLED material_local_ausente execute_CONFIGURAR_HTTPS_V1");
 #endif
@@ -250,7 +250,7 @@ void jr_portal_start(void) {
     start_http();
     start_https();
     if (web_server || https_server) {
-        ESP_LOGI("jrbot_portal","Portal V1.6.3 iniciado http=%d https=%d camera=/capture WebRTCAudio=/webrtc-audio legacy_mic_ws=/mic-ws",
+        ESP_LOGI("jrbot_portal","Portal V1.7.1 iniciado http=%d https=%d camera=/capture WebRTCAudio=/webrtc-audio legacy_mic_ws=/mic-ws",
                  web_server?1:0,https_server?1:0);
     }
 }
