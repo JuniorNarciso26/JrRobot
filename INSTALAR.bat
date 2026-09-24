@@ -296,6 +296,10 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem Integracao da JrBot_V1.6.3.
     set "BUILD_DIR=build-develop-v1.6.3"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+) else if /i "%CURRENT_BRANCH%"=="v1.7-melhorias" (
+    rem V1.7: build/config dedicados para nao reutilizar sdkconfig legado.
+    set "BUILD_DIR=build-v1.7-melhorias"
+    set "SDKCONFIG_FILE=sdkconfig.v1.7-melhorias"
 ) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"
