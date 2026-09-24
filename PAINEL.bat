@@ -2,10 +2,10 @@
 setlocal
 cd /d "%~dp0"
 echo ========================================
-echo JrBot - Painel de desenvolvimento
+echo JrBot - Painel de Manutencao
 echo ========================================
 echo Feche qualquer programa que esteja usando a porta da placa.
-echo O navegador abre apos o servidor iniciar.
+echo O Painel de Manutencao abre no navegador apos o servidor iniciar.
 echo Para encerrar o painel, volte a esta janela e pressione ENTER.
 echo.
 where python >nul 2>nul
