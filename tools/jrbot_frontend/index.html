@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JrBot - Painel Response</title>
+<title>JrBot - Painel de Manutenção</title>
 <style>
 :root{--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f;--yellow:#f3b33d;--purple:#9b62f0}
 *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#182033,#0b0d12 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
@@ -19,12 +19,12 @@ main{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:14px}.card
 button:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .diagnostic{padding:14px}.diag-actions{display:flex;gap:8px;flex-wrap:wrap}.diag-grid{display:grid;grid-template-columns:140px minmax(0,1fr);gap:9px;font-size:14px}.diag-grid dt{color:var(--muted)}.diag-grid dd{margin:0;overflow-wrap:anywhere}#device_msg{font-size:13px;line-height:1.5;overflow-wrap:anywhere}.left,.right{min-width:0}.custom input{min-width:0}.audio input[type=range]{min-width:120px;max-width:100%}.msg{overflow-wrap:anywhere}.diag-actions button{flex:1}#log{overflow-wrap:anywhere}.camera button{max-width:100%}
 @media(max-width:480px){header{align-items:flex-start;flex-direction:column}main{padding:8px}.wifi{grid-template-columns:1fr}.diag-grid{grid-template-columns:100px minmax(0,1fr)}.modepanel select{max-width:100%;min-width:0}.audio label{max-width:100%}}
-summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-bottom:1px solid var(--line)}
+summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-bottom:1px solid var(--line)}\n.maint-intro{margin:0 0 12px;padding:14px 16px;border:1px solid #30405c;border-radius:16px;background:linear-gradient(135deg,#14233a,#171b29)}.maint-intro b{display:block;font-size:16px;margin-bottom:5px}.maint-intro p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.section-label{color:#8fb8ff;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}
 </style>
 </head>
 <body>
 <header>
-  <div><h1>JrBot</h1><div class="version">Versão: {APP_VERSION}</div><div class="sub">JrBot Response | ESP-SR MultiNet6 | comando unico JR BOT | diagnostico por Serial</div></div>
+  <div><div class="section-label">Ferramenta técnica</div><h1>JrBot · Painel de Manutenção</h1><div class="version">Versão do painel: {APP_VERSION}</div><div class="sub">Instalação, configuração, diagnóstico e logs do JrBot</div></div>
   <div class="status"><span id="conn" class="pill bad">desconectado</span><span id="last" class="pill">sem log</span></div>
 </header>
 <main>
@@ -48,7 +48,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button data-action onclick="testWifi()" class="yellow">Testar/status</button>
       <div class="mini">Use "Consultar Wi-Fi da placa" pela Serial para preencher automaticamente o IP atual antes de mudar para Wi-Fi.</div>
     </div>
-    <h2>Diagnostico do robo</h2>
+    <h2>Estado e diagnóstico do hardware</h2>
     <div class="diagnostic">
       <div class="diag-actions">
         <button data-action onclick="refreshStatus()">Atualizar estado</button>
@@ -65,7 +65,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
-    <h2>Modo autonomo / voz</h2>
+    <h2>Voz / modo autônomo</h2>
     <div class="autonomous">
       <button id="autonomous_toggle" data-action onclick="toggleAutonomous()" class="purple">Ativar autonomo</button>
       <button id="autonomous_test" data-action onclick="testAutonomousWake()" class="yellow" disabled>Simular evento (diagnostico)</button>
@@ -73,7 +73,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <span id="brain_state" class="state">off</span>
       <div class="msg" id="brain_msg">Ao ativar, o MS3625 reconhece somente "JrBot" pelo MultiNet6. Comando interno: JR BOT. Confianca minima: 0.70. Ao reconhecer, muda a face para feliz, responde "Oi" e volta a escutar.</div>
     </div>
-    <h2>Respostas e eventos <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
+    <h2>Log técnico <span><button class="gray" onclick="downloadLog()">Baixar log TXT</button></span></h2>
     <pre id="log" aria-label="Respostas do robo"></pre>
   </section>
   <section class="card right">
@@ -87,7 +87,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     </div>
     <div class="hint" id="face_msg">Os controles de rosto dependem do OLED; os outros testes nao.</div>
     </details>
-    <h2>Audio / caixinha de som</h2>
+    <h2>Teste de áudio / alto-falante</h2>
     <div class="audio" id="audio_box">
       <button id="test_audio" disabled data-action onclick="testAudio()" class="green">🔊 Testar audio</button>
       <label>Volume <input id="audio_volume" type="range" min="0" max="100" value="10" oninput="audioVolText.textContent=this.value+'%'" ></label>
@@ -95,19 +95,19 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button id="apply_volume" disabled data-action onclick="setAudioVolume()" class="yellow">Aplicar volume</button>
       <div class="msg" id="audio_msg">Consulte o estado. O teste fica disponivel quando o firmware informa audio habilitado.</div>
     </div>
-    <h2>Camera</h2>
+    <h2>Teste da câmera</h2>
     <div class="camera" id="camera_box">
       <button id="test_camera" disabled data-action onclick="testCamera()" class="green">Testar camera</button>
       <button disabled title="A captura Serial retorna metadados e libera o quadro apos validar o JPEG" class="gray">Previa ainda nao implementada</button>
       <div class="msg" id="cam_msg">O teste atual captura e valida um JPEG pela camera, informa tamanho e bytes no log e depois libera o quadro. Por isso a foto ainda nao aparece no painel.</div>
       <img id="cam_photo" alt="Foto capturada pela câmera do JrBot" style="display:none">
     </div>
-    <h2>Microfone</h2>
+    <h2>Teste do microfone</h2>
     <div class="audio">
       <button id="test_mic" disabled class="gray">Teste ainda nao configurado</button>
       <div class="msg">MS3625 em GPIO21/47/41. No modo autonomo o barramento I2S fica dedicado ao reconhecedor. Na resposta o firmware pausa o microfone, usa o MAX98357A e depois reabre o microfone. Desligue o autonomo antes dos testes manuais.</div>
     </div>
-    <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
+    <h2 id="wifi_config_title">Configuração de rede</h2>
     <div class="wifi" id="wificfg">
       <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
       <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
