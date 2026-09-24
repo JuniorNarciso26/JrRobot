@@ -243,7 +243,7 @@ def docs_do_get(self) -> None:
 
 
 app.Handler.do_GET = docs_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-13-DOCS"
+app.APP_VERSION = "JRBOT-MAINT-V1.7-01"
 
 
 if __name__ == "__main__":
