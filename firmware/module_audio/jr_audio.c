@@ -9,10 +9,10 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 
 #include "jr_audio.h"
 #include "jr_board.h"
+#include "jr_resource_manager.h"
 
 #define JR_AUDIO_SAMPLE_RATE 16000
 #define JR_AUDIO_PI 3.14159265358979323846f
@@ -20,34 +20,21 @@
 static portMUX_TYPE audio_state_lock=portMUX_INITIALIZER_UNLOCKED;
 static const char *TAG = "jrbot_audio";
 static i2s_chan_handle_t tx_chan = NULL;
-/*
- * Gate binario, e nao mutex: o modo autonomo abre o microfone durante o
- * comando de ativacao e depois a tarefa jr_voice assume o ciclo I2S.
- * FreeRTOS mutex exige give pelo mesmo task que fez take; um semaforo
- * binario representa melhor este recurso transferivel entre tasks.
- */
-static SemaphoreHandle_t i2s_bus_gate = NULL;
 static bool audio_ready = false;
 static int audio_volume = 35;
 static jr_audio_diag_t audio_diag = {.running=false,.tests=0,.last_bytes=0,.last_frequency_hz=0,.last_duration_ms=0,.last_error=ESP_ERR_INVALID_STATE};
 static char status_text[192] = "MAX98357A pronto para teste sob demanda";
 
 esp_err_t jr_audio_bus_init(void) {
-    if (!i2s_bus_gate) {
-        i2s_bus_gate = xSemaphoreCreateBinary();
-        if (!i2s_bus_gate) return ESP_ERR_NO_MEM;
-        (void)xSemaphoreGive(i2s_bus_gate);
-    }
-    return ESP_OK;
+    return jr_resource_manager_init();
 }
 
 bool jr_audio_bus_acquire(uint32_t timeout_ms) {
-    if (jr_audio_bus_init() != ESP_OK) return false;
-    return xSemaphoreTake(i2s_bus_gate, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+    return jr_resource_i2s_acquire(JR_I2S_OWNER_LEGACY_VOICE, timeout_ms, "legacy_audio_bus");
 }
 
 void jr_audio_bus_release(void) {
-    if (i2s_bus_gate) (void)xSemaphoreGive(i2s_bus_gate);
+    jr_resource_i2s_release(JR_I2S_OWNER_LEGACY_VOICE, "legacy_audio_bus");
 }
 
 static void set_ready(bool ready) {
@@ -183,7 +170,7 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     if (frequency_hz > 3000) frequency_hz = 3000;
     if (duration_ms < 100) duration_ms = 100;
     if (duration_ms > 5000) duration_ms = 5000;
-    if (!jr_audio_bus_acquire(15000)) return ESP_ERR_TIMEOUT;
+    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_PLAYBACK, 15000, "audio_playback")) return ESP_ERR_TIMEOUT;
 
     uint32_t seq = audio_diag_begin(frequency_hz, duration_ms);
     uint32_t tone_bytes = 0;
@@ -247,7 +234,7 @@ done:
         ESP_LOGE(TAG, "TEST_END seq=%lu result=%s tone_bytes=%lu",
                  (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
     }
-    jr_audio_bus_release();
+    jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
     return err;
 }
 
@@ -258,7 +245,7 @@ esp_err_t jr_audio_play_pcm16_mono(const int16_t *input, size_t sample_count, in
 
     esp_err_t err = jr_audio_start();
     if (err != ESP_OK) {
-        jr_audio_bus_release();
+        jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
         return err;
     }
 
@@ -298,7 +285,7 @@ esp_err_t jr_audio_play_pcm16_mono(const int16_t *input, size_t sample_count, in
         err = i2s_channel_write(tx_chan, stereo, sizeof(stereo), &ignored, pdMS_TO_TICKS(200));
     }
     jr_audio_stop();
-    jr_audio_bus_release();
+    jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
 
     if (err == ESP_OK) {
         snprintf(status_text, sizeof(status_text), "ultima gravacao reproduzida samples=%u bytes=%lu volume=%d",
