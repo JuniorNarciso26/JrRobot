@@ -241,7 +241,7 @@ done:
 esp_err_t jr_audio_play_pcm16_mono(const int16_t *input, size_t sample_count, int sample_rate_hz) {
     if (!input || sample_count == 0) return ESP_ERR_INVALID_ARG;
     if (sample_rate_hz != JR_AUDIO_SAMPLE_RATE) return ESP_ERR_NOT_SUPPORTED;
-    if (!jr_audio_bus_acquire(15000)) return ESP_ERR_TIMEOUT;
+    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_PLAYBACK, 15000, "audio_playback")) return ESP_ERR_TIMEOUT;
 
     esp_err_t err = jr_audio_start();
     if (err != ESP_OK) {
