@@ -5,7 +5,6 @@ const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
 let serverCursor=0, serverSession='', autoScroll=true, busy=false, device=null;
 let mode='serial', serialConnected=false, activePort='';
-let autoStatusEnabled=false, autoStatusTimer=null;
 function appendLog(items){for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}while(logEl.children.length>1200)logEl.removeChild(logEl.firstChild);if(autoScroll)logEl.scrollTop=logEl.scrollHeight;}
 function localLine(line){appendLog([{ts:new Date().toLocaleTimeString(),line}]);}
 function clearLog(){logEl.textContent='';}
@@ -26,9 +25,6 @@ async function connect(){return action(async()=>{const port=val('port').toUpperC
 async function disconnect(){return action(async()=>{await api('/disconnect',{method:'POST'});serialConnected=false;activePort='';invalidate('Desconectado.');connection('Desconectado',false);});}
 async function send(command){const verb=command.trim().toLowerCase().split(/\s+/)[0];if(['audio_test','som','beep','mic_test'].includes(verb)&&!currentFirmware())throw new Error('Teste bloqueado: grave uma versao JrBot_V1.x / HW04.');if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes.');let t;try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado.');connection('Firmware sem confirmacao',false);}throw e;}if(t.trim())localLine(t.trim());if(command.trim().toLowerCase()==='status')renderStatus(t);if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));return t;}
 async function refreshStatus(){return action(()=>send('status'));}
-function updateAutoStatusButton(){const b=el('auto_status_toggle');if(!b)return;b.textContent='Status automático: '+(autoStatusEnabled?'SIM':'NÃO');b.className=autoStatusEnabled?'green':'gray';}
-function scheduleAutoStatus(){if(autoStatusTimer){clearTimeout(autoStatusTimer);autoStatusTimer=null;}autoStatusTimer=setTimeout(async()=>{if(autoStatusEnabled&&!busy&&(mode==='wifi'||serialConnected)){try{await refreshStatus();}catch(_){}}scheduleAutoStatus();},10000);}
-function toggleAutoStatus(){autoStatusEnabled=!autoStatusEnabled;updateAutoStatusButton();localLine('JR_AUTO_STATUS enabled='+(autoStatusEnabled?1:0));}
 async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Firmware confirmado: '+device.version+' | '+device.hardware+' | '+device.profile;});}
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
 async function connectWifi(){if(busy)return;await setMode('wifi');return refreshStatus();}
@@ -48,4 +44,4 @@ for(const [name,command] of faces){const b=document.createElement('button');b.cl
 const micButton=el('test_mic');if(micButton){micButton.textContent='Testar microfone';micButton.className='green';micButton.onclick=()=>testMic();if(micButton.nextElementSibling)micButton.nextElementSibling.textContent='MS3625: o painel libera o teste quando detectar atividade I2S.';}
 el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
 const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot V1 | portas COM detectadas automaticamente';
-loadWifiLocal();setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();updateAutoStatusButton();scheduleAutoStatus();poll();refreshControls();
+loadWifiLocal();setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();
