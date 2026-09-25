@@ -5,6 +5,7 @@ idf_component_register(
         "../core/jr_net_diag.c"
         "../core/jr_commands.c"
         "../core/jr_mode_manager.c"
+        "../core/jr_resource_manager.c"
         "../core/jr_usb_terminal.c"
         "../module_face/jr_face.c"
         "../module_portal/jr_portal.c"
