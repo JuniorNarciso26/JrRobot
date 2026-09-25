@@ -7,6 +7,7 @@
 
 #include "jr_brain.h"
 #include "jr_face.h"
+#include "jr_mode_manager.h"
 #include "jr_usb_terminal.h"
 #include "jr_voice.h"
 
@@ -123,6 +124,9 @@ esp_err_t jr_brain_set_enabled(bool enabled) {
         brain_last_error = ESP_OK;
         portEXIT_CRITICAL(&brain_lock);
         set_event("autonomous_on");
+        if (jr_mode_get() != JR_MODE_LIVE) {
+            (void)jr_mode_set(JR_MODE_AUTONOMOUS, "brain_enabled");
+        }
 
         char line[220];
         snprintf(line, sizeof(line),
@@ -142,6 +146,9 @@ esp_err_t jr_brain_set_enabled(bool enabled) {
         portEXIT_CRITICAL(&brain_lock);
         set_event("autonomous_off");
         emit_event("JR_BRAIN event=autonomous_off");
+        if (jr_mode_get() == JR_MODE_AUTONOMOUS) {
+            (void)jr_mode_set(JR_MODE_IDLE, "brain_disabled");
+        }
     }
     return ESP_OK;
 }
