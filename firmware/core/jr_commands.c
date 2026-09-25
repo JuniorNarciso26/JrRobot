@@ -13,6 +13,7 @@
 #include "jr_commands.h"
 #include "jr_audio.h"
 #include "jr_mic.h"
+#include "jr_mode_manager.h"
 #include "jr_wifi.h"
 #include "jr_face.h"
 #include "jr_camera_diag.h"
@@ -101,10 +102,12 @@ bool jr_format_status(char *response, size_t cap) {
     jr_mic_status_t m = {0};
     jr_mic_recording_info_t mr = {0};
     jr_audio_diag_t a = {0};
+    jr_mode_status_t mode = {0};
     jr_face_get_status(&f);
     jr_wifi_get_status(&w);
     jr_audio_get_diag(&a);
     jr_mic_get_recording_info(&mr);
+    jr_mode_get_status(&mode);
     bool oled_present = (f.state == JR_OLED_READY || f.state == JR_OLED_DEGRADED);
     unsigned camera_pid = 0;
     bool camera_present = jr_camera_probe_once(&camera_pid);
@@ -113,7 +116,7 @@ bool jr_format_status(char *response, size_t cap) {
     const char *mic_state = mic_present ? "available" : "unavailable";
     const char *audio_last = a.tests ? esp_err_to_name(a.last_error) : "not_run";
     int n = snprintf(response, cap,
-        "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s expression=%s demo=%d "
+        "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s mode=%s mode_previous=%s mode_transitions=%lu expression=%s demo=%d "
         "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=on_demand volume=%d "
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
         "audio_test_seq=%lu audio_test_running=%d audio_last=%s audio_last_bytes=%lu "
@@ -122,7 +125,8 @@ bool jr_format_status(char *response, size_t cap) {
         "mic_recording=%d mic_has_recording=%d mic_record_seconds=%u mic_record_samples=%u mic_record_level=%d mic_record_peak=%d "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
-        JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,f.expression,f.demo,
+        JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,
+        jr_mode_name(mode.current),jr_mode_name(mode.previous),(unsigned long)mode.transitions,f.expression,f.demo,
         w.configured,w.connected,w.pending_restart,w.ip,jr_audio_volume(),
         JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO,
         (unsigned long)a.tests,a.running?1:0,audio_last,(unsigned long)a.last_bytes,
