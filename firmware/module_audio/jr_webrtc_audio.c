@@ -76,6 +76,12 @@ typedef struct {
     bool active;
     bool peer_connected;
     bool bus_owned;
+    bool autonomous_before_live;
+    bool autonomous_suspended;
+    bool autonomous_restore_pending;
+    bool autonomous_restored;
+    esp_err_t autonomous_suspend_error;
+    esp_err_t autonomous_restore_error;
     int peer_state;
     uint32_t sessions;
     uint64_t mic_i2s_frames;
@@ -284,8 +290,89 @@ static void reset_session_counters(void)
     status_state.video_bytes = 0;
     status_state.video_drops = 0;
     status_state.video_send_errors = 0;
+    status_state.autonomous_before_live = false;
+    status_state.autonomous_suspended = false;
+    status_state.autonomous_restore_pending = false;
+    status_state.autonomous_restored = false;
+    status_state.autonomous_suspend_error = ESP_OK;
+    status_state.autonomous_restore_error = ESP_OK;
     status_state.peer_state = ESP_PEER_STATE_CLOSED;
     portEXIT_CRITICAL(&state_lock);
+}
+
+static esp_err_t suspend_autonomous_for_live(void)
+{
+    bool previous = jr_brain_enabled();
+
+    portENTER_CRITICAL(&state_lock);
+    status_state.autonomous_before_live = previous;
+    status_state.autonomous_suspended = false;
+    status_state.autonomous_restore_pending = false;
+    status_state.autonomous_restored = false;
+    status_state.autonomous_suspend_error = ESP_OK;
+    status_state.autonomous_restore_error = ESP_OK;
+    portEXIT_CRITICAL(&state_lock);
+
+    ESP_LOGI(TAG, "JR_MODE autonomous_suspend previous=%d reason=live", previous ? 1 : 0);
+
+    if (!previous) {
+        ESP_LOGI(TAG, "JR_MODE autonomous_suspend previous=0 suspended=0 result=not_needed");
+        return ESP_OK;
+    }
+
+    esp_err_t err = jr_brain_set_enabled(false);
+
+    portENTER_CRITICAL(&state_lock);
+    status_state.autonomous_suspended = (err == ESP_OK);
+    status_state.autonomous_restore_pending = (err == ESP_OK);
+    status_state.autonomous_suspend_error = err;
+    portEXIT_CRITICAL(&state_lock);
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "JR_MODE autonomous_suspend previous=1 suspended=1 result=ESP_OK");
+    } else {
+        ESP_LOGE(TAG, "JR_MODE autonomous_suspend previous=1 suspended=0 result=%s",
+                 esp_err_to_name(err));
+    }
+    return err;
+}
+
+static void restore_autonomous_after_live(const char *reason)
+{
+    bool previous;
+    bool suspended;
+    bool pending;
+
+    portENTER_CRITICAL(&state_lock);
+    previous = status_state.autonomous_before_live;
+    suspended = status_state.autonomous_suspended;
+    pending = status_state.autonomous_restore_pending;
+    portEXIT_CRITICAL(&state_lock);
+
+    if (!pending) {
+        ESP_LOGI(TAG,
+                 "JR_MODE autonomous_resume previous=%d suspended=%d restored=0 pending=0 reason=%s",
+                 previous ? 1 : 0, suspended ? 1 : 0, reason ? reason : "unknown");
+        return;
+    }
+
+    esp_err_t err = jr_brain_set_enabled(true);
+
+    portENTER_CRITICAL(&state_lock);
+    status_state.autonomous_restore_pending = false;
+    status_state.autonomous_restored = (err == ESP_OK);
+    status_state.autonomous_restore_error = err;
+    portEXIT_CRITICAL(&state_lock);
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG,
+                 "JR_MODE autonomous_resume previous=1 suspended=1 restored=1 pending=0 reason=%s result=ESP_OK",
+                 reason ? reason : "unknown");
+    } else {
+        ESP_LOGE(TAG,
+                 "JR_MODE autonomous_resume previous=1 suspended=1 restored=0 pending=0 reason=%s result=%s",
+                 reason ? reason : "unknown", esp_err_to_name(err));
+    }
 }
 
 static int16_t clamp16(int32_t v)
@@ -889,43 +976,51 @@ static void wait_worker_tasks(void)
 static void stop_session_unlocked(void)
 {
     bool has_resources;
+    bool restore_pending;
     portENTER_CRITICAL(&state_lock);
     has_resources = status_state.bus_owned || status_state.active;
+    restore_pending = status_state.autonomous_restore_pending;
     portEXIT_CRITICAL(&state_lock);
     has_resources = has_resources || peer || tx_chan || rx_chan ||
                     peer_task_handle || mic_task_handle || play_task_handle || video_task_handle;
-    if (!has_resources) return;
+    if (!has_resources && !restore_pending) return;
 
-    ESP_LOGI(TAG, "SESSION_STOP begin");
-    session_running = false;
-    peer_loop_running = false;
-    video_dc_open = false;
-    set_peer_connected(false);
-    portENTER_CRITICAL(&state_lock);
-    status_state.video_dc_open = false;
-    portEXIT_CRITICAL(&state_lock);
-    set_active(false);
+    if (has_resources) {
+        ESP_LOGI(TAG, "JR_MODE live_stop begin");
+        ESP_LOGI(TAG, "SESSION_STOP begin");
+        session_running = false;
+        peer_loop_running = false;
+        video_dc_open = false;
+        set_peer_connected(false);
+        portENTER_CRITICAL(&state_lock);
+        status_state.video_dc_open = false;
+        portEXIT_CRITICAL(&state_lock);
+        set_active(false);
 
-    wait_worker_tasks();
+        wait_worker_tasks();
 
-    if (peer) {
-        esp_peer_close(peer);
-        peer = NULL;
+        if (peer) {
+            esp_peer_close(peer);
+            peer = NULL;
+        }
+
+        close_i2s_pair();
+        flush_audio_queue();
+
+        bool release_bus = false;
+        portENTER_CRITICAL(&state_lock);
+        release_bus = status_state.bus_owned;
+        status_state.bus_owned = false;
+        portEXIT_CRITICAL(&state_lock);
+        if (release_bus) {
+            jr_audio_bus_release();
+        }
+
+        ESP_LOGI(TAG, "SESSION_STOP end");
+        ESP_LOGI(TAG, "JR_MODE live_stop end");
     }
 
-    close_i2s_pair();
-    flush_audio_queue();
-
-    bool release_bus = false;
-    portENTER_CRITICAL(&state_lock);
-    release_bus = status_state.bus_owned;
-    status_state.bus_owned = false;
-    portEXIT_CRITICAL(&state_lock);
-    if (release_bus) {
-        jr_audio_bus_release();
-    }
-
-    ESP_LOGI(TAG, "SESSION_STOP end");
+    restore_autonomous_after_live(has_resources ? "live_end" : "start_failed");
 }
 
 static esp_err_t start_session_unlocked(void)
@@ -935,13 +1030,19 @@ static esp_err_t start_session_unlocked(void)
     flush_audio_queue();
     reset_session_counters();
 
-    if (jr_brain_enabled()) {
-        ESP_LOGW(TAG, "Autonomous voice disabled for WebRTC lab session");
-        (void)jr_brain_set_enabled(false);
+    esp_err_t err = suspend_autonomous_for_live();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "JR_MODE live_start result=error stage=autonomous_suspend error=%s",
+                 esp_err_to_name(err));
+        restore_autonomous_after_live("suspend_failed");
+        return err;
     }
 
     if (!jr_audio_bus_acquire(4000)) {
         ESP_LOGE(TAG, "audio bus busy");
+        ESP_LOGE(TAG, "JR_MODE live_start result=error stage=audio_bus error=%s",
+                 esp_err_to_name(ESP_ERR_TIMEOUT));
+        restore_autonomous_after_live("audio_bus_busy");
         return ESP_ERR_TIMEOUT;
     }
     portENTER_CRITICAL(&state_lock);
@@ -950,7 +1051,7 @@ static esp_err_t start_session_unlocked(void)
 
     jr_audio_stop();
 
-    esp_err_t err = open_i2s_pair();
+    err = open_i2s_pair();
     if (err != ESP_OK) goto fail;
 
     esp_peer_cfg_t cfg = {
@@ -1037,9 +1138,21 @@ static esp_err_t start_session_unlocked(void)
              "SESSION_START WebRTC=PCMA/8000/mono video=JPEG_DC profile=%s size=%s quality=%d fps=%d I2S=PHILIPS/16000/32x2 ip=%s",
              session_video_name, jr_camera_size_name(session_video_size),
              session_video_quality, session_video_fps, jr_wifi_ip());
+
+    jr_wa_status_t mode_status;
+    portENTER_CRITICAL(&state_lock);
+    mode_status = status_state;
+    portEXIT_CRITICAL(&state_lock);
+    ESP_LOGI(TAG,
+             "JR_MODE live_start result=ok autonomous_before=%d autonomous_suspended=%d restore_pending=%d",
+             mode_status.autonomous_before_live ? 1 : 0,
+             mode_status.autonomous_suspended ? 1 : 0,
+             mode_status.autonomous_restore_pending ? 1 : 0);
     return ESP_OK;
 
 fail:
+    ESP_LOGE(TAG, "JR_MODE live_start result=error stage=session_setup error=%s",
+             esp_err_to_name(err));
     stop_session_unlocked();
     return err;
 }
@@ -1308,9 +1421,11 @@ static esp_err_t status_handler(httpd_req_t *req)
     s = status_state;
     portEXIT_CRITICAL(&state_lock);
 
-    char text[1024];
+    char text[1280];
     snprintf(text, sizeof(text),
              "JR_WEBRTC_AUDIO_TEST active=%d peer_connected=%d peer_state=%d sessions=%lu "
+             "autonomous_before=%d autonomous_suspended=%d autonomous_restore_pending=%d autonomous_restored=%d "
+             "autonomous_suspend_error=%s autonomous_restore_error=%s "
              "codec=PCMA rate=8000 channel=1 "
              "i2s_rate=16000 i2s_format=PHILIPS i2s_slots=2x32 "
              "bclk=%d ws=%d mic_sd=%d amp_din=%d "
@@ -1325,6 +1440,12 @@ static esp_err_t status_handler(httpd_req_t *req)
              s.peer_connected ? 1 : 0,
              s.peer_state,
              (unsigned long)s.sessions,
+             s.autonomous_before_live ? 1 : 0,
+             s.autonomous_suspended ? 1 : 0,
+             s.autonomous_restore_pending ? 1 : 0,
+             s.autonomous_restored ? 1 : 0,
+             esp_err_to_name(s.autonomous_suspend_error),
+             esp_err_to_name(s.autonomous_restore_error),
              JR_AUDIO_BCLK_GPIO, JR_AUDIO_LRC_GPIO, JR_MIC_SD_GPIO, JR_AUDIO_DIN_GPIO,
              (unsigned long long)s.mic_i2s_frames,
              (unsigned long)s.mic_i2s_errors,
