@@ -22,6 +22,7 @@
 #include "jr_audio.h"
 #include "jr_board.h"
 #include "jr_brain.h"
+#include "jr_mode_manager.h"
 #include "jr_camera_diag.h"
 #include "jr_webrtc_audio.h"
 #include "jr_wifi.h"
@@ -121,6 +122,8 @@ static TaskHandle_t video_task_handle;
 static volatile bool session_running;
 static volatile bool peer_loop_running;
 static volatile bool video_dc_open;
+static jr_mode_t live_previous_mode = JR_MODE_IDLE;
+static bool live_mode_entered;
 static uint16_t video_dc_stream_id;
 static jr_wa_video_profile_t video_profile = JR_WA_VIDEO_PROFILE_BALANCED;
 
@@ -337,6 +340,19 @@ static esp_err_t suspend_autonomous_for_live(void)
     return err;
 }
 
+static void restore_mode_after_live(const char *reason)
+{
+    if (!live_mode_entered) return;
+
+    jr_mode_t target = live_previous_mode;
+    if (target == JR_MODE_AUTONOMOUS && !jr_brain_enabled()) {
+        target = JR_MODE_IDLE;
+    }
+
+    (void)jr_mode_set(target, reason ? reason : "live_end");
+    live_mode_entered = false;
+}
+
 static void restore_autonomous_after_live(const char *reason)
 {
     bool previous;
@@ -353,6 +369,7 @@ static void restore_autonomous_after_live(const char *reason)
         ESP_LOGI(TAG,
                  "JR_MODE autonomous_resume previous=%d suspended=%d restored=0 pending=0 reason=%s",
                  previous ? 1 : 0, suspended ? 1 : 0, reason ? reason : "unknown");
+        restore_mode_after_live(reason);
         return;
     }
 
@@ -373,6 +390,8 @@ static void restore_autonomous_after_live(const char *reason)
                  "JR_MODE autonomous_resume previous=1 suspended=1 restored=0 pending=0 reason=%s result=%s",
                  reason ? reason : "unknown", esp_err_to_name(err));
     }
+
+    restore_mode_after_live(err == ESP_OK ? reason : "live_resume_failed");
 }
 
 static int16_t clamp16(int32_t v)
@@ -983,7 +1002,7 @@ static void stop_session_unlocked(void)
     portEXIT_CRITICAL(&state_lock);
     has_resources = has_resources || peer || tx_chan || rx_chan ||
                     peer_task_handle || mic_task_handle || play_task_handle || video_task_handle;
-    if (!has_resources && !restore_pending) return;
+    if (!has_resources && !restore_pending && !live_mode_entered) return;
 
     if (has_resources) {
         ESP_LOGI(TAG, "JR_MODE live_stop begin");
@@ -1029,6 +1048,9 @@ static esp_err_t start_session_unlocked(void)
     flush_signal_queue();
     flush_audio_queue();
     reset_session_counters();
+
+    live_previous_mode = jr_mode_set(JR_MODE_LIVE, "webrtc_start");
+    live_mode_entered = true;
 
     esp_err_t err = suspend_autonomous_for_live();
     if (err != ESP_OK) {
