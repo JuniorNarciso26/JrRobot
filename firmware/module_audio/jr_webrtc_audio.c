@@ -23,6 +23,7 @@
 #include "jr_board.h"
 #include "jr_brain.h"
 #include "jr_mode_manager.h"
+#include "jr_resource_manager.h"
 #include "jr_camera_diag.h"
 #include "jr_webrtc_audio.h"
 #include "jr_wifi.h"
@@ -1032,7 +1033,7 @@ static void stop_session_unlocked(void)
         status_state.bus_owned = false;
         portEXIT_CRITICAL(&state_lock);
         if (release_bus) {
-            jr_audio_bus_release();
+            jr_resource_i2s_release(JR_I2S_OWNER_LIVE, "webrtc_live");
         }
 
         ESP_LOGI(TAG, "SESSION_STOP end");
@@ -1060,7 +1061,7 @@ static esp_err_t start_session_unlocked(void)
         return err;
     }
 
-    if (!jr_audio_bus_acquire(4000)) {
+    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_LIVE, 4000, "webrtc_live")) {
         ESP_LOGE(TAG, "audio bus busy");
         ESP_LOGE(TAG, "JR_MODE live_start result=error stage=audio_bus error=%s",
                  esp_err_to_name(ESP_ERR_TIMEOUT));
