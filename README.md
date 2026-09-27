@@ -12,6 +12,58 @@ A proposta do JrBot é criar uma experiência de presença: você vê, escuta, f
 
 > **O JrBot não foi criado apenas para responder. Foi criado para estar com você.**
 
+
+<p align="center">
+  <strong>Open-source ESP32-S3 robot with voice, camera, WebRTC, expressive OLED face and an evolving AI architecture.</strong>
+</p>
+
+## Contribua com o JrBot
+
+O **JrBot é open source** e recebe contribuições de pessoas interessadas em robótica, sistemas embarcados, áudio, visão, interfaces e inteligência artificial.
+
+Você não precisa dominar todo o projeto nem possuir um JrBot completo para começar. Há contribuições que podem ser desenvolvidas e revisadas de forma isolada, como documentação, testes, interface web, ferramentas e melhorias específicas de firmware.
+
+### Áreas em que você pode ajudar
+
+- **ESP32-S3 / ESP-IDF** — firmware, drivers, memória, Wi-Fi e arquitetura embarcada;
+- **Áudio e DSP** — I2S, full-duplex, eco/AEC, codecs e processamento de voz;
+- **WebRTC e redes** — comunicação em tempo real, sinalização e evolução para acesso remoto;
+- **Frontend** — painel web responsivo, experiência no celular e ferramentas de diagnóstico;
+- **Câmera e visão** — OV5640, captura, streaming e futuras capacidades de visão computacional;
+- **Eletrônica e hardware** — alimentação, áudio, sensores, placas e revisão de integração;
+- **Design mecânico / impressão 3D** — corpo, suportes, encaixes e evolução física do robô;
+- **Testes e documentação** — testes automatizados, documentação técnica, guias e exemplos;
+- **IA / JrBrain** — arquitetura futura de memória, personalidade, contexto, LLM e Skills.
+
+### Como começar
+
+1. Leia o [guia de contribuição](CONTRIBUTING.md) e a [documentação técnica](docs/README.md).
+2. Consulte as [Issues abertas](https://github.com/JuniorNarciso26/JrRobot/issues) e escolha um problema ou melhoria com escopo claro.
+3. Comente na Issue antes de iniciar uma implementação maior, para alinhar abordagem e evitar trabalho duplicado.
+4. Trabalhe em uma mudança pequena e isolada, preferencialmente em um fork ou branch dedicado.
+5. Abra um Pull Request descrevendo claramente o que foi implementado, o que foi compilado/testado e o que ainda depende de validação física.
+
+O projeto procura manter um histórico técnico compreensível:
+
+```text
+Issue
+  ↓
+arquitetura / pesquisa
+  ↓
+branch
+  ↓
+implementação
+  ↓
+teste
+  ↓
+Pull Request
+  ↓
+decisão
+```
+
+Contribuições pequenas são bem-vindas. Uma correção de documentação, um teste, um diagrama, uma melhoria de interface ou uma prova isolada podem ser tão úteis quanto uma alteração grande no firmware.
+
+
 ## JrBot V1 — o que já está disponível
 
 Versão da linha: **`JrBot_V1.6.3`**
