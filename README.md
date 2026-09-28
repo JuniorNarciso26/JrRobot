@@ -12,26 +12,83 @@ A proposta do JrBot é criar uma experiência de presença: você vê, escuta, f
 
 > **O JrBot não foi criado apenas para responder. Foi criado para estar com você.**
 
+<p align="center">
+  <strong>Open-source ESP32-S3 robot with voice, camera, WebRTC, expressive OLED face and an evolving AI architecture.</strong>
+</p>
+
+## Contribua com o JrBot
+
+O **JrBot é open source** e recebe contribuições de pessoas interessadas em robótica, sistemas embarcados, áudio, visão, interfaces e inteligência artificial.
+
+Você não precisa dominar todo o projeto nem possuir um JrBot completo para começar. Há contribuições que podem ser desenvolvidas e revisadas de forma isolada, como documentação, testes, interface web, ferramentas e melhorias específicas de firmware.
+
+### Áreas em que você pode ajudar
+
+- **ESP32-S3 / ESP-IDF** — firmware, drivers, memória, Wi-Fi e arquitetura embarcada;
+- **Áudio e DSP** — I2S, full-duplex, eco/AEC, codecs e processamento de voz;
+- **WebRTC e redes** — comunicação em tempo real, sinalização e evolução para acesso remoto;
+- **Frontend** — painel web responsivo, experiência no celular e ferramentas de diagnóstico;
+- **Câmera e visão** — OV5640, captura, streaming e futuras capacidades de visão computacional;
+- **Eletrônica e hardware** — alimentação, áudio, sensores, placas e revisão de integração;
+- **Design mecânico / impressão 3D** — corpo, suportes, encaixes e evolução física do robô;
+- **Testes e documentação** — testes automatizados, documentação técnica, guias e exemplos;
+- **IA / JrBrain** — arquitetura futura de memória, personalidade, contexto, LLM e Skills.
+
+### Como começar
+
+1. Leia o [guia de contribuição](CONTRIBUTING.md) e a [documentação técnica](docs/README.md).
+2. Consulte as [Issues abertas](https://github.com/JuniorNarciso26/JrRobot/issues) e escolha um problema ou melhoria com escopo claro.
+3. Comente na Issue antes de iniciar uma implementação maior, para alinhar abordagem e evitar trabalho duplicado.
+4. Trabalhe em uma mudança pequena e isolada, preferencialmente em um fork ou branch dedicado.
+5. Abra um Pull Request descrevendo claramente o que foi implementado, o que foi compilado/testado e o que ainda depende de validação física.
+
+O projeto procura manter um histórico técnico compreensível:
+
+```text
+Issue
+  ↓
+arquitetura / pesquisa
+  ↓
+branch
+  ↓
+implementação
+  ↓
+teste
+  ↓
+Pull Request
+  ↓
+decisão
+```
+
+Contribuições pequenas são bem-vindas. Uma correção de documentação, um teste, um diagrama, uma melhoria de interface ou uma prova isolada podem ser tão úteis quanto uma alteração grande no firmware.
+
+
 ## JrBot V1 — o que já está disponível
 
-Versão da linha: **`JrBot_V1.6.3`**
+Versão oficial atual: **`JrBot_V1.7.04`**
 
 A V1 transforma a base eletrônica do JrBot em um produto utilizável diretamente pelo navegador.
 
-### Novidades da V1.6.3
+### Novidades da V1.7.04
 
-A `JrBot_V1.6.3` promove a Live local validada no HW04:
+A `JrBot_V1.7.04` fecha a revisão de performance da V1 e consolida a baseline local validada no HW04.
 
-- um único botão **Iniciar ao vivo** abre vídeo e áudio;
-- áudio WebRTC full-duplex PCMA/G.711A em 8 kHz, com JrBot → celular e celular → JrBot simultâneos;
-- vídeo JPEG da OV5640 transportado pelo WebRTC DataChannel/SCTP, sem requisição HTTPS por quadro;
-- perfis **rápido** (QVGA), **equilibrado** (VGA) e **qualidade** (SVGA);
-- controles para mutar o microfone do celular e o áudio recebido do JrBot;
-- monitor de RAM interna, maior bloco e PSRAM durante a Live;
-- I2S full-duplex real no ESP32-S3 com BCLK/WS compartilhados entre MS3625 e MAX98357A;
-- política de alocação em PSRAM ajustada para preservar RAM interna durante ICE/DTLS/SCTP.
+Principais melhorias acumuladas:
 
-A validação física confirmou vídeo contínuo, áudio bidirecional e os dois controles de mute. O eco acústico/AEC permanece como estudo futuro e não faz parte desta promoção. A Live desta versão é local; evolução para Internet, STUN/TURN e sinalização remota continua na Issue #26.
+- Live WebRTC local com áudio bidirecional PCMA/G.711A em 8 kHz e vídeo JPEG da OV5640 via DataChannel/SCTP;
+- I2S full-duplex real no ESP32-S3 com BCLK GPIO21 e WS GPIO47 compartilhados entre RX e TX;
+- redução de interferência do App, removendo o polling automático recorrente de `/status`;
+- primeiro `jr_mode_manager` central, com o fluxo físico validado `idle -> live -> idle`;
+- primeiro `jr_resource_manager` para o I2S compartilhado;
+- ownership explícito do I2S para `mic`, `playback` e `live`;
+- telemetria de aquisições, liberações, busy e liberações inconsistentes do I2S;
+- gravação pelo MS3625 e reprodução pelo MAX98357A preservadas;
+- câmera OV5640, foto e Live preservadas com orientação física de -90°/270°;
+- política de memória/PSRAM preservada para manter ICE/DTLS/SCTP, câmera e áudio operando em conjunto.
+
+Na validação física final, microfone, playback e Live adquiriram e liberaram o I2S pelo gerenciador central, com `i2s_release_mismatch=0`, retorno do owner para `none`, WebRTC conectado e encerrado normalmente e sem reset/watchdog observado.
+
+A Live continua local. A evolução para Internet, STUN/TURN e sinalização remota permanece como etapa futura. O reconhecimento local por ESP-SR/MultiNet pertence à V2 de voz e não faz parte da baseline oficial desta V1.7.04.
 
 ### Controle pelo celular ou computador
 
@@ -86,7 +143,7 @@ Isso permite usar o JrBot como um ponto físico de reprodução de mensagens, ap
 
 ### Live WebRTC full-duplex
 
-O fluxo principal de comunicação da V1.6.3 é uma Live local bidirecional.
+O fluxo principal de comunicação da V1.7.04 é uma Live local bidirecional.
 
 Ao iniciar a Live:
 
@@ -108,7 +165,7 @@ Pelo painel é possível:
 - reproduzir mensagens recebidas;
 - acompanhar o estado do sistema de áudio.
 
-A arquitetura utiliza o MAX98357A para saída e mantém arbitragem entre reprodução e microfone.
+A arquitetura utiliza o MAX98357A para saída e o `jr_resource_manager` para arbitrar o I2S compartilhado entre microfone, playback e Live.
 
 ### Wi-Fi e acesso local
 
@@ -167,7 +224,7 @@ OLED câmera  áudio
  microfone  alto-falante
 ```
 
-O painel conversa apenas com capacidades controladas do firmware. O projeto evita expor GPIO bruto ou execução arbitrária como parte da experiência normal do usuário.
+O painel usa operações controladas do firmware. A capability layer unificada continua planejada; a experiência normal não expõe GPIO bruto nem execução arbitrária.
 
 ## O que diferencia a V1
 
@@ -186,12 +243,12 @@ Tudo isso forma a base sobre a qual serão adicionadas as próximas camadas de i
 | Versão | Objetivo | Estado |
 | --- | --- | --- |
 | **V0** | Fundação de hardware e periféricos | Concluída |
-| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.6.3`** |
+| **V1** | Controle humano pelo navegador e mídia local | **Concluída — `JrBot_V1.7.04`** |
 | **V2** | Controle por voz local | Próxima etapa |
 | **V3** | Controle programático pela Runtime API | Planejada |
 | **JrBrain** | Memória, personalidade, contexto, LLM e Skills | Futuro |
 
-A V1 já foi integrada em `develop`. A branch `v1` permanece como referência fechada da versão entregue. A promoção para `main` deve ocorrer conforme o fluxo de validação do projeto.
+A `JrBot_V1.7.04` está promovida em `main` como versão oficial atual. A `develop` parte desta mesma baseline para as próximas entregas validadas.
 
 ## Próximas evoluções
 
