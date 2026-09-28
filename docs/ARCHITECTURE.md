@@ -98,9 +98,9 @@ Isso permite reutilização por:
 - IA;
 - automações.
 
-## Live local WebRTC — V1.6.3
+## Live local WebRTC — V1.7.04
 
-A Live local da V1.6.3 usa uma única PeerConnection para áudio bidirecional e transporte do JPEG da câmera.
+A Live local da V1.7.04 usa uma única PeerConnection para áudio bidirecional e transporte do JPEG da câmera.
 
 ```text
 OV5640 -> JPEG -> DataChannel/SCTP -> navegador
@@ -119,7 +119,7 @@ O HTTPS local serve página e signaling. O vídeo da Live não usa mais uma requ
 
 A sessão usa ICE local, DTLS-SRTP e SCTP. O caminho foi validado fisicamente com áudio nas duas direções e vídeo contínuo. A arquitetura atual é local; evolução para Internet deverá preservar WebRTC e acrescentar sinalização remota, STUN/TURN ou infraestrutura equivalente.
 
-O cancelamento de eco acústico não faz parte da V1.6.3 e permanece como pesquisa futura.
+O cancelamento de eco acústico não faz parte da V1.7.04 e permanece como pesquisa futura.
 
 ## Princípios de segurança
 
@@ -130,6 +130,41 @@ O cancelamento de eco acústico não faz parte da V1.6.3 e permanece como pesqui
 5. Uma configuração inválida não pode impedir boot básico do robô.
 6. Deve existir fallback/factory config para recuperação.
 7. Upload de arquivos e configuração pelo portal exigem limites de tamanho e validação.
+
+## Gerenciamento central de modo — V1.7.04
+
+A V1.7.04 introduz o primeiro `jr_mode_manager` mínimo. Ele registra o modo lógico atual sem controlar diretamente hardware.
+
+Modos previstos:
+
+```text
+IDLE
+AUTONOMOUS
+LIVE
+RECORDING
+PLAYBACK
+DIAGNOSTIC
+```
+
+Na baseline V1.7.04, o fluxo fisicamente validado é `IDLE -> LIVE -> IDLE`. O modo autônomo pertence à evolução V2 de voz.
+
+## Gerenciamento central do I2S — V1.7.04
+
+O `jr_resource_manager` passa a ser a autoridade da trava do I2S compartilhado no HW04.
+
+Owners atuais:
+
+```text
+NONE
+MIC
+PLAYBACK
+LIVE
+LEGACY_VOICE
+```
+
+Na V1.7.04 foram fisicamente validados `MIC`, `PLAYBACK` e `LIVE`, sempre com retorno para `NONE` e sem mismatch de liberação observado.
+
+O manager centraliza ownership e telemetria; os drivers continuam responsáveis por criar/destruir os canais e configurar o hardware.
 
 ## Compatibilidade
 

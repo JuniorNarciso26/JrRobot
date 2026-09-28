@@ -1,6 +1,6 @@
 # Roadmap oficial do JrBot
 
-Atualizado em 2026-09-23.
+Atualizado em 2026-09-28.
 
 ## Nomenclatura
 
@@ -13,8 +13,8 @@ Essas numerações são independentes.
 ## Branches oficiais
 
 ```text
-main    -> última versão aprovada; atualmente V0
-develop -> integração; atualmente contém a V1 final
+main    -> última versão aprovada; atualmente JrBot_V1.7.04
+develop -> integração; parte da mesma baseline JrBot_V1.7.04
 v1      -> linha fechada da JrBot V1
 v2      -> JrBot V2, linha preservada e pausada até estabilizar/promover V1
 archive/* -> histórico
@@ -38,13 +38,13 @@ Objetivo: criar e validar a fundação técnica do robô antes das versões de p
 
 A V0 consolidou ESP32-S3 N16R8, OLED SSD1306, áudio MAX98357A, microfone MS3625, câmera OV5640, Wi-Fi, portal local, painel de desenvolvimento e a base inicial da Runtime API.
 
-A V0 continua sendo a versão aprovada em `main` até a promoção da V1.
+A V0 permanece como marco histórico da fundação; a versão atualmente promovida em `main` é a `JrBot_V1.7.04`.
 
 ## JrBot V1 — funcionalmente concluída
 
 Objetivo: permitir que uma pessoa controle o JrBot pelo navegador na rede local, usando o painel servido pelo próprio ESP32-S3.
 
-Versão final da linha: **`JrBot_V1.6.3`**.
+Versão oficial atual da linha: **`JrBot_V1.7.04`**.
 
 PR #20 foi concluído e integrado em `develop` em 2026-09-14.
 
@@ -83,33 +83,31 @@ Entregas consolidadas:
 - HTTPS local para APIs seguras do navegador, incluindo microfone;
 - I2S full-duplex com BCLK/WS compartilhados entre microfone e amplificador.
 
-### Fase atual da V1
+### Fechamento da V1.7.04
 
-A implementação funcional está encerrada, mas a V1 ainda não foi promovida para `main`.
+A revisão de performance da V1 foi encerrada e promovida para `main` em 2026-09-28.
 
 ```text
-v1 fechada
+JrBot_V1.7.04
    ↓
-develop com JrBot_V1.6.3
-   ↓
-uso real / observação
-   ↓
-correções de campo necessárias
-   ↓
-validação final
+develop
    ↓
 main
 ```
 
-Durante essa fase, o objetivo é evitar novo crescimento descontrolado de escopo. Melhorias devem ser classificadas entre:
+A V1.7.04 preserva a Live WebRTC local validada na V1.6.3 e acrescenta a primeira autoridade central de modo (`jr_mode_manager`) e a primeira autoridade central de recurso I2S (`jr_resource_manager`).
 
-1. **fix obrigatório para promoção** — defeito que prejudica a experiência normal ou estabilidade;
-2. **melhoria V1.x** — refinamento importante que pode entrar antes ou depois da promoção, conforme risco;
-3. **V2 ou posterior** — funcionalidade que muda o objetivo da versão e não deve atrasar a promoção da V1.
+Validação física final:
 
-A investigação do chiado do alto-falante está registrada na Issue #19 e deve ser tratada como correção isolada enquanto a V1 é observada em uso real.
+- fluxo `idle -> live -> idle`;
+- owners I2S `mic`, `playback` e `live`;
+- retorno do I2S para `none`;
+- `i2s_release_mismatch=0`;
+- gravação e reprodução de áudio;
+- Live WebRTC e câmera preservadas;
+- sem reset/watchdog observado.
 
-A frente de impressão 3D/corpo está registrada na Issue #22 e evolui em paralelo, bloqueando uma versão apenas se houver impacto direto na validação física.
+O nome experimental usado durante a derivação da branch não faz parte da nomenclatura oficial. A release pública é `JrBot_V1.7.04`.
 
 ## JrBot V2 — linha preservada
 

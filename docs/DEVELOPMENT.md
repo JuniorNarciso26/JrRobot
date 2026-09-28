@@ -11,10 +11,10 @@
 
 As branches oficiais são:
 
-- `main`: última versão aprovada;
-- `develop`: integração antes da promoção;
-- `v1`: JrBot V1, linha ativa;
-- `v2`: JrBot V2, linha preservada e pausada até fechar V1;
+- `main`: release oficial atual (`JrBot_V1.7.04`);
+- `develop`: integração, atualmente baseada em `JrBot_V1.7.04`;
+- `v1`: referência histórica da linha JrBot V1;
+- `v2`: JrBot V2, linha de voz local preservada;
 - `archive/*`: histórico.
 
 Quando V3 começar, a linha será `v3`.
