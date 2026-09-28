@@ -300,6 +300,10 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.7 V2 deriva diretamente da develop e preserva o mesmo sdkconfig validado.
     set "BUILD_DIR=build-v1.7-v2"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+) else if /i "%CURRENT_BRANCH%"=="test/jrbot-v1s-00" (
+    rem V1S: variante experimental Solana/JrSkill baseada na V1.7 validada.
+    set "BUILD_DIR=build-v1s-00"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-05"
