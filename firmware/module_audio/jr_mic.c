@@ -17,6 +17,7 @@
 #include "jr_audio.h"
 #include "jr_board.h"
 #include "jr_mic.h"
+#include "jr_resource_manager.h"
 
 #define JR_MIC_SAMPLE_RATE 16000
 #define JR_MIC_FRAMES 256
@@ -32,6 +33,16 @@
 #define JR_MIC_WS_TASK_STACK 12288
 
 static const char *TAG = "jrbot_mic";
+
+static bool mic_i2s_acquire(uint32_t timeout_ms)
+{
+    return jr_resource_i2s_acquire(JR_I2S_OWNER_MIC, timeout_ms, "mic");
+}
+
+static void mic_i2s_release(void)
+{
+    jr_resource_i2s_release(JR_I2S_OWNER_MIC, "mic");
+}
 static int16_t *last_recording = NULL;
 static size_t last_recording_capacity = 0;
 static size_t last_recording_samples = 0;
@@ -196,7 +207,7 @@ bool jr_mic_probe(jr_mic_status_t *out) {
         if (out) *out = result;
         return false;
     }
-    if (!jr_audio_bus_acquire(JR_MIC_PROBE_BUS_TIMEOUT_MS)) {
+    if (!mic_i2s_acquire(JR_MIC_PROBE_BUS_TIMEOUT_MS)) {
         result.last_error = ESP_ERR_TIMEOUT;
         if (out) *out = result;
         return false;
@@ -235,7 +246,7 @@ bool jr_mic_probe(jr_mic_status_t *out) {
 finish:
     mic_rx_close(rx);
     if (err != ESP_OK) result.last_error = err;
-    jr_audio_bus_release();
+    mic_i2s_release();
     if (out) *out = result;
     return result.present;
 }
@@ -341,7 +352,7 @@ static void jr_mic_stream_task(void *arg) {
 
     if (!req) goto finish;
 
-    if (!jr_audio_bus_acquire(1500)) {
+    if (!mic_i2s_acquire(1500)) {
         live_stream_note_error();
         httpd_resp_set_status(req, "409 Conflict");
         httpd_resp_set_type(req, "text/plain; charset=utf-8");
@@ -426,7 +437,7 @@ static void jr_mic_stream_task(void *arg) {
 
 finish:
     if (rx) mic_rx_close(rx);
-    if (bus_owned) jr_audio_bus_release();
+    if (bus_owned) mic_i2s_release();
     if (req) {
         if (chunked_started) (void)httpd_resp_send_chunk(req, NULL, 0);
         (void)httpd_req_async_handler_complete(req);
@@ -587,7 +598,7 @@ static void jr_mic_ws_task(void *arg) {
 
     if (!ctx) goto finish;
 
-    if (!jr_audio_bus_acquire(1500)) {
+    if (!mic_i2s_acquire(1500)) {
         (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, "JRBOT_WS_ERROR audio_bus_busy");
         portENTER_CRITICAL(&live_stream_lock);
         live_ws_send_errors++;
@@ -664,7 +675,7 @@ static void jr_mic_ws_task(void *arg) {
 
 finish:
     if (rx) mic_rx_close(rx);
-    if (bus_owned) jr_audio_bus_release();
+    if (bus_owned) mic_i2s_release();
 
     if (ctx) {
         (void)jr_mic_ws_queue_text(ctx->hd, ctx->fd, "JRBOT_WS_STOPPED");
@@ -800,7 +811,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
     live_last_block_ms = (uint32_t)milliseconds;
     int64_t started_us = esp_timer_get_time();
 
-    if (!jr_audio_bus_acquire(1500)) {
+    if (!mic_i2s_acquire(1500)) {
         live_busy_count++;
         live_error_count++;
         httpd_resp_set_status(req, "409 Conflict");
@@ -814,7 +825,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
     if (err != ESP_OK) {
         live_error_count++;
         mic_rx_close(rx);
-        jr_audio_bus_release();
+        mic_i2s_release();
         httpd_resp_set_status(req, "500 Internal Server Error");
         return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR i2s_open");
     }
@@ -824,7 +835,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
     if (!pcm) {
         live_error_count++;
         mic_rx_close(rx);
-        jr_audio_bus_release();
+        mic_i2s_release();
         httpd_resp_set_status(req, "500 Internal Server Error");
         return httpd_resp_sendstr(req, "JR_MIC_LIVE_ERROR no_memory");
     }
@@ -848,7 +859,7 @@ esp_err_t jr_mic_live_pcm_handler(httpd_req_t *req) {
     }
 
     mic_rx_close(rx);
-    jr_audio_bus_release();
+    mic_i2s_release();
 
     uint32_t capture_ms = (uint32_t)((esp_timer_get_time() - started_us + 500) / 1000);
     live_last_capture_ms = capture_ms;
@@ -1021,7 +1032,7 @@ esp_err_t jr_mic_record_wav_handler(httpd_req_t *req) {
     if (seconds < 1) seconds = 1;
     if (seconds > JR_MIC_MAX_RECORD_SECONDS) seconds = JR_MIC_MAX_RECORD_SECONDS;
 
-    if (!jr_audio_bus_acquire(JR_MIC_RECORD_BUS_TIMEOUT_MS)) {
+    if (!mic_i2s_acquire(JR_MIC_RECORD_BUS_TIMEOUT_MS)) {
         httpd_resp_set_status(req, "409 Conflict");
         httpd_resp_set_type(req, "text/plain; charset=utf-8");
         return httpd_resp_sendstr(req, "JR_MIC_ERROR audio_bus_busy");
@@ -1038,7 +1049,7 @@ esp_err_t jr_mic_record_wav_handler(httpd_req_t *req) {
     if (!recording) {
         recording_active = false;
         last_record_error = ESP_ERR_NO_MEM;
-        jr_audio_bus_release();
+        mic_i2s_release();
         httpd_resp_set_status(req, "500 Internal Server Error");
         httpd_resp_set_type(req, "text/plain; charset=utf-8");
         return httpd_resp_sendstr(req, "JR_MIC_ERROR sem_memoria_para_gravacao");
@@ -1088,7 +1099,7 @@ record_done:
     mic_rx_close(rx);
     recording_active = false;
     last_record_error = err;
-    jr_audio_bus_release();
+    mic_i2s_release();
 
     if (err != ESP_OK || last_recording_samples == 0) {
         char message[128];
