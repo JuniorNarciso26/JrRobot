@@ -1,6 +1,6 @@
 # Estado do projeto
 
-Atualização: 2026-09-23.
+Atualização: 2026-09-28.
 
 ## Hardware de referência
 
@@ -25,34 +25,38 @@ O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
 
 ## Etapa ativa
 
-A JrBot V1 está funcionalmente concluída e integrada em `develop`.
+A versão oficial promovida em `main` é **`JrBot_V1.7.04`**. A `develop` parte da mesma baseline para as próximas entregas validadas.
 
-A revisão atual é **`JrBot_V1.6.3`**, com Live WebRTC local full-duplex validada no HW04.
+### O que a V1.7.04 consolida
 
-### O que mudou na V1.6.3
+- Live WebRTC local full-duplex com PCMA/G.711A e JPEG/DataChannel;
+- I2S RX/TX simultâneo no HW04 com BCLK GPIO21 e WS GPIO47 compartilhados;
+- câmera OV5640 preservada na orientação física de -90°/270°;
+- redução do polling automático recorrente de `/status` no App;
+- `jr_mode_manager` como primeira autoridade central de modo;
+- `jr_resource_manager` como primeira autoridade central de ownership do I2S;
+- owners validados: `mic`, `playback` e `live`;
+- telemetria de acquire/release/busy/mismatch do I2S.
 
-- áudio WebRTC PCMA/G.711A bidirecional entre JrBot e navegador;
-- vídeo OV5640 em JPEG pelo WebRTC DataChannel/SCTP;
-- perfis rápido/QVGA, equilibrado/VGA e qualidade/SVGA;
-- mute independente nas duas direções de áudio;
-- I2S full-duplex real no ESP32-S3 usando BCLK/WS compartilhados;
-- sinalização local HTTPS + SSE/POST;
-- monitor de RAM interna e PSRAM durante a Live;
-- política de alocação em PSRAM alinhada ao exemplo oficial `local_jpeg_stream`;
-- orientação física da câmera preservada em -90°/270°.
+Validação física final confirmada:
 
-Validação física confirmada:
-- JrBot → celular audível;
-- celular → JrBot audível;
-- vídeo contínuo;
-- mute do celular e mute do JrBot funcionais.
+- `idle -> live -> idle`;
+- gravação pelo MS3625;
+- reprodução pelo MAX98357A;
+- Live WebRTC conectando e encerrando;
+- vídeo JPEG/DataChannel transmitindo;
+- owner I2S retornando para `none`;
+- `i2s_release_mismatch=0`;
+- sem reset/watchdog observado.
 
-Limitações conhecidas:
+Limitações conhecidas que não bloqueiam esta release:
+
 - eco acústico/AEC ainda não tratado;
-- foram observados eventos `VIDEO_DC_DROP buffer_full` sem perda perceptível no teste A/B;
-- a Live é local; comunicação remota pela Internet continua como evolução da Issue #26.
+- eventos ocasionais `VIDEO_DC_DROP buffer_full`;
+- Live pela Internet ainda não implementada;
+- ESP-SR/MultiNet e o modo autônomo pertencem à V2 de voz.
 
-O hotfix `JrBot_V1.6.2.1` de rotação ficou aberto fora de `develop`, mas sua correção está absorvida pela V1.6.3.
+O nome experimental usado durante a derivação da revisão não é o nome oficial da release. A identificação pública correta é `JrBot_V1.7.04`.
 
 ## Nomenclatura
 
@@ -62,7 +66,7 @@ O hotfix `JrBot_V1.6.2.1` de rotação ficou aberto fora de `develop`, mas sua c
 
 ## Baseline técnica promovida
 
-A baseline oficialmente promovida em `main` continua separada da integração em `develop`. A promoção de uma revisão para `main` exige validação própria.
+A baseline oficialmente promovida em `main` é `JrBot_V1.7.04`. A `develop` parte da mesma revisão até receber novas entregas validadas.
 
 O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da JrBot V2.
 

@@ -2,6 +2,44 @@
 
 Este arquivo registra as mudanças promovidas para a linha de integração do produto.
 
+
+## JrBot_V1.7.04 — 2026-09-28
+
+Base funcional: `JrBot_V1.6.3`.
+
+### Performance e arquitetura
+
+- remove o polling automático recorrente de `/status` no App;
+- adiciona o primeiro `jr_mode_manager` central;
+- valida fisicamente o fluxo de modo `idle -> live -> idle`;
+- adiciona o primeiro `jr_resource_manager` para o I2S compartilhado;
+- registra owners `mic`, `playback` e `live`;
+- adiciona telemetria de aquisições, liberações, busy e release mismatch.
+
+### Validação física
+
+Confirmados no HW04:
+
+- gravação de microfone;
+- reprodução de áudio;
+- Live WebRTC local;
+- I2S full-duplex;
+- câmera OV5640 e JPEG/DataChannel;
+- retorno do owner I2S para `none`;
+- `i2s_release_mismatch=0`;
+- ausência de reset/watchdog no teste final.
+
+### Nomenclatura
+
+A identificação oficial desta release é `JrBot_V1.7.04`. Nomes usados em branches de derivação permanecem apenas como histórico de desenvolvimento.
+
+### Pendências
+
+- AEC/eco acústico;
+- `VIDEO_DC_DROP buffer_full`;
+- WebRTC pela Internet;
+- ESP-SR/MultiNet e modo autônomo, pertencentes à V2 de voz.
+
 ## JrBot_V1.6.3 — 2026-09-23
 
 Base: `JrBot_V1.6.2`.

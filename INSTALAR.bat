@@ -292,12 +292,16 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
+) else if /i "%CURRENT_BRANCH%"=="main" (
+    rem Release oficial JrBot_V1.7.04.
+    set "BUILD_DIR=build-v1.7.04"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="develop" (
-    rem Integracao da JrBot_V1.6.3.
-    set "BUILD_DIR=build-develop-v1.6.3"
+    rem Integracao baseada na release oficial JrBot_V1.7.04.
+    set "BUILD_DIR=build-v1.7.04-develop"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v1.7-v2" (
-    rem V1.7 V2 deriva diretamente da develop e preserva o mesmo sdkconfig validado.
+    rem Branch historica da derivacao experimental que originou a V1.7.04.
     set "BUILD_DIR=build-v1.7-v2"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v2" (
