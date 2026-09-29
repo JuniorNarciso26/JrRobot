@@ -78,7 +78,7 @@ The ESP32 does **not** execute arbitrary on-chain code. Skills are declarative a
 
 **Development log:** [JrSkill Network — Hackathon Development Log](docs/HACKATHON_DEVLOG.md)
 
-**Experimental firmware branch:** [`test/jrbot-v1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/test/jrbot-v1s-00)
+**Experimental firmware branch:** [`V1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 
 The experimental Solana line uses the `JrBot_V1S_00` identifier and remains separate from the stable V1.7.04 release and from the future V2 local-voice line.
 
@@ -355,7 +355,7 @@ Main branches:
 ```text
 main                  = latest officially promoted release
 develop               = integration of validated future work
-test/jrbot-v1s-00     = experimental JrSkill / Solana line
+V1s-00     = experimental JrSkill / Solana line
 v2                    = JrBot V2 local voice line
 ```
 

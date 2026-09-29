@@ -39,7 +39,7 @@ Day 1 focused on preparing the technical path before touching blockchain integra
 A dedicated experimental line was created:
 
 ```text
-test/jrbot-v1s-00
+V1s-00
 firmware: JrBot_V1S_00
 ```
 
@@ -287,5 +287,5 @@ The objective for the next development day is not to expand JrSkill. It is to pr
 
 - [JrSkill Execution API](JRSKILL_API.md)
 - [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33)
-- [Experimental branch: test/jrbot-v1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/test/jrbot-v1s-00)
+- [Experimental branch: V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 - [Colosseum project page](https://colosseum.com/arena/projects/jrskill-network)

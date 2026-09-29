@@ -2,7 +2,7 @@
 
 **Status:** Hackathon architecture document for **JrSkill Network — Crypto World's Fair / Colosseum 2026**.
 
-**Current experimental line:** `JrBot_V1S_00` on `test/jrbot-v1s-00`.
+**Current experimental line:** `JrBot_V1S_00` on `V1s-00`.
 
 This document is the current reference for how a JrSkill is represented, resolved and executed. Older Runtime API candidate/test documents are kept as technical history.
 
@@ -335,6 +335,6 @@ The Recipe should initially use only already validated `face` operations. After 
 ## References
 
 - Technical tracking: [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)
-- Experimental branch: [test/jrbot-v1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/test/jrbot-v1s-00)
+- Experimental branch: [V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 - Colosseum project: https://colosseum.com/arena/projects/jrskill-network
 - Low-level Runtime API history: [API_RUNTIME.md](API_RUNTIME.md)
