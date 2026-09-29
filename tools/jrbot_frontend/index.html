@@ -65,6 +65,12 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
+    <h2>JrSkill / Runtime API</h2>
+    <div class="autonomous" id="jrskill_api_box">
+      <button id="jrskill_api_test" data-action onclick="runJrSkillApiTest()" class="green">Executar API Test</button>
+      <span id="jrskill_api_state" class="state">aguardando</span>
+      <div class="msg" id="jrskill_api_msg">Executa pela Serial uma sequencia externa de chamadas da Runtime API. Nesta primeira prova o firmware nao e alterado: validamos capabilities, get e face existentes.</div>
+    </div>
     <h2>Modo autonomo / voz</h2>
     <div class="autonomous">
       <button id="autonomous_toggle" data-action onclick="toggleAutonomous()" class="purple">Ativar autonomo</button>

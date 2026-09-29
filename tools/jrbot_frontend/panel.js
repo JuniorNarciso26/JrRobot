@@ -1,5 +1,5 @@
 'use strict';
-const FIRMWARE_PREFIXES=['JrBot_V1.','JRBotV2_'];
+const FIRMWARE_PREFIXES=['JrBot_V1.','JrBot_V1S_','JRBotV2_'];
 const faces=[['Neutro','neutro'],['Feliz','feliz'],['Triste','triste'],['Animado','animado'],['Bravo','bravo'],['Surpreso','surpreso'],['Pensando','pensando'],['Cetico','cetico'],['Sono','sono'],['Confuso','confuso'],['Piscando','piscando'],['Amor','amor'],['Brincalhao','brincalhao'],['Preocupado','preocupado'],['Cool','cool'],['Bateria','bateria']];
 const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
@@ -26,6 +26,57 @@ async function disconnect(){return action(async()=>{await api('/disconnect',{met
 async function send(command){const verb=command.trim().toLowerCase().split(/\s+/)[0];if(['audio_test','som','beep','mic_test'].includes(verb)&&!currentFirmware())throw new Error('Teste bloqueado: grave uma versao JrBot_V1.x / HW04.');if(new TextEncoder().encode(command).length>768)throw new Error('Comando excede 768 bytes.');let t;try{t=await api('/send',{method:'POST',body:new URLSearchParams({command,mode,ip:val('esp_ip')})});}catch(e){if(command.trim().toLowerCase()==='status'){invalidate('Firmware nao confirmado.');connection('Firmware sem confirmacao',false);}throw e;}if(t.trim())localLine(t.trim());if(command.trim().toLowerCase()==='status')renderStatus(t);if(mode==='wifi')localStorage.setItem('jr_esp_ip',val('esp_ip'));return t;}
 async function refreshStatus(){return action(()=>send('status'));}
 async function checkVersion(){return action(async()=>{await send('status');el('device_msg').textContent='Firmware confirmado: '+device.version+' | '+device.hardware+' | '+device.profile;});}
+function readRuntimeApiReply(reply){
+  const prefix='JR_API ';
+  if(!reply.startsWith(prefix))throw new Error('Resposta nao pertence a Runtime API: '+reply);
+  let body;
+  try{body=JSON.parse(reply.slice(prefix.length));}catch(_){throw new Error('Runtime API devolveu JSON invalido.');}
+  return body;
+}
+function checkRuntimeApiExpectation(step,body){
+  const expect=step.expect||{};
+  if(Object.prototype.hasOwnProperty.call(expect,'ok')&&body.ok!==expect.ok)throw new Error(step.name+': ok esperado='+expect.ok+' recebido='+body.ok);
+  const result=body.result||{};
+  if(Object.prototype.hasOwnProperty.call(expect,'api')&&result.api!==expect.api)throw new Error(step.name+': api esperada='+expect.api+' recebida='+(result.api??'ausente'));
+  if(Object.prototype.hasOwnProperty.call(expect,'path')&&result.path!==expect.path)throw new Error(step.name+': path esperado='+expect.path+' recebido='+(result.path??'ausente'));
+  if(Object.prototype.hasOwnProperty.call(expect,'value')&&result.value!==expect.value)throw new Error(step.name+': value esperado='+expect.value+' recebido='+(result.value??'ausente'));
+  if(Object.prototype.hasOwnProperty.call(expect,'expression')&&result.expression!==expect.expression)throw new Error(step.name+': expression esperada='+expect.expression+' recebida='+(result.expression??'ausente'));
+  if(expect.actions_contains&&!Array.isArray(result.actions))throw new Error(step.name+': lista actions ausente');
+  if(expect.actions_contains&&!result.actions.includes(expect.actions_contains))throw new Error(step.name+': action '+expect.actions_contains+' nao anunciada');
+}
+async function runJrSkillApiTest(){
+  return action(async()=>{
+    if(mode!=='serial')throw new Error('O JrSkill API Test usa somente a conexao Serial.');
+    if(!serialConnected)throw new Error('Conecte a Serial antes de executar o teste.');
+    if(!currentFirmware())await send('status');
+    const raw=await api('/jrskill/api-sequence');
+    let sequence;
+    try{sequence=JSON.parse(raw);}catch(_){throw new Error('Arquivo da sequencia JrSkill invalido.');}
+    if(!sequence||!Array.isArray(sequence.steps)||!sequence.steps.length)throw new Error('Sequencia JrSkill sem etapas.');
+    el('jrskill_api_state').textContent='executando';
+    el('jrskill_api_msg').textContent='Executando '+sequence.id+' com '+sequence.steps.length+' etapas...';
+    localLine('JR_SKILL_API_TEST start='+sequence.id+' source='+sequence.source+' steps='+sequence.steps.length);
+    for(let i=0;i<sequence.steps.length;i++){
+      const step=sequence.steps[i];
+      const number=i+1;
+      if(step.wait_ms){
+        localLine('JR_SKILL_API_TEST step='+number+'/'+sequence.steps.length+' wait_ms='+step.wait_ms);
+        await new Promise(resolve=>setTimeout(resolve,step.wait_ms));
+        continue;
+      }
+      if(!step.request||typeof step.request!=='object')throw new Error('Etapa '+number+' sem request.');
+      const command='api '+JSON.stringify(step.request);
+      localLine('JR_SKILL_API_TEST step='+number+'/'+sequence.steps.length+' name='+step.name+' fn='+(step.request.fn||'?'));
+      const reply=await send(command);
+      const body=readRuntimeApiReply(reply);
+      checkRuntimeApiExpectation(step,body);
+      if(step.delay_ms)await new Promise(resolve=>setTimeout(resolve,step.delay_ms));
+    }
+    el('jrskill_api_state').textContent='ok';
+    el('jrskill_api_msg').textContent='Sequencia concluida. Confirme visualmente as expressoes no OLED e baixe o log para registrar o teste fisico.';
+    localLine('JR_SKILL_API_TEST result=ok id='+sequence.id);
+  },'jrskill_api_msg').catch(e=>{el('jrskill_api_state').textContent='erro';throw e;});
+}
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
 async function connectWifi(){if(busy)return;await setMode('wifi');return refreshStatus();}
 async function testWifi(){return connectWifi();}

@@ -286,6 +286,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (ROOT / "index.html").read_text(encoding="utf-8").replace("{APP_VERSION}", APP_VERSION), "text/html; charset=utf-8")
         elif path.path == "/panel.js":
             self._send(200, (ROOT / "panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/jrskill/api-sequence":
+            sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
+            self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
         elif path.path == "/ports":
             try:
                 ports = [] if list_ports is None else [p.device for p in list_ports.comports()]

@@ -204,7 +204,7 @@ def enhanced_do_get(self) -> None:
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V2-12-AUDIO-MIC"
+app.APP_VERSION = "JRBOT-PANEL-V1S-API-01"
 
 
 def main() -> int:
