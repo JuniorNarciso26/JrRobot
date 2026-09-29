@@ -76,8 +76,6 @@ The ESP32 does **not** execute arbitrary on-chain code. Skills are declarative a
 
 **Technical tracking:** [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33)
 
-**Development log:** [JrSkill Network — Hackathon Development Log](docs/HACKATHON_DEVLOG.md)
-
 **Experimental firmware branch:** [`test/jrbot-v1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/test/jrbot-v1s-00)
 
 The experimental Solana line uses the `JrBot_V1S_00` identifier and remains separate from the stable V1.7.04 release and from the future V2 local-voice line.
@@ -365,8 +363,7 @@ Technical documentation:
 - [Project status](docs/PROJECT_STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Development guide](docs/DEVELOPMENT.md)
-- [JrSkill Execution API — Colosseum 2026](docs/JRSKILL_API.md)
-- [Runtime API — low-level protocol/history](docs/API_RUNTIME.md)
+- [Runtime API](docs/API_RUNTIME.md)
 - [Testing](docs/TESTING.md)
 
 ## License
