@@ -31,56 +31,87 @@ function readRuntimeApiReply(reply){
   if(!reply.startsWith(prefix))throw new Error('Resposta nao pertence a Runtime API: '+reply);
   let body;
   try{body=JSON.parse(reply.slice(prefix.length));}catch(_){throw new Error('Runtime API devolveu JSON invalido.');}
+  if(body.ok!==true)throw new Error('Runtime API recusou a chamada: '+JSON.stringify(body.error||{}));
   return body;
 }
-function checkRuntimeApiExpectation(step,body){
-  const expect=step.expect||{};
-  if(Object.prototype.hasOwnProperty.call(expect,'ok')&&body.ok!==expect.ok)throw new Error(step.name+': ok esperado='+expect.ok+' recebido='+body.ok);
-  const result=body.result||{};
-  if(Object.prototype.hasOwnProperty.call(expect,'api')&&result.api!==expect.api)throw new Error(step.name+': api esperada='+expect.api+' recebida='+(result.api??'ausente'));
-  if(Object.prototype.hasOwnProperty.call(expect,'path')&&result.path!==expect.path)throw new Error(step.name+': path esperado='+expect.path+' recebido='+(result.path??'ausente'));
-  if(Object.prototype.hasOwnProperty.call(expect,'value')&&result.value!==expect.value)throw new Error(step.name+': value esperado='+expect.value+' recebido='+(result.value??'ausente'));
-  if(Object.prototype.hasOwnProperty.call(expect,'expression')&&result.expression!==expect.expression)throw new Error(step.name+': expression esperada='+expect.expression+' recebida='+(result.expression??'ausente'));
-  if(expect.actions_contains&&!Array.isArray(result.actions))throw new Error(step.name+': lista actions ausente');
-  if(expect.actions_contains&&!result.actions.includes(expect.actions_contains))throw new Error(step.name+': action '+expect.actions_contains+' nao anunciada');
+function parseJrSkillJson(raw,label){
+  let doc;
+  try{doc=JSON.parse(raw);}catch(_){throw new Error(label+' contem JSON invalido.');}
+  if(!doc||typeof doc!=='object'||Array.isArray(doc))throw new Error(label+' deve ser um objeto JSON.');
+  if(doc.v!==1)throw new Error(label+' requer v=1.');
+  if(!Array.isArray(doc.run)||!doc.run.length)throw new Error(label+' precisa de run[].');
+  if(doc.run.length>64)throw new Error(label+' excede 64 chamadas.');
+  return doc;
 }
-async function runJrSkillApiTest(){
+function validateCall(call,label){
+  if(!Array.isArray(call)||!call.length||typeof call[0]!=='string')throw new Error(label+' possui chamada invalida.');
+  if(!/^[a-z][a-z0-9_.-]{0,63}$/.test(call[0]))throw new Error(label+' possui nome de funcao invalido.');
+}
+async function runtimeCapabilities(){
+  const reply=await send('api '+JSON.stringify({v:1,fn:'capabilities',args:{}}));
+  const body=readRuntimeApiReply(reply);
+  const actions=body.result?.actions;
+  if(!Array.isArray(actions))throw new Error('Runtime API nao informou actions.');
+  return new Set(actions);
+}
+async function executeJrSkillDocument(doc,ctx,label){
+  if(ctx.depth>4)throw new Error('Limite de profundidade de recipes excedido.');
+  for(let i=0;i<doc.run.length;i++){
+    const call=doc.run[i];
+    validateCall(call,label);
+    const fn=call[0];
+    const position=(i+1)+'/'+doc.run.length;
+    if(fn==='wait'){
+      if(call.length!==2||!Number.isInteger(call[1])||call[1]<0||call[1]>5000)throw new Error(label+' wait invalido.');
+      localLine('JR_SKILL_V1 call='+position+' fn=wait ms='+call[1]+' depth='+ctx.depth);
+      await new Promise(resolve=>setTimeout(resolve,call[1]));
+      continue;
+    }
+    if(fn==='recipe'){
+      if(call.length!==2||typeof call[1]!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(call[1]))throw new Error(label+' recipe invalida.');
+      const name=call[1];
+      if(ctx.stack.includes(name))throw new Error('Loop de recipe detectado: '+ctx.stack.concat([name]).join(' -> '));
+      localLine('JR_SKILL_V1 recipe_enter='+name+' depth='+(ctx.depth+1));
+      const raw=await api('/jrskill/recipe/'+encodeURIComponent(name));
+      const recipe=parseJrSkillJson(raw,'recipe '+name);
+      await executeJrSkillDocument(recipe,{actions:ctx.actions,depth:ctx.depth+1,stack:ctx.stack.concat([name])},'recipe '+name);
+      localLine('JR_SKILL_V1 recipe_exit='+name+' depth='+(ctx.depth+1));
+      continue;
+    }
+    if(fn==='face'){
+      if(call.length!==2||typeof call[1]!=='string'||!/^[a-z_]{1,32}$/.test(call[1]))throw new Error(label+' face invalida.');
+      if(!ctx.actions.has('face'))throw new Error('Capability face nao disponivel neste firmware.');
+      localLine('JR_SKILL_V1 call='+position+' fn=face value='+call[1]+' depth='+ctx.depth);
+      const reply=await send('api '+JSON.stringify({v:1,fn:'face',args:{expression:call[1]}}));
+      const body=readRuntimeApiReply(reply);
+      if(body.result?.expression!==call[1])throw new Error('Runtime API nao confirmou face '+call[1]+'.');
+      continue;
+    }
+    throw new Error('Funcao JrSkill nao permitida nesta prova: '+fn);
+  }
+}
+async function runJrSkillTest(){
   return action(async()=>{
     try{
-    if(mode!=='serial')throw new Error('O JrSkill API Test usa somente a conexao Serial.');
-    if(!serialConnected)throw new Error('Conecte a Serial antes de executar o teste.');
-    if(!currentFirmware())await send('status');
-    const raw=await api('/jrskill/api-sequence');
-    let sequence;
-    try{sequence=JSON.parse(raw);}catch(_){throw new Error('Arquivo da sequencia JrSkill invalido.');}
-    if(!sequence||!Array.isArray(sequence.steps)||!sequence.steps.length)throw new Error('Sequencia JrSkill sem etapas.');
-    el('jrskill_api_state').textContent='executando';
-    el('jrskill_api_msg').textContent='Executando '+sequence.id+' com '+sequence.steps.length+' etapas...';
-    localLine('JR_SKILL_API_TEST start='+sequence.id+' source='+sequence.source+' steps='+sequence.steps.length);
-    for(let i=0;i<sequence.steps.length;i++){
-      const step=sequence.steps[i];
-      const number=i+1;
-      if(step.wait_ms){
-        localLine('JR_SKILL_API_TEST step='+number+'/'+sequence.steps.length+' wait_ms='+step.wait_ms);
-        await new Promise(resolve=>setTimeout(resolve,step.wait_ms));
-        continue;
-      }
-      if(!step.request||typeof step.request!=='object')throw new Error('Etapa '+number+' sem request.');
-      const command='api '+JSON.stringify(step.request);
-      localLine('JR_SKILL_API_TEST step='+number+'/'+sequence.steps.length+' name='+step.name+' fn='+(step.request.fn||'?'));
-      const reply=await send(command);
-      const body=readRuntimeApiReply(reply);
-      checkRuntimeApiExpectation(step,body);
-      if(step.delay_ms)await new Promise(resolve=>setTimeout(resolve,step.delay_ms));
+      if(mode!=='serial')throw new Error('O teste JrSkill v1 usa somente a conexao Serial.');
+      if(!serialConnected)throw new Error('Conecte a Serial antes de executar a Skill.');
+      if(!currentFirmware())await send('status');
+      el('jrskill_api_state').textContent='carregando';
+      const raw=await api('/jrskill/skill');
+      const skill=parseJrSkillJson(raw,'skill');
+      const actions=await runtimeCapabilities();
+      el('jrskill_api_state').textContent='executando';
+      el('jrskill_api_msg').textContent='Executando JSON minimo v1 com '+skill.run.length+' chamadas de nivel principal...';
+      localLine('JR_SKILL_V1 start=v1 source=local-file top_calls='+skill.run.length);
+      await executeJrSkillDocument(skill,{actions,depth:0,stack:[]},'skill');
+      el('jrskill_api_state').textContent='ok';
+      el('jrskill_api_msg').textContent='Skill concluida. Confirme visualmente: happy -> recipe(surprised -> thinking -> happy) -> neutral.';
+      localLine('JR_SKILL_V1 result=ok');
+    }catch(e){
+      el('jrskill_api_state').textContent='erro';
+      localLine('JR_SKILL_V1 result=error detail='+e.message);
+      throw e;
     }
-    el('jrskill_api_state').textContent='ok';
-    el('jrskill_api_msg').textContent='Sequencia concluida. Confirme visualmente as expressoes no OLED e baixe o log para registrar o teste fisico.';
-    localLine('JR_SKILL_API_TEST result=ok id='+sequence.id);
-  }catch(e){
-    el('jrskill_api_state').textContent='erro';
-    localLine('JR_SKILL_API_TEST result=error detail='+e.message);
-    throw e;
-  }
   },'jrskill_api_msg');
 }
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}

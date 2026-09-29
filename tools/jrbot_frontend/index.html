@@ -65,11 +65,11 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
-    <h2>JrSkill / Runtime API</h2>
+    <h2>JrSkill JSON v1</h2>
     <div class="autonomous" id="jrskill_api_box">
-      <button id="jrskill_api_test" data-action onclick="runJrSkillApiTest()" class="green">Executar API Test</button>
+      <button id="jrskill_api_test" data-action onclick="runJrSkillTest()" class="green">Executar Skill JSON</button>
       <span id="jrskill_api_state" class="state">aguardando</span>
-      <div class="msg" id="jrskill_api_msg">Executa pela Serial uma sequencia externa de chamadas da Runtime API. Nesta primeira prova o firmware nao e alterado: validamos capabilities, get e face existentes.</div>
+      <div class="msg" id="jrskill_api_msg">Teste do schema minimo: chamada direta face + wait local + recipe local + face. O firmware continua JrBot_V1S_00.</div>
     </div>
     <h2>Modo autonomo / voz</h2>
     <div class="autonomous">

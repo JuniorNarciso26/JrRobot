@@ -21,7 +21,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-API-01"
+APP_VERSION = "JRBOT-PANEL-V1S-SKILL-01"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -289,6 +289,19 @@ class Handler(BaseHTTPRequestHandler):
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/skill":
+            skill = ROOT / "jrskill" / "skills" / "minimal_recipe_01.json"
+            self._send(200, skill.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path.startswith("/jrskill/recipe/"):
+            name = path.path[len("/jrskill/recipe/"):]
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name):
+                self._send(400, "Nome de recipe invalido")
+                return
+            recipe = ROOT / "jrskill" / "recipes" / (name + ".json")
+            if not recipe.is_file():
+                self._send(404, "Recipe nao encontrada")
+                return
+            self._send(200, recipe.read_text(encoding="utf-8"), "application/json; charset=utf-8")
         elif path.path == "/ports":
             try:
                 ports = [] if list_ports is None else [p.device for p in list_ports.comports()]
