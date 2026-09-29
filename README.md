@@ -16,69 +16,23 @@ The current stable release is **`JrBot_V1.7.04`**.
   <strong>Open-source ESP32-S3 robot with voice, camera, WebRTC, expressive OLED face and an evolving AI architecture.</strong>
 </p>
 
-## JrSkill Network — Solana Hackathon 2026
+## JrSkill Network — official parallel line
 
-JrBot is participating in the **Crypto World's Fair / Colosseum Hackathon 2026** with **JrSkill Network**, an experimental on-chain skill distribution system for physical AI.
+**JrSkill Network (V1S)** is an official parallel line of the JrBot project focused on portable, declarative Skills for physical AI.
 
-The goal is to explore whether robot capabilities can be packaged as portable, declarative **Skills** whose publication, versioning and license state can be represented on Solana while physical execution remains constrained by the JrBot capability layer.
+Its objective is to study an architecture where Skills can be published, versioned and licensed through **Solana**, while execution remains protected by a local Skill Executor and controlled JrBot capabilities. Blockchain data must never gain direct access to GPIO, drivers or arbitrary native code on the ESP32.
 
-### Pre-existing before the hackathon
+This line is intentionally separated from the stable product release:
 
-The following parts of JrBot existed before the hackathon:
+- stable product: **`JrBot_V1.7.04`** on `main`;
+- JrSkill / Solana line: **`JrBot_V1S_00`** on `V1s-00`;
+- local voice line: `v2`.
 
-- JrBot hardware;
-- ESP32-S3 firmware;
-- OLED expressions;
-- OV5640 camera;
-- MS3625 microphone and MAX98357A audio output;
-- local Wi-Fi control;
-- local HTTPS interface;
-- WebRTC full-duplex audio;
-- JPEG video over WebRTC DataChannel;
-- the stable V1.7 local-control baseline.
+Detailed development stages, experiments, proofs and implementation notes for JrSkill Network are maintained **only in the `V1s-00` branch** until that work is intentionally integrated into the main product.
 
-### Developed during the hackathon — in progress
-
-The hackathon work is focused on:
-
-- Solana wallet integration;
-- Skill Schema;
-- Skill Executor;
-- Skill PDA;
-- License PDA;
-- on-chain skill distribution;
-- retrieving and validating Skills through JrTK/JrBrain;
-- executing only approved physical capabilities on the JrBot.
-
-The intended MVP flow is:
-
-```text
-Skill registered on Solana
-        ↓
-Wallet owns a Skill license
-        ↓
-JrTK queries Solana
-        ↓
-validates ownership
-        ↓
-retrieves and validates the Skill
-        ↓
-Skill Executor
-        ↓
-Capability API / Runtime API
-        ↓
-JrBot executes physical behavior
-```
-
-The ESP32 does **not** execute arbitrary on-chain code. Skills are declarative and must pass through controlled capabilities before reaching hardware.
-
+**Branch:** [`V1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)  
+**Technical context:** [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)  
 **Colosseum:** https://colosseum.com/arena/projects/jrskill-network
-
-**Technical tracking:** [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33)
-
-**Experimental firmware branch:** [`test/jrbot-v1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/test/jrbot-v1s-00)
-
-The experimental Solana line uses the `JrBot_V1S_00` identifier and remains separate from the stable V1.7.04 release and from the future V2 local-voice line.
 
 ## Contributing to JrBot
 
@@ -319,14 +273,14 @@ These capabilities form the foundation for the next intelligence layers of JrBot
 | --- | --- | --- |
 | **V0** | Hardware and peripheral foundation | Completed |
 | **V1** | Human control through browser and local media | **Completed — `JrBot_V1.7.04`** |
-| **V1S / JrSkill Network** | Experimental Solana-based Skill distribution | **Hackathon development** |
+| **V1S / JrSkill Network** | Portable Skill distribution and licensing through Solana | **Official parallel line** |
 | **V2** | Local voice control | Next product line |
 | **V3** | Programmatic control through Runtime API | Planned |
 | **JrBrain** | Memory, personality, context, LLM and Skills | Future |
 
 `JrBot_V1.7.04` is promoted to `main` as the current official release. `develop` starts from the same stable baseline for validated future work.
 
-The V1S / JrSkill Network experiment remains isolated from the stable release until its architecture and proof of concept are validated.
+V1S / JrSkill Network evolves as an official parallel line and remains isolated from the stable release until an explicit integration decision is made.
 
 ## Roadmap
 
@@ -344,7 +298,7 @@ JrBrain — memory + personality + LLM
 Skills / platform / ecosystem
 ```
 
-JrSkill Network is an experimental parallel research line exploring how Skills could be published, licensed and distributed on-chain without giving blockchain data direct control over ESP32 hardware.
+JrSkill Network is a parallel project line for publishing, licensing and distributing portable Skills through Solana without giving blockchain data direct control over ESP32 hardware.
 
 ## Development and documentation
 
@@ -353,8 +307,9 @@ Main branches:
 ```text
 main                  = latest officially promoted release
 develop               = integration of validated future work
-test/jrbot-v1s-00     = experimental JrSkill / Solana line
-v2                    = JrBot V2 local voice line
+V1s-00                 = official parallel JrSkill / Solana line
+v1                     = historical V1 reference
+v2                     = JrBot V2 local voice line
 ```
 
 Technical documentation:
