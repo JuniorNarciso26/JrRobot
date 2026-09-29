@@ -85,4 +85,4 @@ Exemplos de decisões que merecem ADR:
 
 ## Idiomas
 
-A documentação principal está em português nesta fase. Quando houver demanda internacional, a tradução deve manter uma versão canônica identificada e evitar divergência silenciosa entre idiomas.
+A documentação técnica em `docs/` permanece principalmente em português. O `README.md` público da raiz está em inglês. Ao traduzir documentos técnicos, identificar claramente a versão canônica e evitar divergência silenciosa entre idiomas.

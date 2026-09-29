@@ -1,103 +1,60 @@
 # JrBot Runtime API v1
 
-**Candidata atual: `JRBotV2_RUNTIME_API_V1_02`.**
+## Estado vigente
 
-**Status: API base validada fisicamente pela Serial na candidata 01; extensão 1.1 com `face` implementada no código e ainda pendente de build/validação física.**
-
-A Runtime API separa capacidades do firmware dos clientes que as utilizam. Painel, CLI, VPS e futuros aplicativos devem consumir o mesmo contrato em vez de criar comandos paralelos para cada interface.
-
-## Versionamento
-
-O campo do envelope permanece:
-
-```json
-{"v":1}
-```
-
-`v=1` representa o major compatível do contrato.
-
-A candidata 02 publica:
+Contrato atual na `main`:
 
 ```text
-api = 1.1
+major protocol: 1
+implementation: 1.1
 ```
 
-A adição de `face` é compatível e, portanto, não cria um novo major `v=2`.
+A Runtime API separa clientes e interfaces das implementações físicas do firmware.
 
-## Estado da candidata 02
+Ela aceita somente funções registradas; não executa texto arbitrário, código nativo ou acesso direto a GPIO.
 
-Implementado no código:
+## Funções implementadas
 
-- envelope JSON versionado `v=1`;
-- `capabilities`;
-- `get` para estados seguros;
-- action `face`;
-- erros JSON estruturados;
-- transporte pela infraestrutura existente:
-  - Serial: `api <JSON>`;
-  - HTTP local: `POST /cmd` com corpo `api <JSON>`;
-- descoberta dinâmica contendo apenas recursos realmente implementados.
+A baseline atual registra:
 
-Ainda não implementado:
+- `capabilities` — consulta;
+- `get` — consulta;
+- `face` — action.
 
-- `set`;
-- persistência de configuração;
-- `say`, `wait`, `listen` e `play` como actions;
-- Voice Registry dinâmico;
-- Playground;
-- Flow Engine;
-- eventos assíncronos da Runtime API;
-- WebSocket;
-- autenticação/TLS para uso fora de rede local confiável.
+A descoberta dinâmica também publica os transports disponíveis.
 
-## Envelope da API
+## Envelope
 
 Requisição:
 
 ```json
 {
   "v": 1,
-  "id": "teste01",
+  "id": "req01",
   "fn": "capabilities",
   "args": {}
 }
 ```
 
-Resposta de sucesso:
-
-```text
-JR_API {"v":1,"ok":true,"id":"teste01","result":{...}}
-```
-
-Resposta de erro:
-
-```text
-JR_API {"v":1,"ok":false,"id":"teste01","error":{"code":"not_found","message":"function_not_supported"}}
-```
-
-`id` é opcional e serve para correlação do cliente. Aceita letras, números, `_`, `-` e `.` com até 32 caracteres.
-
-## Transporte Serial
-
-```text
-api {"v":1,"id":"c1","fn":"capabilities","args":{}}
-```
-
-Com o envelope correlacionado do terminal:
-
-```text
-@abc123 api {"v":1,"id":"c1","fn":"get","args":{"path":"system.version"}}
-```
-
 Resposta:
 
 ```text
-JR_REPLY id=abc123 ok=1 JR_API {"v":1,"ok":true,"id":"c1","result":{...}}
+JR_API {"v":1,"ok":true,"id":"req01","result":{...}}
 ```
 
-A candidata 01 foi exercitada fisicamente pela Serial com `capabilities`, múltiplos `get` e erros estruturados.
+Erros retornam o mesmo envelope com `ok=false`.
 
-## Transporte HTTP local
+O campo `id` é opcional e serve para correlação do cliente.
+
+## Transports
+
+### Serial
+
+```text
+api {"v":1,"fn":"capabilities","args":{}}
+```
+
+### HTTP local
 
 ```text
 POST /cmd
@@ -111,49 +68,36 @@ Corpo:
 api {"v":1,"fn":"capabilities","args":{}}
 ```
 
-O portal atual continua destinado apenas a rede local confiável; não possui autenticação/TLS para exposição pública.
+O HTTP atual é destinado à rede local confiável. `X-JrBot-Command: 1` não é autenticação para exposição pública.
 
-A validação HTTP continua sendo um item explícito do roteiro da candidata 02.
+## capabilities
 
-## `capabilities`
+A resposta inclui:
 
-```json
-{
-  "v": 1,
-  "fn": "capabilities",
-  "args": {}
-}
-```
+- versão da API;
+- protocolo;
+- firmware;
+- hardware;
+- profile;
+- funções;
+- paths de `get`;
+- actions;
+- transports;
+- flags de features ainda não disponíveis.
 
-Na candidata 02 o resultado deve informar, entre outros campos:
+Na baseline atual:
 
 ```text
-api: 1.1
-functions: capabilities, get, face
-actions: face
-persistent_config: false
-flow_engine: false
-playground: false
+functions = capabilities, get, face
+actions   = face
+persistent_config = false
+flow_engine       = false
+playground        = false
 ```
 
-`triggers` e `events` continuam vazios nesta etapa.
+## get
 
-## `get`
-
-Formato:
-
-```json
-{
-  "v": 1,
-  "id": "estado01",
-  "fn": "get",
-  "args": {
-    "path": "brain.status"
-  }
-}
-```
-
-Caminhos implementados:
+Paths registrados:
 
 ```text
 api.version
@@ -165,131 +109,71 @@ voice.status
 audio.volume
 face.current
 wifi.status
+wifi.diagnostics
 ```
-
-Exemplo:
-
-```text
-api {"v":1,"fn":"get","args":{"path":"audio.volume"}}
-```
-
-Resposta conceitual:
-
-```text
-JR_API {"v":1,"ok":true,"result":{"path":"audio.volume","value":35}}
-```
-
-## `face`
-
-`face` é a primeira action registrada da Runtime API.
 
 Exemplo:
 
 ```json
 {
   "v": 1,
-  "id": "face01",
-  "fn": "face",
+  "fn": "get",
   "args": {
-    "expression": "thinking"
+    "path": "system.version"
   }
 }
 ```
 
-Transporte em uma linha:
+## face
 
-```text
-api {"v":1,"id":"face01","fn":"face","args":{"expression":"thinking"}}
+A action `face` recebe uma expressão suportada pelo renderer:
+
+```json
+{
+  "v": 1,
+  "fn": "face",
+  "args": {
+    "expression": "happy"
+  }
+}
 ```
 
-Resposta esperada:
+A função chama somente o módulo de face registrado no firmware.
 
-```text
-JR_API {"v":1,"ok":true,"id":"face01","result":{"expression":"thinking"}}
-```
-
-A action chama somente o módulo de face registrado no firmware. Ela não recebe GPIO, endereço de memória ou código arbitrário.
-
-O teste físico deve confirmar duas coisas separadas:
-
-1. o OLED realmente mudou de expressão;
-2. `get("face.current")` devolve o mesmo estado após a action.
-
-Expressões não reconhecidas devem retornar `invalid_args` com `face_expression_not_supported` e não devem alterar o estado.
+Expressões desconhecidas retornam erro estruturado e não autorizam acesso direto ao display ou GPIO.
 
 ## Erros estruturados
 
-Códigos iniciais:
+Códigos usados pelo contrato incluem:
 
 | Código | Significado |
-|---|---|
-| `invalid_json` | corpo não é um objeto JSON válido |
+| --- | --- |
+| `invalid_json` | corpo JSON inválido |
 | `invalid_request` | envelope inválido |
-| `invalid_args` | argumentos incompatíveis com a função |
-| `unsupported_version` | versão diferente de `v=1` |
-| `not_found` | função ou caminho não disponível |
+| `invalid_args` | argumentos incompatíveis |
+| `unsupported_version` | major não suportado |
+| `not_found` | função/path não disponível |
 | `no_memory` | falha de alocação/serialização |
-| `response_too_large` | resposta não cabe no buffer do protocolo |
+| `response_too_large` | resposta excede o buffer |
 
-O firmware não executa código textual arbitrário. `fn` precisa corresponder a uma função registrada internamente.
+## Segurança
 
-## Direção futura
+A Runtime API aplica uma allowlist de funções.
 
-```text
-get("system.version")
-set("audio.volume", 35)
-face("happy")
-say("oi")
-wait(300)
-listen()
-```
+Não é permitido através desse contrato:
 
-No transporte essas operações continuam representadas por dados estruturados, nunca por execução de código enviado pelo cliente.
+- execução arbitrária de C/C++;
+- shell;
+- acesso bruto a GPIO;
+- acesso bruto à memória;
+- nomes de função não registrados.
 
-## Voice API planejada
+Esse limite também é a base para futuras camadas, incluindo voz, JrBrain e JrSkill Network.
 
-```text
-voice.add(phrase)
-voice.remove(id)
-voice.list()
-voice.get(id)
-```
+## Evolução
 
-A confiança deve ser associada ao trigger/regra configurável sempre que possível, em vez de depender somente de um threshold global do modelo.
+Novas capabilities compatíveis podem continuar em `v=1` e devem aparecer em `capabilities()`.
 
-## Playground planejado
+Mudanças incompatíveis exigem novo major do contrato.
 
-```text
-playground.start(phrase, interval_ms)
-playground.stop()
-playground.save(confidence)
-```
-
-Durante calibração, o robô deverá coletar candidatos sem executar o Flow normal.
-
-## Flow API planejada
-
-```text
-flow.save(...)
-flow.list()
-flow.get(id)
-flow.delete(id)
-flow.enable(id)
-flow.disable(id)
-flow.run(id)
-```
-
-## Compatibilidade
-
-Toda capability futura deve documentar:
-
-- versão mínima da API;
-- argumentos;
-- retorno;
-- erros;
-- persistência;
-- recursos físicos utilizados;
-- eventos gerados;
-- nível de validação.
-
-Mudanças incompatíveis exigem novo major do contrato. Adições compatíveis permanecem em `v=1` e devem aparecer dinamicamente em `capabilities()`.
+Detalhes de candidatas e roteiros antigos de teste foram movidos para `trash/`; eles não representam o contrato vigente.

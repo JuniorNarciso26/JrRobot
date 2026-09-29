@@ -1,10 +1,10 @@
 # Estado do projeto
 
-Atualização: 2026-09-28.
+Atualização: 2026-09-29.
 
 ## Hardware de referência
 
-`JRBOT-HW-04`
+**JRBOT-HW-04**
 
 - ESP32-S3 N16R8
 - OLED SSD1306
@@ -12,89 +12,78 @@ Atualização: 2026-09-28.
 - MAX98357A
 - MS3625
 
-## Direção atual
+## Release oficial
 
-O projeto está organizado em quatro etapas de produto:
+A versão oficialmente promovida em `main` é **`JrBot_V1.7.04`**.
 
-1. JrBot V1: painel interno pelo IP.
-2. JrBot V2: comandos por voz.
-3. JrBot V3: controle programático por API.
-4. JrBrain: memória e comportamento avançado.
+A `develop` está baseada na mesma baseline.
 
-O detalhamento oficial está em [ROADMAP.md](ROADMAP.md).
+A V1.7.04 consolida:
 
-## Etapa ativa
+- controle local por navegador;
+- Wi-Fi e HTTPS local;
+- foto e Live com OV5640;
+- áudio WebRTC bidirecional;
+- JPEG por DataChannel;
+- I2S full-duplex no HW04;
+- `jr_mode_manager`;
+- `jr_resource_manager`;
+- ownership de I2S para mic, playback e Live.
 
-A versão oficial promovida em `main` é **`JrBot_V1.7.04`**. A `develop` parte da mesma baseline para as próximas entregas validadas.
+Limitações conhecidas da release estável incluem AEC/eco acústico, acesso WebRTC pela Internet e eventos ocasionais de backpressure de vídeo. A linha de voz local/ESP-SR pertence à V2.
 
-### O que a V1.7.04 consolida
+## Linhas oficiais abertas
 
-- Live WebRTC local full-duplex com PCMA/G.711A e JPEG/DataChannel;
-- I2S RX/TX simultâneo no HW04 com BCLK GPIO21 e WS GPIO47 compartilhados;
-- câmera OV5640 preservada na orientação física de -90°/270°;
-- redução do polling automático recorrente de `/status` no App;
-- `jr_mode_manager` como primeira autoridade central de modo;
-- `jr_resource_manager` como primeira autoridade central de ownership do I2S;
-- owners validados: `mic`, `playback` e `live`;
-- telemetria de acquire/release/busy/mismatch do I2S.
+### `main`
 
-Validação física final confirmada:
+Release oficial estável: `JrBot_V1.7.04`.
 
-- `idle -> live -> idle`;
-- gravação pelo MS3625;
-- reprodução pelo MAX98357A;
-- Live WebRTC conectando e encerrando;
-- vídeo JPEG/DataChannel transmitindo;
-- owner I2S retornando para `none`;
-- `i2s_release_mismatch=0`;
-- sem reset/watchdog observado.
+### `develop`
 
-Limitações conhecidas que não bloqueiam esta release:
+Integração de trabalho já validado antes de uma nova promoção.
 
-- eco acústico/AEC ainda não tratado;
-- eventos ocasionais `VIDEO_DC_DROP buffer_full`;
-- Live pela Internet ainda não implementada;
-- ESP-SR/MultiNet e o modo autônomo pertencem à V2 de voz.
+### `V1s-00` — JrSkill Network
 
-O nome experimental usado durante a derivação da revisão não é o nome oficial da release. A identificação pública correta é `JrBot_V1.7.04`.
+Linha oficial paralela dedicada a **Skills portáveis para IA física**, com distribuição, versionamento e licenciamento apoiados por Solana e execução protegida por uma camada local de capabilities.
 
-## Nomenclatura
+A documentação pública da `main` registra somente esse objetivo. O andamento e as etapas internas dessa linha pertencem à própria branch `V1s-00`.
 
-- JrBot V1, V2 e V3: versões do produto.
-- Runtime API 1.x: versão do protocolo.
-- Revisões da V1 seguem o padrão `JrBot_V1.x.y` quando forem correções/refinamentos incrementais.
+### `v2`
 
-## Baseline técnica promovida
+Linha preservada para controle por voz local.
 
-A baseline oficialmente promovida em `main` é `JrBot_V1.7.04`. A `develop` parte da mesma revisão até receber novas entregas validadas.
+### `v1`
 
-O reconhecimento de voz MultiNet6 continua experimental e pertence à frente da JrBot V2.
+Referência histórica da linha V1. Não é a baseline estável atual.
+
+## Hardware e recursos compartilhados
+
+No HW04:
+
+```text
+BCLK / SCK     GPIO21
+WS / LRCLK     GPIO47
+MS3625 SD      GPIO41
+MAX98357A DIN  GPIO42
+```
+
+BCLK e WS são intencionalmente compartilhados entre RX e TX.
 
 ## Instalador
 
-O `INSTALAR.bat` consulta o GitHub e monta o menu a partir das branches remotas ativas. Branches `archive/*` não são exibidas.
+O `INSTALAR.bat` consulta as branches remotas disponíveis, sincroniza a branch selecionada e pode compilar, gravar e abrir o painel.
 
-O instalador pode sincronizar a branch selecionada, compilar, gravar o ESP32 e abrir o painel de desenvolvimento.
+Sempre confirme no log/status a identificação exata da build instalada.
 
-## Branches
+## Regra de documentação
 
-- `main`: última versão oficialmente promovida.
-- `develop`: integração das entregas validadas.
-- `v1`: referência da linha JrBot V1.
-- `v2`: JrBot V2 voz.
-- `feature/*`: desenvolvimento temporário.
-- `fix/*` / `hotfix/*`: correções temporárias.
-- `archive/*`: histórico, oculto do instalador.
+Ao promover uma nova baseline para `develop` ou `main`, revisar no mesmo ciclo:
 
-## Regra de promoção e documentação
-
-Sempre que uma versão for promovida para `develop`, devem ser atualizados no mesmo ciclo:
-
-1. marcador de versão do firmware;
+1. `firmware/version.txt`;
 2. `README.md`;
 3. `docs/ROADMAP.md`;
 4. `docs/PROJECT_STATUS.md`;
 5. `docs/CHANGELOG.md`;
-6. documentação técnica afetada pela mudança.
+6. documentação técnica afetada.
 
-Implementação, build, teste de bancada e validação física continuam documentados separadamente.
+Documentos antigos que não representam mais o estado vigente devem ser movidos para `trash/` antes de eventual exclusão.

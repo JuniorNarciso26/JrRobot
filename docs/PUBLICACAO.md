@@ -1,25 +1,54 @@
-# JrBot - apresentacao publica
+# JrBot — apresentação pública
 
 ## Identidade
 
-Nome do robo: **JrBot**. Apresentacao: **robo com IA em desenvolvimento**. O repositorio conserva o endereco JuniorNarciso26/JrRobot; nao e necessario renomear a URL para mudar a identidade do produto.
+**JrBot** é um projeto open source de robô físico com IA baseado em ESP32-S3.
 
-Descricao curta para o campo About/Description do GitHub:
+Release oficial atual: **`JrBot_V1.7.04`**.
 
-> JrBot: robo com IA em desenvolvimento baseado em ESP32-S3, com painel de controle, camera, audio modular e OLED opcional.
+Descrição curta sugerida:
 
-A descricao de produto nao significa que conversacao por IA ja esteja implementada. Ver docs/PLATAFORMA.md para o estado real.
+> Open-source ESP32-S3 physical AI robot with camera, audio, WebRTC, expressive OLED face and evolving Skill architecture.
 
-## About e README sao campos diferentes
+## Linhas do projeto
 
-README.md altera a pagina do projeto. O campo About e metadado do GitHub, nao e atualizado criando um arquivo. Nesta revisao foi lido vazio. A conexao usada disponibiliza escrita de arquivos/commits, mas nao uma acao para editar esse metadado. O proprietario pode abrir a engrenagem do About e colar a descricao acima; o texto tambem esta em DESCRICAO_REPOSITORIO.txt.
+- **V1 / main** — produto local estável;
+- **V1S / JrSkill Network** — linha oficial paralela para Skills portáveis, distribuição/versionamento/licenciamento via Solana e execução física segura;
+- **V2** — voz local;
+- **V3** — futura evolução programática;
+- **JrBrain** — memória, contexto, personalidade e inteligência futura.
 
-Nao mudar visibilidade, nome, branch padrao ou permissoes como parte desta limpeza. Implementacao em v2-revisada; main recebe apenas documentacao publica revisada.
+O detalhamento do andamento da V1S permanece exclusivamente na branch `V1s-00`.
 
-## Conteudo e seguranca
+## README e About
 
-As referencias textuais ao projeto anterior foram removidas da documentacao ativa. Isso nao apaga commits historicos, caches do GitHub ou copias locais. Nao houve reescrita de historico.
+O `README.md` é a apresentação principal do repositório.
 
-Rever historico e arquivos antes de publicar credenciais. Nenhuma auditoria completa do historico de segredos foi realizada aqui. Se algum segredo ja foi publicado, revogar/rotacionar: apagar um arquivo nao basta. Nao anexar logs contendo senhas, imagens/audio pessoais ou credenciais de servicos de IA.
+O campo GitHub About/Description é metadado do repositório e deve usar uma descrição curta, sem prometer funcionalidades ainda não integradas à `main`.
 
-A licenca do codigo proprio precisa ser decidida pelo proprietario. Repositorio publico nao e automaticamente uma licenca livre. Preservar avisos de dependencias; nao adicionar MIT/Apache/GPL sem aprovacao.
+## Divulgação da V1S
+
+Ao citar JrSkill Network fora da branch experimental, limitar a descrição ao objetivo da linha:
+
+- Skills declarativas e portáveis;
+- distribuição/versionamento/licenciamento apoiados por Solana;
+- executor local seguro;
+- acesso somente a capabilities permitidas;
+- futura possibilidade de integração ao produto principal.
+
+Não publicar como funcionalidade da release estável algo que existe somente na `V1s-00`.
+
+## Segurança e privacidade
+
+Antes de publicar logs, arquivos ou demonstrações:
+
+- remover senhas/tokens/credenciais;
+- não publicar áudio ou imagens privadas sem autorização;
+- não expor o portal local diretamente à Internet sem arquitetura de autenticação adequada;
+- preservar licenças de dependências e componentes de terceiros.
+
+## Licença
+
+O conteúdo original do repositório é distribuído sob a [MIT License](../LICENSE).
+
+A licença do software não concede automaticamente direitos sobre a marca **JrBot**.
