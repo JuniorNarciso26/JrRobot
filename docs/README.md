@@ -1,26 +1,30 @@
 # Documentação do JrBot
 
-Este diretório é a fonte oficial de documentação do projeto. O navegador de documentação do painel local lê estes mesmos arquivos Markdown.
+Este diretório segue a mesma organização da documentação ativa da `main` e adiciona os documentos exclusivos da linha **JrSkill Network / V1s-00**.
 
-## Como ler a documentação
+Assim, a branch V1s permanece atualizada com a baseline documental do projeto sem perder o histórico, as provas e as decisões específicas do hackathon.
 
-Cada documento deve distinguir claramente:
+## Estado atual
 
-- **Implementado** — código existe no repositório.
-- **Build verificado** — compilação foi verificada.
-- **Bancada/simulado** — comportamento foi exercitado sem provar o efeito físico final.
-- **Validado fisicamente** — houve teste real no hardware.
-- **Planejado** — aprovado para desenvolvimento, mas ainda não implementado.
+- release oficial: **`JrBot_V1.7.04`** em `main`;
+- integração: `develop`;
+- linha oficial paralela JrSkill/Solana: **`V1s-00`** / `JrBot_V1S_00`;
+- linha de voz local: `v2`;
+- referência histórica da V1: `v1`.
 
-## Guia rápido
+A documentação geral abaixo acompanha a organização da `main`. O progresso da V1s fica registrado somente nesta branch.
 
-### JrSkill Network / Hackathon 2026
+## JrSkill Network / V1s-00
 
-- [JrSkill Execution API — documento atual para Colosseum](JRSKILL_API.md)
-- [Hackathon Development Log — diário público do projeto](HACKATHON_DEVLOG.md)
-- [Issue #33 — histórico técnico do JrSkill Network](https://github.com/JuniorNarciso26/JrRobot/issues/33)
+Documentos exclusivos desta linha:
 
-Para o trabalho atual de JrSkill, **JRSKILL_API.md é a referência principal**. Ele separa claramente o que já foi validado fisicamente do que ainda está planejado.
+- [JrSkill Execution API](JRSKILL_API.md) — contrato atual do Skill JSON, Executor e Recipes;
+- [Hackathon Development Log](HACKATHON_DEVLOG.md) — diário cronológico do desenvolvimento e das validações;
+- [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico técnico e decisões.
+
+Esses documentos devem ser preservados durante toda a V1s. Quando a linha for aprovada para integração, eles fornecem o histórico necessário para decidir o que deve subir para a documentação oficial.
+
+## Documentos principais
 
 ### Produto e projeto
 
@@ -28,41 +32,48 @@ Para o trabalho atual de JrSkill, **JRSKILL_API.md é a referência principal**.
 - [Estado atual](PROJECT_STATUS.md)
 - [Arquitetura](ARCHITECTURE.md)
 - [Guia de desenvolvimento](DEVELOPMENT.md)
+- [Changelog](CHANGELOG.md)
 - [Testes e validação](TESTING.md)
 - [Padrão da documentação](DOCUMENTATION.md)
 
-### Plataforma configurável
+### Interfaces e comportamento
 
-- [Runtime API v1 — contrato de baixo nível e histórico](API_RUNTIME.md)
+- [Runtime API v1](API_RUNTIME.md)
+- [Flow Engine](FLOWS.md)
 - [Playground](PLAYGROUND.md)
-- [Flows](FLOWS.md)
 
-### Hardware e histórico técnico
+### Hardware
 
-- [Pinagem](PINAGEM.md)
+- [Pinagem HW04](PINAGEM.md)
 - [Esquema de ligação](ESQUEMA_LIGACAO.md)
 - [Materiais](MATERIAIS.md)
-- [Plataforma](PLATAFORMA.md)
-- [Faces V2](V2-FACES.md)
 - [Revisão HW04](REVISAO_HW04.md)
 
-### Testes históricos
+### Publicação
 
-Estes documentos são preservados como evidência técnica de etapas anteriores. Eles não substituem a documentação vigente do JrSkill.
+- [Apresentação pública](PUBLICACAO.md)
 
-- [Teste Runtime API candidata 01](RUNTIME_API_V1_TEST.md)
-- [Teste Runtime API candidata 02](RUNTIME_API_V1_02_TEST.md)
-- [Local Brain Test](LOCAL_BRAIN_TEST.md)
-- [Voice Wake Test](VOICE_WAKE_TEST.md)
-- [JrBot Response Test](JRBOT_RESPONSE_TEST.md)
+## Documentação antiga
 
-Para o estado geral vigente, consulte [ROADMAP.md](ROADMAP.md) e [PROJECT_STATUS.md](PROJECT_STATUS.md). Para a arquitetura do hackathon, consulte [JRSKILL_API.md](JRSKILL_API.md).
+Arquivos que descrevem branches, firmwares ou experimentos antigos foram movidos para `../trash/`.
+
+Esse conteúdo foi preservado apenas para revisão histórica e **não deve ser usado como referência do estado atual**.
+
+Os documentos específicos da V1s — `JRSKILL_API.md` e `HACKATHON_DEVLOG.md` — permanecem ativos em `docs/`.
+
+## Níveis de evidência
+
+Cada documento deve distinguir:
+
+- **Planejado** — arquitetura ou trabalho aprovado, ainda não implementado;
+- **Implementado** — código existe;
+- **Build verificado** — compilação concluída;
+- **Bancada/simulado** — comportamento exercitado sem comprovar o efeito físico final;
+- **Validado fisicamente** — comportamento confirmado no hardware real.
 
 ## Regra de versões
 
-- `JrBot V1 / V2 / V3` = versão do produto.
-- `JrBot V1S` = linha experimental JrSkill / Solana.
-- `Runtime API 1.x` = versão técnica do protocolo.
-- `_V1_02`, `_V1_03`, `_V1_04` etc. = candidata ou revisão técnica histórica de firmware.
-
-Essas numerações são independentes.
+- `JrBot V1 / V2 / V3` = linhas de produto;
+- `JrBot V1S` = linha oficial paralela JrSkill / Solana;
+- `Runtime API 1.x` = versão técnica do protocolo;
+- identificadores de build/revisão não substituem a versão de produto.

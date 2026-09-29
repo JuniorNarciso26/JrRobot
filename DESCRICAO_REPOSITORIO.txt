@@ -1,1 +1,1 @@
-JrBot: robo com IA em desenvolvimento baseado em ESP32-S3, com painel de controle, camera, audio modular e OLED opcional.
+Open-source ESP32-S3 physical AI robot with camera, audio, WebRTC, expressive OLED face and JrSkill Network research on portable Skills and Solana.
