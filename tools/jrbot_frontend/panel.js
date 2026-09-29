@@ -46,6 +46,7 @@ function checkRuntimeApiExpectation(step,body){
 }
 async function runJrSkillApiTest(){
   return action(async()=>{
+    try{
     if(mode!=='serial')throw new Error('O JrSkill API Test usa somente a conexao Serial.');
     if(!serialConnected)throw new Error('Conecte a Serial antes de executar o teste.');
     if(!currentFirmware())await send('status');
@@ -75,7 +76,12 @@ async function runJrSkillApiTest(){
     el('jrskill_api_state').textContent='ok';
     el('jrskill_api_msg').textContent='Sequencia concluida. Confirme visualmente as expressoes no OLED e baixe o log para registrar o teste fisico.';
     localLine('JR_SKILL_API_TEST result=ok id='+sequence.id);
-  },'jrskill_api_msg').catch(e=>{el('jrskill_api_state').textContent='erro';throw e;});
+  }catch(e){
+    el('jrskill_api_state').textContent='erro';
+    localLine('JR_SKILL_API_TEST result=error detail='+e.message);
+    throw e;
+  }
+  },'jrskill_api_msg');
 }
 async function sendCustom(){const c=el('custom').value;if(c.trim())return action(()=>send(c));}
 async function connectWifi(){if(busy)return;await setMode('wifi');return refreshStatus();}
