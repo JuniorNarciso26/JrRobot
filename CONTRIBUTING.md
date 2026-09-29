@@ -1,74 +1,90 @@
 # Contribuindo com o JrBot
 
-Obrigado pelo interesse no JrBot. O projeto combina firmware embarcado, hardware, áudio, visão, painel local e, futuramente, serviços de IA. Para manter a evolução compreensível, toda contribuição deve deixar claro o que foi apenas implementado, o que compilou e o que foi validado fisicamente.
+Obrigado pelo interesse no JrBot.
+
+O projeto combina firmware embarcado, hardware, áudio, visão, WebRTC, interfaces, inteligência artificial e uma linha paralela de pesquisa em Skills distribuíveis.
 
 ## Antes de começar
 
 Leia:
 
-1. [`docs/README.md`](docs/README.md)
-2. [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)
-3. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-4. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
-5. [`docs/TESTING.md`](docs/TESTING.md)
+1. [Documentação](docs/README.md)
+2. [Estado do projeto](docs/PROJECT_STATUS.md)
+3. [Roadmap](docs/ROADMAP.md)
+4. [Arquitetura](docs/ARCHITECTURE.md)
+5. [Desenvolvimento](docs/DEVELOPMENT.md)
+6. [Testes](docs/TESTING.md)
 
-## Estratégia de branches
+## Branches oficiais
 
-O projeto usa branches por versão de produto:
+- `main` — release oficial estável;
+- `develop` — integração;
+- `V1s-00` — linha oficial paralela JrSkill Network / Solana;
+- `v2` — voz local;
+- `v1` — referência histórica da V1.
 
-- `main`: última versão aprovada. Não desenvolver diretamente aqui.
-- `develop`: integração antes da promoção para `main`.
-- `v1`: linha oficial da JrBot V1.
-- `v2`: linha oficial da JrBot V2; atualmente pausada enquanto V1 é concluída.
-- `archive/*`: histórico; não usar para desenvolvimento.
+Não desenvolver diretamente em `main`.
 
-Quando V3 começar, a linha oficial será `v3`.
+### Contribuições para a baseline do produto
 
-Não é criada uma branch nova para cada revisão de firmware. Candidatas como `_V1_02`, `_V1_03` e `_V1_04` são controladas por commits, marcadores de versão e evidências de teste dentro da branch da versão.
-
-Fluxo padrão da V1:
+Parta de `develop` e use uma branch dedicada:
 
 ```text
-v1
- ↓
-Pull Request para develop
- ↓
-build + testes + validação + documentação
- ↓
-develop
- ↓
-Pull Request de promoção
- ↓
-main
+feature/<nome>
+fix/<nome>
+hotfix/<nome>
+test/<experimento>
 ```
 
-Para trabalhar na versão atual:
+### Contribuições para JrSkill Network
 
-```bash
-git switch v1
-git pull --ff-only origin v1
+A linha oficial é `V1s-00`.
+
+Ela estuda Skills portáveis e declarativas, uma camada de distribuição/licenciamento baseada em Solana e execução segura por capabilities locais.
+
+O andamento, as etapas e a arquitetura experimental detalhada dessa linha devem ser documentados **na própria V1s-00**, não duplicados na documentação da `main`.
+
+### Contribuições para voz local
+
+Use a linha `v2` quando o trabalho for específico de reconhecimento/comandos por voz local.
+
+## Processo
+
+```text
+Issue
+→ pesquisa / arquitetura
+→ branch
+→ implementação
+→ build
+→ teste
+→ validação física
+→ documentação
+→ Pull Request
+→ decisão
 ```
+
+Experimentos de laboratório não devem ser promovidos diretamente para `develop`.
 
 ## Pull Requests
 
 Todo PR deve informar:
 
-- objetivo da mudança;
-- arquivos/módulos afetados;
+- objetivo;
+- Issue relacionada;
+- base/branch;
+- arquivos e módulos afetados;
 - impacto em hardware ou recursos compartilhados;
-- estado de build;
+- status de compilação;
 - testes executados;
-- validação física realizada ou ainda pendente;
-- documentação atualizada;
-- limitações conhecidas.
-
-A promoção para `main` só ocorre quando o baseline estiver suficientemente validado para ser tratado como referência estável.
+- validação física realizada ou pendente;
+- limitações;
+- documentação atualizada.
 
 ## Hardware
 
-Toda alteração de pinagem deve atualizar `hardware/pinmap.json` e os documentos de hardware relacionados.
+Mudanças de pinagem devem atualizar `hardware/pinmap.json` e os documentos relacionados.
 
-Antes de enviar alterações de hardware, execute:
+Antes de enviar alterações:
 
 ```text
 python tools/generate_pinmap.py --check
@@ -77,50 +93,29 @@ python tests/hardware/test_pin_policy.py
 
 GPIOs compartilhados, alimentação e conflitos de periféricos precisam ser documentados explicitamente.
 
-## Evidência de teste
+## Níveis de evidência
 
-Use os níveis definidos em [`docs/TESTING.md`](docs/TESTING.md):
+Use os níveis definidos em [docs/TESTING.md](docs/TESTING.md):
 
 - planejado;
 - implementado;
 - build verificado;
-- teste de bancada/simulado;
+- bancada/simulado;
 - validado fisicamente.
 
-Exemplos importantes:
-
-- `ESP_OK` em transmissão I2S não prova que o som foi audível.
-- JPEG recebido não prova foco ou qualidade óptica.
-- evento simulado não prova reconhecimento acústico.
-- log de reprodução não substitui confirmação humana de que a resposta foi ouvida.
-
-## API e Flows
-
-A Runtime API, o Playground e o Flow Engine possuem documentação de arquitetura antes da implementação completa. Não documente endpoints ou funções planejadas como disponíveis no firmware atual.
-
-Ao adicionar uma nova capacidade, documente nome público, argumentos, retorno, erros, segurança, persistência, eventos gerados e estado de implementação.
+Não confunda sucesso de software com validação física.
 
 ## Segurança
 
-- Não faça a IA controlar GPIO diretamente.
-- Não aceite upload ou comando arbitrário sem validação.
-- Não exponha o portal local atual diretamente à Internet; ele não foi projetado como serviço público autenticado/TLS.
-- Não adicione senhas, tokens, credenciais, áudio pessoal ou imagens privadas ao repositório.
+- IA/Skill não controla GPIO diretamente;
+- funções externas precisam estar allowlisted;
+- argumentos precisam ser validados;
+- não aceite código arbitrário;
+- não exponha o portal local diretamente à Internet;
+- não publique credenciais ou dados pessoais.
 
-## Licença das contribuições
+## Licença
 
 O JrBot é distribuído sob a [MIT License](LICENSE).
 
-Ao enviar uma contribuição (incluindo Pull Requests), você concorda em disponibilizar essa contribuição sob a mesma licença MIT utilizada pelo projeto.
-
-O colaborador mantém os direitos autorais sobre o código que criou, mas concede os direitos previstos pela MIT a todos os usuários do projeto, inclusive para:
-
-- uso pessoal ou comercial;
-- modificação;
-- distribuição;
-- sublicenciamento;
-- inclusão em produtos e firmwares comerciais.
-
-Ao contribuir, você também declara que possui os direitos necessários para disponibilizar o material enviado e que não está incluindo código, mídia ou outros conteúdos incompatíveis com a licença do projeto.
-
-Atualmente o projeto não exige um CLA separado. Caso isso mude no futuro, a política será documentada antes de novas contribuições sujeitas ao novo processo.
+Contribuições aceitas são disponibilizadas sob a mesma licença, respeitadas licenças de terceiros.

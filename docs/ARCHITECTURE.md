@@ -2,105 +2,26 @@
 
 ## Visão
 
-O JrBot segue uma arquitetura híbrida:
+O JrBot separa hardware, capacidades seguras e interfaces de controle.
 
 ```text
-ESP32-S3
-  corpo + segurança + funções locais
-        |
-        | API/eventos
-        v
-Painel / App / VPS
-        |
-        v
-IA avançada opcional
+Interfaces / App / Painel / futuras IAs
+                 ↓
+        capacidades controladas
+                 ↓
+        modo / recursos físicos
+                 ↓
+             ESP32-S3
+     OLED · câmera · áudio · mic
 ```
 
-O robô deve manter identidade e funções básicas offline. Serviços remotos entram para linguagem livre, memória avançada, visão avançada, TTS sofisticado e outras capacidades que não precisam residir no microcontrolador.
+A regra central é simples: nenhuma camada externa deve obter acesso arbitrário a GPIO, memória ou drivers.
 
-## Camadas
+## Baseline estável — V1.7.04
 
-### 1. Hardware
+### WebRTC local
 
-Drivers e arbitragem de recursos:
-
-- microfone;
-- áudio;
-- display;
-- câmera;
-- futuros atuadores e sensores.
-
-### 2. Firmware capabilities
-
-O firmware expõe operações seguras. Exemplos conceituais:
-
-```text
-face("happy")
-say("oi")
-listen()
-camera("capture")
-```
-
-Essas funções não são equivalentes a permitir código arbitrário. Cada função deve mapear para uma implementação limitada e validada no firmware.
-
-### 3. Voice Engine
-
-Responsável por:
-
-- registrar frases suportadas pelo mecanismo local;
-- receber candidatos do reconhecedor;
-- medir confiança;
-- aplicar regras por frase;
-- publicar eventos de detecção/calibração.
-
-O MultiNet6 atual é uma solução experimental para reconhecimento de comandos. Um wake word dedicado `JrBot` continua sendo uma opção arquitetural futura.
-
-### 4. Flow Engine — planejado
-
-Transforma eventos em sequências de ações seguras:
-
-```text
-trigger -> conditions -> actions
-```
-
-Exemplo:
-
-```text
-voice("JR BOT")
-confidence >= 0.58
--> face("happy")
--> say("oi")
--> listen()
-```
-
-### 5. Storage — planejado
-
-Armazena configuração de runtime, como:
-
-- frases;
-- limites de confiança;
-- Flows;
-- preferências;
-- referências a assets de áudio.
-
-Configuração pequena pode usar armazenamento chave/valor; dados maiores, como WAVs, devem usar armazenamento de arquivos apropriado. A escolha final ainda deve ser formalizada antes da implementação.
-
-### 6. Runtime API — planejada
-
-Contrato independente do painel. O painel deve ser apenas um cliente dessa API.
-
-Isso permite reutilização por:
-
-- painel local;
-- CLI;
-- aplicativo;
-- VPS;
-- IA;
-- automações.
-
-## Live local WebRTC — V1.7.04
-
-A Live local da V1.7.04 usa uma única PeerConnection para áudio bidirecional e transporte do JPEG da câmera.
+A Live usa uma única sessão WebRTC para áudio bidirecional e JPEG da câmera:
 
 ```text
 OV5640 -> JPEG -> DataChannel/SCTP -> navegador
@@ -108,32 +29,18 @@ MS3625 -> I2S RX -> G.711A/PCMA -> RTP/SRTP -> navegador
 navegador -> RTP/SRTP -> G.711A/PCMA -> I2S TX -> MAX98357A
 ```
 
-No HW04, RX e TX I2S operam simultaneamente compartilhando:
+No HW04:
 
 - BCLK GPIO21;
 - WS/LRCLK GPIO47;
 - RX SD GPIO41;
 - TX DIN GPIO42.
 
-O HTTPS local serve página e signaling. O vídeo da Live não usa mais uma requisição HTTPS por quadro.
+RX e TX operam simultaneamente compartilhando BCLK/WS.
 
-A sessão usa ICE local, DTLS-SRTP e SCTP. O caminho foi validado fisicamente com áudio nas duas direções e vídeo contínuo. A arquitetura atual é local; evolução para Internet deverá preservar WebRTC e acrescentar sinalização remota, STUN/TURN ou infraestrutura equivalente.
+### Mode Manager
 
-O cancelamento de eco acústico não faz parte da V1.7.04 e permanece como pesquisa futura.
-
-## Princípios de segurança
-
-1. IA não escreve GPIO diretamente.
-2. Todo atuador é mediado por uma capability do firmware.
-3. Argumentos são validados antes da execução.
-4. Configurações persistentes devem ser versionadas e validadas.
-5. Uma configuração inválida não pode impedir boot básico do robô.
-6. Deve existir fallback/factory config para recuperação.
-7. Upload de arquivos e configuração pelo portal exigem limites de tamanho e validação.
-
-## Gerenciamento central de modo — V1.7.04
-
-A V1.7.04 introduz o primeiro `jr_mode_manager` mínimo. Ele registra o modo lógico atual sem controlar diretamente hardware.
+A V1.7.04 possui um `jr_mode_manager` mínimo para registrar o modo lógico do sistema.
 
 Modos previstos:
 
@@ -146,13 +53,13 @@ PLAYBACK
 DIAGNOSTIC
 ```
 
-Na baseline V1.7.04, o fluxo fisicamente validado é `IDLE -> LIVE -> IDLE`. O modo autônomo pertence à evolução V2 de voz.
+Na baseline estável, o fluxo principal fisicamente consolidado é `IDLE -> LIVE -> IDLE`.
 
-## Gerenciamento central do I2S — V1.7.04
+### Resource Manager
 
-O `jr_resource_manager` passa a ser a autoridade da trava do I2S compartilhado no HW04.
+O `jr_resource_manager` é a autoridade central da trava do I2S compartilhado.
 
-Owners atuais:
+Owners definidos:
 
 ```text
 NONE
@@ -162,12 +69,64 @@ LIVE
 LEGACY_VOICE
 ```
 
-Na V1.7.04 foram fisicamente validados `MIC`, `PLAYBACK` e `LIVE`, sempre com retorno para `NONE` e sem mismatch de liberação observado.
+O manager registra ownership e telemetria; os drivers continuam responsáveis pela configuração dos canais físicos.
 
-O manager centraliza ownership e telemetria; os drivers continuam responsáveis por criar/destruir os canais e configurar o hardware.
+## Runtime API
 
-## Compatibilidade
+A Runtime API fornece um contrato estruturado para funções registradas do firmware.
 
-O protocolo textual atual (`status`, `brain_status`, `audio_test`, etc.) não precisa desaparecer imediatamente. A Runtime API poderá ser adicionada acima dele ou ao lado dele e migrar funcionalidades progressivamente.
+Ela existe para que painel, ferramentas, futuras aplicações e outras camadas possam reutilizar as mesmas operações seguras em vez de criar acesso direto ao hardware.
 
-O objetivo é evolução aditiva, não uma reescrita total.
+Contrato vigente: [API_RUNTIME.md](API_RUNTIME.md).
+
+## V1S — JrSkill Network
+
+A V1S é uma linha oficial paralela.
+
+Seu objetivo arquitetural é desacoplar **o comportamento desejado por uma Skill** da **forma como o hardware executa esse comportamento**:
+
+```text
+Skill declarativa
+       ↓
+Skill Executor seguro
+       ↓
+capability / Runtime API
+       ↓
+hardware JrBot
+```
+
+A camada baseada em Solana pode representar publicação, versão, distribuição e licença de Skills, mas não substitui o executor seguro local.
+
+```text
+Solana
+  ↓
+dados da Skill / licença
+  ↓
+validação local
+  ↓
+Skill Executor
+  ↓
+capabilities permitidas
+  ↓
+JrBot
+```
+
+A documentação da `main` não acompanha as etapas internas dessa pesquisa. Detalhes de implementação e evolução permanecem na branch `V1s-00`.
+
+## V2 — voz local
+
+A linha V2 estuda controle por voz local reutilizando as mesmas capacidades físicas. ESP-SR/MultiNet e seus conflitos específicos pertencem a essa linha.
+
+## Princípios de segurança
+
+1. conteúdo externo não escreve GPIO diretamente;
+2. funções disponíveis precisam estar registradas/allowlisted;
+3. argumentos são validados antes da execução;
+4. recursos físicos compartilhados precisam de arbitragem explícita;
+5. estado e versão devem ser observáveis por log/status;
+6. configurações inválidas não podem impedir recuperação básica do robô;
+7. exposição remota futura exige autenticação e arquitetura própria.
+
+## Evolução
+
+A arquitetura deve evoluir de forma aditiva. Protocolos e módulos já validados não devem ser reescritos apenas para acomodar uma nova linha experimental.

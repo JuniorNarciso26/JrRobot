@@ -1,6 +1,6 @@
 # JrBot - pinagem HW04 final
 
-Firmware: `JRBotV2_2026-09-06-07:10`.
+Baseline de referência: **`JrBot_V1.7.04` / `JRBOT-HW-04`**.
 
 ## Audio I2S
 
