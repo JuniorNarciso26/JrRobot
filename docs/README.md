@@ -17,6 +17,7 @@ Cada documento deve distinguir claramente:
 ### JrSkill Network / Hackathon 2026
 
 - [JrSkill Execution API — documento atual para Colosseum](JRSKILL_API.md)
+- [Hackathon Development Log — diário público do projeto](HACKATHON_DEVLOG.md)
 - [Issue #33 — histórico técnico do JrSkill Network](https://github.com/JuniorNarciso26/JrRobot/issues/33)
 
 Para o trabalho atual de JrSkill, **JRSKILL_API.md é a referência principal**. Ele separa claramente o que já foi validado fisicamente do que ainda está planejado.
