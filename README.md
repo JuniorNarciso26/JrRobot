@@ -363,7 +363,8 @@ Technical documentation:
 - [Project status](docs/PROJECT_STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Development guide](docs/DEVELOPMENT.md)
-- [Runtime API](docs/API_RUNTIME.md)
+- [JrSkill Execution API — Colosseum 2026](docs/JRSKILL_API.md)
+- [Runtime API — low-level protocol/history](docs/API_RUNTIME.md)
 - [Testing](docs/TESTING.md)
 
 ## License
