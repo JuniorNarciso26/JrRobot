@@ -1,8 +1,12 @@
 # JrBot Runtime API v1
 
+> **Current JrSkill reference:** for the Colosseum 2026 execution model, compact Skill JSON, Recipe resolution and the validated V1S path, see [JRSKILL_API.md](JRSKILL_API.md).
+>
+> **Historical note:** this file preserves the low-level Runtime API design and older V2 candidate terminology. On 2026-09-29, Runtime API 1.1 `face` was physically validated through Serial on `JrBot_V1S_00`. References below to `JRBotV2_RUNTIME_API_*` remain as development history.
+
 **Candidata atual: `JRBotV2_RUNTIME_API_V1_02`.**
 
-**Status: API base validada fisicamente pela Serial na candidata 01; extensão 1.1 com `face` implementada no código e ainda pendente de build/validação física.**
+**Status histórico atualizado:** API base validada pela Serial; a extensão 1.1 com `face` foi também validada fisicamente na linha experimental `JrBot_V1S_00` em 29/09/2026.
 
 A Runtime API separa capacidades do firmware dos clientes que as utilizam. Painel, CLI, VPS e futuros aplicativos devem consumir o mesmo contrato em vez de criar comandos paralelos para cada interface.
 
