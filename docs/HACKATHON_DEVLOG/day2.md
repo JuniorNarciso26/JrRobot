@@ -133,6 +133,37 @@ The executor completed with:
 JR_SKILL_V1 result=ok
 ```
 
+## Physical test evidence
+
+The following original files were supplied on 2026-09-30 as supporting evidence for the local execution model documented in Day 2. They show the PC panel, execution log and physical robot demonstration; the log identifies the Skill source as `local-file`.
+
+### PC development panel
+
+![PC panel reporting successful JrSkill execution and displaying the face-sequence log](assets/day2/jrskill-panel.png)
+
+The panel reports `ok` and shows the Skill sequence: `happy → recipe(surprised → thinking → happy) → neutral`.
+
+### Complete execution log
+
+[Open the original panel log (.txt)](assets/day2/jrskill-panel-log.txt).
+
+The log identifies firmware `JrBot_V1S_00`, hardware `JRBOT-HW-04` and Runtime API `1.1`. Between `14:39:02` and `14:39:05`, it records four top-level calls, entry/exit of the six-call `face_sequence` Recipe, and successful completion:
+
+```text
+[14:39:02] JR_SKILL_V1 start=v1 source=local-file top_calls=4
+[14:39:03] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[14:39:05] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[14:39:05] JR_SKILL_V1 result=ok
+```
+
+### Robot face-change video
+
+[Watch the JrBot changing faces — original MP4](assets/day2/jrbot-face-sequence.mp4).
+
+The user-provided recording documents the physical OLED face-change demonstration. Open the link to view the video file on GitHub or download it for playback. The screenshot, full log and video are preserved as supplied, without editing.
+
+These files support the **local JSON → executor → Runtime API → physical JrBot** checkpoint. They do not establish execution of a Skill retrieved from Solana; that integration remains a separate stage.
+
 ## Day 2 result
 
 The following pieces are now physically validated together:
