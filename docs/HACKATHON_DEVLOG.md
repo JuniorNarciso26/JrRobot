@@ -310,7 +310,7 @@ The existing JSON v1 Git blob is unchanged (128 LF bytes). The Windows checkout 
 
 ### Current checkpoint
 
-Stage 2 is **implemented, compiled and exercised on a local validator**. It is **not validated on Devnet**. No Devnet program deploy, Skill publication/read, firmware build or physical robot test was performed on this day.
+At this initial checkpoint, Stage 2 was **implemented, compiled and exercised on a local validator**, with no Devnet deploy or payload round-trip yet. No firmware build or physical robot test was part of this work.
 
 ### Subsequent user WSL validation — 2026-09-30
 
@@ -324,7 +324,18 @@ anchor test --validator legacy --provider.cluster localnet --provider.wallet tar
 
 Result: **1 test passed, 0 failed**, including exact payload round-trip and rejected invalid inputs (500.476268 ms). Compilation profiles also completed successfully. Local program public key: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`; this is not evidence of a Devnet deploy. The initial cross-environment test remains recorded above as historical evidence.
 
-Next: check the Devnet wallet and test SOL balance, deploy to Devnet, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
+### Subsequent Devnet program deploy — 2026-09-30
+
+The user rebuilt for devnet, passed the 2 IDL tests and deployed the program. The log confirmed `Deploy success` and IDL metadata initialization (`2nKon1p32sHB7DWLrpcxh5x6z5s864KYM6RZ675baeaa`). Independent Devnet RPC inspection confirmed:
+
+- Program ID: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`;
+- upgrade authority: `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij`;
+- last deployed slot: **505968344**;
+- program data length: **191976 bytes**.
+
+The supplied deploy log did not include a transaction signature. **The program is deployed on Devnet, but Skill payload publication and independent retrieval remain pending.** This does not yet complete Stage 2.
+
+Next: publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
 
 ---
 

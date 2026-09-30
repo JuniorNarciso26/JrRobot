@@ -81,7 +81,9 @@ Implementados programa, scripts de publicação/leitura e testes. Evidências ex
 
 **Checkpoint posterior no WSL do usuário (2026-09-30):** após selecionar `--validator legacy` e sincronizar os IDs explicitamente para devnet e localnet, `anchor test` integrado foi aprovado: **1 teste, 1 aprovado, 0 falhas**, em 500.476268 ms. Os 3 testes de payload e 2 testes da IDL também foram aprovados no WSL. Chave pública local do programa: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`, sem comprovação de deploy Devnet. A compilação exibiu os perfis release e test concluídos. Evidência: logs enviados pelo usuário na Issue #33.
 
-**Não houve deploy nem publicação/leitura na Devnet neste checkpoint. Não houve compilação de firmware nem teste físico do JrBot.**
+**Checkpoint de deploy Devnet (2026-09-30):** o usuário recompilou para devnet, aprovou os 2 testes de IDL e executou o deploy. O log confirmou `Deploy success` e inicialização da IDL (metadata `2nKon1p32sHB7DWLrpcxh5x6z5s864KYM6RZ675baeaa`). Consulta independente `solana program show --url devnet` confirmou Program ID `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`, upgrade authority `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij`, slot de deploy **505968344** e binário de **191976 bytes**. O log fornecido não exibiu assinatura de transação de deploy.
+
+**Programa publicado na Devnet; publicação do JSON na Skill PDA e leitura independente ainda pendentes.** Não houve compilação de firmware nem teste físico do JrBot nesta etapa. A Etapa 2 ainda depende da prova de round-trip do payload na Devnet.
 
 Nenhuma nova função, Recipe, licença ou integração com o executor/painel foi adicionada. A Etapa 3 depende da comprovação deste round-trip na Devnet.
 
