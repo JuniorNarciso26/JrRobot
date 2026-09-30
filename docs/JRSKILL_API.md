@@ -310,13 +310,13 @@ This first baseline proves the low-level execution path. Later on 2026-09-29, th
 | Local Recipe resolver | Implemented and physically validated |
 | Runtime API audio/tone action | Planned |
 | Public/private Recipe libraries | Future evolution |
-| Solana Skill PDA | Stage 2 implemented; Devnet validation pending |
+| Solana Skill PDA | Stage 2 publication/retrieval validated on Devnet, 2026-09-30 |
 | Solana License PDA | Planned for hackathon MVP |
 | Wallet ownership validation | Planned for hackathon MVP |
 
-## 12. Next proof
+## 12. Current proof and next stage
 
-The next isolated proof publishes and retrieves the already validated compact JrSkill JSON on Solana Devnet:
+Stage 2 published and independently retrieved the already validated compact JrSkill JSON on Solana Devnet on 2026-09-30, with byte-for-byte equality:
 
 ```json
 {

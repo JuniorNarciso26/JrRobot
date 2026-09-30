@@ -6,6 +6,8 @@ Arquitetura, limites, evidências e plano de teste: [docs/JRSKILL_SOLANA_STAGE2.
 
 Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill, não resolve Recipes e não implementa licenças.
 
+**Etapa 2 validada na Devnet em 2026-09-30:** publicação e leitura independente de 128 bytes, com `byte_equal: true`. Program ID: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. PDA: `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux`. As evidências completas estão no documento da Etapa 2.
+
 ## Preparação no VS Code / WSL
 
 Requisitos no próprio WSL: Node.js 20+ com npm, Anchor CLI **1.1.2**, Rust e Solana CLI (ambiente observado: **3.1.10**). O Node instalado no Windows não substitui o Node no WSL. Se necessário, instale uma versão LTS pelo [guia oficial do Node.js](https://nodejs.org/en/download). Não rode `anchor init`: a estrutura já existe.
@@ -26,21 +28,21 @@ npm test
 
 ## Program ID e build
 
-O Program ID versionado é apenas um placeholder de desenvolvimento, sem deploy associado. Gere uma chave de programa **local** uma única vez e sincronize os IDs antes de compilar. Nunca substitua uma chave de programa já usada num deploy.
+O Program ID versionado agora é o programa Devnet validado. Para recompilar ou atualizar esse mesmo programa, preserve/restaure a chave **local** existente em `target/deploy/jrskill-keypair.json`; não gere uma nova no lugar dela. O Git contém apenas o endereço público. Uma nova chave representaria outro programa e outra implantação, fora deste checkpoint.
 
 ```bash
-mkdir -p target/deploy
-if [ ! -f target/deploy/jrskill-keypair.json ]; then
-  solana-keygen new --no-bip39-passphrase --outfile target/deploy/jrskill-keypair.json
+if [ "$(solana-keygen pubkey target/deploy/jrskill-keypair.json)" = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454" ]; then
+  anchor keys sync --provider.cluster devnet
+  anchor keys sync --provider.cluster localnet
+  anchor build --provider.cluster devnet
+  npm run test:idl
+else
+  echo "Chave ausente ou diferente: restaure a chave original antes de continuar."
 fi
-anchor keys sync --provider.cluster devnet
-anchor keys sync --provider.cluster localnet
-anchor build
-npm run test:idl
 git diff -- Anchor.toml programs/jrskill/src/lib.rs
 ```
 
-No Anchor 1.1.2, `anchor keys sync` atualiza o cluster selecionado; por isso execute explicitamente para **devnet e localnet**, usando a mesma chave. Isso alinha `declare_id!`, ambos os Program IDs em `Anchor.toml` e a chave local. O build/IDL usa o cluster selecionado, e um ID localnet ainda placeholder causa `DeclaredProgramIdMismatch` no teste mesmo quando devnet está correto. Confira esses IDs antes de deploy. As alterações públicas do Program ID poderão ser registradas depois do teste; `target/`, wallets, seed phrases e chaves privadas não entram no Git.
+No Anchor 1.1.2, `anchor keys sync` atualiza o cluster selecionado; por isso execute explicitamente para **devnet e localnet**, usando a mesma chave. Isso alinha `declare_id!`, ambos os Program IDs em `Anchor.toml` e a chave local. O build/IDL usa o cluster selecionado, e um ID localnet diferente causa `DeclaredProgramIdMismatch` no teste mesmo quando devnet está correto. Confira esses IDs antes de deploy. `target/`, wallets, seed phrases e chaves privadas não entram no Git.
 
 ## Teste do programa no validator local
 
@@ -80,4 +82,4 @@ A leitura usa a public key do publisher, não precisa de chave privada e grava o
 
 Envie versões das ferramentas, commit testado, Program ID, public key da authority, PDA, assinatura, `payload_bytes`, `payload_hash`, `byte_equal`, resultados dos testes e logs de erro (se houver). Não envie conteúdo de keypair ou seed phrase.
 
-Só marque a Etapa 2 como validada na Devnet quando publicação e leitura independente confirmarem os mesmos bytes. A execução no JrBot pertence à Etapa 3.
+O checkpoint de 2026-09-30 comprovou publicação e leitura independente na Devnet. Novas execuções devem manter a mesma comparação e evidências. A execução no JrBot pertence à Etapa 3.

@@ -2,6 +2,8 @@
 
 Data: **2026-09-30**. Linha: **V1s-00**. Registro técnico: [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
+**Estado atual: Etapa 2 concluída — JSON v1 publicado e recuperado byte a byte na Devnet.** Os checkpoints intermediários abaixo preservam o histórico; as evidências finais estão na seção de conclusão.
+
 ## Objetivo e baseline
 
 Publicar o arquivo `tools/jrbot_frontend/jrskill/skills/minimal_recipe_01.json` e recuperá-lo byte a byte, sem alterar o JSON v1 validado na Etapa 1.
@@ -49,7 +51,7 @@ Espaço reservado: `8 + 32 + 1 + 32 + 4 + 512 = 589 bytes`. O overhead inclui di
 - imutabilidade refere-se às instruções deste programa. O programa ainda pode ser atualizado pela upgrade authority; esta prova não congela a upgrade authority;
 - a referência `recipe("face_sequence")` permanece no JSON, mas a Recipe local não é publicada nem executada nesta etapa;
 - scripts de publicação/leitura exigem genesis hash da Devnet; testes on-chain aceitam somente localhost;
-- o ID versionado é placeholder. Cada ambiente deve gerar/preservar sua chave e executar `anchor keys sync` antes do build/deploy.
+- o ID versionado agora é o programa Devnet validado `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. Preserve a chave já usada para esse programa; não a substitua. Sincronize devnet e localnet com a mesma chave antes do build/deploy.
 
 ## Plano de teste
 
@@ -92,6 +94,27 @@ Nenhuma nova função, Recipe, licença ou integração com o executor/painel fo
 A primeira tentativa de `publish:devnet` do usuário foi bloqueada antes de enviar transação. Diagnóstico: a constante `DEVNET_GENESIS` estava truncada. A RPC oficial e `solana genesis-hash --url devnet` retornaram o hash completo `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`. O cliente foi corrigido para exigir esse valor completo, com erro que informa o genesis recebido. Dois testes de regressão foram adicionados: aceitação do hash oficial completo e rejeição de outra rede/valor ausente/hash truncado. Os 5 testes de payload + rede e uma consulta RPC somente leitura passaram no ambiente do agente. Isso não comprova publicação nem leitura da Skill. A correção altera apenas o cliente e não exige novo deploy do programa.
 
 Durante a instalação, `npm audit` reportou avisos em dependências transitivas do stack Anchor/Web3 (toml, stream-json e uuid). O lock foi preservado sem `audit fix --force`; a avaliação/atualização desse stack deve preceder uso em produção. Esta prova permanece isolada de laboratório.
+
+## Conclusão da Etapa 2 — Devnet, 2026-09-30
+
+Logs enviados pelo usuário confirmaram publicação com `result: "ok"`, `already_exists: false` e posterior execução independente de `read:devnet` com `result: "ok"`, `byte_equal: true`.
+
+| Evidência | Valor |
+| --- | --- |
+| Programa | `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454` |
+| Authority | `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij` |
+| Skill PDA | `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux` |
+| Assinatura de publicação | `4MJJ8awPvv4LKjHHemodRbSKAwMgcJaUZRyudNP81ZzVGUao8cHXLskGadF5VyjVwNh4iKQw8dLNn9frnMthogC6` |
+| Payload | **128 bytes** |
+| SHA-256 | `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f` |
+| Transação | **410 bytes** |
+| Conta reservada | **589 bytes** |
+| Rent informado | **3642360 lamports** |
+| Igualdade na leitura independente | **`byte_equal: true`** |
+
+Arquivo recuperado no WSL: `solana/jrskill-solana/artifacts/8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux.json`, mantido localmente fora do Git. O hash coincide com o blob original LF do JSON v1. Além dos logs de publicação/leitura do usuário, o agente repetiu a leitura pela RPC Devnet e confirmou `result: "ok"`, os mesmos PDA/bytes/hash e `byte_equal: true`. O cliente exige owner, discriminator, authority, schema, hash e igualdade dos bytes.
+
+**Critério da Etapa 2 atendido: JSON original → Skill PDA Devnet → JSON recuperado idêntico.** Não houve integração com o JrBot, execução física a partir da blockchain, publicação de Recipe ou licenciamento. A repetição de publicação (`already_exists: true`) permanece um teste opcional ainda não comprovado nos logs deste checkpoint. Próximo estudo: arquitetura da Etapa 3, Solana → executor já validado → Runtime API → JrBot.
 
 ## Referências oficiais
 

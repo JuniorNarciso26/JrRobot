@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 use sha2::{Digest, Sha256};
 
-// Development placeholder. Run anchor keys sync before the final build/deploy.
-declare_id!("Fg6PaFpoGXkYsidMpWxTWqkZ7FEfcYkgMQHGwYjWj2Z");
+// Stage 2 program deployed and validated on Devnet. Preserve its existing keypair.
+declare_id!("Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454");
 
 pub const MAX_PAYLOAD_BYTES: usize = 512;
 

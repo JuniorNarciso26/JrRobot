@@ -7,10 +7,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-jrskill = "Fg6PaFpoGXkYsidMpWxTWqkZ7FEfcYkgMQHGwYjWj2Z"
+jrskill = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454"
 
 [programs.devnet]
-jrskill = "Fg6PaFpoGXkYsidMpWxTWqkZ7FEfcYkgMQHGwYjWj2Z"
+jrskill = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454"
 
 [provider]
 cluster = "Devnet"

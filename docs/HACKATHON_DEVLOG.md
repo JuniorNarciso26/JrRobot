@@ -339,7 +339,21 @@ The supplied deploy log did not include a transaction signature. **The program i
 
 The user's first `publish:devnet` attempt stopped before sending a transaction. The Devnet genesis-hash constant was truncated. Read-only queries to the official RPC confirmed the full hash `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`. The client now requires the complete hash and reports the received genesis on rejection. Two regression tests were added; all 5 payload/network tests and a live read-only Devnet guard check passed in the agent environment. No program change or redeploy was required, and no Skill publication/read was proven by this correction.
 
-Next: pull the client correction, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
+### Stage 2 completed — Devnet payload round-trip, 2026-09-30
+
+User-provided logs confirmed successful publication (`already_exists: false`) followed by an independent read command with `byte_equal: true`.
+
+- Program: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`.
+- Authority: `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij`.
+- Skill PDA: `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux`.
+- Publication signature: `4MJJ8awPvv4LKjHHemodRbSKAwMgcJaUZRyudNP81ZzVGUao8cHXLskGadF5VyjVwNh4iKQw8dLNn9frnMthogC6`.
+- Payload: **128 bytes**, SHA-256 `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`, matching the original Git blob.
+- Transaction: **410 bytes**; Skill account: **589 bytes**; reported rent: **3642360 lamports**.
+- Independent retrieval: **`result: "ok"`, `byte_equal: true`**.
+
+**Stage 2 is validated on Devnet.** The unchanged v1 JSON crossed the chain boundary and was recovered exactly. The deployed public Program ID is now pinned in source/config; private keys remain local. Repeat publication is still an optional unproven check. No robot integration, Recipe publication, licensing or blockchain-driven physical test was performed.
+
+Next: study Stage 3 (Solana → existing executor → Runtime API → JrBot) before implementing integration. Stage 4 licensing remains deferred.
 
 ---
 
