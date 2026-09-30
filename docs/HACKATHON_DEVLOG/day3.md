@@ -127,6 +127,44 @@ This verifier targets the frozen Stage 2 account layout and expected hash; it is
 
 Live read-only verification succeeded with Node on Windows and Node on Linux/WSL, including execution from `/tmp` outside the workspace. Both returned 128 bytes, the checkpoint hash, `hash_verified: true`, `matches_checkpoint: true` and the original JSON.
 
+## Day 3 screenshot and verification evidence
+
+Captured on **2026-09-30** from the live Solana Explorer with **Devnet** selected. The saved screenshots document the existing deployment and publication; this evidence session performed read-only queries, with no new deploy, publication, firmware build or physical robot test.
+
+### Deployed program
+
+![Live Explorer screenshot of the deployed JrSkill program on Devnet](assets/day3/program-explorer.jpg)
+
+[Open the program in Explorer](https://explorer.solana.com/address/Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454?cluster=devnet). The account is executable and upgradeable, with last deployed slot `505968344`. The screenshot also preserves the Explorer's unverified-build status.
+
+### Skill PDA and Anchor fields
+
+![Live Explorer screenshot of the Skill PDA and its decoded Anchor fields](assets/day3/skill-pda-anchor-data.jpg)
+
+[Open the Skill PDA in Explorer](https://explorer.solana.com/address/8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux?cluster=devnet) and select **Anchor Data**. The account contains 589 allocated bytes, is owned by the JrSkill program and exposes `authority`, `schema_version: 1`, `payload_hash` and the Base64-encoded payload. The public verifier below decodes that payload into JSON and checks its SHA-256.
+
+### Finalized publication transaction
+
+![Live Explorer screenshot showing successful finalized Skill publication](assets/day3/publication-transaction.jpg)
+
+[Open the publication transaction](https://explorer.solana.com/tx/4MJJ8awPvv4LKjHHemodRbSKAwMgcJaUZRyudNP81ZzVGUao8cHXLskGadF5VyjVwNh4iKQw8dLNn9frnMthogC6?cluster=devnet). The Explorer reports **Success**, **Finalized**, slot `505969879` and the original signature. Publication occurred at `2026-09-30 16:47:01 UTC` (`13:47:01 GMT-3`).
+
+### Independent public JSON verification
+
+![Report rendered from the actual successful public verifier output, including the recovered JSON](assets/day3/public-verification-report.jpg)
+
+This image is a browser capture of a report rendered from actual command output, rather than a terminal screenshot. The verifier ran successfully at **2026-09-30T17:46:41.500Z**, reading finalized RPC slot **505985139**, and returned **128 bytes**, **`hash_verified: true`** and **`matches_checkpoint: true`**. The recovered file retains the original LF bytes and SHA-256 `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`.
+
+Saved evidence for independent inspection:
+
+- [Complete command output and capture time](assets/day3/public-verification.txt)
+- [Structured verification result](assets/day3/verification-result.json)
+- [JSON recovered from the Skill PDA — original 128 bytes](assets/day3/recovered-skill.json)
+- [HTML report used for the screenshot](assets/day3/public-verification-report.html)
+- [Public verifier source](../../solana/jrskill-solana/scripts/verify-public.mjs)
+
+The screenshots are a dated record; the Explorer links and wallet-free command in the preceding section allow anyone to check the public state again.
+
 ## Day 3 closing technical checkpoint
 
 The completed proof is:
