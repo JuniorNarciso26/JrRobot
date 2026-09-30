@@ -33,13 +33,14 @@ mkdir -p target/deploy
 if [ ! -f target/deploy/jrskill-keypair.json ]; then
   solana-keygen new --no-bip39-passphrase --outfile target/deploy/jrskill-keypair.json
 fi
-anchor keys sync
+anchor keys sync --provider.cluster devnet
+anchor keys sync --provider.cluster localnet
 anchor build
 npm run test:idl
 git diff -- Anchor.toml programs/jrskill/src/lib.rs
 ```
 
-`anchor keys sync` deve alinhar `declare_id!`, os Program IDs de localnet/devnet em `Anchor.toml` e a chave local. Confira esses IDs antes de deploy. As alterações públicas do Program ID poderão ser registradas depois do teste; `target/`, wallets, seed phrases e chaves privadas não entram no Git.
+No Anchor 1.1.2, `anchor keys sync` atualiza o cluster selecionado; por isso execute explicitamente para **devnet e localnet**, usando a mesma chave. Isso alinha `declare_id!`, ambos os Program IDs em `Anchor.toml` e a chave local. O build/IDL usa o cluster selecionado, e um ID localnet ainda placeholder causa `DeclaredProgramIdMismatch` no teste mesmo quando devnet está correto. Confira esses IDs antes de deploy. As alterações públicas do Program ID poderão ser registradas depois do teste; `target/`, wallets, seed phrases e chaves privadas não entram no Git.
 
 ## Teste do programa no validator local
 
