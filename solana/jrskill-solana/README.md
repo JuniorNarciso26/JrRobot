@@ -49,10 +49,10 @@ Antes da Devnet, execute o teste de criação/leitura e os casos negativos. Use 
 if [ ! -f target/local-test-wallet.json ]; then
   solana-keygen new --no-bip39-passphrase --outfile target/local-test-wallet.json
 fi
-anchor test --provider.cluster localnet --provider.wallet target/local-test-wallet.json
+anchor test --validator legacy --provider.cluster localnet --provider.wallet target/local-test-wallet.json
 ```
 
-O Anchor inicia um validator, financia a wallet local e executa `npm run test:chain`. O teste recusa RPC que não seja localhost. Não execute `test:chain` na Devnet.
+O Anchor 1.1.2 usa Surfpool por padrão. `--validator legacy` seleciona o `solana-test-validator` fornecido pela Solana CLI, sem exigir instalação do Surfpool. O Anchor inicia esse validator, financia a wallet local e executa `npm run test:chain`. O teste recusa RPC que não seja localhost. Não execute `test:chain` na Devnet.
 
 ## Deploy e publicação na Devnet
 

@@ -61,7 +61,7 @@ Os comandos completos estão em [solana/jrskill-solana/README.md](../solana/jrsk
 | `cargo check -p jrskill` | Tipos/macros Rust conferidos no host | Checagem de compilação host; não produz SBF |
 | `anchor idl build` + `npm run test:idl` | IDL real codifica instrução/conta, tx cabe e bytes retornam iguais | Compilação host da IDL + teste local do codec |
 | `anchor build` | Gera `target/deploy/jrskill.so` e IDL | Compilação SBF |
-| `anchor test --provider.cluster localnet` | Cria/lê, rejeita duplicata, hash errado, schema 2, vazio, >512 e PDA incorreta; falha não deixa conta | Validator local; não prova Devnet |
+| `anchor test --validator legacy --provider.cluster localnet` | Cria/lê, rejeita duplicata, hash errado, schema 2, vazio, >512 e PDA incorreta; falha não deixa conta | Validator local; não prova Devnet |
 | Deploy Devnet | Program ID executável no cluster correto | Deploy, ainda sem provar publicação de Skill |
 | `publish:devnet` | Transação confirmada, PDA e todos os campos iguais ao original | Escrita e leitura on-chain |
 | `read:devnet -- <authority>` | Leitura independente, owner/discriminator/hash/versão/authority/bytes corretos | Critério de conclusão da Etapa 2 |
