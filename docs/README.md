@@ -20,7 +20,7 @@ Documentos exclusivos desta linha:
 
 - [JrSkill Execution API](JRSKILL_API.md) — contrato atual do Skill JSON, Executor e Recipes;
 - [Etapa 2 — Solana Skill PDA](JRSKILL_SOLANA_STAGE2.md) — arquitetura, publicação/leitura do JSON v1 e plano de teste isolado;
-- [Hackathon Development Log](HACKATHON_DEVLOG.md) — diário cronológico do desenvolvimento e das validações;
+- [Hackathon Development Log](HACKATHON_DEVLOG.md) — índice do diário, com Kickoff e Day 1–3 separados em [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/);
 - [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico técnico e decisões.
 
 Esses documentos devem ser preservados durante toda a V1s. Quando a linha for aprovada para integração, eles fornecem o histórico necessário para decidir o que deve subir para a documentação oficial.
@@ -60,7 +60,7 @@ Arquivos que descrevem branches, firmwares ou experimentos antigos foram movidos
 
 Esse conteúdo foi preservado apenas para revisão histórica e **não deve ser usado como referência do estado atual**.
 
-Os documentos específicos da V1s — `JRSKILL_API.md` e `HACKATHON_DEVLOG.md` — permanecem ativos em `docs/`.
+Os documentos específicos da V1s — `JRSKILL_API.md`, o índice `HACKATHON_DEVLOG.md` e os registros diários em `HACKATHON_DEVLOG/` — permanecem ativos em `docs/`.
 
 ## Níveis de evidência
 

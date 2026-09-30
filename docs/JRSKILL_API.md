@@ -294,7 +294,7 @@ The test also queried `face.current` after the transitions and completed with:
 JR_SKILL_API_TEST result=ok
 ```
 
-This first baseline proves the low-level execution path. Later on 2026-09-29, the minimal v1 executor and local `face_sequence` Recipe were also physically validated (`JR_SKILL_V1 result=ok`), as recorded in the [development log](HACKATHON_DEVLOG.md). Solana and licensing were not part of those physical tests.
+This first baseline proves the low-level execution path. Later on 2026-09-29, the minimal v1 executor and local `face_sequence` Recipe were also physically validated (`JR_SKILL_V1 result=ok`), as recorded in the [Day 2 development log](HACKATHON_DEVLOG/day2.md). Solana and licensing were not part of those physical tests.
 
 ## 11. Current implementation status
 
