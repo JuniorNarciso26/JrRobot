@@ -353,6 +353,56 @@ User-provided logs confirmed successful publication (`already_exists: false`) fo
 
 **Stage 2 is validated on Devnet.** The unchanged v1 JSON crossed the chain boundary and was recovered exactly. The deployed public Program ID is now pinned in source/config; private keys remain local. Repeat publication is still an optional unproven check. No robot integration, Recipe publication, licensing or blockchain-driven physical test was performed.
 
+### Public reproducible proof — read the Skill without a wallet
+
+Anyone can independently retrieve the frozen Stage 2 JSON from Solana Devnet. A standalone verifier is available at `solana/jrskill-solana/scripts/verify-public.mjs`. It needs only **Node.js 20+** and outbound HTTPS access to the official Devnet RPC. It does not require a wallet, private key, Solana CLI, Anchor, npm packages, local IDL or local Skill JSON.
+
+On Linux/macOS/WSL, download the verifier and execute it in any working directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/JuniorNarciso26/JrRobot/V1s-00/solana/jrskill-solana/scripts/verify-public.mjs -o jrskill-verify.mjs
+node jrskill-verify.mjs
+```
+
+Inside an existing checkout, simply run:
+
+```bash
+node solana/jrskill-solana/scripts/verify-public.mjs
+```
+
+**The verifier comes from GitHub; the payload comes from the Solana RPC.** The script checks the Devnet genesis, reads the public Skill PDA at `finalized` commitment, checks the owner, Anchor discriminator, publisher authority, schema and payload bounds, decodes the frozen Borsh layout, recomputes SHA-256 and compares it with the published checkpoint hash. It never signs or sends a transaction and never executes Skill calls.
+
+Expected proof fields (the `rpc_slot` varies with the time of reading):
+
+```json
+{
+  "result": "ok",
+  "source": "solana-devnet-rpc",
+  "payload_bytes": 128,
+  "payload_hash": "416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f",
+  "hash_verified": true,
+  "matches_checkpoint": true
+}
+```
+
+The output then prints the JSON recovered from the account:
+
+```json
+{
+  "v": 1,
+  "run": [
+    ["face", "happy"],
+    ["wait", 500],
+    ["recipe", "face_sequence"],
+    ["face", "neutral"]
+  ]
+}
+```
+
+This verifier targets the frozen Stage 2 account layout and expected hash; it is not a generic Skill explorer. RPC availability/rate limits can temporarily prevent a read. The original `read:devnet` command still requires the workspace, generated IDL and local reference JSON for its byte-for-byte comparison.
+
+Live read-only verification succeeded with Node on Windows and Node on Linux/WSL, including execution from `/tmp` outside the workspace. Both returned 128 bytes, the checkpoint hash, `hash_verified: true`, `matches_checkpoint: true` and the original JSON.
+
 Next: study Stage 3 (Solana → existing executor → Runtime API → JrBot) before implementing integration. Stage 4 licensing remains deferred.
 
 ---

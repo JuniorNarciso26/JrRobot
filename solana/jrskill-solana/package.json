@@ -9,7 +9,8 @@
     "test:idl": "node --test tests/idl.test.mjs",
     "test:chain": "node --test tests/chain.test.mjs",
     "publish:devnet": "node scripts/publish.mjs",
-    "read:devnet": "node scripts/read.mjs"
+    "read:devnet": "node scripts/read.mjs",
+    "verify:public": "node scripts/verify-public.mjs"
   },
   "dependencies": {
     "@anchor-lang/core": "1.1.2",

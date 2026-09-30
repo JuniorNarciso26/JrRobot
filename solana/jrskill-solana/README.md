@@ -80,6 +80,14 @@ A leitura usa a public key do publisher, não precisa de chave privada e grava o
 
 ## Evidência para enviar à Issue #33
 
+Para demonstração pública, use o verificador independente:
+
+```bash
+node scripts/verify-public.mjs
+```
+
+Ele exige apenas Node.js 20+ e HTTPS para a RPC Devnet, sem wallet, chave privada, npm, IDL ou JSON local. Consulta a conta pública, valida o layout/hash do checkpoint e imprime o JSON recebido da blockchain. Comandos para qualquer diretório/servidor e saída esperada estão na seção **Public reproducible proof** do [diário](../../docs/HACKATHON_DEVLOG.md). O script é específico da prova congelada da Etapa 2.
+
 Envie versões das ferramentas, commit testado, Program ID, public key da authority, PDA, assinatura, `payload_bytes`, `payload_hash`, `byte_equal`, resultados dos testes e logs de erro (se houver). Não envie conteúdo de keypair ou seed phrase.
 
 O checkpoint de 2026-09-30 comprovou publicação e leitura independente na Devnet. Novas execuções devem manter a mesma comparação e evidências. A execução no JrBot pertence à Etapa 3.
