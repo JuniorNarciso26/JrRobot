@@ -294,7 +294,7 @@ The test also queried `face.current` after the transitions and completed with:
 JR_SKILL_API_TEST result=ok
 ```
 
-This proves the current low-level execution path. It does **not** yet prove the final JrSkill v1 executor, Recipe resolver, Solana integration or license flow.
+This first baseline proves the low-level execution path. Later on 2026-09-29, the minimal v1 executor and local `face_sequence` Recipe were also physically validated (`JR_SKILL_V1 result=ok`), as recorded in the [development log](HACKATHON_DEVLOG.md). Solana and licensing were not part of those physical tests.
 
 ## 11. Current implementation status
 
@@ -304,19 +304,19 @@ This proves the current low-level execution path. It does **not** yet prove the 
 | Runtime API `get` | Implemented |
 | Runtime API `face` | Implemented and physically validated in V1S |
 | Serial Runtime API transport | Implemented and physically validated |
-| Minimal JrSkill JSON v1 | Architecture defined for next test |
-| JrSkill Executor | Next implementation step |
-| `wait` executor function | Planned for next test |
-| Local Recipe resolver | Planned for next test |
+| Minimal JrSkill JSON v1 | Frozen; physically validated on 2026-09-29 |
+| JrSkill Executor | Implemented and physically validated locally |
+| `wait` executor function | Implemented and validated locally |
+| Local Recipe resolver | Implemented and physically validated |
 | Runtime API audio/tone action | Planned |
 | Public/private Recipe libraries | Future evolution |
-| Solana Skill PDA | Planned for hackathon MVP |
+| Solana Skill PDA | Stage 2 implemented; Devnet validation pending |
 | Solana License PDA | Planned for hackathon MVP |
 | Wallet ownership validation | Planned for hackathon MVP |
 
 ## 12. Next proof
 
-The next isolated experiment should validate the new compact JrSkill JSON without changing the Solana layer yet:
+The next isolated proof publishes and retrieves the already validated compact JrSkill JSON on Solana Devnet:
 
 ```json
 {
@@ -330,7 +330,7 @@ The next isolated experiment should validate the new compact JrSkill JSON withou
 }
 ```
 
-The Recipe should initially use only already validated `face` operations. After the resolver is physically proven, audio/tone can be added as the next Runtime API capability.
+The JSON and existing Recipe remain unchanged. Stage 2 stores only the Skill payload; it does not execute it, publish the Recipe, add functions or implement licensing. Architecture, commands and test plan: [Stage 2 — Solana Skill PDA](JRSKILL_SOLANA_STAGE2.md). Robot integration is deferred to Stage 3 after the Devnet round-trip is validated.
 
 ## References
 

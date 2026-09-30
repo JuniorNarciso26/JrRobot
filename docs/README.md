@@ -19,6 +19,7 @@ A documentação geral abaixo acompanha a organização da `main`. O progresso d
 Documentos exclusivos desta linha:
 
 - [JrSkill Execution API](JRSKILL_API.md) — contrato atual do Skill JSON, Executor e Recipes;
+- [Etapa 2 — Solana Skill PDA](JRSKILL_SOLANA_STAGE2.md) — arquitetura, publicação/leitura do JSON v1 e plano de teste isolado;
 - [Hackathon Development Log](HACKATHON_DEVLOG.md) — diário cronológico do desenvolvimento e das validações;
 - [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico técnico e decisões.
 

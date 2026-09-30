@@ -265,7 +265,7 @@ No Solana implementation was started on Day 2.
 
 ---
 
-## Current checkpoint
+## Day 2 checkpoint (historical)
 
 At the end of 2026-09-29:
 
@@ -280,6 +280,39 @@ LICENSE PDA               later stage
 ```
 
 The objective for the next development day is not to expand JrSkill. It is to prove that the already validated Skill can cross the blockchain boundary unchanged.
+
+---
+
+## 2026-09-30 — Day 3: Stage 2 isolated Solana implementation
+
+Work performed exclusively on `V1s-00`, starting from `6fee26ec0e1168207ce245c41731db0ca7ac9859`, after checking the remote branch and Issue #33.
+
+### Implemented
+
+- Minimal single-file Anchor workspace at `solana/jrskill-solana` (Anchor 1.1.2).
+- `create_skill` instruction and immutable Skill PDA derived from `["skill", authority, SHA-256(payload)]`.
+- Account fields: `authority`, `schema_version`, `payload_hash`, `payload`.
+- Signer/payer requirement, schema version 1, hash validation and a 512-byte payload limit.
+- Devnet publication and independent read scripts, with genesis-hash guard and byte-for-byte verification.
+- Payload/IDL tests and local-validator tests for successful creation/read and invalid inputs.
+- [Stage 2 architecture and test plan](JRSKILL_SOLANA_STAGE2.md), with complete WSL commands in the workspace README.
+
+The existing JSON v1 Git blob is unchanged (128 LF bytes). The Windows checkout used in local tests has CRLF (137 bytes); both hashes and their implications are recorded in the Stage 2 document. Neither the Recipe nor the robot executor was changed.
+
+### Evidence executed
+
+- Rust host check completed (`cargo check`).
+- Anchor IDL generation completed.
+- Anchor SBF build completed, producing `jrskill.so` and IDL.
+- Three payload tests and two generated-IDL tests passed.
+- One on-chain test passed against a local WSL validator, including creation/read, duplicate rejection, hash mismatch, unsupported version, empty/oversized payload and incorrect seeds.
+- The local validator loaded the program with `--bpf-program`; the JavaScript client ran on Windows. The integrated `anchor test` command was not run because WSL lacked Node/npm.
+
+### Current checkpoint
+
+Stage 2 is **implemented, compiled and exercised on a local validator**. It is **not validated on Devnet**. No Devnet program deploy, Skill publication/read, firmware build or physical robot test was performed on this day.
+
+Next: install/enable Node/npm in WSL, generate and preserve the local program key, sync IDs, build, repeat the local test, deploy to Devnet, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
 
 ---
 
