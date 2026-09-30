@@ -32,5 +32,5 @@ No Solana integration was implemented on this kickoff day.
 - [Experimental branch: V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 - [Colosseum project page](https://colosseum.com/arena/projects/jrskill-network)
 
-<img width="1024" height="1280" alt="WhatsApp Image 2026-09-30 at 14 27 48" src="https://github.com/user-attachments/assets/a9adb1d0-e51a-4d62-852c-bc99a6b36560" />
+<img width="512" height="640" alt="WhatsApp Image 2026-09-30 at 14 27 48" src="https://github.com/user-attachments/assets/a9adb1d0-e51a-4d62-852c-bc99a6b36560" />
 
