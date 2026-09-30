@@ -312,7 +312,19 @@ The existing JSON v1 Git blob is unchanged (128 LF bytes). The Windows checkout 
 
 Stage 2 is **implemented, compiled and exercised on a local validator**. It is **not validated on Devnet**. No Devnet program deploy, Skill publication/read, firmware build or physical robot test was performed on this day.
 
-Next: install/enable Node/npm in WSL, generate and preserve the local program key, sync IDs, build, repeat the local test, deploy to Devnet, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
+### Subsequent user WSL validation — 2026-09-30
+
+User-provided logs confirmed successful installation, 3 payload tests and 2 IDL tests. The first integrated test exposed two environment/configuration issues: Anchor 1.1.2 defaults to Surfpool, and `anchor keys sync` updates only the selected cluster. The guide now explicitly selects `--validator legacy` and syncs both devnet and localnet with the existing program key.
+
+After these corrections, the user ran the complete integrated test:
+
+```bash
+anchor test --validator legacy --provider.cluster localnet --provider.wallet target/local-test-wallet.json
+```
+
+Result: **1 test passed, 0 failed**, including exact payload round-trip and rejected invalid inputs (500.476268 ms). Compilation profiles also completed successfully. Local program public key: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`; this is not evidence of a Devnet deploy. The initial cross-environment test remains recorded above as historical evidence.
+
+Next: check the Devnet wallet and test SOL balance, deploy to Devnet, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
 
 ---
 

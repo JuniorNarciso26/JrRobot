@@ -79,6 +79,8 @@ Implementados programa, scripts de publicação/leitura e testes. Evidências ex
 - **Testes locais:** 3 testes de payload e 2 testes do codec/IDL aprovados;
 - **Validator local:** 1 teste on-chain aprovado, incluindo criação, leitura e todos os casos negativos da tabela. O `.so` foi carregado explicitamente pelo `solana-test-validator --bpf-program`, usando o ID placeholder e uma wallet descartável. O cliente Node executou no Windows e o validator no WSL, na porta RPC 18899. Não foi executado `anchor test` integrado, pois Node/npm não estavam no PATH do WSL.
 
+**Checkpoint posterior no WSL do usuário (2026-09-30):** após selecionar `--validator legacy` e sincronizar os IDs explicitamente para devnet e localnet, `anchor test` integrado foi aprovado: **1 teste, 1 aprovado, 0 falhas**, em 500.476268 ms. Os 3 testes de payload e 2 testes da IDL também foram aprovados no WSL. Chave pública local do programa: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`, sem comprovação de deploy Devnet. A compilação exibiu os perfis release e test concluídos. Evidência: logs enviados pelo usuário na Issue #33.
+
 **Não houve deploy nem publicação/leitura na Devnet neste checkpoint. Não houve compilação de firmware nem teste físico do JrBot.**
 
 Nenhuma nova função, Recipe, licença ou integração com o executor/painel foi adicionada. A Etapa 3 depende da comprovação deste round-trip na Devnet.
