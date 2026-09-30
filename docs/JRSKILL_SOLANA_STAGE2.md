@@ -87,6 +87,10 @@ Implementados programa, scripts de publicação/leitura e testes. Evidências ex
 
 Nenhuma nova função, Recipe, licença ou integração com o executor/painel foi adicionada. A Etapa 3 depende da comprovação deste round-trip na Devnet.
 
+### Correção do guard de rede antes da publicação (2026-09-30)
+
+A primeira tentativa de `publish:devnet` do usuário foi bloqueada antes de enviar transação. Diagnóstico: a constante `DEVNET_GENESIS` estava truncada. A RPC oficial e `solana genesis-hash --url devnet` retornaram o hash completo `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`. O cliente foi corrigido para exigir esse valor completo, com erro que informa o genesis recebido. Dois testes de regressão foram adicionados: aceitação do hash oficial completo e rejeição de outra rede/valor ausente/hash truncado. Os 5 testes de payload + rede e uma consulta RPC somente leitura passaram no ambiente do agente. Isso não comprova publicação nem leitura da Skill. A correção altera apenas o cliente e não exige novo deploy do programa.
+
 Durante a instalação, `npm audit` reportou avisos em dependências transitivas do stack Anchor/Web3 (toml, stream-json e uuid). O lock foi preservado sem `audit fix --force`; a avaliação/atualização desse stack deve preceder uso em produção. Esta prova permanece isolada de laboratório.
 
 ## Referências oficiais

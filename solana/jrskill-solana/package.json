@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test tests/payload.test.mjs",
+    "test": "node --test tests/payload.test.mjs tests/network.test.mjs",
     "test:idl": "node --test tests/idl.test.mjs",
     "test:chain": "node --test tests/chain.test.mjs",
     "publish:devnet": "node scripts/publish.mjs",

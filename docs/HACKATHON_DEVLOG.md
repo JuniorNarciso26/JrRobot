@@ -335,7 +335,11 @@ The user rebuilt for devnet, passed the 2 IDL tests and deployed the program. Th
 
 The supplied deploy log did not include a transaction signature. **The program is deployed on Devnet, but Skill payload publication and independent retrieval remain pending.** This does not yet complete Stage 2.
 
-Next: publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
+### Client network guard correction — 2026-09-30
+
+The user's first `publish:devnet` attempt stopped before sending a transaction. The Devnet genesis-hash constant was truncated. Read-only queries to the official RPC confirmed the full hash `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`. The client now requires the complete hash and reports the received genesis on rejection. Two regression tests were added; all 5 payload/network tests and a live read-only Devnet guard check passed in the agent environment. No program change or redeploy was required, and no Skill publication/read was proven by this correction.
+
+Next: pull the client correction, publish the unchanged JSON and independently read/compare it. Record Program ID, authority, PDA, transaction signature and payload hash in Issue #33. Stage 3 robot integration and Stage 4 licensing remain deferred.
 
 ---
 
