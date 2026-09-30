@@ -1,0 +1,82 @@
+# JrSkill Solana — Etapa 2
+
+Prova isolada da Issue [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), exclusivamente em `V1s-00`.
+
+Arquitetura, limites, evidências e plano de teste: [docs/JRSKILL_SOLANA_STAGE2.md](../../docs/JRSKILL_SOLANA_STAGE2.md).
+
+Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill, não resolve Recipes e não implementa licenças.
+
+## Preparação no VS Code / WSL
+
+Requisitos no próprio WSL: Node.js 20+ com npm, Anchor CLI **1.1.2**, Rust e Solana CLI (ambiente observado: **3.1.10**). O Node instalado no Windows não substitui o Node no WSL. Se necessário, instale uma versão LTS pelo [guia oficial do Node.js](https://nodejs.org/en/download). Não rode `anchor init`: a estrutura já existe.
+
+Na raiz do seu checkout (por exemplo, `/home/user/JrRobot`):
+
+```bash
+git switch V1s-00
+git pull --ff-only origin V1s-00
+cd solana/jrskill-solana
+node --version
+npm --version
+anchor --version
+solana --version
+npm ci
+npm test
+```
+
+## Program ID e build
+
+O Program ID versionado é apenas um placeholder de desenvolvimento, sem deploy associado. Gere uma chave de programa **local** uma única vez e sincronize os IDs antes de compilar. Nunca substitua uma chave de programa já usada num deploy.
+
+```bash
+mkdir -p target/deploy
+if [ ! -f target/deploy/jrskill-keypair.json ]; then
+  solana-keygen new --no-bip39-passphrase --outfile target/deploy/jrskill-keypair.json
+fi
+anchor keys sync
+anchor build
+npm run test:idl
+git diff -- Anchor.toml programs/jrskill/src/lib.rs
+```
+
+`anchor keys sync` deve alinhar `declare_id!`, os Program IDs de localnet/devnet em `Anchor.toml` e a chave local. Confira esses IDs antes de deploy. As alterações públicas do Program ID poderão ser registradas depois do teste; `target/`, wallets, seed phrases e chaves privadas não entram no Git.
+
+## Teste do programa no validator local
+
+Antes da Devnet, execute o teste de criação/leitura e os casos negativos. Use uma wallet descartável **local**, diferente da wallet da Devnet, e um validator limpo (uma PDA existente faz o teste de primeira criação falhar):
+
+```bash
+if [ ! -f target/local-test-wallet.json ]; then
+  solana-keygen new --no-bip39-passphrase --outfile target/local-test-wallet.json
+fi
+anchor test --provider.cluster localnet --provider.wallet target/local-test-wallet.json
+```
+
+O Anchor inicia um validator, financia a wallet local e executa `npm run test:chain`. O teste recusa RPC que não seja localhost. Não execute `test:chain` na Devnet.
+
+## Deploy e publicação na Devnet
+
+A wallet pagadora deve existir em `~/.config/solana/id.json` e ter SOL de teste. Se ainda não existir, crie-a com `solana-keygen new` (preserve qualquer wallet existente). Para usar outra wallet, configure `ANCHOR_WALLET` e passe o mesmo caminho a `anchor deploy --provider.wallet`.
+
+```bash
+export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
+export ANCHOR_WALLET="$HOME/.config/solana/id.json"
+solana address --keypair "$ANCHOR_WALLET"
+solana airdrop 2 --url devnet --keypair "$ANCHOR_WALLET"
+solana balance --url devnet --keypair "$ANCHOR_WALLET"
+anchor deploy --provider.cluster devnet --provider.wallet "$ANCHOR_WALLET"
+npm run publish:devnet
+npm run read:devnet -- "$(solana address --keypair "$ANCHOR_WALLET")"
+```
+
+O airdrop pode sofrer rate limit; saldo necessário depende do rent do programa e das taxas. Se faltar saldo, obtenha SOL **Devnet** pelo [faucet oficial](https://faucet.solana.com/) e confira o saldo antes de repetir o deploy.
+
+Os scripts verificam o genesis hash da Devnet antes de operar. A publicação imprime tamanho da transação e rent da Skill; depois confirma a transação e verifica todos os campos. Uma segunda publicação só lê/confere a mesma PDA. Em caso de falha/timeout, rode primeiro a leitura para verificar se a transação já foi confirmada.
+
+A leitura usa a public key do publisher, não precisa de chave privada e grava os bytes recuperados em `artifacts/<PDA>.json`, sem tocar no arquivo original. Ambas as operações retornam exit code diferente de zero se falharem.
+
+## Evidência para enviar à Issue #33
+
+Envie versões das ferramentas, commit testado, Program ID, public key da authority, PDA, assinatura, `payload_bytes`, `payload_hash`, `byte_equal`, resultados dos testes e logs de erro (se houver). Não envie conteúdo de keypair ou seed phrase.
+
+Só marque a Etapa 2 como validada na Devnet quando publicação e leitura independente confirmarem os mesmos bytes. A execução no JrBot pertence à Etapa 3.

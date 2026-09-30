@@ -1,0 +1,20 @@
+[toolchain]
+anchor_version = "1.1.2"
+package_manager = "npm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+jrskill = "Fg6PaFpoGXkYsidMpWxTWqkZ7FEfcYkgMQHGwYjWj2Z"
+
+[programs.devnet]
+jrskill = "Fg6PaFpoGXkYsidMpWxTWqkZ7FEfcYkgMQHGwYjWj2Z"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npm run test:chain"

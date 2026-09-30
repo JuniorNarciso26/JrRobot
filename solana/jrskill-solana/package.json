@@ -1,0 +1,18 @@
+{
+  "name": "jrskill-solana",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test tests/payload.test.mjs",
+    "test:idl": "node --test tests/idl.test.mjs",
+    "test:chain": "node --test tests/chain.test.mjs",
+    "publish:devnet": "node scripts/publish.mjs",
+    "read:devnet": "node scripts/read.mjs"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "1.1.2",
+    "@solana/web3.js": "1.98.4"
+  }
+}
