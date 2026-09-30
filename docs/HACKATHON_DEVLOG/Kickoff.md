@@ -31,3 +31,6 @@ No Solana integration was implemented on this kickoff day.
 - [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33)
 - [Experimental branch: V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 - [Colosseum project page](https://colosseum.com/arena/projects/jrskill-network)
+
+<img width="1024" height="1280" alt="WhatsApp Image 2026-09-30 at 14 27 48" src="https://github.com/user-attachments/assets/a9adb1d0-e51a-4d62-852c-bc99a6b36560" />
+
