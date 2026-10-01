@@ -2,7 +2,7 @@
 
 [Back to the development log index](../HACKATHON_DEVLOG.md)
 
-**Stage 3 implemented; physical validation pending.** Work stays exclusively on `V1s-00`, after checking the current remote branch and Issue #33.
+**Stage 3 positive path physically validated by the user on 2026-10-01.** Work stays exclusively on `V1s-00`, after checking the current remote branch and Issue #33.
 
 ## Architecture and implementation
 
@@ -14,7 +14,7 @@ Solana Devnet Skill PDA
   → existing JrSkill Executor
   → existing local face_sequence Recipe
   → Runtime API 1.1 over Serial
-  → physical JrBot (test pending)
+  → physical JrBot (user-confirmed execution)
 ```
 
 Each run performs a new public read. Errors stop execution; there is no local Skill fallback. Logs identify `source=solana-devnet`, PDA, slot, payload length and hash. No wallet or private key is needed.
@@ -27,7 +27,7 @@ Panel version: `JRBOT-PANEL-V1S-SOLANA-02`. Firmware remains `JrBot_V1S_00`. The
 - **2 JavaScript tests passed** with simulated Serial replies, including the expected face sequence and rejection before face commands on RPC/proof/capability failures.
 - A **real read-only Devnet query** through the new Python adapter returned finalized slot `506320351`, **128 bytes**, `hash_verified: true`, `matches_checkpoint: true` and SHA-256 `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`.
 
-These checks establish software integration and public retrieval. They do not establish physical execution from Solana. No firmware build, contract compilation/redeploy or blockchain write was performed.
+These initial agent checks established software integration and public retrieval; physical execution was still pending at that checkpoint. No firmware build, contract compilation/redeploy or blockchain write was part of those checks. The subsequent user physical result is recorded below.
 
 ## Installer configuration correction
 
@@ -35,13 +35,32 @@ The user's Windows build log failed in `espressif__esp_peer/src/dtls_srtp.c`, wi
 
 The installer now maps `V1s-00` explicitly to `build-v1s-00` and `sdkconfig.develop-v1.6.3`, matching the existing V1S configuration mapping. Validation of this change is static; a successful firmware rebuild is not claimed. Stage 3 needs only the updated PC panel: `INSTALAR.bat panel` updates the selected branch and opens the panel without building/flashing. Double-clicking the installer defaults to the complete build/flash path.
 
-## Next checkpoint — user physical test
+## User physical validation — 2026-10-01
+
+The user supplied [the complete panel log](assets/day4/jrskill-devnet-physical-log.txt) and confirmed that the physical robot ran using the Skill from Solana. The log records the following sequence between **14:42:04 and 14:42:08** (panel clock; no timezone is embedded in the file):
+
+```text
+[14:42:04] JR_SKILL_SOLANA fetch=started
+[14:42:05] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=506352693 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[14:42:05] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[14:42:06] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[14:42:08] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[14:42:08] JR_SKILL_V1 result=ok source=solana-devnet
+```
+
+Runtime API replies identify firmware **`JrBot_V1S_00`**, hardware **`JRBOT-HW-04`** and API **1.1**, and acknowledge every expression in order: **happy → surprised → thinking → happy → neutral**. Four top-level calls ran, including the local Recipe with six nested calls.
+
+Evidence levels are distinct: the log proves the validated Devnet source and successful Runtime API replies; the user confirms the physical robot execution. The original log is preserved byte for byte, SHA-256 `666da90574c7d2272328b3a105aee8f3c6e60f7e44b35feee07eeb20718b4826`. No new Day 4 screenshot/video was supplied with this result.
+
+**The Stage 3 positive path is now validated: Solana → existing executor → Runtime API → physical JrBot.** Only the main Skill was retrieved from Solana; `face_sequence` remains in the local Recipe library. This result does not validate licensing, publication of Recipes, the installer firmware rebuild or the physical offline/failure test.
+
+## Reproduction and remaining evidence
 
 Follow the [Stage 3 architecture and physical test guide](../JRSKILL_SOLANA_STAGE3.md). Update the checkout used by the panel, restart it, connect the existing HW04 firmware by Serial and click **Executar Skill da Devnet**.
 
 Success requires both the panel log (`source=solana-devnet`, verified hash and `result=ok`) and visually confirmed OLED transitions `happy → surprised → thinking → happy → neutral`. Save the full log, panel screenshot and robot video. A failed network read must not fall back to local execution.
 
-**Day 4 remains open until the physical test is confirmed.**
+The positive physical checkpoint is confirmed. The planned disconnected-Internet hardware test remains pending; simulated rejection tests already passed. A panel screenshot/robot video can complement the preserved log when available. Licensing remains a separate next stage.
 
 ---
 

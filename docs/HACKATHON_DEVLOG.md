@@ -16,9 +16,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 1](HACKATHON_DEVLOG/day1.md) | 2026-09-28 | Architecture and development plan |
 | [Day 2](HACKATHON_DEVLOG/day2.md) | 2026-09-29 | Local executor, JSON v1 and Recipe physically validated |
 | [Day 3](HACKATHON_DEVLOG/day3.md) | 2026-09-30 | First JrSkill contract deployed; original JSON published/retrieved on Devnet |
-| [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill connected to the existing executor; physical test pending |
+| [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill executed on the physical JrBot; positive path validated |
 
-**Latest closed checkpoint: Day 3 — Stage 2 validated on Solana Devnet.** Day 4 / Stage 3 is implemented and awaiting physical validation; licensing remains a later stage.
+**Latest validated checkpoint: Day 4 — Stage 3 positive path confirmed on the physical JrBot.** The physical offline/failure test remains pending; licensing remains a later stage.
 
 ## Public reproducible proof — read the Skill without a wallet
 
