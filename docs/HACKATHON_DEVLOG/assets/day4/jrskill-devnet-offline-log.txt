@@ -1,0 +1,4 @@
+[15:06:59] JR_SKILL_SOLANA fetch=started
+[15:06:59] JR_SKILL_V1 result=error source=solana-devnet detail=Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] ERRO: Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] JR_SKILL_SOLANA result=error detail=<urlopen error [Errno 11001] getaddrinfo failed>

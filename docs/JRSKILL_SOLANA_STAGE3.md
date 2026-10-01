@@ -54,7 +54,7 @@ JR_SKILL_V1 result=ok source=solana-devnet
 - Cinco testes Python passaram: bytes exatos/commitment, rede errada, conta/metadados adulterados, timeout sem fallback e rota HTTP com os wrappers reais de `run_panel.py` (sucesso/HTTP 502).
 - Dois testes Node passaram: executor com transporte Serial simulado produz `happy → surprised → thinking → happy → neutral`, resolve a Recipe local e nao le o arquivo local da Skill; falha RPC/prova invalida/capability ausente nao envia `face`.
 - Consulta real pelo adaptador Python confirmou `finalized`, slot `506320351`, 128 bytes e hash/checkpoint corretos.
-- **Teste fisico positivo confirmado pelo usuario em 01/10/2026.** O [log completo](HACKATHON_DEVLOG/assets/day4/jrskill-devnet-physical-log.txt) registra leitura Devnet no slot `506352693`, 128 bytes/hash correto, `source=solana-devnet`, respostas Runtime API para `happy → surprised → thinking → happy → neutral` e `result=ok`. A Recipe continua local. O usuario confirmou a execucao no robo; o teste fisico sem Internet permanece pendente. Nao houve novo deploy; o build de firmware tentado pelo usuario falhou e sua correcao no instalador possui apenas validacao estatica.
+- **Teste fisico positivo confirmado pelo usuario em 01/10/2026.** O [log completo](HACKATHON_DEVLOG/assets/day4/jrskill-devnet-physical-log.txt) registra leitura Devnet no slot `506352693`, 128 bytes/hash correto, `source=solana-devnet`, respostas Runtime API para `happy → surprised → thinking → happy → neutral` e `result=ok`. A Recipe continua local. O usuario confirmou a execucao no robo; o resultado posterior do teste sem Internet esta registrado abaixo. Nao houve novo deploy; o build de firmware tentado pelo usuario falhou e sua correcao no instalador possui apenas validacao estatica.
 
 Comandos de reproducao, a partir da raiz do repositorio:
 
@@ -65,6 +65,10 @@ python tools/jrbot_frontend/solana_skill.py
 ```
 
 Node e necessario somente para o teste JavaScript de desenvolvimento; o painel e a consulta Python nao dependem dele.
+
+## Resultado do teste sem Internet — 01/10/2026
+
+O [log original da tentativa offline](HACKATHON_DEVLOG/assets/day4/jrskill-devnet-offline-log.txt) registra, as 15:06:59, `fetch=started` e erro DNS `[Errno 11001] getaddrinfo failed`, seguido de `result=error source=solana-devnet`. Nao ha inicio de Skill, comando de face, Recipe ou `result=ok` nesse arquivo. **Bloqueio antes da execucao confirmado no log**, sem fallback bem-sucedido para Skill local. Falta confirmacao visual explicita de que o OLED ficou parado e o log da tentativa apos restaurar a Internet. A execucao fisica positiva anterior permanece validada separadamente.
 
 ## Roteiro do teste fisico
 

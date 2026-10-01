@@ -54,13 +54,28 @@ Evidence levels are distinct: the log proves the validated Devnet source and suc
 
 **The Stage 3 positive path is now validated: Solana → existing executor → Runtime API → physical JrBot.** Only the main Skill was retrieved from Solana; `face_sequence` remains in the local Recipe library. This result does not validate licensing, publication of Recipes, the installer firmware rebuild or the physical offline/failure test.
 
+## User offline test — 2026-10-01
+
+The user supplied [the complete disconnected-Internet test log](assets/day4/jrskill-devnet-offline-log.txt). At **15:06:59** (panel clock), the request failed during DNS resolution:
+
+```text
+[15:06:59] JR_SKILL_SOLANA fetch=started
+[15:06:59] JR_SKILL_V1 result=error source=solana-devnet detail=Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] ERRO: Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] JR_SKILL_SOLANA result=error detail=<urlopen error [Errno 11001] getaddrinfo failed>
+```
+
+The supplied log contains no Skill `start`, Runtime API/face command, Recipe execution or `result=ok`. It confirms that this offline attempt was blocked before execution, without a successful local fallback. The original file is preserved without editing.
+
+This file does not contain the subsequent online retry or a visual observation of the OLED. The earlier positive physical run remains independently validated; recovery after this particular disconnection and explicit visual confirmation that the OLED stayed unchanged are still awaiting user evidence.
+
 ## Reproduction and remaining evidence
 
 Follow the [Stage 3 architecture and physical test guide](../JRSKILL_SOLANA_STAGE3.md). Update the checkout used by the panel, restart it, connect the existing HW04 firmware by Serial and click **Executar Skill da Devnet**.
 
 Success requires both the panel log (`source=solana-devnet`, verified hash and `result=ok`) and visually confirmed OLED transitions `happy → surprised → thinking → happy → neutral`. Save the full log, panel screenshot and robot video. A failed network read must not fall back to local execution.
 
-The positive physical checkpoint is confirmed. The planned disconnected-Internet hardware test remains pending; simulated rejection tests already passed. A panel screenshot/robot video can complement the preserved log when available. Licensing remains a separate next stage.
+The positive physical checkpoint and the offline execution block are confirmed by their respective evidence. Explicit visual confirmation of the unchanged OLED during the offline attempt and an online retry after reconnecting remain pending. A panel screenshot/robot video can complement the preserved logs when available. Licensing remains a separate next stage.
 
 ---
 
