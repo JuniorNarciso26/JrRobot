@@ -107,6 +107,10 @@ The Stage 3 execution path, offline block, local independence and online recover
 
 [Previous: Day 3](day3.md)
 
+## Next-stage architecture decision
+
+The user selected **License PDAs**, rather than NFTs, for the next licensing stage. Skill data and per-wallet license records will follow the JrSkill program's own rules. Wallet authentication, issuance authority, payment and transfer policies still need detailed design; no licensing implementation or program upgrade was performed by this decision. See the [Stage 4 decision and open rules](../JRSKILL_SOLANA_STAGE4.md).
+
 ## References
 
 - [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)
