@@ -76,7 +76,7 @@ O usuario forneceu o [log completo da recuperacao](HACKATHON_DEVLOG/assets/day4/
 
 Na versao 03, `/jrskill/devnet-status` consulta `getGenesisHash` com timeout de 5s e valida a rede. O painel verifica ao abrir, repete a cada 30s enquanto nao estiver ocupado, e oferece **Verificar Devnet**. O estado da Solana fica separado da Serial: um erro de RPC/rede nao significa que o robo USB esteja desconectado. Skill local e controles Serial seguem disponiveis. O botao Devnet e liberado somente apos consulta positiva; cada execucao continua lendo/validando o payload novamente. Falhas de leitura atualizam o indicador; a verificacao periodica/manual permite recuperar o botao quando a RPC retorna.
 
-Verificacoes da nova versao: **6 testes Python e 3 JavaScript passaram**, com transicoes de disponibilidade e execucao local offline; consulta real de disponibilidade confirmou a Devnet. A nova interface ainda aguarda teste do usuario. Sem alteracao de firmware, JSON ou contrato.
+Verificacoes da nova versao: **6 testes Python e 3 JavaScript passaram**, com transicoes de disponibilidade e execucao local offline; consulta real de disponibilidade confirmou a Devnet. O usuario confirmou a melhoria em 01/10/2026 e forneceu o [log de estado do painel/robo](HACKATHON_DEVLOG/assets/day4/jrskill-panel-status-log.txt): COM7, firmware JrBot_V1S_00, HW04 e OLED disponivel. Esse arquivo nao registra sondagens/transicoes do indicador Devnet: a confirmacao da interface vem do relato do usuario. Sem alteracao de firmware, JSON ou contrato.
 
 ## Roteiro do teste fisico
 

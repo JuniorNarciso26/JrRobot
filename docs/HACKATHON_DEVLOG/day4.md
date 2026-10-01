@@ -87,7 +87,13 @@ Following this physical result, the panel was updated to **`JRBOT-PANEL-V1S-SOLA
 
 The panel shows **Solana Devnet: verificando / disponivel / indisponivel** independently of the robot Serial connection. Only the Devnet execution button is gated by this status; local Skill/manual Serial controls remain available. A new Skill execution still performs full validation and a fresh read, and a failure updates the availability indicator. A successful probe cannot guarantee the subsequent read will succeed.
 
-Validation of this UI update: **6 Python + 3 JavaScript tests passed**, including availability transitions, offline local execution and HTTP status routes. The live probe returned `available: true, cluster: devnet`. These software checks do not claim user physical validation of panel version 03 yet. Firmware, contract and JSON remain unchanged.
+Validation of this UI update: **6 Python + 3 JavaScript tests passed**, including availability transitions, offline local execution and HTTP status routes. The live probe returned `available: true, cluster: devnet`. User confirmation of the UI improvement was subsequently received, as recorded below. Firmware, contract and JSON remain unchanged.
+
+### User confirmation of the panel improvement
+
+On 2026-10-01, the user confirmed the improvement and supplied [the panel/device status log](assets/day4/jrskill-panel-status-log.txt). At 15:24:37 the panel connects to **COM7**; subsequent status replies identify **JrBot_V1S_00 / JRBOT-HW-04**, with **OLED ready/available**, and report the robot's local Wi-Fi diagnostics.
+
+The availability-indicator improvement is confirmed by the user's report. This particular file does not contain the panel version, Devnet availability probes or Skill execution events, so it is supporting device-status evidence rather than a transcript of indicator transitions. Robot Wi-Fi readiness also does not establish access to the Devnet RPC from the PC. The original file is preserved byte for byte, SHA-256 `132d99b488de59874d523d7d621139c220ba2ac1d24354231854893420c17f2d`.
 
 ## Reproduction and remaining evidence
 
@@ -95,7 +101,7 @@ Follow the [Stage 3 architecture and physical test guide](../JRSKILL_SOLANA_STAG
 
 Success requires both the panel log (`source=solana-devnet`, verified hash and `result=ok`) and visually confirmed OLED transitions `happy → surprised → thinking → happy → neutral`. Save the full log, panel screenshot and robot video. A failed network read must not fall back to local execution.
 
-The Stage 3 execution path, offline block, local independence and online recovery are confirmed by the logs and user physical report. Panel version 03's new availability indicator awaits user confirmation. A panel screenshot/robot video can complement the preserved logs when available. Licensing remains a separate next stage.
+The Stage 3 execution path, offline block, local independence and online recovery are confirmed by the logs and user physical report. The user also confirmed the availability-indicator improvement. A panel screenshot/robot video can complement the preserved logs when available. Licensing remains a separate next stage.
 
 ---
 

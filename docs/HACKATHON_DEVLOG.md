@@ -18,7 +18,7 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 3](HACKATHON_DEVLOG/day3.md) | 2026-09-30 | First JrSkill contract deployed; original JSON published/retrieved on Devnet |
 | [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill executed on the physical JrBot; positive path validated |
 
-**Latest validated checkpoint: Day 4 — Stage 3 physical execution, offline block and online recovery confirmed.** Local execution also works without Internet. The new Devnet availability indicator is software-tested and awaits user confirmation; licensing remains a later stage.
+**Latest validated checkpoint: Day 4 — Stage 3 physical execution, offline block and online recovery confirmed.** Local execution also works without Internet. The Devnet availability-indicator improvement is software-tested and confirmed by the user; licensing remains a later stage.
 
 ## Public reproducible proof — read the Skill without a wallet
 
