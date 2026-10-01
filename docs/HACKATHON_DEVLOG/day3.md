@@ -254,7 +254,7 @@ The next development day can study Stage 3 (Solana → existing executor → Run
 
 ---
 
-[Previous: Day 2](day2.md)
+[Previous: Day 2](day2.md) · [Next: Day 4](day4.md)
 
 ## References
 
