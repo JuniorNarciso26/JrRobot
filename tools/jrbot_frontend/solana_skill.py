@@ -61,6 +61,14 @@ def decode_account(result):
             "matches_checkpoint": True, "payload_text": text}
 
 
+def check_connection(rpc=None):
+    """Probe the fixed RPC/cluster; this does not cache or validate a Skill."""
+    rpc = rpc or _rpc
+    if rpc("getGenesisHash", [], 5) != GENESIS:
+        raise ValueError("Devnet obrigatoria: genesis incorreto")
+    return {"available": True, "cluster": "devnet"}
+
+
 def load_skill(rpc=None):
     # A fresh read per invocation; no local Skill file, cache, wallet or fallback.
     rpc = rpc or _rpc

@@ -22,7 +22,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-02"
+APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-03"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -290,6 +290,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/devnet-status":
+            try:
+                status = solana_skill.check_connection()
+            except Exception:
+                status = {"available": False, "cluster": "devnet"}
+            self._send(200, json.dumps(status), "application/json; charset=utf-8")
         elif path.path == "/jrskill/skill-devnet":
             try:
                 proof = solana_skill.load_skill()

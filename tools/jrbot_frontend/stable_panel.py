@@ -204,7 +204,7 @@ def enhanced_do_get(self) -> None:
 app.serial_request = stable_serial_request
 app.close_serial = quiet_close_serial
 app.Handler.do_GET = enhanced_do_get
-app.APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-02"
+app.APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-03"
 
 
 def main() -> int:

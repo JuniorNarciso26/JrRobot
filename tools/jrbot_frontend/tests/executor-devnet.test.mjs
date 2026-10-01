@@ -14,11 +14,13 @@ async function simulate(failure) {
     logs, capturedFaces: faces, reads, payload, recipe, failure});
   vm.runInContext(source, context);
   vm.runInContext(`
-    mode='serial'; serialConnected=true;
+    mode='serial'; serialConnected=true; devnetState='available';
     currentFirmware=()=>true; oledAvailable=()=>true; refreshControls=()=>{};
     localLine=line=>logs.push(line);
     api=async path=>{
       reads.push(path);
+      if(path==='/jrskill/devnet-status')return JSON.stringify({available:failure!=='offline',cluster:'devnet'});
+      if(path==='/jrskill/skill')return payload;
       if(path==='/jrskill/skill-devnet'){
         if(failure==='rpc')throw new Error('RPC offline');
         return JSON.stringify({source:'solana-devnet',commitment:'finalized',hash_verified:failure!=='hash',matches_checkpoint:true,payload_text:payload,pda:'checkpoint',rpc_slot:123,payload_bytes:128,payload_hash:'verified'});
@@ -33,8 +35,11 @@ async function simulate(failure) {
       return 'JR_API '+JSON.stringify({ok:true,result:{expression:call.args.expression}});
     };
   `, context);
-  await vm.runInContext("runJrSkillTest('solana-devnet')", context);
-  return {logs, faces, reads};
+  if(failure==='offline'||failure==='reconnect'){
+    await vm.runInContext("checkDevnetConnection()", context);
+    if(failure==='offline')await vm.runInContext("runJrSkillTest()", context);
+  }else await vm.runInContext("runJrSkillTest('solana-devnet')", context);
+  return {logs, faces, reads, devnetState:vm.runInContext('devnetState',context)};
 }
 
 test('Devnet Skill uses existing executor/Recipe without reading local Skill', async()=>{
@@ -51,4 +56,13 @@ test('RPC failure, rejected proof and absent capability send no face commands', 
     assert.ok(!result.reads.includes('/jrskill/skill'));
     assert.ok(result.logs.some(line=>line.startsWith('JR_SKILL_V1 result=error source=solana-devnet')));
   }
+});
+test('offline status keeps local execution working; successful probe restores availability',async()=>{
+  const offline=await simulate('offline');
+  assert.equal(offline.devnetState,'unavailable');
+  assert.deepEqual(offline.faces,['happy','surprised','thinking','happy','neutral']);
+  assert.ok(!offline.reads.includes('/jrskill/skill-devnet'));
+  const online=await simulate('reconnect');
+  assert.equal(online.devnetState,'available');
+  assert.deepEqual(online.faces,[]);
 });

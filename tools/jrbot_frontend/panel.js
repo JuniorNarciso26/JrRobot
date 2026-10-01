@@ -5,6 +5,7 @@ const el=id=>document.getElementById(id), val=id=>el(id).value.trim();
 const logEl=el('log');
 let serverCursor=0, serverSession='', autoScroll=true, busy=false, device=null;
 let mode='serial', serialConnected=false, activePort='';
+let devnetState='unknown', devnetChecking=false;
 function appendLog(items){for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}while(logEl.children.length>1200)logEl.removeChild(logEl.firstChild);if(autoScroll)logEl.scrollTop=logEl.scrollHeight;}
 function localLine(line){appendLog([{ts:new Date().toLocaleTimeString(),line}]);}
 function clearLog(){logEl.textContent='';}
@@ -14,7 +15,7 @@ function connection(text,ok){el('conn').textContent=text;el('conn').className='p
 function fields(text){const result={};for(const token of text.trim().split(/\s+/)){const at=token.indexOf('=');if(at>0)result[token.slice(0,at)]=token.slice(at+1);}return result;}
 function currentFirmware(){return !!device&&typeof device.version==='string'&&FIRMWARE_PREFIXES.some(prefix=>device.version.startsWith(prefix))&&device.hardware==='JRBOT-HW-04';}
 function oledAvailable(){return !!device&&device.oled_presence==='available'&&['ready','degraded'].includes(device.oled);}
-function refreshControls(){document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);const valid=currentFirmware();el('test_audio').disabled=busy||!valid||!['ready','on_demand'].includes(device?.audio);el('test_camera').disabled=busy||!valid||mode!=='serial'||device?.camera!=='available';el('test_mic').disabled=busy||!valid||device?.mic!=='available';document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!valid||!oledAvailable());el('audio_volume').disabled=busy||!valid;el('apply_volume').disabled=busy||!valid;}
+function refreshControls(){document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);const valid=currentFirmware();el('test_audio').disabled=busy||!valid||!['ready','on_demand'].includes(device?.audio);el('test_camera').disabled=busy||!valid||mode!=='serial'||device?.camera!=='available';el('test_mic').disabled=busy||!valid||device?.mic!=='available';document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!valid||!oledAvailable());el('audio_volume').disabled=busy||!valid;el('apply_volume').disabled=busy||!valid;el('jrskill_devnet_test').disabled=busy||devnetState!=='available';el('jrskill_devnet_check').disabled=busy||devnetChecking;}
 function invalidate(message){device=null;el('device_msg').textContent=message;for(const id of ['fw_version','fw_profile','oled_state','audio_state','camera_state','mic_state'])el(id).textContent='Nao verificado';refreshControls();}
 function renderStatus(text){if(!text.startsWith('JR_STATUS protocol=2 ')){invalidate('Firmware sem protocolo V2.');connection('Firmware nao confirmado',false);throw new Error('Firmware sem protocolo V2.');}const next=fields(text);if(!next.version||!next.profile||!next.hardware){invalidate('Estado incompleto.');connection('Firmware nao confirmado',false);throw new Error('Estado incompleto do firmware.');}device=next;const valid=currentFirmware();el('face_controls').open=oledAvailable();el('fw_version').textContent=next.version;el('fw_profile').textContent=next.profile;el('oled_state').textContent=next.oled_presence==='available'?'Disponivel - '+next.oled:'Indisponivel - '+(next.oled||'offline');const audioSeq=Number(next.audio_test_seq||0),audioBytes=Number(next.audio_last_bytes||0);el('audio_state').textContent=!valid?'Firmware antigo/incompativel':next.audio_test_running==='1'?'Teste em andamento':audioSeq>0?'Ultimo teste #'+audioSeq+' - '+(next.audio_last||'?')+' - '+audioBytes+' bytes':'Pronto para teste - MAX98357A';el('camera_state').textContent=next.camera==='available'?'Disponivel - OV5640 '+(next.camera_pid||''):'Indisponivel - OV5640';el('mic_state').textContent=next.mic==='available'?'Disponivel - MS3625 canal '+(next.mic_channel||'?')+' pico '+(next.mic_peak_raw||'0'):'Indisponivel - MS3625';if(/^\d+$/.test(next.volume||'')){el('audio_volume').value=next.volume;el('audioVolText').textContent=next.volume+'%';}el('device_msg').textContent='Estado atualizado. Build: '+(next.build_sp||next.version)+'.'+(next.pending_restart==='1'?' Wi-Fi pendente de reinicializacao.':'');el('audio_msg').textContent=audioSeq>0?'Diagnostico do audio: teste #'+audioSeq+', resultado '+(next.audio_last||'?')+', '+audioBytes+' bytes transmitidos. Se ESP_OK e nao houve som, confira MAX98357A/falante.':'MAX98357A: LRC GPIO47, BCLK GPIO21, DIN GPIO42. O teste usa o volume ja aplicado e envia um unico comando.';el('cam_msg').textContent=next.camera==='available'?'OV5640 detectada. Teste liberado.':'OV5640 nao respondeu. Conecte e clique Atualizar estado.';el('face_msg').textContent=oledAvailable()?'OLED respondeu. Controles liberados.':'OLED nao respondeu; o restante do JrBot continua disponivel.';const micInfo=el('test_mic')?.nextElementSibling;if(micInfo)micInfo.textContent=next.mic==='available'?'MS3625 detectou atividade I2S. Teste liberado.':'MS3625 sem atividade I2S. Conecte e clique Atualizar estado.';connection(valid?(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - firmware confirmado':'Wi-Fi - firmware confirmado'):'Firmware nao confirmado',valid);refreshControls();}
 async function api(path,opts={}){const headers={...(opts.headers||{})};if(opts.method==='POST')headers['X-JrBot-Panel']='1';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);try{const r=await fetch(path,{...opts,headers,signal:controller.signal});const text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));return text;}catch(e){if(e.name==='AbortError')throw new Error('Tempo de resposta esgotado.');throw e;}finally{clearTimeout(timer);}}
@@ -90,6 +91,27 @@ async function executeJrSkillDocument(doc,ctx,label){
     throw new Error('Funcao JrSkill nao permitida nesta prova: '+fn);
   }
 }
+function renderDevnetState(state){
+  devnetState=state;
+  const badge=el('jrskill_devnet_status');
+  badge.textContent='Solana Devnet: '+(state==='available'?'disponivel':state==='unavailable'?'indisponivel':'verificando...');
+  badge.className='pill '+(state==='available'?'ok':state==='unavailable'?'bad':'');
+  el('jrskill_devnet_msg').textContent=state==='available'?'Consulta Devnet disponivel. Conecte o robo pela Serial para executar a Skill.':state==='unavailable'?'Sem acesso a Devnet. A Skill local e os controles pela Serial continuam disponiveis. Reconecte a Internet e clique Verificar Devnet.':'Verificando acesso a Solana. A Skill local funciona sem Internet.';
+  refreshControls();
+}
+async function checkDevnetConnection(){
+  if(devnetChecking||busy)return;
+  devnetChecking=true;
+  renderDevnetState('unknown');
+  try{
+    const status=JSON.parse(await api('/jrskill/devnet-status'));
+    renderDevnetState(status.available===true&&status.cluster==='devnet'?'available':'unavailable');
+  }catch(_){renderDevnetState('unavailable');}
+  finally{devnetChecking=false;refreshControls();}
+}
+async function monitorDevnet(){
+  try{await checkDevnetConnection();}finally{setTimeout(monitorDevnet,30000);}
+}
 async function runJrSkillTest(source='local-file'){
   return action(async()=>{
     try{
@@ -100,9 +122,13 @@ async function runJrSkillTest(source='local-file'){
       el('jrskill_api_state').textContent='carregando';
       let raw;
       if(source==='solana-devnet'){
+        if(devnetState!=='available')throw new Error('Devnet indisponivel ou ainda nao verificada. Clique Verificar Devnet.');
         localLine('JR_SKILL_SOLANA fetch=started');
-        const proof=JSON.parse(await api('/jrskill/skill-devnet'));
-        if(proof.source!==source||proof.hash_verified!==true||proof.matches_checkpoint!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
+        let proof;
+        try{
+          proof=JSON.parse(await api('/jrskill/skill-devnet'));
+          if(proof.source!==source||proof.hash_verified!==true||proof.matches_checkpoint!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
+        }catch(e){renderDevnetState('unavailable');throw e;}
         raw=proof.payload_text;
         localLine('JR_SKILL_SOLANA source='+source+' pda='+proof.pda+' rpc_slot='+proof.rpc_slot+' payload_bytes='+proof.payload_bytes+' payload_hash='+proof.payload_hash+' hash_verified=true matches_checkpoint=true');
       }else if(source==='local-file'){
@@ -143,3 +169,4 @@ const micButton=el('test_mic');if(micButton){micButton.textContent='Testar micro
 el('custom').addEventListener('keydown',e=>{if(e.key==='Enter')sendCustom();});logEl.addEventListener('scroll',()=>{autoScroll=logEl.scrollTop+logEl.clientHeight>=logEl.scrollHeight-20;});window.addEventListener('unhandledrejection',event=>{event.preventDefault();localLine('ERRO: '+String(event.reason?.message||event.reason));});
 const sub=document.querySelector('header .sub');if(sub)sub.textContent='JrBot V1 | portas COM detectadas automaticamente';
 loadWifiLocal();setMode('serial').catch(e=>localLine('ERRO: '+e.message));refreshPorts();poll();refreshControls();
+monitorDevnet();

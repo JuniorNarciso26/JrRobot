@@ -78,9 +78,16 @@ class SolanaSkillTests(unittest.TestCase):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{server.server_port}/") as response:
                 html = response.read().decode()
-                self.assertIn("JRBOT-PANEL-V1S-SOLANA-02", html)
+                self.assertIn("JRBOT-PANEL-V1S-SOLANA-03", html)
                 self.assertIn("Executar Skill da Devnet", html)
                 self.assertIn("Executar Skill JSON local", html)
+            status_url = url.replace("skill-devnet", "devnet-status")
+            with patch.object(skill, "check_connection", return_value={"available": True, "cluster": "devnet"}):
+                with urllib.request.urlopen(status_url) as response:
+                    self.assertTrue(json.load(response)["available"])
+            with patch.object(skill, "check_connection", side_effect=TimeoutError("offline")):
+                with urllib.request.urlopen(status_url) as response:
+                    self.assertFalse(json.load(response)["available"])
             with patch.object(skill, "load_skill", return_value=skill.decode_account(fixture())):
                 with urllib.request.urlopen(url) as response:
                     proof = json.load(response)
@@ -94,6 +101,12 @@ class SolanaSkillTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+
+    def test_connection_probe_rejects_wrong_network(self):
+        with self.assertRaises(ValueError):
+            skill.check_connection(lambda *args: "wrong-network")
+        self.assertEqual(skill.check_connection(lambda *args: skill.GENESIS), {"available": True, "cluster": "devnet"})
 
 
 if __name__ == "__main__":
