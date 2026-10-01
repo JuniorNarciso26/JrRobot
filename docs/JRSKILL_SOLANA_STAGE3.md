@@ -34,7 +34,7 @@ A biblioteca de Recipes continua local: somente a Skill principal veio da Solana
 
 ## Identificacao e logs
 
-Painel: **`JRBOT-PANEL-V1S-SOLANA-02`**. Firmware: **`JrBot_V1S_00`**, sem nova build.
+Painel atual: **`JRBOT-PANEL-V1S-SOLANA-03`**. A prova fisica inicial usou a versao 02; a versao 03 adiciona o indicador de disponibilidade. Firmware: **`JrBot_V1S_00`**, sem nova build.
 
 Logs esperados (slot varia):
 
@@ -70,16 +70,24 @@ Node e necessario somente para o teste JavaScript de desenvolvimento; o painel e
 
 O [log original da tentativa offline](HACKATHON_DEVLOG/assets/day4/jrskill-devnet-offline-log.txt) registra, as 15:06:59, `fetch=started` e erro DNS `[Errno 11001] getaddrinfo failed`, seguido de `result=error source=solana-devnet`. Nao ha inicio de Skill, comando de face, Recipe ou `result=ok` nesse arquivo. **Bloqueio antes da execucao confirmado no log**, sem fallback bem-sucedido para Skill local. Falta confirmacao visual explicita de que o OLED ficou parado e o log da tentativa apos restaurar a Internet. A execucao fisica positiva anterior permanece validada separadamente.
 
+## Recuperacao e indicador de disponibilidade
+
+O usuario forneceu o [log completo da recuperacao](HACKATHON_DEVLOG/assets/day4/jrskill-devnet-recovery-log.txt) e confirmou o teste fisico, incluindo execucao local com/sem Internet. A tentativa Devnet de 15:06:59 falha; a de 15:09:43 recupera 128 bytes no slot `506359801` e termina com `result=ok source=solana-devnet` as 15:09:48. A execucao local termina com sucesso as 15:10:07; tentativas Devnet de 15:10:09/18 falham. A de 15:10:23 recupera a Skill novamente, mas o arquivo termina antes da ultima confirmacao. A primeira recuperacao completa valida o retorno da execucao online.
+
+Na versao 03, `/jrskill/devnet-status` consulta `getGenesisHash` com timeout de 5s e valida a rede. O painel verifica ao abrir, repete a cada 30s enquanto nao estiver ocupado, e oferece **Verificar Devnet**. O estado da Solana fica separado da Serial: um erro de RPC/rede nao significa que o robo USB esteja desconectado. Skill local e controles Serial seguem disponiveis. O botao Devnet e liberado somente apos consulta positiva; cada execucao continua lendo/validando o payload novamente. Falhas de leitura atualizam o indicador; a verificacao periodica/manual permite recuperar o botao quando a RPC retorna.
+
+Verificacoes da nova versao: **6 testes Python e 3 JavaScript passaram**, com transicoes de disponibilidade e execucao local offline; consulta real de disponibilidade confirmou a Devnet. A nova interface ainda aguarda teste do usuario. Sem alteracao de firmware, JSON ou contrato.
+
 ## Roteiro do teste fisico
 
 1. Atualizar a **copia usada pelo painel**, estando na `V1s-00`: `git pull --ff-only origin V1s-00`.
 2. Fechar o painel antigo para liberar a porta 8765 e a Serial. Abrir o painel atualizado pelo inicializador habitual ou, na raiz do repositorio: `python tools/jrbot_frontend/run_panel.py`.
 3. Usar o ambiente Windows ja validado para o painel Serial, pois esta interface seleciona portas `COM`. O WSL pode rodar a consulta Python e os testes, mas esta interface nao enumera `/dev/tty*`.
-4. Confirmar `JRBOT-PANEL-V1S-SOLANA-02` no painel. Conectar a COM do JrBot e confirmar firmware/HW04/OLED disponivel.
+4. Confirmar `JRBOT-PANEL-V1S-SOLANA-03` no painel e aguardar **Solana Devnet: disponivel**. Conectar a COM do JrBot e confirmar firmware/HW04/OLED disponivel.
 5. Limpar o log para separar esta prova da execucao local. Clicar **Executar Skill da Devnet**.
 6. Observar `happy → surprised → thinking → happy → neutral` no OLED. Confirmar no log a origem `solana-devnet`, PDA/hash corretos, Recipe local e `result=ok`.
 7. Baixar o log TXT e registrar imagem do painel/video do OLED. Enviar os arquivos para fechar o checkpoint na Issue #33 e no Day 4.
-8. Prova negativa: com a Serial ainda conectada, interromper a Internet do PC e clicar novamente. Esperado: erro de consulta, nenhum `start`/`result=ok` da nova tentativa e nenhuma mudanca de face. Restaurar a Internet e repetir a prova positiva. O teste nao pode executar a Skill local silenciosamente.
+8. Prova negativa na versao 03: com a Serial ainda conectada, interromper a Internet do PC e clicar **Verificar Devnet** (ou aguardar a verificacao automatica). Esperado: indicador indisponivel e botao Devnet bloqueado, mantendo o botao local disponivel. Se uma execucao Devnet for iniciada antes de o indicador detectar a queda, ela deve falhar sem `start`/`result=ok` nem mudanca de face. Restaurar a Internet, clicar **Verificar Devnet** e repetir a prova positiva. O teste nao pode executar a Skill local silenciosamente.
 
 Nao e necessario gravar novamente a ESP32 ou executar `anchor build/deploy`. A prova usa o programa e a PDA ja publicados.
 

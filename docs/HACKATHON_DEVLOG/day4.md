@@ -69,13 +69,33 @@ The supplied log contains no Skill `start`, Runtime API/face command, Recipe exe
 
 This file does not contain the subsequent online retry or a visual observation of the OLED. The earlier positive physical run remains independently validated; recovery after this particular disconnection and explicit visual confirmation that the OLED stayed unchanged are still awaiting user evidence.
 
+## Full offline/online recovery test and local baseline
+
+The user supplied [the full recovery log](assets/day4/jrskill-devnet-recovery-log.txt) and confirmed that the physical test worked as expected, including local execution with/without Internet and recovery when Internet returned.
+
+- **15:06:59:** Devnet request rejected by DNS failure, before Skill execution.
+- **15:09:44:** Devnet read succeeds at slot `506359801`, with 128 bytes and verified checkpoint hash; **15:09:48:** `result=ok source=solana-devnet` after all face acknowledgements.
+- **15:10:04–15:10:07:** explicit local-file execution completes with `result=ok source=local-file`; the user confirms the local path works without Internet.
+- **15:10:09 and 15:10:18:** Devnet requests fail with DNS errors; neither attempt starts the Skill.
+- **15:10:25:** another valid Devnet read succeeds at slot `506359973` and execution restarts. The supplied file ends at the final `face neutral` call at **15:10:28**, before its reply/result; the earlier complete recovery establishes the successful return to online execution.
+
+The original log is preserved byte for byte, SHA-256 `fa26db912f6ab73634215bce3e369e7ee3f3284511ea36662d0c68d225f21c5d`. Network state is inferred from failed/successful RPC calls and the user's test description; local execution is an explicit separate path, not a fallback from a failed Devnet call.
+
+## Devnet availability indicator
+
+Following this physical result, the panel was updated to **`JRBOT-PANEL-V1S-SOLANA-03`**. It checks access to the fixed official Devnet RPC on opening, then every 30 seconds while the panel is idle, with a manual **Verificar Devnet** button. The probe uses `getGenesisHash`, validates the Devnet identity and does not read/execute/cache a Skill.
+
+The panel shows **Solana Devnet: verificando / disponivel / indisponivel** independently of the robot Serial connection. Only the Devnet execution button is gated by this status; local Skill/manual Serial controls remain available. A new Skill execution still performs full validation and a fresh read, and a failure updates the availability indicator. A successful probe cannot guarantee the subsequent read will succeed.
+
+Validation of this UI update: **6 Python + 3 JavaScript tests passed**, including availability transitions, offline local execution and HTTP status routes. The live probe returned `available: true, cluster: devnet`. These software checks do not claim user physical validation of panel version 03 yet. Firmware, contract and JSON remain unchanged.
+
 ## Reproduction and remaining evidence
 
 Follow the [Stage 3 architecture and physical test guide](../JRSKILL_SOLANA_STAGE3.md). Update the checkout used by the panel, restart it, connect the existing HW04 firmware by Serial and click **Executar Skill da Devnet**.
 
 Success requires both the panel log (`source=solana-devnet`, verified hash and `result=ok`) and visually confirmed OLED transitions `happy → surprised → thinking → happy → neutral`. Save the full log, panel screenshot and robot video. A failed network read must not fall back to local execution.
 
-The positive physical checkpoint and the offline execution block are confirmed by their respective evidence. Explicit visual confirmation of the unchanged OLED during the offline attempt and an online retry after reconnecting remain pending. A panel screenshot/robot video can complement the preserved logs when available. Licensing remains a separate next stage.
+The Stage 3 execution path, offline block, local independence and online recovery are confirmed by the logs and user physical report. Panel version 03's new availability indicator awaits user confirmation. A panel screenshot/robot video can complement the preserved logs when available. Licensing remains a separate next stage.
 
 ---
 
