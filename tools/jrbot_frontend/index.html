@@ -67,7 +67,8 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     </div>
     <h2>JrSkill JSON v1</h2>
     <div class="autonomous" id="jrskill_api_box">
-      <button id="jrskill_api_test" data-action onclick="runJrSkillTest()" class="green">Executar Skill JSON</button>
+      <button id="jrskill_api_test" data-action onclick="runJrSkillTest()" class="green">Executar Skill JSON local</button>
+      <button id="jrskill_devnet_test" data-action onclick="runJrSkillTest('solana-devnet')" class="green">Executar Skill da Devnet</button>
       <span id="jrskill_api_state" class="state">aguardando</span>
       <div class="msg" id="jrskill_api_msg">Teste do schema minimo: chamada direta face + wait local + recipe local + face. O firmware continua JrBot_V1S_00.</div>
     </div>

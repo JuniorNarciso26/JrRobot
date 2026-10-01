@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import uuid
+import solana_skill
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,7 +22,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SKILL-01"
+APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-02"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -289,6 +290,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/skill-devnet":
+            try:
+                proof = solana_skill.load_skill()
+            except Exception as exc:
+                add_log("JR_SKILL_SOLANA result=error detail=" + str(exc))
+                self._send(502, "Leitura Devnet recusada: " + str(exc))
+                return
+            self._send(200, json.dumps(proof), "application/json; charset=utf-8")
         elif path.path == "/jrskill/skill":
             skill = ROOT / "jrskill" / "skills" / "minimal_recipe_01.json"
             self._send(200, skill.read_text(encoding="utf-8"), "application/json; charset=utf-8")

@@ -90,26 +90,36 @@ async function executeJrSkillDocument(doc,ctx,label){
     throw new Error('Funcao JrSkill nao permitida nesta prova: '+fn);
   }
 }
-async function runJrSkillTest(){
+async function runJrSkillTest(source='local-file'){
   return action(async()=>{
     try{
       if(mode!=='serial')throw new Error('O teste JrSkill v1 usa somente a conexao Serial.');
       if(!serialConnected)throw new Error('Conecte a Serial antes de executar a Skill.');
       if(!currentFirmware())await send('status');
+      if(!currentFirmware()||!oledAvailable())throw new Error('Firmware HW04/OLED nao confirmado.');
       el('jrskill_api_state').textContent='carregando';
-      const raw=await api('/jrskill/skill');
+      let raw;
+      if(source==='solana-devnet'){
+        localLine('JR_SKILL_SOLANA fetch=started');
+        const proof=JSON.parse(await api('/jrskill/skill-devnet'));
+        if(proof.source!==source||proof.hash_verified!==true||proof.matches_checkpoint!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
+        raw=proof.payload_text;
+        localLine('JR_SKILL_SOLANA source='+source+' pda='+proof.pda+' rpc_slot='+proof.rpc_slot+' payload_bytes='+proof.payload_bytes+' payload_hash='+proof.payload_hash+' hash_verified=true matches_checkpoint=true');
+      }else if(source==='local-file'){
+        raw=await api('/jrskill/skill');
+      }else throw new Error('Origem da Skill invalida.');
       const skill=parseJrSkillJson(raw,'skill');
       const actions=await runtimeCapabilities();
       el('jrskill_api_state').textContent='executando';
       el('jrskill_api_msg').textContent='Executando JSON minimo v1 com '+skill.run.length+' chamadas de nivel principal...';
-      localLine('JR_SKILL_V1 start=v1 source=local-file top_calls='+skill.run.length);
+      localLine('JR_SKILL_V1 start=v1 source='+source+' top_calls='+skill.run.length);
       await executeJrSkillDocument(skill,{actions,depth:0,stack:[]},'skill');
       el('jrskill_api_state').textContent='ok';
-      el('jrskill_api_msg').textContent='Skill concluida. Confirme visualmente: happy -> recipe(surprised -> thinking -> happy) -> neutral.';
-      localLine('JR_SKILL_V1 result=ok');
+      el('jrskill_api_msg').textContent='Skill concluida ('+source+'). Confirme visualmente: happy -> recipe(surprised -> thinking -> happy) -> neutral. Recipe local.';
+      localLine('JR_SKILL_V1 result=ok source='+source);
     }catch(e){
       el('jrskill_api_state').textContent='erro';
-      localLine('JR_SKILL_V1 result=error detail='+e.message);
+      localLine('JR_SKILL_V1 result=error source='+source+' detail='+e.message);
       throw e;
     }
   },'jrskill_api_msg');
