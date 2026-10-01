@@ -29,6 +29,12 @@ Panel version: `JRBOT-PANEL-V1S-SOLANA-02`. Firmware remains `JrBot_V1S_00`. The
 
 These checks establish software integration and public retrieval. They do not establish physical execution from Solana. No firmware build, contract compilation/redeploy or blockchain write was performed.
 
+## Installer configuration correction
+
+The user's Windows build log failed in `espressif__esp_peer/src/dtls_srtp.c`, with missing MbedTLS DTLS/SRTP types/functions. Inspection found that `INSTALAR.bat` recognized only the historical `test/jrbot-v1s-00` branch name: the current `V1s-00` fell through to `build-runtime-api-v1-02` / `sdkconfig.runtime-api-v1-02`.
+
+The installer now maps `V1s-00` explicitly to `build-v1s-00` and `sdkconfig.develop-v1.6.3`, matching the existing V1S configuration mapping. Validation of this change is static; a successful firmware rebuild is not claimed. Stage 3 needs only the updated PC panel: `INSTALAR.bat panel` updates the selected branch and opens the panel without building/flashing. Double-clicking the installer defaults to the complete build/flash path.
+
 ## Next checkpoint — user physical test
 
 Follow the [Stage 3 architecture and physical test guide](../JRSKILL_SOLANA_STAGE3.md). Update the checkout used by the panel, restart it, connect the existing HW04 firmware by Serial and click **Executar Skill da Devnet**.
