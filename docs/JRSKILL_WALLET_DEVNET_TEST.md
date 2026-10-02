@@ -52,6 +52,19 @@ Consulta real, somente leitura, feita pelo agente ao preparar esta entrega: gene
 - Teste HTTP de autenticacao ampliado: rota de rede exige autenticacao, usa endereco da sessao e rejeita resultado se a sessao for revogada durante a consulta.
 - Interface Chrome headless com carteira simulada: assinatura verificada no servidor Python real, RPC Devnet real, saldo zero apresentado; troca de conta/recusa/retry/desconexao passaram sem erro JS. Nao e teste da configuracao visual da Phantom real.
 
-Pendente: teste WALLET-06 no computador do usuario e confirmacao visual da configuracao Devnet na Phantom. Sem alteracao de firmware, contrato, JSON/Recipe, build ou deploy Solana. Compra e licenca continuam nao implementadas.
+Teste WALLET-06 recebido no log (74) e screenshot abaixo. Permanece pendente a confirmacao visual da configuracao Devnet na propria Phantom. Sem alteracao de firmware, contrato, JSON/Recipe, build ou deploy Solana. Compra e licenca continuam nao implementadas.
+
+## Teste do usuario — log (74) e captura do painel
+
+Recebido em 02/10/2026. [Log original](HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-log.txt), SHA-256 `77a1df69e6ec99c35aff8d321146fbaa88c63392f1704d4bc5f255a7d1905bfa`, preservado byte a byte.
+
+- 13:34:16: carteira conectada; 13:34:44: autenticacao confirmada pelo navegador e servidor.
+- 13:34:45, 13:34:49, 13:35:13 e 13:35:54: `rpc=devnet genesis_verified=true`, saldo 0 lamports, slots finalized 506697543, 506697560, 506697659 e 506697824.
+- Endereco consultado: `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R`.
+- Todas as consultas registram `extension_network=unknown`: o RPC do painel foi confirmado; rede selecionada na interface da extensao nao foi observada por essa API.
+
+Horarios do painel sem timezone no arquivo. A captura confirma os indicadores de RPC Devnet, suporte anunciado pela carteira e saldo 0 SOL de teste. Nao mostra as configuracoes da Phantom nem comprova compra/licenca/execucao fisica.
+
+![Painel do usuario: RPC Devnet confirmado e saldo zero](HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-panel.png)
 
 Referencias: [Wallet Standard — campos chains](https://github.com/wallet-standard/wallet-standard/blob/master/packages/core/base/src/wallet.ts), [Etapa 4B](JRSKILL_WALLET_AUTH_TEST.md), [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md).
