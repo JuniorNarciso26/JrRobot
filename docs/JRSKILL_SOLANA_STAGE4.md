@@ -29,12 +29,16 @@ PDA e uma conta de dados, nao outro contrato executavel. Skill e License podem f
 - Licenca permanente ou com validade; possibilidade de revogacao.
 - Transferencia entre wallets e eventual recuperacao de acesso.
 - Direito a uma versao especifica da Skill ou a atualizacoes futuras.
-- Emissao de teste inicialmente e, depois, compra com pagamento e entrega atomicos.
+- Compra de teste com pagamento e entrega atomicos: escopo comercial 00 discutido na Issue #46.
 - Prova de controle da wallet por assinatura e descoberta/validacao das licencas no painel.
 
 A escolha de PDA nao implementa automaticamente pagamento, revenda, expiracao ou recuperacao. Essas regras precisarao de desenho, codigo e testes. A autenticacao da wallet nao pode se limitar a informar um endereco publico.
 
 ## Proxima prova
+
+Atualizacao de sequencia em 02/10/2026, conforme a [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46): primeiro validar compra, repasse e registro da License PDA de forma isolada na Devnet. Desenho e plano de teste: [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md). Compra/licenciamento continuam nao implementados; preco e divisao apresentados na issue sao exemplos para discussao.
+
+A integracao abaixo vem depois da prova de compra:
 
 ```text
 Conectar e autenticar wallet
