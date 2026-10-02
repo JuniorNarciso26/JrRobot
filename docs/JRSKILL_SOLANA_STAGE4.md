@@ -4,7 +4,7 @@
 
 O usuario escolheu manter o modelo de **License PDA**, em vez de NFT, para permitir regras proprias de licenciamento e evolucao do marketplace JrSkill. Esta decisao foi registrada na branch `V1s-00` e na [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Estado: arquitetura escolhida; licenciamento e conexao de carteira ainda nao implementados.**
+**Estado atualizado em 02/10/2026: conexao de carteira implementada no painel; autenticacao, licenciamento e compra ainda nao implementados.** Teste com extensao real pendente. [Roteiro da Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md).
 
 ## Modelo proposto
 
@@ -36,7 +36,7 @@ A escolha de PDA nao implementa automaticamente pagamento, revenda, expiracao ou
 
 ## Proxima prova
 
-Atualizacao de sequencia em 02/10/2026, conforme a [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46): primeiro validar compra, repasse e registro da License PDA de forma isolada na Devnet. Desenho e plano de teste: [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md). Compra/licenciamento continuam nao implementados; preco e divisao apresentados na issue sao exemplos para discussao.
+Atualizacao de sequencia em 02/10/2026: o usuario decidiu antecipar a selecao/conexao de carteira no painel. A [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md) implementa somente conexao, sem assinatura, compra ou autorizacao de execucao. Depois seguimos com autenticacao e a prova isolada de compra, repasse e registro de License PDA da [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). Desenho e plano de teste: [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md). Preco e divisao apresentados na issue sao exemplos para discussao.
 
 A integracao abaixo vem depois da prova de compra:
 

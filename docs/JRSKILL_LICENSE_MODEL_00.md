@@ -6,7 +6,7 @@ Desenho da proxima prova isolada na `V1s-00`, conforme a [Issue #46](https://git
 
 **Estado: arquitetura proposta e plano de teste; compra e License PDA ainda nao implementadas.** Este documento nao representa build, upgrade, deploy ou teste realizado.
 
-Primeiro provar compra, repasse e registro da licenca. Depois integrar carteira e autorizacao ao painel. A numeracao comercial 00/01/02 e independente do schema JSON v1 e do firmware JrBot_V1S_00.
+O escopo comercial 00 continua sendo compra, repasse e registro da licenca. Atualizacao de ordem em 02/10/2026: por decisao do usuario, antecipamos uma prova somente de conexao da carteira no painel, documentada na [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md). Ela nao implementa compra ou licenciamento. A numeracao comercial 00/01/02 e independente do schema JSON v1 e do firmware JrBot_V1S_00.
 
 ## Desenho minimo proposto
 
