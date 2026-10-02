@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 use sha2::{Digest, Sha256};
+mod commerce;
+use commerce::*;
 
 // Stage 2 program deployed and validated on Devnet. Preserve its existing keypair.
 declare_id!("Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454");
@@ -9,6 +11,22 @@ pub const MAX_PAYLOAD_BYTES: usize = 512;
 #[program]
 pub mod jrskill {
     use super::*;
+
+    pub fn initialize_market(
+        ctx: Context<InitializeMarket>,
+        treasury: Pubkey,
+        fee_bps: u16,
+    ) -> Result<()> {
+        commerce::initialize(ctx, treasury, fee_bps)
+    }
+
+    pub fn create_offer(ctx: Context<CreateOffer>, price_lamports: u64) -> Result<()> {
+        commerce::offer(ctx, price_lamports)
+    }
+
+    pub fn buy_license(ctx: Context<BuyLicense>, max_price_lamports: u64) -> Result<()> {
+        commerce::buy(ctx, max_price_lamports)
+    }
 
     pub fn create_skill(
         ctx: Context<CreateSkill>,
@@ -73,4 +91,18 @@ pub enum SkillError {
     PayloadTooLarge,
     #[msg("SHA-256 does not match the original payload bytes")]
     HashMismatch,
+    #[msg("Only the program upgrade authority can initialize the market")]
+    UnauthorizedAdmin,
+    #[msg("Fee must be between 0 and 10000 basis points")]
+    InvalidFee,
+    #[msg("Invalid treasury address")]
+    InvalidTreasury,
+    #[msg("Only the Skill authority can create its offer")]
+    UnauthorizedCreator,
+    #[msg("Price must be positive")]
+    InvalidPrice,
+    #[msg("Offer price exceeds the buyer's accepted maximum")]
+    PriceLimit,
+    #[msg("Buyer must differ from the payment recipients in model 00")]
+    BuyerIsRecipient,
 }

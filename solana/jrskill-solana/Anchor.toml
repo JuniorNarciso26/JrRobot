@@ -18,3 +18,7 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "npm run test:chain"
+
+[test]
+# Match Devnet's loader and give the local provider wallet upgrade authority.
+upgradeable = true
