@@ -6,6 +6,8 @@ Decisao do usuario: testar a carteira no painel antes da implementacao de compra
 
 Painel: **JRBOT-PANEL-V1S-WALLET-04**, somente na `V1s-00`. Firmware, contrato, JSON v1 e Recipes preservados.
 
+Este documento registra a prova de conexao da versao 04. Evolucao posterior: [WALLET-05 — autenticacao por assinatura](JRSKILL_WALLET_AUTH_TEST.md). As afirmacoes de autenticacao ainda nao implementada abaixo descrevem o checkpoint original 04.
+
 Implementado:
 
 - Descoberta de extensoes Wallet Standard com suporte anunciado a Solana Devnet.
@@ -60,7 +62,7 @@ Horarios do painel, sem timezone gravado no arquivo:
 
 O arquivo tambem registra Serial COM7 e firmware JrBot_V1S_00/HW04, mas a conexao de carteira nao depende da Serial. Nao contem marca/versao da extensao, versao do painel, troca para outro endereco, recusa de conexao, assinatura ou compra. As tres linhas comprovam o ciclo registrado pelo painel; nao comprovam sozinhas controle criptografico da chave privada.
 
-O usuario mencionou `C:\Projetos\JrRobot`. Esse texto nao aparece no log recebido. Se apareceu sozinho no terminal, corresponde ao caminho da pasta local do projeto, nao a uma mensagem de erro. Nenhuma correcao de codigo foi feita a partir dessa observacao.
+Esclarecimento posterior do usuario: a mensagem estranha era **Conectada — nao autenticada**, sem relacao com caminho de pasta. Ela era esperada na prova 04 sem assinatura e motivou a Etapa 4B. Nenhuma falha de instalacao foi atribuida a esse relato.
 
 ## Proximas provas
 

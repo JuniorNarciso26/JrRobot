@@ -16,7 +16,7 @@ pnpm build
 
 Depois de alterar os fontes, versionar tambem o bundle regenerado. O build usa esbuild 0.28.2. O lockfile fixa as dependencias.
 
-`src/controller.mjs` gerencia somente conexao/contas. `src/panel.mjs` atualiza o DOM com `textContent`; nomes e enderecos da extensao nao sao interpolados como HTML. O controlador nao assina mensagens/transacoes, nao chama RPC e nao envia enderecos ao backend. O endereco publico aparece no log local baixado pelo usuario. Nao se persiste sessao de carteira nem se conecta automaticamente ao abrir o painel.
+`src/controller.mjs` gerencia somente conexao/contas. `src/auth.mjs` solicita assinatura de mensagem por clique e verifica o resultado com o servidor local. `src/panel.mjs` atualiza o DOM com `textContent`; nomes e enderecos da extensao nao sao interpolados como HTML. Endereco e assinatura publica sao enviados somente ao servidor local de autenticacao. Nao ha assinatura de transacao ou RPC nesse fluxo. O endereco publico aparece no log baixado pelo usuario; desafio, assinatura e cookie nao sao registrados no log. Nao se conecta nem se autentica automaticamente ao abrir o painel.
 
 ## Terceiros
 
@@ -24,4 +24,4 @@ O bundle inclui codigo de `@wallet-standard/app` 1.1.1, Solana Maintainers, dist
 
 Fonte oficial: https://github.com/wallet-standard/wallet-standard
 
-Prova manual e limites: [conexao de carteira, Etapa 4A](../../../docs/JRSKILL_WALLET_CONNECTION_TEST.md).
+Provas manuais e limites: [conexao de carteira, Etapa 4A](../../../docs/JRSKILL_WALLET_CONNECTION_TEST.md) e [autenticacao, Etapa 4B](../../../docs/JRSKILL_WALLET_AUTH_TEST.md).

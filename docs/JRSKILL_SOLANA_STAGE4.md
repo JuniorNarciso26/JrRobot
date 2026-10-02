@@ -4,7 +4,7 @@
 
 O usuario escolheu manter o modelo de **License PDA**, em vez de NFT, para permitir regras proprias de licenciamento e evolucao do marketplace JrSkill. Esta decisao foi registrada na branch `V1s-00` e na [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Estado atualizado em 02/10/2026: conexao de carteira implementada no painel, com conexao/desconexao/reconexao registradas no log (72) do usuario; autenticacao, licenciamento e compra ainda nao implementados.** Troca de conta e recusa com extensao real permanecem pendentes. [Roteiro e resultado da Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md).
+**Estado atualizado em 02/10/2026: conexao implementada e registrada no log (72) do usuario; autenticacao por assinatura implementada na versao WALLET-05, ainda pendente de teste com extensao real; licenciamento e compra nao implementados.** [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md) e [autenticacao, Etapa 4B](JRSKILL_WALLET_AUTH_TEST.md).
 
 ## Modelo proposto
 
