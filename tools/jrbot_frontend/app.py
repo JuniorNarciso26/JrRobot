@@ -24,7 +24,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WALLET-06"
+APP_VERSION = "JRBOT-PANEL-V1S-WALLET-07"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None

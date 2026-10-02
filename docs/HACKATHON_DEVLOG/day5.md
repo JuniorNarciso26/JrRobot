@@ -22,6 +22,10 @@ The original JSON v1 and Skill account layout remain unchanged. A read-only fina
 
 ## Pending evidence
 
-The commercial extension has **not been upgraded/deployed on Devnet**, and **no Devnet license purchase is claimed**. The Phantom balance is not purchase evidence. Purchase signing and license discovery/enforcement through the panel remain subsequent work. Firmware, Recipes and the existing physical execution flow were not changed.
+The user subsequently upgraded the same Devnet program: signature `3Bdw92brd5inoDoMmg7q3SzcMrpDsctoL5pd63r71kMbSM37k6yHCvo6nvpQrF7HBxCXoUoZaF6mmRDPSDWnNYqT`. Independent RPC inspection confirms deployment slot 506708700 and program data expanded to 331392 bytes. A finalized read at slot 506709949 confirms the original Skill remains intact.
+
+**No Devnet license purchase is claimed.** The Phantom balance is not purchase evidence. Purchase signing and license discovery/enforcement through the panel remain subsequent work. Firmware, Recipes and the existing physical execution flow were not changed.
+
+Release identification was corrected after the upgrade: npm scripts/Rust crate now use 0.2.0, panel WALLET-07 has one version source. The earlier on-chain IDL metadata remains 0.1.0; this numbering correction does not claim another deploy or add panel purchase functionality.
 
 Technical procedure/results: [License model 00 checkpoint](../JRSKILL_LICENSE_MODEL_00_TEST.md). Architecture: [License model 00](../JRSKILL_LICENSE_MODEL_00.md). Commercial history: [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46); technical history: [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).

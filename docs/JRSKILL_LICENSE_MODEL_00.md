@@ -4,7 +4,7 @@
 
 Desenho da proxima prova isolada na `V1s-00`, conforme a [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). A [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) continua com integracao, autenticacao no painel e execucao fisica.
 
-**Estado: implementacao, compilacao SBF/IDL e testes no validator local realizados em 02/10/2026. Upgrade e compra da licenca na Devnet ainda pendentes.** A Skill original publicada na Devnet foi consultada novamente e continua identica. O procedimento e os resultados da implementacao estao no [checkpoint da compra 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
+**Estado: implementacao, compilacao SBF/IDL, testes locais e upgrade comercial na Devnet realizados em 02/10/2026. Compra da licenca na Devnet ainda pendente.** RPC confirma upgrade no slot 506708700 e Skill original identica. Correcao da identificacao da entrega: scripts/crate 0.2.0 e painel WALLET-07; metadados do upgrade anterior ainda 0.1.0. Evidencias e limites estao no [checkpoint da compra 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
 
 O escopo comercial 00 continua sendo compra, repasse e registro da licenca. Atualizacao de ordem em 02/10/2026: por decisao do usuario, antecipamos uma prova somente de conexao da carteira no painel, documentada na [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md). Ela nao implementa compra ou licenciamento. A numeracao comercial 00/01/02 e independente do schema JSON v1 e do firmware JrBot_V1S_00.
 

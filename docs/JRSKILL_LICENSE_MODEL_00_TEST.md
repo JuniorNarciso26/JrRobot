@@ -12,7 +12,8 @@ Data: 02/10/2026. Branch exclusiva: `V1s-00`. Historico comercial: [#46](https:/
 | `npm run test:idl` | 2 testes passaram; codec da Skill original preservado |
 | `anchor test --validator legacy ...` | 2 testes de integracao passaram, incluindo a prova comercial abaixo |
 | Consulta publica da Skill original na Devnet | Passou, compromisso finalized, slot 506702089 |
-| Upgrade comercial na Devnet / compra na Devnet | Nao realizados |
+| Upgrade comercial na Devnet | Realizado pelo usuario; consulta RPC confirma slot 506708700 |
+| Compra na Devnet | Ainda nao realizada |
 | Compra via Phantom no painel / bloqueio por licenca no hardware | Nao implementados nesta prova |
 
 Ambiente usado: Ubuntu/WSL, Node 24.10.0, Anchor 1.1.2 e Solana CLI 3.1.10. O validator local usa `[test] upgradeable = true`, pois a inicializacao valida a autoridade de upgrade. Sem essa opcao o programa carregado para teste fica sem autoridade administrativa. Referencia: [configuracao oficial do Anchor](https://www.anchor-lang.com/docs/references/anchor-toml#upgradeable).
@@ -60,9 +61,11 @@ anchor test --validator legacy --provider.cluster localnet --provider.wallet tar
 
 Os testes exigem validator limpo; Anchor inicia o seu. Se ja existir um processo na porta 8899, encerre apenas o validator local conhecido antes de repetir.
 
-## Proxima prova Devnet
+## Upgrade Devnet realizado e proxima prova de compra
 
-Separada dos testes acima. Ainda nao executada. Use somente SOL de teste e a autoridade original do programa. Antes do upgrade, confira a chave, a wallet e a Skill existente. Nao troque chaves nem remova a autoridade de upgrade.
+O usuario compilou, passou os 6 testes cliente, 2 IDL e 2 integracao local e realizou o upgrade do mesmo programa. Assinatura informada: `3Bdw92brd5inoDoMmg7q3SzcMrpDsctoL5pd63r71kMbSM37k6yHCvo6nvpQrF7HBxCXoUoZaF6mmRDPSDWnNYqT`. O CLI ampliou os dados de 191976 para 331392 bytes e atualizou a IDL. Consulta RPC independente confirmou Last Deployed In Slot 506708700, mesma autoridade e mesmo ProgramData. Verificador publico posterior, finalized no slot 506709949, confirmou os 128 bytes/hash originais.
+
+A sequencia abaixo fica como referencia do upgrade ja realizado, nao instrucao para repetir agora. Compra, oferta e configuracao comercial na Devnet continuam pendentes. Use somente SOL de teste; nao troque chaves nem remova a autoridade de upgrade.
 
 ```bash
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
@@ -101,3 +104,11 @@ npm run market:devnet -- read ENDERECO_PUBLICO_COMPRADOR 8LRRfZVnyjSYPLezJBCdGri
 A cotacao separa preco, parcelas, deposito e estimativa da taxa. Se ja existe licenca valida, o script somente consulta, sem enviar transacao. A leitura publica nao exige wallet; exige IDL local gerada, deps npm e RPC Devnet. Verifica owner, discriminator, PDA, comprador, Skill, oferta, modelo e parcelas registradas.
 
 A carteira Phantom com 5 SOL de teste permanece pronta para a etapa seguinte: compra assinada pela extensao no painel. Esta entrega nao envia transacao por ela. Registrar na #46 assinatura, carteiras, licenca e valores quando a prova Devnet ocorrer; os testes locais nao substituem essa evidencia.
+
+## Identificacao da entrega — correcao de versao
+
+O upgrade comercial acima foi compilado/publicado com os metadados antigos `0.1.0`. A correcao seguinte identifica scripts npm e crate Rust como **0.2.0**, com seus lockfiles alinhados, e o painel como **JRBOT-PANEL-V1S-WALLET-07**. A identificacao do painel agora vem apenas de `app.APP_VERSION`, sem sobrescrita pelo wrapper stable.
+
+Esta correcao nao altera instrucoes, layout de contas, JSON, firmware nem implementa compra no painel. A IDL gerada a partir do novo checkout recebe versao 0.2.0; a IDL enviada no upgrade anterior ainda tem os metadados 0.1.0. Nao se alega publicacao dessa correcao de metadados na Devnet. O programa comercial ja publicado atende os mesmos scripts/instrucoes; mudar o numero exibido no painel nao exige repetir o deploy.
+
+Depois de git pull, feche o painel antigo e reabra **PAINEL.bat** para carregar WALLET-07. No WSL, npm ci/npm test mostram 0.2.0; anchor build gera a IDL local correspondente. Recarregue a pagina do painel com Ctrl+F5.
