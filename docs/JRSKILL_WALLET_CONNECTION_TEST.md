@@ -45,7 +45,22 @@ Se nao detectar a extensao: confirmar instalacao/desbloqueio no mesmo perfil Chr
 - 1 teste Python passou servindo HTML e bundle pelo encadeamento real de wrappers do `run_panel_network.py`, usado pelo PAINEL.bat.
 - Teste de interface no Chrome headless com extensao **simulada**: sem extensao, registro tardio via Wallet Standard, conexao por clique, troca de conta e desconexao; sem erros JavaScript. Nenhuma carteira real ou transacao foi usada nesse teste.
 
-**Ainda pendente:** conexao/aprovacao/troca de conta com extensao real instalada pelo usuario. Nao alegar validacao fisica, autenticacao criptografica, compra ou deploy por estes testes.
+**Resultado do usuario recebido em 02/10/2026:** o log (72) confirma conexao, desconexao e reconexao, conforme o registro abaixo. Troca de conta e recusa com extensao real continuam pendentes. Nao alegar autenticacao criptografica, compra ou deploy por estes testes.
+
+## Teste do usuario — log (72)
+
+Arquivo original: [jrskill-wallet-connection-log.txt](HACKATHON_DEVLOG/assets/day5/jrskill-wallet-connection-log.txt), preservado byte a byte. SHA-256: `b01c39723e29c0e334e6d301766ccdf6739e5a807b8a55c3249b35d8b936f3b5`.
+
+Horarios do painel, sem timezone gravado no arquivo:
+
+- 12:50:31: `JR_WALLET state=connected`, carteira `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R`.
+- 12:51:07: `JR_WALLET state=disconnected`.
+- 12:51:09: `JR_WALLET state=connected`, mesmo endereco.
+- Todos os eventos trazem `authenticated=false`, esperado para a prova de conexao sem assinatura.
+
+O arquivo tambem registra Serial COM7 e firmware JrBot_V1S_00/HW04, mas a conexao de carteira nao depende da Serial. Nao contem marca/versao da extensao, versao do painel, troca para outro endereco, recusa de conexao, assinatura ou compra. As tres linhas comprovam o ciclo registrado pelo painel; nao comprovam sozinhas controle criptografico da chave privada.
+
+O usuario mencionou `C:\Projetos\JrRobot`. Esse texto nao aparece no log recebido. Se apareceu sozinho no terminal, corresponde ao caminho da pasta local do projeto, nao a uma mensagem de erro. Nenhuma correcao de codigo foi feita a partir dessa observacao.
 
 ## Proximas provas
 
