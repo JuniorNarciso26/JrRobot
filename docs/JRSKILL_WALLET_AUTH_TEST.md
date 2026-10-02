@@ -4,6 +4,8 @@
 
 Painel **JRBOT-PANEL-V1S-WALLET-05**, somente na `V1s-00`. Conexao e autenticacao sao etapas separadas. Esta entrega nao faz compra, cria licenca ou concede autorizacao de executar uma Skill comercial.
 
+Atualizacao: o log (73) do usuario confirmou autenticacao em 02/10/2026. A versao seguinte WALLET-06 adiciona consulta Devnet/saldo; [evidencia e roteiro da Etapa 4C](JRSKILL_WALLET_DEVNET_TEST.md). Os limites/testes descritos abaixo sao o checkpoint original da 05.
+
 Fluxo por clique:
 
 1. Carteira conectada; selecionar **Autenticar carteira**.
@@ -52,6 +54,6 @@ Nao enviar frase de recuperacao ou chave privada. Extensao que nao oferece `sola
 - Os 17 testes anteriores de conexao, rotas, integridade e executor tambem passaram: 27 testes automatizados ao todo neste checkpoint.
 - Interface Chrome headless com carteira **simulada** gerou uma chave efemera via WebCrypto, assinou o desafio e foi verificada pelo servidor Python real. Conexao, autenticacao, revogacao por troca de conta, recusa/retry e desconexao passaram, sem erros JS ou transacao Solana. Chave efemera nao foi salva.
 
-**Pendente:** aprovacao e autenticacao com a extensao real do usuario. Esta entrega nao representa teste fisico do robo, compra, compilacao de firmware/programa ou upgrade/deploy Solana.
+**Teste do usuario recebido:** log (73) registra conexao e autenticacao confirmada pelo servidor. Recusa, troca de conta e expiracao com extensao real continuam sem evidencia nesse arquivo. Esta entrega nao representa teste fisico do robo, compra, compilacao de firmware/programa ou upgrade/deploy Solana.
 
 Referencias oficiais: [Wallet Standard signMessage](https://github.com/solana-labs/wallet-standard/blob/master/packages/core/features/src/signMessage.ts), [cryptography Ed25519](https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ed25519/).
