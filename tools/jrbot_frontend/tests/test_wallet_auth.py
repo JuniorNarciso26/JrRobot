@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import wallet_auth
 import run_panel_network
 import app
+from unittest.mock import patch
 
 
 def address(key):
@@ -116,6 +117,9 @@ class AuthHttpTests(unittest.TestCase):
             return client.open(req)
         key = Ed25519PrivateKey.generate()
         try:
+            with self.assertRaises(urllib.error.HTTPError) as unauthenticated:
+                request('devnet')
+            self.assertEqual(unauthenticated.exception.code, 401)
             for origin_header, panel_header in ((False, True), (True, False)):
                 with self.assertRaises(urllib.error.HTTPError) as rejected:
                     request('challenge', {'address': address(key)}, origin_header, panel_header)
@@ -131,6 +135,17 @@ class AuthHttpTests(unittest.TestCase):
                 self.assertTrue(json.load(response)['authenticated'])
             with request('status') as response:
                 self.assertEqual(json.load(response)['address'], address(key))
+            with patch.object(app.wallet_network, 'inspect', return_value={'address': address(key), 'cluster': 'devnet'}) as inspect:
+                with request('devnet') as response:
+                    self.assertEqual(json.load(response)['address'], address(key))
+                inspect.assert_called_once_with(address(key))
+            def revoked_in_flight(selected):
+                app.wallet_auth.STORE.sessions.clear()
+                return {'address': selected}
+            with patch.object(app.wallet_network, 'inspect', side_effect=revoked_in_flight):
+                with self.assertRaises(urllib.error.HTTPError) as expired:
+                    request('devnet')
+                self.assertEqual(expired.exception.code, 401)
             with request('logout', {}) as response:
                 self.assertFalse(json.load(response)['authenticated'])
             with request('status') as response:

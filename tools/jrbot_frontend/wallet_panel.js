@@ -306,6 +306,67 @@
     };
   }
 
+  // src/network.mjs
+  var DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+  function createNetworkCheck(request, render, log = () => {
+  }) {
+    let address = "", authenticated = false, supported = false, pending = false, epoch = 0;
+    let message = "Conecte e autentique a carteira para consultar o saldo na Devnet.", verified = false, balance = "";
+    function emit() {
+      render({ authenticated, supported, pending, message, verified, balance });
+    }
+    const api = {
+      observe(state, auth) {
+        const next = state.address || "";
+        const support = !!state.active?.chains.includes("solana:devnet") && !!state.accounts.find((item) => item.address === next)?.chains.includes("solana:devnet");
+        if (next !== address || auth.authenticated !== authenticated || support !== supported) {
+          epoch++;
+          pending = false;
+          verified = false;
+          balance = "";
+          message = "Conecte e autentique a carteira para consultar o saldo na Devnet.";
+          address = next;
+          authenticated = auth.authenticated;
+          supported = support;
+          emit();
+          if (authenticated && supported) void api.check();
+        } else emit();
+      },
+      async check() {
+        if (!address || !authenticated || !supported || pending) return;
+        const attempt = epoch, expected = address;
+        pending = true;
+        verified = false;
+        balance = "";
+        message = "Confirmando RPC Devnet e consultando saldo...";
+        emit();
+        try {
+          const result = await request();
+          if (attempt !== epoch) return;
+          if (result.cluster !== "devnet" || result.genesis !== DEVNET || result.rpc_verified !== true || result.address !== expected || result.commitment !== "finalized" || !/^\d+$/.test(result.balance_lamports) || !/^\d+(\.\d{1,9})?$/.test(result.balance_sol)) {
+            throw new Error("Resposta de rede/saldo invalida");
+          }
+          verified = true;
+          balance = result.balance_sol;
+          message = "Saldo consultado na Devnet. Isso nao confirma a rede selecionada na interface da extensao.";
+          if (result.balance_lamports === "0") message += " Saldo zero: a carteira ainda nao possui SOL de teste nessa rede.";
+          log("JR_WALLET_NETWORK rpc=devnet genesis_verified=true address=" + expected + " balance_lamports=" + result.balance_lamports + " rpc_slot=" + result.rpc_slot + " extension_network=unknown");
+        } catch (error) {
+          if (attempt !== epoch) return;
+          verified = false;
+          balance = "";
+          message = "Devnet/saldo nao confirmados: " + error.message;
+          log("JR_WALLET_NETWORK result=error");
+        } finally {
+          if (attempt === epoch) pending = false;
+          emit();
+        }
+      }
+    };
+    emit();
+    return api;
+  }
+
   // src/panel.mjs
   var element = (id) => document.getElementById(id);
   var walletSelect = element("wallet_provider");
@@ -313,6 +374,8 @@
   var current;
   var copiedAddress = "";
   var authenticator;
+  var network;
+  var authState = { authenticated: false };
   var localLog = (line) => {
     if (typeof localLine === "function") localLine(line);
   };
@@ -363,6 +426,7 @@
     element("wallet_copy").disabled = !state.address;
     if (copiedAddress !== state.address) element("wallet_copy").textContent = "Copiar endereco";
     authenticator?.observe(state);
+    network?.observe(state, authState);
   }, localLog);
   authenticator = createAuthenticator(async (operation, data) => {
     const options2 = data === void 0 ? {} : { method: "POST", headers: {
@@ -373,13 +437,28 @@
     if (!response.ok) throw new Error(await response.text());
     return response.json();
   }, (state) => {
+    authState = state;
     element("wallet_authenticate").disabled = !state.canSign || state.pending || current.pending;
     element("wallet_authenticate").textContent = state.pending ? "Aguardando assinatura..." : state.authenticated ? "Autenticar novamente" : "Autenticar carteira";
     element("wallet_state").textContent = current.address ? state.authenticated ? "Conectada \u2014 autenticada" : "Conectada \u2014 nao autenticada" : "Desconectada";
     if (state.message) element("wallet_msg").textContent = state.message;
     else if (current.address && !state.canSign) element("wallet_msg").textContent = "Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.";
+    network?.observe(current, state);
   }, localLog);
   authenticator.observe(current);
+  network = createNetworkCheck(async () => {
+    const response = await fetch("/jrskill/wallet/devnet", { credentials: "same-origin", signal: AbortSignal.timeout(15e3) });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }, (state) => {
+    element("wallet_network_check").disabled = !state.authenticated || !state.supported || state.pending;
+    element("wallet_rpc").textContent = state.pending ? "RPC: verificando..." : state.verified ? "RPC: Solana Devnet confirmada" : "RPC: nao confirmado";
+    element("wallet_support").textContent = state.supported ? "Carteira: suporte Devnet anunciado" : "Carteira: suporte Devnet nao confirmado";
+    element("wallet_balance").textContent = state.verified ? "Saldo Devnet: " + state.balance + " SOL de teste" : "Saldo Devnet: nao consultado";
+    element("wallet_network_msg").textContent = state.message;
+  }, localLog);
+  network.observe(current, authState);
+  element("wallet_network_check").addEventListener("click", () => network.check());
   element("wallet_authenticate").addEventListener("click", () => authenticator.authenticate());
   setInterval(() => authenticator.check(), 1e4);
   element("wallet_connect").addEventListener("click", () => controller.connect(current.wallets[Number(walletSelect.value)]));

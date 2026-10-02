@@ -80,6 +80,16 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <button id="wallet_copy" class="gray" disabled>Copiar endereco</button>
       <button id="wallet_disconnect" class="red" disabled>Desconectar carteira</button>
       <div class="msg" id="wallet_msg" role="status" aria-live="polite">Carregando conexao de carteira. Se esta mensagem continuar, recarregue com Ctrl+Shift+R.</div>
+      <span class="pill" id="wallet_rpc">RPC: nao confirmado</span>
+      <span class="pill" id="wallet_support">Carteira: suporte Devnet nao confirmado</span>
+      <button id="wallet_network_check" class="gray" disabled>Verificar Devnet e saldo</button>
+      <div class="msg" id="wallet_balance">Saldo Devnet: nao consultado</div>
+      <div class="msg" id="wallet_network_msg" role="status" aria-live="polite">Conecte e autentique a carteira para consultar Devnet.</div>
+      <details><summary>Como ativar Solana Devnet na Phantom</summary>
+        <p class="hint">A Devnet nao precisa ser instalada. Na extensao: avatar/perfil → Settings (Configuracoes) → Developer Settings → ativar Testnet Mode → escolher Solana Devnet. Confira o aviso de modo de teste na carteira.</p>
+        <p class="hint">A rede selecionada na extensao nao e informada por esta conexao Wallet Standard. Confirme na propria carteira. Suporte Devnet anunciado e saldo consultado pelo painel nao comprovam essa selecao.</p>
+        <p class="hint"><a href="https://help.phantom.com/articles/use-testnets-in-phantom-5997313271699" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Guia oficial da Phantom</a> · Para outras carteiras, use as configuracoes e a documentacao do aplicativo.</p>
+      </details>
       <div class="msg">Conectar permite ver o endereco. Autenticar pede assinatura de uma mensagem, sem compra ou transferencia de SOL. Minhas Skills e licencas ainda nao implementadas. A execucao experimental abaixo continua independente da carteira.</div>
       <div class="msg"><a href="https://phantom.com/download" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Instalar Phantom pelo site oficial</a> · Use uma carteira nova de teste no Chrome.</div>
     </div>

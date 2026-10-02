@@ -9,6 +9,7 @@ import time
 import uuid
 import solana_skill
 import wallet_auth
+import wallet_network
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,7 +24,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WALLET-05"
+APP_VERSION = "JRBOT-PANEL-V1S-WALLET-06"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -296,6 +297,23 @@ class Handler(BaseHTTPRequestHandler):
             token = wallet_auth.cookie_token(self.headers.get("Cookie"))
             status = wallet_auth.STORE.status(token, "http://" + self.headers["Host"])
             self._send(200, json.dumps(status), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/devnet":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira antes de consultar Devnet e saldo")
+                return
+            try:
+                result = wallet_network.inspect(status["address"])
+                after = wallet_auth.STORE.status(token, origin)
+                if not after.get("authenticated") or after.get("address") != status["address"]:
+                    self._send(401, "Sessao alterada ou expirada durante a consulta")
+                    return
+            except (ValueError, TimeoutError, OSError) as exc:
+                self._send(502, "Consulta Devnet nao confirmada: " + str(exc))
+                return
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
