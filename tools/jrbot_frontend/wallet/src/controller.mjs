@@ -1,4 +1,4 @@
-// Connection only: no signing, transactions, RPC, persistence or authentication.
+// Connection lifecycle only; message authentication is isolated in auth.mjs.
 const CHAIN = 'solana:devnet';
 export function supportedWallet(wallet) {
   return wallet.chains?.includes(CHAIN) &&
@@ -21,15 +21,15 @@ export function createWalletController(registry, changed, log = () => {}) {
   function setAccounts(next) {
     accounts = accountsFor(active, next);
     if (!accounts.some(account => account.address === address)) address = accounts[0]?.address || '';
-    message = address ? 'Conectada. Autenticacao, licencas e compra ainda nao implementadas.' :
+    message = address ? 'Conectada. Clique Autenticar carteira para confirmar o controle da conta.' :
       'Sem conta Solana compativel com Devnet autorizada. Confira a extensao.';
-    log('JR_WALLET state=' + (address ? 'connected' : 'disconnected') + ' address=' + (address || 'none') + ' authenticated=false');
+    log('JR_WALLET state=' + (address ? 'connected' : 'disconnected') + ' address=' + (address || 'none') + ' scope=connection');
   }
   function refresh() {
     wallets = registry.get().filter(supportedWallet);
     if (active && !wallets.includes(active)) {
       clear(); message = 'Carteira removida. Escolha outra extensao.';
-      log('JR_WALLET state=removed authenticated=false');
+      log('JR_WALLET state=removed scope=connection');
     }
     if (!wallets.length) message = 'Nenhuma extensao Solana compativel detectada. Instale a Phantom no Chrome e recarregue o painel.';
     emit();
@@ -62,7 +62,7 @@ export function createWalletController(registry, changed, log = () => {}) {
         clear();
         message = error.code === 4001 ? 'Conexao recusada. Nenhuma compra ou assinatura foi enviada.' :
           'Nao foi possivel conectar. Desbloqueie a extensao e tente novamente.';
-        log('JR_WALLET state=connection_failed authenticated=false');
+        log('JR_WALLET state=connection_failed scope=connection');
       } finally {
         if (attempt === generation) pending = false;
         emit();
@@ -71,7 +71,7 @@ export function createWalletController(registry, changed, log = () => {}) {
     selectAccount(next) {
       if (pending || !accounts.some(account => account.address === next)) return;
       address = next;
-      log('JR_WALLET state=account_changed address=' + address + ' authenticated=false');
+      log('JR_WALLET state=account_changed address=' + address + ' scope=connection');
       emit();
     },
     async disconnect() {
@@ -83,7 +83,7 @@ export function createWalletController(registry, changed, log = () => {}) {
       finally {
         pending = false;
         if (message === 'Desconectando...') message = 'Carteira desconectada do painel.';
-        log('JR_WALLET state=disconnected authenticated=false'); emit();
+        log('JR_WALLET state=disconnected scope=connection'); emit();
       }
     }
   };

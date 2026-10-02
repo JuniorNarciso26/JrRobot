@@ -48,7 +48,7 @@ test('explicit connection, account selection, account change and revocation clea
   f.controller.selectAccount('unapproved'); assert.equal(f.state.address, 'B');
   w.change([account('C')]); assert.equal(f.state.address, 'C');
   w.change([]); assert.equal(f.state.address, '');
-  assert.ok(f.logs.every(line => line.includes('authenticated=false')));
+  assert.ok(f.logs.every(line => line.includes('scope=connection')));
 });
 
 test('switching provider disconnects old extension and ignores its later events', async () => {

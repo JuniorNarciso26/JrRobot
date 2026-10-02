@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 import solana_skill
+import wallet_auth
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,7 +23,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WALLET-04"
+APP_VERSION = "JRBOT-PANEL-V1S-WALLET-05"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -249,7 +250,7 @@ class Handler(BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(10)
 
-    def _send(self, code=200, body="", ctype="text/plain; charset=utf-8"):
+    def _send(self, code=200, body="", ctype="text/plain; charset=utf-8", cookie=None):
         if isinstance(body, str):
             body = body.encode("utf-8")
         self.send_response(code)
@@ -257,6 +258,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         try:
             self.wfile.write(body)
@@ -289,6 +292,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (ROOT / "panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
         elif path.path == "/wallet_panel.js":
             self._send(200, (ROOT / "wallet_panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/jrskill/wallet/status":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            status = wallet_auth.STORE.status(token, "http://" + self.headers["Host"])
+            self._send(200, json.dumps(status), "application/json; charset=utf-8")
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
@@ -356,7 +363,29 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Corpo incompleto")
             data = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True, max_num_fields=12, errors="strict")
             get = lambda key, default="": data.get(key, [default])[0]
-            if self.path == "/connect":
+            if self.path.startswith("/jrskill/wallet/"):
+                origin = "http://" + self.headers["Host"]
+                if self.headers.get("Origin") != origin:
+                    self._send(403, "Origem local obrigatoria para autenticacao")
+                    return
+                token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+                cookie = None
+                if self.path == "/jrskill/wallet/challenge":
+                    token, result = wallet_auth.STORE.challenge(token, origin, get("address"))
+                    cookie = f"{wallet_auth.COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age={wallet_auth.SESSION_TTL}"
+                elif self.path == "/jrskill/wallet/verify":
+                    result = wallet_auth.STORE.verify(token, origin, get("id"), get("signature"))
+                    cookie = f"{wallet_auth.COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age={wallet_auth.SESSION_TTL}"
+                    add_log("JR_WALLET_AUTH state=authenticated address=" + result["address"])
+                elif self.path == "/jrskill/wallet/logout":
+                    wallet_auth.STORE.logout(token)
+                    result = {"authenticated": False}
+                    cookie = f"{wallet_auth.COOKIE}=; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age=0"
+                else:
+                    self._send(404, "Rota nao encontrada")
+                    return
+                self._send(200, json.dumps(result), "application/json; charset=utf-8", cookie=cookie)
+            elif self.path == "/connect":
                 if serial is None:
                     raise RuntimeError("pyserial nao instalado; instale requirements.txt")
                 port = get("port").strip()

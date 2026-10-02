@@ -1,9 +1,12 @@
 import { getWallets } from '@wallet-standard/app';
 import { createWalletController } from './controller.mjs';
+import { createAuthenticator } from './auth.mjs';
 
 const element = id => document.getElementById(id);
 const walletSelect = element('wallet_provider'), accountSelect = element('wallet_account');
 let current, copiedAddress = '';
+let authenticator;
+const localLog = line => { if (typeof localLine === 'function') localLine(line); };
 function options(select, items, selected, placeholder) {
   select.replaceChildren();
   if (!items.length) {
@@ -38,7 +41,26 @@ const controller = createWalletController(getWallets(), state => {
   element('wallet_refresh').disabled = state.pending;
   element('wallet_copy').disabled = !state.address;
   if (copiedAddress !== state.address) element('wallet_copy').textContent = 'Copiar endereco';
-}, line => { if (typeof localLine === 'function') localLine(line); });
+  authenticator?.observe(state);
+}, localLog);
+
+authenticator = createAuthenticator(async (operation, data) => {
+  const options = data === undefined ? {} : { method: 'POST', headers: {
+    'X-JrBot-Panel': '1', 'Content-Type': 'application/x-www-form-urlencoded'
+  }, body: new URLSearchParams(data) };
+  const response = await fetch('/jrskill/wallet/' + operation, { ...options, credentials: 'same-origin', signal: AbortSignal.timeout(10000) });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}, state => {
+  element('wallet_authenticate').disabled = !state.canSign || state.pending || current.pending;
+  element('wallet_authenticate').textContent = state.pending ? 'Aguardando assinatura...' : state.authenticated ? 'Autenticar novamente' : 'Autenticar carteira';
+  element('wallet_state').textContent = current.address ? (state.authenticated ? 'Conectada — autenticada' : 'Conectada — nao autenticada') : 'Desconectada';
+  if (state.message) element('wallet_msg').textContent = state.message;
+  else if (current.address && !state.canSign) element('wallet_msg').textContent = 'Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.';
+}, localLog);
+authenticator.observe(current);
+element('wallet_authenticate').addEventListener('click', () => authenticator.authenticate());
+setInterval(() => authenticator.check(), 10000);
 
 element('wallet_connect').addEventListener('click', () => controller.connect(current.wallets[Number(walletSelect.value)]));
 element('wallet_disconnect').addEventListener('click', () => controller.disconnect());
@@ -52,4 +74,4 @@ element('wallet_copy').addEventListener('click', async () => {
     if (current.address === address) { copiedAddress = address; element('wallet_copy').textContent = 'Endereco copiado'; }
   } catch (_) { element('wallet_msg').textContent = 'Selecione o endereco exibido e copie manualmente.'; }
 });
-window.addEventListener('focus', () => controller.refresh());
+window.addEventListener('focus', () => { controller.refresh(); authenticator.check(); });

@@ -10,7 +10,7 @@ echo Para encerrar o painel, volte a esta janela e pressione ENTER.
 echo.
 where python >nul 2>nul
 if errorlevel 1 goto sem_python
-python -c "import serial" >nul 2>nul
+python -c "import serial; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey; import importlib.metadata; assert importlib.metadata.version('cryptography') == '50.0.1'" >nul 2>nul
 if errorlevel 1 (
   python -m pip install -r "%~dp0tools\jrbot_frontend\requirements.txt"
   if errorlevel 1 goto falha
