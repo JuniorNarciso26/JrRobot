@@ -65,6 +65,23 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
+    <h2>Carteira JrSkill</h2>
+    <div class="autonomous" id="wallet_box">
+      <span class="pill">Ambiente do painel: Solana Devnet</span>
+      <span class="pill" id="wallet_state">Desconectada</span>
+      <label for="wallet_provider">Carteira instalada</label>
+      <select id="wallet_provider"><option>Carregando carteiras...</option></select>
+      <button id="wallet_connect" class="green" disabled>Conectar carteira</button>
+      <button id="wallet_refresh" class="gray">Atualizar carteiras</button>
+      <label id="wallet_account_label" for="wallet_account" hidden>Conta autorizada</label>
+      <select id="wallet_account" hidden></select>
+      <div class="msg" id="wallet_address" style="user-select:all">Nenhuma carteira conectada</div>
+      <button id="wallet_copy" class="gray" disabled>Copiar endereco</button>
+      <button id="wallet_disconnect" class="red" disabled>Desconectar carteira</button>
+      <div class="msg" id="wallet_msg" role="status" aria-live="polite">Carregando conexao de carteira. Se esta mensagem continuar, recarregue com Ctrl+Shift+R.</div>
+      <div class="msg">Teste de conexao: nao solicita assinatura, compra ou chave privada. Minhas Skills e licencas ainda nao implementadas. A execucao experimental abaixo continua independente da carteira.</div>
+      <div class="msg"><a href="https://phantom.com/download" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Instalar Phantom pelo site oficial</a> · Use uma carteira nova de teste no Chrome.</div>
+    </div>
     <h2>JrSkill JSON v1</h2>
     <div class="autonomous" id="jrskill_api_box">
       <span id="jrskill_devnet_status" class="pill">Solana Devnet: verificando...</span>
@@ -137,6 +154,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
   </section>
 </main>
 <script src="/panel.js"></script>
+<script src="/wallet_panel.js"></script>
 <script>
 let autonomousEnabled=false;
 async function wifiBoardData(){

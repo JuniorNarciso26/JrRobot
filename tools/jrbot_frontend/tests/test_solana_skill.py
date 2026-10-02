@@ -78,7 +78,7 @@ class SolanaSkillTests(unittest.TestCase):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{server.server_port}/") as response:
                 html = response.read().decode()
-                self.assertIn("JRBOT-PANEL-V1S-SOLANA-03", html)
+                self.assertIn(app.APP_VERSION, html)
                 self.assertIn("Executar Skill da Devnet", html)
                 self.assertIn("Executar Skill JSON local", html)
             status_url = url.replace("skill-devnet", "devnet-status")

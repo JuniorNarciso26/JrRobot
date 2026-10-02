@@ -22,7 +22,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SOLANA-03"
+APP_VERSION = "JRBOT-PANEL-V1S-WALLET-04"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -287,6 +287,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (ROOT / "index.html").read_text(encoding="utf-8").replace("{APP_VERSION}", APP_VERSION), "text/html; charset=utf-8")
         elif path.path == "/panel.js":
             self._send(200, (ROOT / "panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/wallet_panel.js":
+            self._send(200, (ROOT / "wallet_panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
         elif path.path == "/jrskill/api-sequence":
             sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
             self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
