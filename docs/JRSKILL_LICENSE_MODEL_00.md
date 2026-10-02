@@ -4,11 +4,11 @@
 
 Desenho da proxima prova isolada na `V1s-00`, conforme a [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). A [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) continua com integracao, autenticacao no painel e execucao fisica.
 
-**Estado: arquitetura proposta e plano de teste; compra e License PDA ainda nao implementadas.** Este documento nao representa build, upgrade, deploy ou teste realizado.
+**Estado: implementacao, compilacao SBF/IDL e testes no validator local realizados em 02/10/2026. Upgrade e compra da licenca na Devnet ainda pendentes.** A Skill original publicada na Devnet foi consultada novamente e continua identica. O procedimento e os resultados da implementacao estao no [checkpoint da compra 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
 
 O escopo comercial 00 continua sendo compra, repasse e registro da licenca. Atualizacao de ordem em 02/10/2026: por decisao do usuario, antecipamos uma prova somente de conexao da carteira no painel, documentada na [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md). Ela nao implementa compra ou licenciamento. A numeracao comercial 00/01/02 e independente do schema JSON v1 e do firmware JrBot_V1S_00.
 
-## Desenho minimo proposto
+## Desenho minimo da 00
 
 Manter um unico programa JrSkill e preservar o layout da Skill existente. Nenhuma nova instrucao deve modificar seu payload, authority, schema ou hash.
 
@@ -79,7 +79,17 @@ Publicar os termos da prova e registrar uma compra com assinatura, enderecos pub
 - Testes locais de compra, repasse, permissao, duplicidade e rollback.
 - Relatorio de evidencias que separe analise estatica, compilacao, teste local e Devnet.
 
-Sem carteira no painel, alteracao de firmware, novas Recipes, mudanca no JSON v1, NFT, revenda ou expansao do marketplace nesta primeira prova. A futura verificacao de licenca no painel nao torna o JSON publico impossivel de copiar.
+Sem compra pela carteira do painel, alteracao de firmware, novas Recipes, mudanca no JSON v1, NFT, revenda ou expansao do marketplace nesta primeira prova. A conexao/autenticacao da carteira ja existe no painel. A futura verificacao de licenca nao torna o JSON publico impossivel de copiar.
+
+## Decisoes implementadas em 02/10/2026
+
+Configuracao `["market", "00"]` imutavel, inicializada somente pelo signer que corresponde a autoridade de upgrade no ProgramData do proprio JrSkill. Oferta `["offer", "00", Skill]` imutavel e assinada por `Skill.authority`. Licenca `["license", comprador, Skill]`, modelo 0, sem instrucoes de alteracao, transferencia ou encerramento nesta prova.
+
+A compra exige recebedores correspondentes a oferta/configuracao e um limite maximo de preco. Comprador diferente do criador e do recebedor da comissao nesta 00; evita apresentar uma transferencia para si mesmo como pagamento externo. Criador e tesouraria podem coincidir, caso em que recebem o preco agregado. Carteiras recebedoras devem ser contas do System Program.
+
+O comprador paga preco e deposito da licenca; o fee payer da transacao paga a taxa de rede. No script de compra os dois papeis sao o comprador. Nos testes locais o administrador paga a taxa para permitir comparar os saldos do comprador e recebedores exatamente. Preco/percentual sao argumentos explicitos, sem tabela comercial definitiva. Calculo de comissao usa u128 intermediario e resultado u64, incluindo o maior preco u64 sem overflow de multiplicacao.
+
+Novas instrucoes: `initialize_market`, `create_offer`, `buy_license`. Os discriminadores, seeds e campos de `Skill` e a instrucao `create_skill` foram preservados. Os erros anteriores continuam na mesma ordem. O programa permanece atualizavel; a imutabilidade das contas descreve as instrucoes da versao atual, nao uma promessa de impossibilidade de upgrade futuro.
 
 ## Evolucao
 
