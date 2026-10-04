@@ -1,29 +1,29 @@
+<div align="center">
+
+<img src="docs/assets/readme/jrbot-logo.svg" alt="JrBot logo" width="360">
+
 # JrBot
 
-<p align="center">
-  <img src="docs/assets/readme/jrbot-hero.svg" alt="JrBot - open-source physical AI robot" width="100%">
-</p>
+**Open-source Physical AI Robot powered by ESP32-S3**  
+See. Hear. Speak. Connect. Express.
+
+<img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
+<img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
+<img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
+<img src="https://img.shields.io/badge/stable-JrBot__V1.7.04-brightgreen" alt="Stable release">
+<img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
+
+[Website](https://jrbot.com.br) ·
+[Build your own](#build-your-own-jrbot) ·
+[Documentation](docs/README.md) ·
+[Roadmap](docs/ROADMAP.md) ·
+[Contribute](CONTRIBUTING.md) ·
+[JrSkill Network](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
+
+</div>
 
 <p align="center">
-  <strong>Open-source Physical AI Robot powered by ESP32-S3</strong><br>
-  See. Hear. Speak. Connect. Express.
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
-  <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
-  <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-  <img src="https://img.shields.io/badge/stable-JrBot__V1.7.04-brightgreen" alt="Stable release">
-  <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
-</p>
-
-<p align="center">
-  <a href="https://jrbot.com.br">Website</a> ·
-  <a href="#build-your-own-jrbot">Build your own</a> ·
-  <a href="docs/README.md">Documentation</a> ·
-  <a href="docs/ROADMAP.md">Roadmap</a> ·
-  <a href="CONTRIBUTING.md">Contribute</a> ·
-  <a href="https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00">JrSkill Network</a>
+  <img src="docs/assets/readme/jrbot-demo.gif" alt="JrBot physical robot demo" width="360">
 </p>
 
 ## AI is leaving the screen.
