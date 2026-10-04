@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff644f"/>
+      <stop offset="35%" stop-color="#ff2ca8"/>
+      <stop offset="72%" stop-color="#d400ff"/>
+      <stop offset="100%" stop-color="#6a00ff"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="28%" stop-color="#eef2ff"/>
+      <stop offset="46%" stop-color="#ff6262"/>
+      <stop offset="68%" stop-color="#ff10b7"/>
+      <stop offset="100%" stop-color="#9f00ff"/>
+    </linearGradient>
+    <radialGradient id="screen" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#13051f"/>
+      <stop offset="70%" stop-color="#07020d"/>
+      <stop offset="100%" stop-color="#020206"/>
+    </radialGradient>
+    <radialGradient id="lens" cx="45%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#60e7ff"/>
+      <stop offset="35%" stop-color="#3177ff"/>
+      <stop offset="65%" stop-color="#10154c"/>
+      <stop offset="100%" stop-color="#02030d"/>
+    </radialGradient>
+    <filter id="glowPink" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowSoft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#6a00ff" flood-opacity=".42"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(110 70)" filter="url(#shadow)">
+    <rect x="95" y="120" width="790" height="440" rx="125" fill="url(#frame)" opacity=".28" filter="url(#glowPink)"/>
+    <rect x="105" y="35" width="770" height="520" rx="135" fill="#f7f5ff"/>
+    <rect x="128" y="58" width="724" height="474" rx="116" fill="url(#frame)"/>
+    <rect x="158" y="88" width="664" height="414" rx="95" fill="#13001e"/>
+    <rect x="176" y="106" width="628" height="378" rx="82" fill="url(#screen)" stroke="#2a1237" stroke-width="6"/>
+
+    <rect x="20" y="170" width="115" height="245" rx="58" fill="url(#frame)" opacity=".95"/>
+    <rect x="845" y="170" width="115" height="245" rx="58" fill="url(#frame)" opacity=".95"/>
+    <rect x="45" y="190" width="70" height="205" rx="34" fill="#f7f3ff" opacity=".78"/>
+    <rect x="865" y="190" width="70" height="205" rx="34" fill="#f7f3ff" opacity=".78"/>
+
+    <circle cx="490" cy="118" r="34" fill="#ff1fae" filter="url(#glowSoft)"/>
+    <circle cx="490" cy="118" r="23" fill="#12132d"/>
+    <circle cx="490" cy="118" r="15" fill="url(#lens)"/>
+    <circle cx="484" cy="112" r="5" fill="#dffcff"/>
+
+    <path d="M250 220 Q300 175 350 215" fill="none" stroke="#ff66f2" stroke-width="18" stroke-linecap="round" filter="url(#glowSoft)"/>
+    <path d="M630 215 Q680 175 735 220" fill="none" stroke="#d96cff" stroke-width="18" stroke-linecap="round" filter="url(#glowSoft)"/>
+
+    <g filter="url(#glowSoft)">
+      <circle cx="310" cy="325" r="66" fill="none" stroke="#fff" stroke-width="24"/>
+      <circle cx="680" cy="325" r="66" fill="none" stroke="#fff" stroke-width="24"/>
+      <circle cx="330" cy="300" r="15" fill="#fff"/>
+      <circle cx="700" cy="300" r="15" fill="#fff"/>
+      <path d="M420 408 Q490 470 560 408" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round"/>
+    </g>
+
+    <path d="M205 130 L430 130 L310 300 L190 300 Z" fill="#fff" opacity=".06"/>
+  </g>
+
+  <text x="600" y="815" text-anchor="middle"
+        font-family="Arial Rounded MT Bold, Arial Black, Arial, sans-serif"
+        font-size="215" font-weight="900"
+        letter-spacing="-12"
+        fill="url(#word)"
+        stroke="#22062d" stroke-width="9"
+        paint-order="stroke"
+        filter="url(#glowSoft)">JrBot</text>
+</svg>
