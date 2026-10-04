@@ -1,163 +1,200 @@
 # JrBot
 
 <p align="center">
-  <img src="docs/assets/readme/jrbot-hero.svg" alt="JrBot - physical AI presence" width="100%">
+  <img src="docs/assets/readme/jrbot-hero.svg" alt="JrBot - open-source physical AI robot" width="100%">
 </p>
 
-**An AI that moves beyond being just a tool and becomes a physical presence.**
+<p align="center">
+  <strong>Open-source Physical AI Robot powered by ESP32-S3</strong><br>
+  See. Hear. Speak. Connect. Express.
+</p>
 
-**JrBot** is an open-source physical AI robot based on the ESP32-S3. It combines an expressive OLED face, camera, microphone, speaker, Wi-Fi, a local web interface and real-time communication, while evolving toward local voice control, memory, personality, Skills and remote connectivity.
+<p align="center">
+  <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
+  <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
+  <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
+  <img src="https://img.shields.io/badge/stable-JrBot__V1.7.04-brightgreen" alt="Stable release">
+  <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
+</p>
 
-The current stable release is **`JrBot_V1.7.04`**.
+<p align="center">
+  <a href="https://jrbot.com.br">Website</a> ·
+  <a href="#build-your-own-jrbot">Build your own</a> ·
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/ROADMAP.md">Roadmap</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00">JrSkill Network</a>
+</p>
+
+## AI is leaving the screen.
+
+Most AI assistants live inside a browser, phone or computer.
+
+**JrBot explores a different idea: what happens when AI has a physical presence?**
+
+JrBot is an open-source robot built around the **ESP32-S3**. It combines vision, audio, an expressive OLED face, Wi-Fi and real-time communication in a platform designed to evolve toward local voice control, memory, personality, Skills and remote connectivity.
 
 > **JrBot was not created only to answer. It was created to be there.**
 
-<p align="center">
-  <strong>Open-source ESP32-S3 robot with voice, camera, WebRTC, expressive OLED face and an evolving AI architecture.</strong>
-</p>
+The current stable release is **JrBot_V1.7.04**.
 
-## JrSkill Network — official parallel line
+## What JrBot does
 
-**JrSkill Network (V1S)** is an official parallel line of the JrBot project focused on portable, declarative Skills for physical AI.
+| Capability | Current implementation |
+| --- | --- |
+| **See** | OV5640 camera with photo capture, browser preview and Live video |
+| **Hear** | MS3625 I2S microphone with recording and WebRTC audio |
+| **Speak** | MAX98357A audio output, playback and audio received from phone/computer |
+| **Express** | SSD1306 OLED face with selectable expressions |
+| **Connect** | Wi-Fi, local HTTPS, responsive web interface and WebRTC |
+| **Interact** | Direct control from phone or computer on the local network |
 
-Its objective is to study an architecture where Skills can be published, versioned and licensed through **Solana**, while execution remains protected by a local Skill Executor and controlled JrBot capabilities. Blockchain data must never gain direct access to GPIO, drivers or arbitrary native code on the ESP32.
+The intelligence layers are evolving on top of this physical foundation. Stable V1 focuses on the connected robot platform; local voice, programmatic capabilities, JrBrain and Skills evolve in dedicated project lines.
 
-This line is intentionally separated from the stable product release:
+## What works today
 
-- stable product: **`JrBot_V1.7.04`** on `main`;
-- JrSkill / Solana line: **`JrBot_V1S_00`** on `V1s-00`;
-- local voice line: `v2`.
+**Stable release: JrBot_V1.7.04**
 
-Detailed development stages, experiments, proofs and implementation notes for JrSkill Network are maintained **only in the `V1s-00` branch** until that work is intentionally integrated into the main product.
+The current HW04 baseline has been physically validated with:
 
-**Branch:** [`V1s-00`](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)  
-**Technical context:** [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)  
-**Colosseum:** https://colosseum.com/arena/projects/jrskill-network
+- ✅ ESP32-S3 firmware;
+- ✅ OV5640 camera;
+- ✅ expressive SSD1306 OLED face;
+- ✅ MS3625 microphone;
+- ✅ MAX98357A speaker output;
+- ✅ mobile and desktop web interface;
+- ✅ local HTTPS;
+- ✅ microphone recording and playback;
+- ✅ real I2S full-duplex with shared BCLK and WS;
+- ✅ bidirectional WebRTC Live audio;
+- ✅ OV5640 JPEG video over WebRTC DataChannel/SCTP;
+- ✅ centralized mode and I2S resource management.
 
-## Contributing to JrBot
+In the final V1.7.04 physical validation, microphone, playback and Live acquired and released I2S through the central resource manager, ownership returned to none, WebRTC connected and stopped normally, and no reset/watchdog was observed.
 
-**JrBot is open source** and welcomes contributions from people interested in robotics, embedded systems, audio, computer vision, interfaces and artificial intelligence.
+**Current limitation:** Live is local-network only. Internet connectivity, STUN/TURN and remote signaling remain future work.
 
-You do not need to understand the entire project or own a complete JrBot to contribute. Documentation, tests, frontend work, tooling and isolated firmware improvements can all be developed and reviewed independently.
+## Build your own JrBot
 
-### Areas where you can help
+JrBot is designed to be built, modified and extended.
 
-- **ESP32-S3 / ESP-IDF** — firmware, drivers, memory, Wi-Fi and embedded architecture;
-- **Audio and DSP** — I2S, full-duplex, echo/AEC, codecs and voice processing;
-- **WebRTC and networking** — real-time communication, signaling and remote-access evolution;
-- **Frontend** — responsive web UI, mobile experience and diagnostic tools;
-- **Camera and vision** — OV5640, capture, streaming and future computer-vision capabilities;
-- **Electronics and hardware** — power, audio, sensors, boards and integration reviews;
-- **Mechanical design / 3D printing** — body, mounts, fittings and physical evolution;
-- **Testing and documentation** — automated tests, technical documentation, guides and examples;
-- **AI / JrBrain** — future memory, personality, context, LLM and Skills architecture;
-- **Solana / JrSkill Network** — wallet integration, PDA design, Skill schema and on-chain distribution.
+### Reference hardware
 
-### How to start
+| Component | Role |
+| --- | --- |
+| **ESP32-S3 N16R8** | Main controller |
+| **OV5640** | Camera |
+| **SSD1306 OLED** | Face and expressions |
+| **MS3625 I2S** | Microphone |
+| **MAX98357A** | Audio amplifier |
+| **Speaker** | Audio output |
+| **Wi-Fi** | Local connectivity |
 
-1. Read the [contribution guide](CONTRIBUTING.md) and the [technical documentation](docs/README.md).
-2. Review the [open Issues](https://github.com/JuniorNarciso26/JrRobot/issues) and choose a problem or improvement with a clear scope.
-3. Comment on the Issue before starting a large implementation so the approach can be aligned and duplicate work avoided.
-4. Work on a small, isolated change, preferably in a fork or dedicated branch.
-5. Open a Pull Request describing what was implemented, what was compiled/tested, and what still requires physical validation.
+### HW04 shared I2S wiring
 
-The project aims to keep a technical history that remains understandable over time:
+| Signal | GPIO |
+| --- | ---: |
+| BCLK / SCK | 21 |
+| WS / LRCLK | 47 |
+| MS3625 SD | 41 |
+| MAX98357A DIN | 42 |
 
-```text
-Issue
-  ↓
-research / architecture
-  ↓
-branch
-  ↓
-implementation
-  ↓
-test
-  ↓
-Pull Request
-  ↓
-decision
-```
+BCLK and WS are intentionally shared between microphone RX and amplifier TX.
 
-Small contributions are welcome. A documentation fix, test, diagram, interface improvement or isolated proof can be as useful as a large firmware change.
+### Firmware installation
+
+For the current Windows development flow:
+
+1. Clone or download this repository.
+2. Connect the ESP32-S3 through USB.
+3. Run **INSTALAR.bat** from the repository root.
+4. Follow the installer/flash flow.
+5. Confirm the firmware version in the device log/status after installation.
+
+For development details, see the [Development Guide](docs/DEVELOPMENT.md) and [Testing Guide](docs/TESTING.md).
+
+## Architecture at a glance
+
+~~~text
+Phone / computer
+        |
+      Wi-Fi
+        |
+ local web interface
+        |
+    ESP32-S3
+   /    |      OLED  camera  audio
+              /          microphone speaker
+~~~
+
+The current firmware keeps physical resources controlled by explicit subsystems. A unified capability layer continues to evolve so future Skills and AI layers can request safe operations without exposing raw GPIO or arbitrary native execution.
+
+## Active project lines
+
+JrBot development is intentionally split into separate lines so experiments do not destabilize the validated product.
+
+| Line | Purpose | Status |
+| --- | --- | --- |
+| **main** | Official stable product | **JrBot_V1.7.04** |
+| **develop** | Integration of validated future work | Active development baseline |
+| **V1s-00** | JrSkill Network / Solana / portable Skills | **Official parallel line — active** |
+| **v2** | Local voice control | Next product line |
+| **v1** | Historical V1 reference | Reference |
+
+### JrSkill Network is actively evolving
+
+The **V1S / JrSkill Network** work remains linked to the main JrBot project but is intentionally developed in its own branch.
+
+- **Branch:** [V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
+- **Technical tracking:** [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33)
+- **Hackathon project:** [JrSkill Network on Colosseum](https://colosseum.com/arena/projects/jrskill-network)
+- **Development log:** [V1S Hackathon Development Log](https://github.com/JuniorNarciso26/JrRobot/blob/V1s-00/docs/HACKATHON_DEVLOG.md)
+
+Detailed V1S implementation stages, experiments and proofs stay in that branch until an explicit integration decision is made.
 
 ## JrBot V1 — current stable capabilities
 
-Official release: **`JrBot_V1.7.04`**
-
-V1 turns the JrBot electronics platform into a robot that can be used directly from a web browser on the local network.
-
-### What's new in V1.7.04
-
-`JrBot_V1.7.04` closes the current V1 performance review and consolidates the validated HW04 baseline.
-
-Main accumulated improvements:
-
-- local WebRTC Live with bidirectional PCMA/G.711A 8 kHz audio and OV5640 JPEG video over DataChannel/SCTP;
-- real I2S full-duplex on ESP32-S3 with shared BCLK GPIO21 and WS GPIO47 for RX and TX;
-- reduced App interference by removing recurring automatic `/status` polling;
-- first central `jr_mode_manager`, physically validated in the `idle -> live -> idle` flow;
-- first `jr_resource_manager` for the shared I2S resource;
-- explicit I2S ownership for `mic`, `playback` and `live`;
-- telemetry for I2S acquisitions, releases, busy events and release mismatches;
-- MS3625 recording and MAX98357A playback preserved;
-- OV5640 photo and Live behavior preserved with the physically confirmed -90° / 270° orientation;
-- memory/PSRAM policy preserved so ICE/DTLS/SCTP, camera and audio can operate together.
-
-In the final physical validation, microphone, playback and Live acquired and released I2S through the central resource manager, `i2s_release_mismatch=0`, ownership returned to `none`, WebRTC connected and stopped normally, and no reset/watchdog was observed.
-
-The Live feature is still local-network only. Internet connectivity, STUN/TURN and remote signaling remain future work. Local recognition with ESP-SR/MultiNet belongs to the V2 voice line and is not part of the stable V1.7.04 baseline.
-
 ### Control from phone or computer
 
-JrBot serves its own web interface directly from the ESP32-S3. On the same local network, a user can access the robot from a browser without depending on the Python development panel.
+JrBot serves its own web interface directly from the ESP32-S3. On the same local network, users can access the robot from a browser without depending on the Python development panel.
 
-The interface supports both **desktop and mobile** and provides access to the robot's main functions and status.
+The interface supports desktop and mobile use and exposes the robot's main functions and diagnostics.
 
 ### Expressive OLED face
 
-JrBot uses an SSD1306 OLED as its digital face.
+The SSD1306 OLED acts as JrBot's digital face.
 
-The interface can:
+The current interface can:
 
 - select expressions;
 - change the face in real time;
-- show the active expression;
+- report the active expression;
 - provide the visual foundation for future emotional and behavioral responses.
 
 ### OV5640 camera
 
-V1 integrates the camera into the JrBot interface.
-
-Available features include:
+Current camera features include:
 
 - photo capture;
 - browser preview;
-- live camera mode;
+- Live camera mode;
 - QVGA, VGA and SVGA resolutions;
 - JPEG quality adjustment;
 - FPS and frame-size metrics;
-- physically confirmed camera orientation at -90° / 270°;
-- JPEG generation consistent with the configured orientation.
+- physically confirmed camera orientation at -90° / 270°.
 
-### JrBot microphone
+### Microphone and audio
 
-The MS3625 microphone can be used directly from the interface.
+The MS3625 microphone and MAX98357A output support:
 
-V1 supports:
-
-- recording audio with JrBot;
-- selecting the recording duration within defined limits;
-- listening to a recording in the browser;
-- downloading the WAV file;
-- replaying the latest recording through JrBot's own speaker;
-- microphone status information.
-
-### Sending audio to JrBot
-
-Audio messages can also be sent from a phone or computer to the robot.
-
-This allows JrBot to act as a physical audio endpoint using the MAX98357A amplifier and integrated speaker.
+- microphone recording;
+- selectable recording duration within defined limits;
+- WAV playback in the browser;
+- download of recorded audio;
+- replay through JrBot's speaker;
+- received audio messages;
+- volume adjustment;
+- audio tests and diagnostics.
 
 ### Full-duplex WebRTC Live
 
@@ -165,161 +202,178 @@ The main real-time communication flow in V1.7.04 is a bidirectional local Live s
 
 When Live starts:
 
-- the MS3625 sends audio from JrBot to the browser through WebRTC;
-- the phone microphone sends audio to the MAX98357A through WebRTC;
-- the OV5640 sends JPEG frames through a DataChannel in the same session;
+- MS3625 sends audio from JrBot to the browser through WebRTC;
+- the phone microphone sends audio to MAX98357A through WebRTC;
+- OV5640 sends JPEG frames through a DataChannel in the same session;
 - I2S BCLK and WS remain shared between RX and TX;
 - either audio direction can be muted without ending the session.
 
-The previous PTT flow is no longer the primary interface path. The current transport was physically validated on the local network and is designed to support future WebRTC evolution.
+The current transport was physically validated on the local network and is designed to leave room for future Internet WebRTC evolution.
 
-### Audio and volume
+### Resource management
 
-The interface can:
+V1.7.04 consolidates the first central runtime control for the validated HW04 baseline:
 
-- adjust volume;
-- run an audio test;
-- replay recordings;
-- play received audio messages;
-- inspect audio-system status.
+- central jr_mode_manager;
+- central jr_resource_manager;
+- explicit I2S ownership for mic, playback and Live;
+- telemetry for acquisitions, releases, busy events and release mismatches;
+- memory/PSRAM policy preserved so ICE/DTLS/SCTP, camera and audio can operate together.
 
-The MAX98357A handles output, while `jr_resource_manager` arbitrates the shared I2S resource between microphone, playback and Live.
+### Wi-Fi and local HTTPS
 
-### Wi-Fi and local access
+The stable V1 flow includes:
 
-JrBot V1 is designed to join a local network with minimal setup.
+- DHCP by default;
+- automatic IP assignment;
+- Wi-Fi status and diagnostics;
+- persisted network configuration;
+- reconnection support;
+- local HTTPS for modern browser features such as microphone access, getUserMedia and MediaRecorder.
 
-Features include:
+## What makes JrBot different
 
-- DHCP as the default behavior;
-- automatic IP assignment by the router;
-- current IP display;
-- Wi-Fi connection status;
-- network configuration and diagnostics;
-- persisted configuration inspection;
-- reconnection support in the Wi-Fi layer.
+JrBot is not only a chatbot placed inside a robot shell.
 
-The product does not require a manually configured static IP for normal operation.
+The project is building the physical layers first:
 
-### Local HTTPS
+**camera → eyes**  
+**microphone → ears**  
+**speaker → voice**  
+**OLED → expression**  
+**WebRTC → real-time presence**  
+**Skills → future abilities**
 
-V1 includes local HTTPS so modern browser features can be used securely.
+This makes it possible to evolve intelligence without discarding the physical platform already validated in V1.
 
-This is particularly important on mobile devices for features such as:
+## JrSkill Network — official parallel line
 
-- microphone access;
-- `getUserMedia`;
-- `MediaRecorder`;
-- browser voice recording.
+**JrSkill Network (V1S)** studies portable, declarative Skills for physical AI.
 
-Local HTTPS enables a richer experience without requiring an external service for the robot's basic local control.
+The objective is an architecture where Skills can be published, versioned and licensed through **Solana**, while physical execution remains protected by a local Skill Executor and controlled JrBot capabilities.
 
-## V1 hardware
+The intended flow is:
 
-The current reference platform uses:
+~~~text
+Skill registered on Solana
+        |
+Wallet owns a Skill license
+        |
+JrTK / JrBrain queries Solana
+        |
+validates ownership + Skill
+        |
+JrSkill Executor
+        |
+Capability API / Runtime API
+        |
+JrBot executes physical behavior
+~~~
 
-- **ESP32-S3 N16R8** — main controller;
-- **SSD1306 OLED** — face and expressions;
-- **OV5640** — camera;
-- **MS3625** — microphone;
-- **MAX98357A** — audio amplifier;
-- **integrated speaker**;
-- Wi-Fi for local communication.
+A critical architectural rule is preserved:
 
-### HW04 shared I2S wiring
+> **Blockchain data must never gain direct access to GPIO, drivers or arbitrary native code on the ESP32.**
 
-```text
-BCLK / SCK     GPIO21
-WS / LRCLK     GPIO47
-MS3625 SD      GPIO41
-MAX98357A DIN  GPIO42
-```
-
-BCLK and WS are intentionally shared between microphone RX and amplifier TX.
-
-## How V1 works
-
-```text
-Phone / computer
-        ↓
-      Wi-Fi
-        ↓
- local web interface
-        ↓
-    ESP32-S3
-   ↙   ↓    ↘
-OLED camera  audio
-      ↓       ↓
- microphone speaker
-```
-
-The interface uses controlled firmware operations. A unified capability layer is still planned; normal operation does not expose raw GPIO control or arbitrary code execution.
-
-## What makes V1 different
-
-V1 combines the following capabilities in a single physical robot:
-
-**See** — camera with photos and live video.  
-**Hear** — integrated microphone and recording.  
-**Speak** — audio playback and messages through the speaker.  
-**Express** — digital face with multiple expressions.  
-**Connect** — direct browser control on the local network.
-
-These capabilities form the foundation for the next intelligence layers of JrBot.
+The V1S branch is an official parallel project line, not a replacement for the stable release. Its research, experiments and hackathon progress remain documented in [V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00) and [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
 ## Product status
 
 | Version / line | Goal | Status |
 | --- | --- | --- |
 | **V0** | Hardware and peripheral foundation | Completed |
-| **V1** | Human control through browser and local media | **Completed — `JrBot_V1.7.04`** |
-| **V1S / JrSkill Network** | Portable Skill distribution and licensing through Solana | **Official parallel line** |
+| **V1** | Human control through browser and local media | **Completed — JrBot_V1.7.04** |
+| **V1S / JrSkill Network** | Portable Skill distribution and licensing through Solana | **Official parallel line — active** |
 | **V2** | Local voice control | Next product line |
 | **V3** | Programmatic control through Runtime API | Planned |
 | **JrBrain** | Memory, personality, context, LLM and Skills | Future |
 
-`JrBot_V1.7.04` is promoted to `main` as the current official release. `develop` starts from the same stable baseline for validated future work.
-
-V1S / JrSkill Network evolves as an official parallel line and remains isolated from the stable release until an explicit integration decision is made.
-
 ## Roadmap
 
-The planned evolution preserves the physical capabilities already built in V1:
-
-```text
+~~~text
 V1 — browser and local control
- ↓
+ |
 V2 — local voice
- ↓
+ |
 V3 — programmatic control
- ↓
+ |
 JrBrain — memory + personality + LLM
- ↓
+ |
 Skills / platform / ecosystem
-```
+~~~
 
-JrSkill Network is a parallel project line for publishing, licensing and distributing portable Skills through Solana without giving blockchain data direct control over ESP32 hardware.
+**JrSkill Network runs in parallel** with this product roadmap. It studies how portable Skills can be published, licensed and distributed without giving blockchain data direct control over the ESP32 hardware.
+
+See the full [Roadmap](docs/ROADMAP.md).
+
+## Contributing
+
+JrBot welcomes contributors interested in:
+
+- ESP32-S3 / ESP-IDF;
+- embedded systems;
+- audio and DSP;
+- I2S and echo/AEC research;
+- WebRTC and networking;
+- frontend and mobile interfaces;
+- camera and computer vision;
+- electronics and hardware;
+- mechanical design / 3D printing;
+- testing and documentation;
+- AI / JrBrain;
+- Solana / JrSkill Network.
+
+You do not need to understand the whole robot or own complete hardware to contribute. Documentation, tools, frontend work and isolated proofs can be useful contributions.
+
+### Development process
+
+JrBot tries to preserve an understandable technical history:
+
+~~~text
+Idea
+  |
+Research
+  |
+Issue
+  |
+Architecture
+  |
+Isolated branch / proof
+  |
+Physical test
+  |
+Documentation
+  |
+Integration
+  |
+develop
+  |
+release
+~~~
+
+Start with the [Contribution Guide](CONTRIBUTING.md) and the [open Issues](https://github.com/JuniorNarciso26/JrRobot/issues).
 
 ## Development and documentation
 
-Main branches:
+### Main references
 
-```text
-main                  = latest officially promoted release
-develop               = integration of validated future work
-V1s-00                 = official parallel JrSkill / Solana line
-v1                     = historical V1 reference
-v2                     = JrBot V2 local voice line
-```
-
-Technical documentation:
-
+- [Documentation index](docs/README.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Project status](docs/PROJECT_STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Development guide](docs/DEVELOPMENT.md)
 - [Runtime API](docs/API_RUNTIME.md)
 - [Testing](docs/TESTING.md)
+- [Contributing](CONTRIBUTING.md)
+
+### Main branches
+
+| Branch | Role |
+| --- | --- |
+| **main** | Latest officially promoted release |
+| **develop** | Integration of validated future work |
+| **V1s-00** | Official parallel JrSkill / Solana line |
+| **v1** | Historical V1 reference |
+| **v2** | JrBot V2 local voice line |
 
 ## License
 
@@ -327,9 +381,7 @@ Original content in this repository is released under the [MIT License](LICENSE)
 
 The MIT License allows use, modification, distribution and commercial use subject to its notice requirements.
 
-Accepted contributions are released under the same MIT License as the project.
-
-Third-party dependencies and components remain subject to their own licenses.
+Accepted contributions are released under the same MIT License as the project. Third-party dependencies and components remain subject to their own licenses.
 
 The software license does not automatically grant the right to present derived products as official JrBot products or grant rights to the **JrBot** trademark.
 
@@ -343,4 +395,10 @@ The long-term vision is a physical digital presence capable of listening, talkin
   <strong>JrBot</strong><br>
   Listen. Understand. Respond. React. Express.<br><br>
   <em>Project by JrTk Invest</em>
+</p>
+
+---
+
+<p align="center">
+  If you want to follow the evolution of open-source physical AI, consider starring the repository.
 </p>
