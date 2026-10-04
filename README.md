@@ -22,6 +22,10 @@ See. Hear. Speak. Connect. Express.
 
 </div>
 
+<p align="center">
+  <img src="docs/assets/readme/jrbot-demo.gif" alt="JrBot physical robot demo" width="360">
+</p>
+
 ## AI is leaving the screen.
 
 Most AI assistants live inside a browser, phone or computer.
