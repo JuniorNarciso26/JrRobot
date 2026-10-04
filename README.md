@@ -24,7 +24,12 @@ See. Hear. Speak. Connect. Express.
 
 <p align="center">
   <img src="docs/assets/readme/jrbot-demo.gif" alt="JrBot physical robot demo" width="360">
+  https://github.com/user-attachments/assets/75c86005-60c8-45db-ad11-066e0accdb54
 </p>
+
+
+
+
 
 ## AI is leaving the screen.
 
