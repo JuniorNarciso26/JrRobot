@@ -123,8 +123,10 @@ Phone / computer
  local web interface
         |
     ESP32-S3
-   /    |      OLED  camera  audio
-              /          microphone speaker
+    /   |   \
+ OLED camera audio
+             |
+      microphone + speaker
 ~~~
 
 The current firmware keeps physical resources controlled by explicit subsystems. A unified capability layer continues to evolve so future Skills and AI layers can request safe operations without exposing raw GPIO or arbitrary native execution.
