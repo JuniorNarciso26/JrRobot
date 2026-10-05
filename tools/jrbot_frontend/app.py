@@ -25,7 +25,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-10"
+APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-11"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -443,6 +443,9 @@ class Handler(BaseHTTPRequestHandler):
                     if result.get("error_detail"):
                         add_log("JR_SKILL_PURCHASE stage=rpc_relay state=unknown buyer=" + status["address"]
                                 + " signature=" + result.get("signature", "none") + " detail=" + result["error_detail"])
+                    if 'compute_units' in result:
+                        add_log('JR_SKILL_PURCHASE_BUDGET ' + json.dumps({key: result[key] for key in
+                            ('compute_units', 'unit_price_micro_lamports', 'priority_fee_lamports', 'fee_lamports', 'fee_limit_lamports')}, separators=(',', ':')))
                 else:
                     self._send(404, "Rota nao encontrada")
                     return

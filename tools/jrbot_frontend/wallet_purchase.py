@@ -20,6 +20,10 @@ SYSTEM = Pubkey.default()
 MARKET = Pubkey.find_program_address([b'market', b'00'], PROGRAM)[0]
 OFFER = Pubkey.find_program_address([b'offer', b'00', bytes(SKILL)], PROGRAM)[0]
 QUOTE_TTL = 90
+COMPUTE = Pubkey.from_string('ComputeBudget111111111111111111111111111111')
+MAX_COMPUTE_UNITS = 200000
+MAX_UNIT_PRICE = 500000  # micro-lamports/CU; maximum priority fee 100000 lamports
+MAX_PRIORITY_FEE = 100000
 
 
 class PurchaseRejected(ValueError):
@@ -44,6 +48,54 @@ def message_summary(message):
         'blockhash': str(message.recent_blockhash), 'fee_payer': str(keys[0]) if keys else None,
         'header': [header.num_required_signatures, header.num_readonly_signed_accounts, header.num_readonly_unsigned_accounts],
         'account_keys': [str(key) for key in keys], 'instruction_count': len(message.instructions), 'instructions': instructions}
+
+
+def account_permissions(message):
+    header = message.header
+    signed = header.num_required_signatures
+    return {str(key): (index < signed,
+            index < signed - header.num_readonly_signed_accounts if index < signed
+            else index < len(message.account_keys) - header.num_readonly_unsigned_accounts)
+            for index, key in enumerate(message.account_keys)}
+
+
+def validate_purchase_message(expected, actual):
+    """Allow only a bounded ComputeBudget prefix; preserve purchase bytes and privileges."""
+    if bytes(actual) == bytes(expected):
+        return {'compute_units': 0, 'unit_price_micro_lamports': 0, 'priority_fee_lamports': 0}
+    def reject(reason):
+        raise ValueError(reason)
+    if actual.recent_blockhash != expected.recent_blockhash or actual.account_keys[0] != expected.account_keys[0]:
+        reject('Blockhash ou fee payer alterado')
+    permissions = account_permissions(actual)
+    original = account_permissions(expected)
+    if (len(permissions) != len(actual.account_keys) or set(permissions) != set(original) | {str(COMPUTE)}
+            or permissions.get(str(COMPUTE)) != (False, False)
+            or any(permissions.get(key) != flags for key, flags in original.items())):
+        reject('Contas ou permissoes divergentes da cotacao')
+    if len(actual.instructions) != 3:
+        reject('Esperadas somente duas instrucoes ComputeBudget e uma compra')
+    budget = {}
+    for item in actual.instructions[:2]:
+        data = bytes(item.data)
+        if actual.account_keys[item.program_id_index] != COMPUTE or item.accounts or not data:
+            reject('Instrucao extra nao autorizada')
+        kind = data[0]
+        if kind in budget or kind not in (2, 3) or len(data) != (5 if kind == 2 else 9):
+            reject('ComputeBudget duplicado, desconhecido ou malformado')
+        budget[kind] = int.from_bytes(data[1:], 'little')
+    if set(budget) != {2, 3} or not 1 <= budget[2] <= MAX_COMPUTE_UNITS or budget[3] > MAX_UNIT_PRICE:
+        reject('Limite ou preco ComputeBudget excede a politica aceita')
+    purchase = actual.instructions[2]
+    quoted = expected.instructions[0]
+    if (actual.account_keys[purchase.program_id_index] != expected.account_keys[quoted.program_id_index]
+            or bytes(purchase.data) != bytes(quoted.data)
+            or [actual.account_keys[index] for index in purchase.accounts] != [expected.account_keys[index] for index in quoted.accounts]):
+        reject('Programa, dados ou ordem das contas da compra alterados')
+    priority = (budget[2] * budget[3] + 999999) // 1000000
+    if priority > MAX_PRIORITY_FEE:
+        reject('Taxa de prioridade excede o teto aceito')
+    return {'compute_units': budget[2], 'unit_price_micro_lamports': budget[3], 'priority_fee_lamports': priority}
 
 
 def license_address(buyer):
@@ -140,7 +192,9 @@ class PurchaseStore:
         fee = _integer(self.rpc('getFeeForMessage', [base64.b64encode(bytes(message)).decode(), {'commitment': 'confirmed'}], 5)['value'])
         balance = _integer(self.rpc('getBalance', [address, {'commitment': 'finalized'}], 5)['value'])
         total = int(terms['price_lamports']) + rent + fee
-        if balance < total:
+        fee_limit = fee + MAX_PRIORITY_FEE
+        total_limit = int(terms['price_lamports']) + rent + fee_limit
+        if balance < total_limit:
             raise ValueError('Saldo Devnet insuficiente para preco, deposito e taxa')
         self.authorized(token, origin, address)
         quote_id = secrets.token_urlsafe(24)
@@ -150,9 +204,11 @@ class PurchaseStore:
             if len(self.quotes) >= 256:
                 raise ValueError('Limite de cotacoes atingido')
             self.quotes[quote_id] = dict(token=token, origin=origin, address=address, created=self.clock(),
-                expires=expires, height=height, message=bytes(message))
+                expires=expires, height=height, message=bytes(message), fee_limit=fee_limit,
+                price=int(terms['price_lamports']), rent=rent)
         return dict(terms, quote_id=quote_id, expires_at=expires, transaction=base64.b64encode(bytes(tx)).decode(),
-                    rent_lamports=str(rent), fee_lamports=str(fee), total_lamports=str(total))
+                    rent_lamports=str(rent), fee_lamports=str(fee), total_lamports=str(total),
+                    priority_fee_limit_lamports=str(MAX_PRIORITY_FEE), fee_limit_lamports=str(fee_limit), total_limit_lamports=str(total_limit))
 
     def submit(self, token, origin, address, quote_id, encoded):
         self.authorized(token, origin, address)
@@ -160,6 +216,8 @@ class PurchaseStore:
             raise ValueError('Transacao assinada invalida')
         try:
             raw = base64.b64decode(encoded, validate=True)
+            if len(raw) > 1232:
+                raise ValueError('Limite de transacao excedido')
             tx = Transaction.from_bytes(raw)
             tx.sanitize()
         except Exception as exc:
@@ -181,18 +239,28 @@ class PurchaseStore:
                     raise PurchaseRejected('quote_' + field + '_mismatch', 'Cotacao pertence a outra sessao/origem/carteira', diagnostics)
             if quote['expires'] <= self.clock():
                 raise PurchaseRejected('quote_expired', 'Cotacao expirou antes da validacao', diagnostics)
-            if tx.message_data() != quote['message']:
+            try:
+                budget = validate_purchase_message(Message.from_bytes(quote['message']), tx.message)
+            except ValueError as exc:
                 expected = message_summary(Message.from_bytes(quote['message']))
                 actual = message_summary(tx.message)
                 diagnostics.update(expected=expected, actual=actual,
                     changed_fields=[key for key in expected if expected[key] != actual[key]])
-                raise PurchaseRejected('message_changed', 'Mensagem assinada difere da cotacao; envio bloqueado', diagnostics)
+                raise PurchaseRejected('message_changed', 'Alteracao nao autorizada: ' + str(exc), diagnostics) from exc
             if bytes(tx) != raw:
                 raise PurchaseRejected('transaction_noncanonical', 'Serializacao da transacao nao e canonica', diagnostics)
         if inspect(address, self.rpc)['owned']:
             return {'cluster': 'devnet', 'buyer': address, 'state': 'owned', 'already_exists': True}
         if _integer(self.rpc('getBlockHeight', [{'commitment': 'confirmed'}], 5)) > quote['height']:
             raise PurchaseRejected('blockhash_expired', 'Blockhash expirou; consulte nova cotacao', diagnostics)
+        actual_fee = _integer(self.rpc('getFeeForMessage', [base64.b64encode(tx.message_data()).decode(), {'commitment': 'confirmed'}], 5)['value'])
+        if actual_fee > quote['fee_limit'] or actual_fee < budget['priority_fee_lamports']:
+            raise PurchaseRejected('fee_limit_exceeded', 'Taxa RPC fora do teto aceito', dict(diagnostics, actual_fee_lamports=actual_fee, fee_limit_lamports=quote['fee_limit']))
+        balance = _integer(self.rpc('getBalance', [address, {'commitment': 'confirmed'}], 5)['value'])
+        if balance < quote['price'] + quote['rent'] + actual_fee:
+            raise PurchaseRejected('balance_insufficient', 'Saldo insuficiente para a transacao assinada', diagnostics)
+        if quote['expires'] <= self.clock():
+            raise PurchaseRejected('quote_expired', 'Cotacao expirou durante a verificacao RPC', diagnostics)
         self.authorized(token, origin, address)
         with self.lock:
             if self.quotes.pop(quote_id, None) is not quote:
@@ -212,6 +280,9 @@ class PurchaseStore:
             error_detail = solana_skill.rpc_error_detail(type(exc).__name__ + ': ' + str(exc))
         return {'cluster': 'devnet', 'buyer': address, 'signature': signature, 'state': state,
                 'error_detail': error_detail,
+                'fee_lamports': str(actual_fee), 'fee_limit_lamports': str(quote['fee_limit']),
+                'compute_units': budget['compute_units'], 'unit_price_micro_lamports': budget['unit_price_micro_lamports'],
+                'priority_fee_lamports': str(budget['priority_fee_lamports']),
                 'license': str(license_address(Pubkey.from_string(address)))}
 
 

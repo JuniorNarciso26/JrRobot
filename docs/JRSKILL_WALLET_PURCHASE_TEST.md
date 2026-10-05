@@ -1,6 +1,6 @@
 # Etapa 4D — compra pelo navegador
 
-05/10/2026, exclusivamente `V1s-00`. Painel atual **JRBOT-PANEL-V1S-PURCHASE-10** (comparacao detalhada; implementacao inicial PURCHASE-08). Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
+05/10/2026, exclusivamente `V1s-00`. Painel atual **JRBOT-PANEL-V1S-PURCHASE-11** (ComputeBudget limitado; implementacao inicial PURCHASE-08). Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
 
 ## Escopo e estado
 
@@ -14,7 +14,7 @@ Compra Wallet Standard para a mesma Skill/oferta Devnet validada por A/B. Consul
 2. Consultar minha licenca: backend confirma genesis Devnet e contas finalized; valida owner, discriminator, layout, comprador/Skill/oferta/modelo/parcelas. Carteira vem da sessao autenticada, nunca de parametro livre do browser.
 3. Consultar custo: conferir oferta/configuracao e Skill congelada via RPC; preparar transacao unsigned com uma instrucao buy_license. Comprador e unico signer/fee payer. Preco maximo e exatamente o preco exibido. Mostrar recebedores, parcelas, deposito, estimativa da taxa, total e conferir saldo.
 4. Marcar aceite e clicar Comprar com a carteira. Wallet Standard solana:signTransaction, conta selecionada, chain solana:devnet, versao legacy. Autenticacao e assinatura de compra sao separadas.
-5. Backend verifica assinatura e igualdade exata da mensagem com a cotacao, sessao/origem/carteira, prazo e blockhash; envia ao RPC fixo Devnet com preflight e sem reenvio automatico.
+5. Backend verifica assinatura e mensagem com a cotacao, sessao/origem/carteira, prazo e blockhash. PURCHASE-11 permite somente o prefixo ComputeBudget limitado descrito abaixo, com a compra e permissoes preservadas. Consulta a taxa da mensagem assinada e saldo antes de enviar ao RPC fixo Devnet com preflight e sem reenvio automatico.
 6. Consultar minha licenca novamente: assinatura/RPC que aceitou o envio nao e prova de finalizacao. Somente leitura finalized valida permite mostrar a Skill como licenciada. Link da assinatura abre o Explorer Devnet.
 
 `wallet_purchase.py` usa **solders 0.29.0** para PDAs, compilacao/serializacao da transacao e verificacao da assinatura. Os layouts comerciais pequenos sao desserializados com limites/discriminadores explicitos. O encoding foi comparado com a IDL Anchor gerada: transacoes Python/JS identicas, **417 bytes**.
@@ -25,7 +25,7 @@ Referencias: [solders Transaction](https://heavey.dev/solders/api_reference/tran
 
 - Rotas `/jrskill/wallet/purchase/`: cookie HttpOnly/SameSite Strict, host/origin local, cabecalho X-JrBot-Panel e autenticacao obrigatoria.
 - Quote ligada a token/origin/carteira, TTL 90 segundos, ate 256 entradas em memoria. Nova quote invalida anterior da mesma sessao; nada persistido em disco.
-- Rejeitar mensagem/instrucoes alteradas, assinatura invalida/ausente, quote usada/expirada, blockhash expirado, genesis nao Devnet e saldo insuficiente. Sem RPC, destinatarios ou transacoes arbitrarias vindas do browser.
+- Rejeitar alteracoes fora do prefixo ComputeBudget autorizado, assinatura invalida/ausente, quote usada/expirada, blockhash expirado, genesis nao Devnet e saldo insuficiente. Sem RPC, destinatarios ou transacoes arbitrarias vindas do browser.
 - Carteira ja licenciada nao recebe transacao de compra. Conferir novamente antes do envio; contrato preserva rejeicao de duplicidade adicional.
 - Quote consumida antes do relay. Timeout/resultado ambiguo devolve assinatura esperada e estado unknown; nao afirmar sucesso nem reenviar. Cliente impede outro envio enquanto tentativa esta sem confirmacao. Consultar licenca/Explorer antes de outra tentativa. Se HTTP nao devolver assinatura, consultar tambem o historico da carteira.
 - Troca de conta/provedor, desconexao ou perda da autenticacao descartam quote, aceite e respostas antigas. Assinatura que termina depois da troca nao e enviada. Desconectar nao cancela transacao que ja saiu para a rede.
@@ -42,9 +42,9 @@ Referencias: [solders Transaction](https://heavey.dev/solders/api_reference/tran
 ## Teste do usuario — Windows/Chrome/Phantom
 
 1. Fechar o servidor antigo. No checkout Windows `C:\Projetos\JrRobot`, conferir branch V1s-00/status limpo; git pull --ff-only origin V1s-00. Atualizar o WSL nao atualiza esse checkout.
-2. Reabrir **PAINEL.bat**. Instala requirements se necessario: Python 3.10+, pyserial, cryptography 50.0.1 e solders 0.29.0. Registrar eventual erro pip/porta ocupada. Ctrl+F5, confirmar PURCHASE-10. Sem gravar firmware nem repetir deploy.
+2. Reabrir **PAINEL.bat**. Instala requirements se necessario: Python 3.10+, pyserial, cryptography 50.0.1 e solders 0.29.0. Registrar eventual erro pip/porta ocupada. Ctrl+F5, confirmar PURCHASE-11. Sem gravar firmware nem repetir deploy.
 3. Na Phantom conferir Testnet Mode/Solana Devnet, conectar carteira de teste, autenticar e Verificar Devnet e saldo. A assinatura pede chain Devnet; suporte Wallet Standard nao revela a rede selecionada na interface da extensao.
-4. Consultar minha licenca: usar a Phantom que ainda nao comprou, esperado nao possui. Consultar custo: neste checkpoint 1 SOL, parcelas 0,5/0,5, deposito 0,0013462, taxa estimada 0,000005; conferir os valores atuais apresentados.
+4. Consultar minha licenca: usar a Phantom que ainda nao comprou, esperado nao possui. Consultar custo: neste checkpoint 1 SOL, parcelas 0,5/0,5, deposito 0,0013462, taxa sem prioridade 0,000005, teto de rede 0,000105 e total maximo 1,0014512; conferir os valores atuais apresentados antes de aceitar.
 5. Conferir comprador/recebedores, marcar aceite, clicar Comprar com a carteira e aprovar na Phantom. Comprador paga preco/deposito/taxa, somente SOL de teste.
 6. Consultar minha licenca apos finalizacao: esperado Skill licenciada, License PDA da carteira e assinatura no Explorer. Se pendente, repetir consulta, sem repetir envio.
 7. Conferir conta licenciada sem novo pagamento, recusa antes do envio e troca de conta limpando dados. Nao tentar nova compra apos timeout sem consultar a transacao/carteira.
@@ -67,3 +67,15 @@ Log (76): cotacao 11:08:33, assinatura retornou 11:08:41, servidor rejeitou ante
 PURCHASE-10 separa transaction_decode_failed, signature_invalid, quote_missing (ausente/substituida/consumida), quote_token_mismatch, quote_origin_mismatch, quote_address_mismatch, quote_expired, message_changed, transaction_noncanonical e blockhash_expired. Em message_changed, TXT registra JR_SKILL_PURCHASE_DIAG com idade/prazo restante, campos divergentes, tamanho/hash SHA-256 das mensagens, blockhash, fee payer, header de permissao das contas, chaves publicas, quantidade/programas/contas das instrucoes, tamanho/hash dos dados e primeiros 8 bytes identificadores. Expected e actual sao linhas separadas; ate 8 instrucoes sao descritas. Quote e referenciada por hash curto, sem identificador reutilizavel; nenhum token/cookie, corpo da transacao ou payload completo e registrado. A verificacao estrita da transacao permanece igual.
 
 **25 testes Python passaram**, incluindo instrucao extra assinada e bloqueada com comparacao esperada/recebida, expiracao e cotacao ausente. Nenhuma nova compra/deploy Devnet ou teste Phantom real ocorreu. Proximo teste: reiniciar PURCHASE-10 e enviar TXT contendo JR_SKILL_PURCHASE_DIAG apos a tentativa; diferencas da Phantom real precisam dessa evidencia antes de alterar qualquer regra de assinatura.
+
+## Compatibilidade delimitada — PURCHASE-11
+
+Log (77) identifica a causa: assinatura valida, 80,648 segundos restantes, mesmo blockhash/fee payer e mesma compra (dados e contas), mas duas instrucoes ComputeBudget foram adicionadas antes dela. SetComputeUnitPrice=375000 micro-lamports/CU e SetComputeUnitLimit=200000: prioridade de 75000 lamports (0,000075 SOL). A PURCHASE-10 rejeitou a mudanca antes do relay; nao houve prova de compra concluida.
+
+Politica PURCHASE-11: aceitar mensagem exatamente igual, ou exatamente duas instrucoes ComputeBudget sem contas antes da unica compra, uma de cada tipo (2/3), em qualquer ordem. CU entre 1 e 200000, preco ate 500000 micro-lamports/CU, prioridade ceil(CU*preco/1000000) ate 100000 lamports. Rejeitar duplicadas, outros tipos, tamanhos incorretos, outros programas/instrucoes e contas extras. Preservar blockhash, fee payer, programa/dados/ordem das contas da compra e privilegios globais signer/writable de todas as contas originais. Somente a conta ComputeBudget readonly/nao signer pode ser acrescentada. Serializacao canonica, limite 1232 bytes e verificacao criptografica continuam obrigatorios.
+
+Cotacao armazena e exibe margem de prioridade 0,0001 SOL, teto de rede igual a taxa consultada mais essa margem e total maximo incluindo preco/deposito. Neste checkpoint: teto 0,000105 SOL e total maximo 1,0014512 SOL de teste. Saldo deve cobrir o teto ao cotar. Antes do envio, getFeeForMessage consulta a mensagem efetivamente assinada; se ultrapassar o teto ou houver saldo insuficiente, bloquear. Cotacao e sessao sao verificadas novamente antes de consumir/envio. Nada e removido da transacao assinada. `JR_SKILL_PURCHASE_BUDGET` registra CU/preco/prioridade, taxa consultada e teto; essa taxa consultada nao e alegada como debito final, que depende da transacao finalizada.
+
+Referencia: [Compute Budget](https://solana.com/docs/core/fees/compute-budget), [formula de prioridade](https://solana.com/docs/core/fees/fee-structure).
+
+Verificacao: **29 testes Python e 21 JS passaram**, incluindo parametros observados no log 77, limites/arredondamento, assinatura valida com prefixo, tipos duplicados/desconhecidos, dados/contas de compra alterados, permissao escalada, taxa RPC acima do teto, perda de saldo e aceite com teto consistente. Bundle recompilado. Testes usam carteira/RPC simuladas; nao houve compra/deploy Devnet ou teste real Phantom nesta implementacao. Usuario deve reiniciar PURCHASE-11, conferir Devnet, consultar ausencia/cotacao, aceitar o total maximo e enviar TXT apos uma tentativa, depois consultar licenca finalized.

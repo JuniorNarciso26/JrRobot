@@ -38,7 +38,12 @@ class FakeRPC:
         if method == 'getMultipleAccounts': return {'context': {'slot': 1}, 'value': self.values}
         if method == 'getLatestBlockhash': return {'value': {'blockhash': str(Hash.new_unique()), 'lastValidBlockHeight': 100}}
         if method == 'getMinimumBalanceForRentExemption': return 1346200
-        if method == 'getFeeForMessage': return {'value': 5000}
+        if method == 'getFeeForMessage':
+            from solders.message import Message
+            message = Message.from_bytes(base64.b64decode(params[0]))
+            budget = {bytes(item.data)[0]: int.from_bytes(bytes(item.data)[1:], 'little') for item in message.instructions
+                      if message.account_keys[item.program_id_index] == purchase.COMPUTE}
+            return {'value': 5000 + (budget.get(2, 0) * budget.get(3, 0) + 999999) // 1000000}
         if method == 'getBalance': return {'value': self.balance}
         if method == 'getBlockHeight': return self.height
         if method == 'sendTransaction':
@@ -64,6 +69,77 @@ class PurchaseTests(unittest.TestCase):
         tx = Transaction.from_bytes(base64.b64decode(quote['transaction']))
         tx.sign([key or self.rpc.buyer], Hash.new_unique() if change else tx.message.recent_blockhash)
         return base64.b64encode(bytes(tx)).decode()
+
+    def budget_signed(self, quote, units=200000, price=375000, extra=None, buy=None):
+        from solders.message import Message
+        from solders.instruction import Instruction
+        tx = Transaction.from_bytes(base64.b64decode(quote['transaction']))
+        instructions = [Instruction(purchase.COMPUTE, b'\x03' + price.to_bytes(8, 'little'), []),
+                        Instruction(purchase.COMPUTE, b'\x02' + units.to_bytes(4, 'little'), [])]
+        if extra: instructions.append(extra)
+        instructions.append(buy or purchase.instruction(self.address, quote))
+        message = Message.new_with_blockhash(instructions, self.rpc.buyer.pubkey(), tx.message.recent_blockhash)
+        signed = Transaction.new_unsigned(message); signed.sign([self.rpc.buyer], message.recent_blockhash)
+        return base64.b64encode(bytes(signed)).decode()
+
+    def test_phantom_budget_observed_in_log77_is_accepted_with_fee_limit(self):
+        quote = self.quote()
+        self.assertEqual(quote['fee_limit_lamports'], '105000')
+        self.assertEqual(quote['total_limit_lamports'], '1001451200')
+        result = self.store.submit('token', 'origin', self.address, quote['quote_id'], self.budget_signed(quote))
+        self.assertEqual(result['state'], 'submitted')
+        self.assertEqual(result['priority_fee_lamports'], '75000')
+        self.assertEqual(result['fee_lamports'], '80000')
+        self.assertEqual([method for method, _ in self.rpc.calls].count('sendTransaction'), 1)
+
+    def test_budget_boundaries_duplicates_and_unknown_variants(self):
+        from solders.message import Message
+        from solders.instruction import Instruction, AccountMeta
+        for units, price in [(1, 1), (200000, 500000), (200000, 0)]:
+            quote = self.quote()
+            result = self.store.submit('token', 'origin', self.address, quote['quote_id'], self.budget_signed(quote, units, price))
+            self.assertEqual(result['priority_fee_lamports'], str((units * price + 999999) // 1000000))
+        self.rpc.calls.clear()
+        quote = self.quote()
+        original = Transaction.from_bytes(base64.b64decode(quote['transaction'])).message
+        valid = Instruction(purchase.COMPUTE, b'\x02' + (200000).to_bytes(4, 'little'), [])
+        for other in [valid, Instruction(purchase.COMPUTE, b'\x01' + (32768).to_bytes(4, 'little'), []),
+                      Instruction(purchase.COMPUTE, b'\x03', []), Instruction(purchase.COMPUTE, b'\x03' + bytes(8), [AccountMeta(purchase.SYSTEM, False, False)])]:
+            message = Message.new_with_blockhash([valid, other, purchase.instruction(self.address, quote)], self.rpc.buyer.pubkey(), original.recent_blockhash)
+            tx = Transaction.new_unsigned(message); tx.sign([self.rpc.buyer], message.recent_blockhash)
+            with self.assertRaises(purchase.PurchaseRejected):
+                self.store.submit('token', 'origin', self.address, quote['quote_id'], base64.b64encode(bytes(tx)).decode())
+        self.assertNotIn('sendTransaction', [method for method, _ in self.rpc.calls])
+
+    def test_budget_limit_extra_instruction_purchase_mutation_and_privilege_escalation_reject(self):
+        from solders.instruction import Instruction, AccountMeta
+        quote = self.quote()
+        buy = purchase.instruction(self.address, quote)
+        altered = Instruction(buy.program_id, bytes(buy.data)[:-1] + b'\x01', buy.accounts)
+        metas = list(buy.accounts); metas[0] = AccountMeta(metas[0].pubkey, False, True)
+        escalated = Instruction(buy.program_id, buy.data, metas)
+        duplicate = Instruction(purchase.COMPUTE, b'\x02' + (200000).to_bytes(4, 'little'), [])
+        arbitrary = Instruction(purchase.SYSTEM, b'\x00', [])
+        for options in [dict(units=200001), dict(units=0), dict(price=500001), dict(extra=duplicate),
+                        dict(extra=arbitrary), dict(buy=altered), dict(buy=escalated)]:
+            with self.subTest(options=options):
+                with self.assertRaises(purchase.PurchaseRejected) as error:
+                    self.store.submit('token', 'origin', self.address, quote['quote_id'], self.budget_signed(quote, **options))
+                self.assertEqual(error.exception.code, 'message_changed')
+        self.assertNotIn('sendTransaction', [item[0] for item in self.rpc.calls])
+
+    def test_signed_rpc_fee_above_ceiling_and_balance_loss_block_relay(self):
+        quote = self.quote(); signed = self.budget_signed(quote)
+        original = self.store.rpc
+        self.store.rpc = lambda method, params, timeout: {'value': 105001} if method == 'getFeeForMessage' else original(method, params, timeout)
+        with self.assertRaises(purchase.PurchaseRejected) as error:
+            self.store.submit('token', 'origin', self.address, quote['quote_id'], signed)
+        self.assertEqual(error.exception.code, 'fee_limit_exceeded')
+        self.store.rpc = original; self.rpc.balance = 1
+        with self.assertRaises(purchase.PurchaseRejected) as error:
+            self.store.submit('token', 'origin', self.address, quote['quote_id'], signed)
+        self.assertEqual(error.exception.code, 'balance_insufficient')
+        self.assertNotIn('sendTransaction', [item[0] for item in self.rpc.calls])
 
     def test_quote_and_signature_relay_have_only_expected_instruction_and_costs(self):
         quote = self.quote()

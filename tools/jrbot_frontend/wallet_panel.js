@@ -476,8 +476,8 @@
           checked = true;
           license = result.license;
           if (!owned) {
-            for (const key of ["rent_lamports", "fee_lamports", "total_lamports"]) if (!/^\d+$/.test(result[key])) throw new Error("Custos invalidos");
-            if (BigInt(result.total_lamports) !== BigInt(result.price_lamports) + BigInt(result.rent_lamports) + BigInt(result.fee_lamports) || !(result.expires_at > clock()) || !result.quote_id || !result.transaction) throw new Error("Cotacao invalida/expirada");
+            for (const key of ["rent_lamports", "fee_lamports", "total_lamports", "priority_fee_limit_lamports", "fee_limit_lamports", "total_limit_lamports"]) if (!/^\d+$/.test(result[key])) throw new Error("Custos invalidos");
+            if (BigInt(result.total_lamports) !== BigInt(result.price_lamports) + BigInt(result.rent_lamports) + BigInt(result.fee_lamports) || BigInt(result.priority_fee_limit_lamports) !== 100000n || BigInt(result.fee_limit_lamports) !== BigInt(result.fee_lamports) + BigInt(result.priority_fee_limit_lamports) || BigInt(result.total_limit_lamports) !== BigInt(result.price_lamports) + BigInt(result.rent_lamports) + BigInt(result.fee_limit_lamports) || !(result.expires_at > clock()) || !result.quote_id || !result.transaction) throw new Error("Cotacao invalida/expirada");
             quote = result;
           }
           message = owned ? "Licenca ja existente. Nenhuma compra necessaria." : "Confira os valores e marque o aceite antes de comprar. Cotacao valida por ate 90 segundos.";
@@ -535,9 +535,11 @@
           } else {
             if (!/^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(result.signature)) throw new Error("Assinatura de transacao invalida");
             signature = result.signature;
+            if (result.state === "submitted" && (!/^\d+$/.test(result.fee_lamports) || result.fee_limit_lamports !== terms.fee_limit_lamports || BigInt(result.fee_lamports) > BigInt(terms.fee_limit_lamports))) throw new Error("Taxa devolvida pelo servidor diverge do teto aceito");
             sendConfirmed = result.state === "submitted";
-            message = result.state === "submitted" ? "Transacao enviada; clique Consultar minha licenca para confirmar. Em erro ou timeout, confira o Explorer antes de outro envio." : "Envio nao confirmado pelo RPC. " + detail(result.error_detail || "Resposta RPC incerta") + ". Consulte a licenca e a transacao no Explorer antes de outro envio.";
+            message = result.state === "submitted" ? "Transacao enviada; clique Consultar minha licenca para confirmar. Taxa verificada antes do envio: " + sol(result.fee_lamports) + " SOL. Em erro ou timeout, confira o Explorer antes de outro envio." : "Envio nao confirmado pelo RPC. " + detail(result.error_detail || "Resposta RPC incerta") + ". Consulte a licenca e a transacao no Explorer antes de outro envio.";
             log("JR_SKILL_PURCHASE buyer=" + selected.address + " signature=" + signature + " state=" + result.state);
+            log("JR_SKILL_PURCHASE stage=fee_check fee_lamports=" + result.fee_lamports + " fee_limit_lamports=" + result.fee_limit_lamports);
             if (result.error_detail) log("JR_SKILL_PURCHASE stage=rpc_relay state=unknown signature=" + signature + " detail=" + detail(result.error_detail));
           }
         } catch (error) {
@@ -671,7 +673,7 @@
     element("purchase_accept").checked = state.accepted;
     element("purchase_msg").textContent = state.message;
     element("purchase_license").textContent = !state.checked ? "Licenca nao consultada." : state.owned ? "minimal_recipe_01 \u2014 Licenciada nesta carteira. PDA: " + state.license : "Esta carteira ainda nao possui a Skill de teste.";
-    element("purchase_terms").textContent = state.quote ? "Comprador: " + state.quote.buyer + "\nPreco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + state.quote.creator + " \u2014 " + sol(state.quote.creator_lamports) + " SOL\nJrBot: " + state.quote.treasury + " \u2014 " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede estimada: " + sol(state.quote.fee_lamports) + " SOL\nTotal estimado: " + sol(state.quote.total_lamports) + " SOL de teste" : "";
+    element("purchase_terms").textContent = state.quote ? "Comprador: " + state.quote.buyer + "\nPreco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + state.quote.creator + " \u2014 " + sol(state.quote.creator_lamports) + " SOL\nJrBot: " + state.quote.treasury + " \u2014 " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede estimada sem prioridade: " + sol(state.quote.fee_lamports) + " SOL\nPrioridade adicional permitida: ate " + sol(state.quote.priority_fee_limit_lamports) + " SOL\nTeto aceito da taxa de rede: " + sol(state.quote.fee_limit_lamports) + " SOL\nTotal estimado sem prioridade: " + sol(state.quote.total_lamports) + " SOL de teste\nTotal maximo autorizado: " + sol(state.quote.total_limit_lamports) + " SOL de teste" : "";
     const link = element("purchase_transaction");
     link.hidden = !state.signature || state.signature === "unknown";
     if (!link.hidden) link.href = "https://explorer.solana.com/tx/" + state.signature + "?cluster=devnet";

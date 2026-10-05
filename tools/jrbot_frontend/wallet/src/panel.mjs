@@ -103,8 +103,11 @@ purchase = createPurchase(async (operation, data) => {
     '\nCriador: ' + state.quote.creator + ' — ' + sol(state.quote.creator_lamports) + ' SOL' +
     '\nJrBot: ' + state.quote.treasury + ' — ' + sol(state.quote.treasury_lamports) + ' SOL' +
     '\nDeposito da licenca: ' + sol(state.quote.rent_lamports) + ' SOL' +
-    '\nTaxa de rede estimada: ' + sol(state.quote.fee_lamports) + ' SOL' +
-    '\nTotal estimado: ' + sol(state.quote.total_lamports) + ' SOL de teste' : '';
+    '\nTaxa de rede estimada sem prioridade: ' + sol(state.quote.fee_lamports) + ' SOL' +
+    '\nPrioridade adicional permitida: ate ' + sol(state.quote.priority_fee_limit_lamports) + ' SOL' +
+    '\nTeto aceito da taxa de rede: ' + sol(state.quote.fee_limit_lamports) + ' SOL' +
+    '\nTotal estimado sem prioridade: ' + sol(state.quote.total_lamports) + ' SOL de teste' +
+    '\nTotal maximo autorizado: ' + sol(state.quote.total_limit_lamports) + ' SOL de teste' : '';
   const link = element('purchase_transaction');
   link.hidden = !state.signature || state.signature === 'unknown';
   if (!link.hidden) link.href = 'https://explorer.solana.com/tx/' + state.signature + '?cluster=devnet';

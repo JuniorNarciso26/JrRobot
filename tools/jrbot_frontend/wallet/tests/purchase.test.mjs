@@ -10,9 +10,10 @@ const fixture = () => {
   const proof = { cluster: 'devnet', genesis: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG', program: 'Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454',
     skill: '8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux', buyer: 'buyer', commitment: 'finalized', owned: false, model_version: 0,
     price_lamports: '1000000000', creator_lamports: '500000000', treasury_lamports: '500000000', license: 'license',
-    quote_id: 'quote', transaction: btoa('transaction'), expires_at: 190, rent_lamports: '1346200', fee_lamports: '5000', total_lamports: '1001351200' };
+    quote_id: 'quote', transaction: btoa('transaction'), expires_at: 190, rent_lamports: '1346200', fee_lamports: '5000', total_lamports: '1001351200',
+    priority_fee_limit_lamports: '100000', fee_limit_lamports: '105000', total_limit_lamports: '1001451200' };
   const api = createPurchase(async (op, data) => { calls.push(op); return handler ? handler(op, data) : op === 'submit' ?
-    { buyer: 'buyer', cluster: 'devnet', signature: '2'.repeat(88), state: 'submitted' } : { ...proof }; }, next => state = next, line => logs.push(line), () => now);
+    { buyer: 'buyer', cluster: 'devnet', signature: '2'.repeat(88), state: 'submitted', fee_lamports: '80000', fee_limit_lamports: '105000' } : { ...proof }; }, next => state = next, line => logs.push(line), () => now);
   const observe = (address = 'buyer', authenticated = true) => api.observe({ active: wallet, accounts: [{ ...account, address }], address }, { authenticated });
   observe();
   return { api, observe, calls, signerCalls, wallet, proof, logs, get state() { return state; }, time: value => now = value, handle: fn => handler = fn };
@@ -73,4 +74,14 @@ test('RPC diagnostic and signing failure are retained without logging transactio
   f.wallet.features['solana:signTransaction'].signTransaction = async () => { throw new Error('refused\n' + 'A'.repeat(200)); };
   await f.api.buy(); assert.ok(f.logs.some(line => /stage=wallet_signature state=error/.test(line)));
   assert.ok(f.logs.every(line => !line.includes('A'.repeat(100)) && !line.includes('\n')));
+});
+
+test('quote requires an explicit consistent fee ceiling and rejects altered limits before signing', async () => {
+  const f = fixture();
+  f.handle(() => ({ ...f.proof, fee_limit_lamports: '999999' }));
+  await f.api.prepare(); assert.equal(f.state.quote, null); assert.equal(f.state.canBuy, false);
+  f.handle(null); await f.api.prepare(); assert.equal(f.state.quote.total_limit_lamports, '1001451200');
+  f.api.accept(true);
+  f.handle(() => ({ buyer: 'buyer', cluster: 'devnet', signature: '2'.repeat(88), state: 'submitted', fee_lamports: '105001', fee_limit_lamports: '105000' }));
+  await f.api.buy(); assert.match(f.state.message, /teto aceito/); assert.equal(f.state.canBuy, false);
 });
