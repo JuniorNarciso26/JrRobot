@@ -145,3 +145,7 @@ O upgrade comercial acima foi compilado/publicado com os metadados antigos `0.1.
 Esta correcao nao altera instrucoes, layout de contas, JSON, firmware nem implementa compra no painel. A IDL gerada a partir do novo checkout recebe versao 0.2.0; a IDL enviada no upgrade anterior ainda tem os metadados 0.1.0. Nao se alega publicacao dessa correcao de metadados na Devnet. O programa comercial ja publicado atende os mesmos scripts/instrucoes; mudar o numero exibido no painel nao exige repetir o deploy.
 
 Depois de git pull, feche o painel antigo e reabra **PAINEL.bat** para carregar WALLET-07. No WSL, npm ci/npm test mostram 0.2.0; anchor build gera a IDL local correspondente. Recarregue a pagina do painel com Ctrl+F5.
+
+## Etapa 4D — compra no navegador
+
+O painel **JRBOT-PANEL-V1S-PURCHASE-08** implementa cotacao, assinatura Wallet Standard Devnet, envio verificado e consulta finalized da licenca para a Skill conhecida. Testes de software passaram; a compra com Phantom real ainda precisa do teste do usuario. Nenhuma nova compra/deploy Devnet foi realizada neste checkpoint. O executor experimental continua independente da licenca. [Arquitetura, limites e passo a passo](JRSKILL_WALLET_PURCHASE_TEST.md).

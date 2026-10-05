@@ -20,7 +20,7 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Buyers A/B: independent Devnet licenses, exact payments and client repeat protection |
 
-**Latest software checkpoint: Day 6 — CLI buyers A and B purchased independent licenses for the same Skill on Devnet; both transactions and exact creator/treasury payments were verified independently. Repeating A's purchase returned an existing license without sending another transaction.** Purchase through the panel and license enforcement remain pending. Latest physical checkpoint: Day 4 — Stage 3 execution, offline block and online recovery confirmed. Local execution also works without Internet.
+**Latest software checkpoint: Day 6 — CLI buyers A/B purchased independent licenses on Devnet, with exact payments verified. Browser purchase is now implemented in PURCHASE-08, with 23 Python and 18 JavaScript tests passing and a simulated browser flow checked.** Purchase with the real Phantom extension and license enforcement before physical execution remain pending. No new Devnet transaction or hardware test was performed for the browser implementation. Latest physical checkpoint: Day 4 — Stage 3 execution, offline block and online recovery confirmed. Local execution also works without Internet.
 
 ## Public reproducible proof — read the Skill without a wallet
 

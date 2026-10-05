@@ -25,3 +25,7 @@ O bundle inclui codigo de `@wallet-standard/app` 1.1.1, Solana Maintainers, dist
 Fonte oficial: https://github.com/wallet-standard/wallet-standard
 
 Provas manuais e limites: [conexao de carteira, Etapa 4A](../../../docs/JRSKILL_WALLET_CONNECTION_TEST.md) e [autenticacao, Etapa 4B](../../../docs/JRSKILL_WALLET_AUTH_TEST.md).
+
+## Compra — Etapa 4D
+
+`src/purchase.mjs` controla cotacao, aceite explicito, assinatura `solana:signTransaction` com chain `solana:devnet` e consulta da licenca da Skill de teste. O backend `wallet_purchase.py` monta a transacao unsigned, verifica a assinatura/mensagem/sessao e envia ao RPC Devnet. O fluxo de autenticacao descrito acima continua separado da compra. Nenhuma chave privada e entregue ao painel. [Arquitetura e teste manual](../../../docs/JRSKILL_WALLET_PURCHASE_TEST.md).

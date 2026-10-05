@@ -37,3 +37,11 @@ B transaction: [view purchase](https://explorer.solana.com/tx/oZkPZsQXtoYfC5FhjH
 The positive A/B proof is complete: one shared Skill, independent paid licenses. Remaining work: negative contract cases on Devnet if required, Phantom purchase, licensed Skill listing and authorization before physical execution. No firmware, JSON/Recipe or program code changed in this documentation checkpoint.
 
 Detailed terms/results: [model 00 checkpoint](../JRSKILL_LICENSE_MODEL_00_TEST.md). History: [commercial issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46), [technical issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
+
+## Browser purchase implementation — Stage 4D
+
+Panel **JRBOT-PANEL-V1S-PURCHASE-08** now reads the connected authenticated wallet's license for the known test Skill, presents an unsigned purchase quote and asks for explicit acceptance before Wallet Standard signing on solana:devnet. The backend verifies the exact signed quote, session, expiry and blockhash before relay. A fresh finalized license read is required to show ownership. Ambiguous results retain the signature and prevent automatic retries.
+
+Validation: **23 Python tests and 18 JavaScript tests passed**; Python/Anchor IDL transaction bytes matched (417 bytes); a Chrome flow passed with a simulated wallet/RPC and real test signatures. The existing A license was also read through the new decoder using real Devnet RPC. These are software tests and a read-only check: no new purchase/deploy on Devnet, real Phantom extension test or physical test occurred. Firmware, program and frozen JSON remain unchanged.
+
+Next: test the purchase with the real Phantom extension, following [Stage 4D instructions](../JRSKILL_WALLET_PURCHASE_TEST.md). General Skill discovery and license authorization before robot execution remain future work.
