@@ -93,3 +93,11 @@ The unlicensed wallet was rejected again at 13:09:17 with execution_license_abse
 Local-file execution completed at 13:05:21 despite wallet disconnection: this is the intended independent development mode. These observations validate the recorded panel-flow interruptions and recovery; the log does not identify the physical cause of the I/O failure or isolate a switch to a different wallet during an active sequence. Already dispatched commands cannot be undone, and the gate is not firmware DRM.
 
 **The user accepts this checkpoint; no additional simulations or repetitions are requested.** This update records existing user tests only. No code change, new automated test, build, program/firmware deployment or payment occurred.
+
+## Wallet Skill discovery — SKILLS-14, original layout preserved
+
+The proposed three-area layout was reverted at the user's request. **JRBOT-PANEL-V1S-SKILLS-14** keeps the previous layout and adds only the wallet Skill search/list in the existing section. It searches automatically after authentication and supports manual refresh. Account/authentication changes clear results; stale replies are discarded. Errors remain distinct from a successful empty list.
+
+The read-only authenticated endpoint queries model-00 License accounts by buyer, validates their derived addresses and reads linked Skill/Offer accounts with finalized commitment. Skill PDA, hash, schema and offer relationships are checked. The current proof supports up to 32 licenses per search; oversized/invalid replies fail explicitly. General execution selection is not part of this delivery: the existing purchase/execution remains limited to the validated checkpoint, while other discovered Skills are labeled as not yet executable by this panel.
+
+**39 Python and 29 JS tests passed**, and the wallet bundle was rebuilt. Real Devnet reads found the checkpoint Skill for the licensed Phantom address (slot 507816052) and an empty list for the unlicensed wallet (slot 507816055). Local browser inspection confirmed the original layout/new search controls without a connected extension/robot. No new payment, program/firmware build/deploy or physical test occurred. [Architecture and user test steps](../JRSKILL_SKILL_DISCOVERY_TEST.md).

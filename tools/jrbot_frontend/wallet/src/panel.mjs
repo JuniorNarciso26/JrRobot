@@ -1,3 +1,4 @@
+import { createSkillSearch } from './skills.mjs';
 import { getWallets } from '@wallet-standard/app';
 import { createWalletController } from './controller.mjs';
 import { createAuthenticator } from './auth.mjs';
@@ -9,7 +10,8 @@ const walletSelect = element('wallet_provider'), accountSelect = element('wallet
 let current, copiedAddress = '';
 let authenticator;
 let network, authState = { authenticated: false };
-let purchase;
+let purchase, skillSearch;
+let previousOwned = false;
 const localLog = line => { if (typeof localLine === 'function') localLine(line); };
 function options(select, items, selected, placeholder) {
   select.replaceChildren();
@@ -48,6 +50,7 @@ const controller = createWalletController(getWallets(), state => {
   authenticator?.observe(state);
   network?.observe(state, authState);
   purchase?.observe(state, authState);
+  skillSearch?.observe(state, authState);
   if(typeof updateSkillWallet==='function')updateSkillWallet(state.address,!!authState.authenticated&&authState.address===state.address&&!state.pending&&!authState.pending,state.active);
 }, localLog);
 
@@ -67,6 +70,7 @@ authenticator = createAuthenticator(async (operation, data) => {
   else if (current.address && !state.canSign) element('wallet_msg').textContent = 'Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.';
   network?.observe(current, state);
   purchase?.observe(current, state);
+  skillSearch?.observe(current, state);
   if(typeof updateSkillWallet==='function')updateSkillWallet(current.address,!!state.authenticated&&state.address===current.address&&!current.pending&&!state.pending,current.active);
 }, localLog);
 authenticator.observe(current);
@@ -110,11 +114,38 @@ purchase = createPurchase(async (operation, data) => {
     '\nTeto aceito da taxa de rede: ' + sol(state.quote.fee_limit_lamports) + ' SOL' +
     '\nTotal estimado sem prioridade: ' + sol(state.quote.total_lamports) + ' SOL de teste' +
     '\nTotal maximo autorizado: ' + sol(state.quote.total_limit_lamports) + ' SOL de teste' : '';
+  if (state.owned && !previousOwned) void skillSearch?.search();
+  previousOwned = !!state.owned;
   const link = element('purchase_transaction');
   link.hidden = !state.signature || state.signature === 'unknown';
   if (!link.hidden) link.href = 'https://explorer.solana.com/tx/' + state.signature + '?cluster=devnet';
 }, localLog);
 purchase.observe(current, authState);
+skillSearch = createSkillSearch(async () => {
+  const response = await fetch('/jrskill/wallet/skills', { credentials: 'same-origin', signal: AbortSignal.timeout(30000) });
+  if (!response.ok) throw new Error('HTTP ' + response.status + ': ' + await response.text());
+  return response.json();
+}, state => {
+  element('skills_search').disabled = !state.authenticated || state.pending;
+  element('skills_msg').textContent = state.message;
+  const list = element('skills_list');
+  list.replaceChildren();
+  for (const skill of state.skills) {
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:10px 0;border-bottom:1px solid #252b38';
+    const title = document.createElement('strong'); title.textContent = skill.name;
+    const status = document.createElement('p');
+    status.textContent = skill.checkpoint_supported ? 'Licenciada — disponivel para o teste de execucao abaixo.' :
+      'Licenciada — descoberta confirmada; execucao desta Skill ainda nao habilitada neste painel.';
+    const details = document.createElement('details');
+    const summary = document.createElement('summary'); summary.textContent = 'Ver Skill e licenca';
+    const metadata = document.createElement('p'); metadata.textContent = 'Skill: ' + skill.skill + ' | Licenca: ' + skill.license + ' | Hash: ' + skill.payload_hash;
+    details.append(summary, metadata); row.append(title, status, details); list.appendChild(row);
+  }
+}, localLog);
+skillSearch.observe(current, authState);
+element('skills_search').addEventListener('click', () => skillSearch.search());
+
 element('purchase_check').addEventListener('click', () => purchase.check());
 element('purchase_quote').addEventListener('click', () => purchase.prepare());
 element('purchase_accept').addEventListener('change', event => purchase.accept(event.target.checked));

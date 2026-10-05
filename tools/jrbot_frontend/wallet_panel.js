@@ -1,4 +1,67 @@
 (() => {
+  // src/skills.mjs
+  var GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+  var PROGRAM = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
+  function createSkillSearch(request, render, log = () => {
+  }) {
+    let address = "", provider, authenticated = false, pending = false, epoch = 0, skills = [];
+    let message = "Conecte e autentique a carteira para buscar.";
+    function emit() {
+      render({ authenticated, pending, skills, message });
+    }
+    const api = {
+      observe(state, auth) {
+        const next = state.address || "";
+        const ready = !!next && !!auth.authenticated && auth.address === next && !auth.pending && !state.pending;
+        if (next !== address || ready !== authenticated || state.active !== provider) {
+          epoch++;
+          address = next;
+          provider = state.active;
+          authenticated = ready;
+          pending = false;
+          skills = [];
+          message = "Conecte e autentique a carteira para buscar.";
+          emit();
+          if (ready) void api.search();
+        } else emit();
+      },
+      async search() {
+        if (!authenticated || pending) return;
+        const attempt = epoch, expected = address;
+        pending = true;
+        skills = [];
+        message = "Buscando suas licencas na Devnet...";
+        emit();
+        try {
+          const result = await request();
+          if (attempt !== epoch) return;
+          if (result.cluster !== "devnet" || result.genesis !== GENESIS || result.program !== PROGRAM || result.buyer !== expected || result.commitment !== "finalized" || !Number.isSafeInteger(result.rpc_slot) || result.rpc_slot < 0 || !Array.isArray(result.skills) || result.skills.length > 32)
+            throw new Error("Resposta da busca invalida");
+          const keys = /* @__PURE__ */ new Set();
+          for (const item of result.skills) {
+            if (!item || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(item.skill) || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(item.license) || keys.has(item.skill) || item.model_version !== 0 || item.schema_version !== 1 || item.hash_verified !== true || !/^[a-f0-9]{64}$/.test(item.payload_hash) || typeof item.name !== "string" || item.name.length > 64 || typeof item.checkpoint_supported !== "boolean") throw new Error("Registro de Skill invalido");
+            keys.add(item.skill);
+          }
+          skills = result.skills;
+          message = skills.length ? skills.length + " Skill(s) licenciada(s) encontrada(s)." : "Esta carteira nao possui Skills licenciadas neste programa na Devnet.";
+          log("JR_SKILL_DISCOVERY result=ok buyer=" + expected + " count=" + skills.length + " rpc_slot=" + result.rpc_slot);
+        } catch (error) {
+          if (attempt !== epoch) return;
+          skills = [];
+          message = "Busca nao confirmada: " + error.message;
+          log("JR_SKILL_DISCOVERY result=error buyer=" + expected + " detail=" + error.message);
+        } finally {
+          if (attempt === epoch) {
+            pending = false;
+            emit();
+          }
+        }
+      }
+    };
+    emit();
+    return api;
+  }
+
   // node_modules/.pnpm/@wallet-standard+app@1.1.1/node_modules/@wallet-standard/app/lib/esm/wallets.js
   var __classPrivateFieldGet = function(receiver, state, kind, f) {
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
@@ -371,8 +434,8 @@
   // src/purchase.mjs
   var CHAIN2 = "solana:devnet";
   var SKILL = "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux";
-  var PROGRAM = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
-  var GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+  var PROGRAM2 = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
+  var GENESIS2 = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
   var detail = (error) => String(error?.message || error || "Erro sem detalhe").replace(/[\r\n\t]/g, " ").replace(/[A-Za-z0-9+/=_-]{100,}/g, "[dados omitidos]").slice(0, 600);
   function sol(value) {
     const n = BigInt(value);
@@ -398,7 +461,7 @@
       canBuy: authenticated && canSign() && !pending && !owned && !signature && accepted && !!quote && quote.expires_at > clock()
     });
     function validate(result, address) {
-      if (result.cluster !== "devnet" || result.genesis !== GENESIS || result.program !== PROGRAM || result.skill !== SKILL || result.buyer !== address || result.commitment !== "finalized" || typeof result.owned !== "boolean" || result.model_version !== 0) {
+      if (result.cluster !== "devnet" || result.genesis !== GENESIS2 || result.program !== PROGRAM2 || result.skill !== SKILL || result.buyer !== address || result.commitment !== "finalized" || typeof result.owned !== "boolean" || result.model_version !== 0) {
         throw new Error("Resposta de licenca/cotacao invalida");
       }
       for (const name of ["price_lamports", "creator_lamports", "treasury_lamports"]) {
@@ -571,6 +634,8 @@
   var network;
   var authState = { authenticated: false };
   var purchase;
+  var skillSearch;
+  var previousOwned = false;
   var localLog = (line) => {
     if (typeof localLine === "function") localLine(line);
   };
@@ -623,6 +688,7 @@
     authenticator?.observe(state);
     network?.observe(state, authState);
     purchase?.observe(state, authState);
+    skillSearch?.observe(state, authState);
     if (typeof updateSkillWallet === "function") updateSkillWallet(state.address, !!authState.authenticated && authState.address === state.address && !state.pending && !authState.pending, state.active);
   }, localLog);
   authenticator = createAuthenticator(async (operation, data) => {
@@ -642,6 +708,7 @@
     else if (current.address && !state.canSign) element("wallet_msg").textContent = "Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.";
     network?.observe(current, state);
     purchase?.observe(current, state);
+    skillSearch?.observe(current, state);
     if (typeof updateSkillWallet === "function") updateSkillWallet(current.address, !!state.authenticated && state.address === current.address && !current.pending && !state.pending, current.active);
   }, localLog);
   authenticator.observe(current);
@@ -677,11 +744,41 @@
     element("purchase_msg").textContent = state.message;
     element("purchase_license").textContent = !state.checked ? "Licenca nao consultada." : state.owned ? "minimal_recipe_01 \u2014 Licenciada nesta carteira. PDA: " + state.license : "Esta carteira ainda nao possui a Skill de teste.";
     element("purchase_terms").textContent = state.quote ? "Comprador: " + state.quote.buyer + "\nPreco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + state.quote.creator + " \u2014 " + sol(state.quote.creator_lamports) + " SOL\nJrBot: " + state.quote.treasury + " \u2014 " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede estimada sem prioridade: " + sol(state.quote.fee_lamports) + " SOL\nPrioridade adicional permitida: ate " + sol(state.quote.priority_fee_limit_lamports) + " SOL\nTeto aceito da taxa de rede: " + sol(state.quote.fee_limit_lamports) + " SOL\nTotal estimado sem prioridade: " + sol(state.quote.total_lamports) + " SOL de teste\nTotal maximo autorizado: " + sol(state.quote.total_limit_lamports) + " SOL de teste" : "";
+    if (state.owned && !previousOwned) void skillSearch?.search();
+    previousOwned = !!state.owned;
     const link = element("purchase_transaction");
     link.hidden = !state.signature || state.signature === "unknown";
     if (!link.hidden) link.href = "https://explorer.solana.com/tx/" + state.signature + "?cluster=devnet";
   }, localLog);
   purchase.observe(current, authState);
+  skillSearch = createSkillSearch(async () => {
+    const response = await fetch("/jrskill/wallet/skills", { credentials: "same-origin", signal: AbortSignal.timeout(3e4) });
+    if (!response.ok) throw new Error("HTTP " + response.status + ": " + await response.text());
+    return response.json();
+  }, (state) => {
+    element("skills_search").disabled = !state.authenticated || state.pending;
+    element("skills_msg").textContent = state.message;
+    const list = element("skills_list");
+    list.replaceChildren();
+    for (const skill of state.skills) {
+      const row = document.createElement("div");
+      row.style.cssText = "padding:10px 0;border-bottom:1px solid #252b38";
+      const title = document.createElement("strong");
+      title.textContent = skill.name;
+      const status = document.createElement("p");
+      status.textContent = skill.checkpoint_supported ? "Licenciada \u2014 disponivel para o teste de execucao abaixo." : "Licenciada \u2014 descoberta confirmada; execucao desta Skill ainda nao habilitada neste painel.";
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Ver Skill e licenca";
+      const metadata = document.createElement("p");
+      metadata.textContent = "Skill: " + skill.skill + " | Licenca: " + skill.license + " | Hash: " + skill.payload_hash;
+      details.append(summary, metadata);
+      row.append(title, status, details);
+      list.appendChild(row);
+    }
+  }, localLog);
+  skillSearch.observe(current, authState);
+  element("skills_search").addEventListener("click", () => skillSearch.search());
   element("purchase_check").addEventListener("click", () => purchase.check());
   element("purchase_quote").addEventListener("click", () => purchase.prepare());
   element("purchase_accept").addEventListener("change", (event) => purchase.accept(event.target.checked));

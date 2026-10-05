@@ -11,6 +11,7 @@ import solana_skill
 import wallet_auth
 import wallet_network
 import wallet_purchase
+import wallet_skills
 import wallet_execution
 import urllib.error
 import urllib.parse
@@ -26,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-LICENSE-12"
+APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-14"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -299,6 +300,26 @@ class Handler(BaseHTTPRequestHandler):
             token = wallet_auth.cookie_token(self.headers.get("Cookie"))
             status = wallet_auth.STORE.status(token, "http://" + self.headers["Host"])
             self._send(200, json.dumps(status), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/skills":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira para buscar suas Skills")
+                return
+            try:
+                result = wallet_skills.discover(status["address"])
+                after = wallet_auth.STORE.status(token, origin)
+                if not after.get("authenticated") or after.get("address") != status["address"]:
+                    self._send(401, "Sessao alterada ou expirada durante a busca")
+                    return
+            except (ValueError, TimeoutError, OSError) as exc:
+                detail = solana_skill.rpc_error_detail(exc)
+                add_log("JR_SKILL_DISCOVERY result=error buyer=" + status["address"] + " detail=" + detail)
+                self._send(502, "Busca de Skills nao confirmada: " + detail)
+                return
+            add_log("JR_SKILL_DISCOVERY result=ok buyer=" + status["address"] + " count=" + str(len(result["skills"])) + " rpc_slot=" + str(result["rpc_slot"]))
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
         elif path.path == "/jrskill/wallet/purchase/status":
             token = wallet_auth.cookie_token(self.headers.get("Cookie"))
             origin = "http://" + self.headers["Host"]
