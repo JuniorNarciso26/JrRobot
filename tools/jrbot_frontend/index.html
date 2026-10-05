@@ -90,7 +90,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
         <p class="hint">A rede selecionada na extensao nao e informada por esta conexao Wallet Standard. Confirme na propria carteira. Suporte Devnet anunciado e saldo consultado pelo painel nao comprovam essa selecao.</p>
         <p class="hint"><a href="https://help.phantom.com/articles/use-testnets-in-phantom-5997313271699" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Guia oficial da Phantom</a> · Para outras carteiras, use as configuracoes e a documentacao do aplicativo.</p>
       </details>
-      <div class="msg">Autenticar assina uma mensagem, sem pagamento. A compra abaixo pede outra assinatura, de transacao Devnet. A execucao experimental continua independente da licenca; bloqueio no robo sera uma proxima etapa.</div>
+      <div class="msg">Autenticar assina uma mensagem, sem pagamento. A compra abaixo pede outra assinatura, de transacao Devnet. Executar a Skill da Devnet exige carteira autenticada e licenca valida. O teste JSON local continua disponivel para desenvolvimento.</div>
       <div class="msg"><a href="https://phantom.com/download" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Instalar Phantom pelo site oficial</a> · Use uma carteira nova de teste no Chrome.</div>
     </div>
     <h2>Comprar Skill — Devnet</h2>
@@ -114,6 +114,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <div id="jrskill_devnet_msg" class="msg">Verificando acesso a Solana. A Skill local funciona sem Internet.</div>
       <button id="jrskill_api_test" data-action onclick="runJrSkillTest()" class="green">Executar Skill JSON local</button>
       <button id="jrskill_devnet_test" data-action onclick="runJrSkillTest('solana-devnet')" class="green" disabled>Executar Skill da Devnet</button>
+      <p class="hint">Execucao Devnet: carteira autenticada e licenca verificada antes de cada comando. Execucao local: teste de desenvolvimento sem licenca. Troca/desconexao da carteira ou falha de consulta interrompe os proximos comandos.</p>
       <span id="jrskill_api_state" class="state">aguardando</span>
       <div class="msg" id="jrskill_api_msg">Teste do schema minimo: chamada direta face + wait local + recipe local + face. O firmware continua JrBot_V1S_00.</div>
     </div>

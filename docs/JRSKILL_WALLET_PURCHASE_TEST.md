@@ -1,12 +1,12 @@
 # Etapa 4D — compra pelo navegador
 
-05/10/2026, exclusivamente `V1s-00`. Painel atual **JRBOT-PANEL-V1S-PURCHASE-11** (ComputeBudget limitado; implementacao inicial PURCHASE-08). Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
+05/10/2026, exclusivamente `V1s-00`. Painel atual **JRBOT-PANEL-V1S-LICENSE-12**; compra ComputeBudget validada na PURCHASE-11. Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
 
 ## Escopo e estado
 
 Compra Wallet Standard para a mesma Skill/oferta Devnet validada por A/B. Consulta uma licenca por carteira/Skill e apresenta a Skill de teste quando licenciada. Nao e descoberta geral de todas as Skills da carteira.
 
-**Compra pela extensao Phantom real confirmada em 05/10/2026, log (78), transacao finalized e licenca verificada por RPC independente.** Usuario tambem confirmou visualmente a execucao local e da Skill recuperada da Devnet. Nenhum novo deploy foi necessario. Programa, firmware, JSON v1 e Recipe preservados. Executor experimental continua independente da licenca; bloqueio por licenca antes da execucao ainda pendente.
+**Compra pela extensao Phantom real confirmada em 05/10/2026, log (78), transacao finalized e licenca verificada por RPC independente.** Usuario tambem confirmou visualmente a execucao local e da Skill recuperada da Devnet. Nenhum novo deploy foi necessario. Programa, firmware, JSON v1 e Recipe preservados. Controle de licenca agora implementado no fluxo Devnet do painel, com teste fisico ainda pendente: [Etapa 4E](JRSKILL_LICENSE_EXECUTION_TEST.md). Teste local de desenvolvimento permanece independente.
 
 ## Arquitetura
 

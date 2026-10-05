@@ -6,6 +6,8 @@ const logEl=el('log');
 let serverCursor=0, serverSession='', autoScroll=true, busy=false, device=null;
 let mode='serial', serialConnected=false, activePort='';
 let devnetState='unknown', devnetChecking=false;
+let skillWallet={address:'',authenticated:false,provider:null,revision:0};
+function updateSkillWallet(address,authenticated,provider){if(skillWallet.address!==address||skillWallet.authenticated!==authenticated||skillWallet.provider!==provider)skillWallet={address,authenticated,provider,revision:skillWallet.revision+1};refreshControls();}
 function appendLog(items){for(const item of items){const line=document.createElement('div');line.textContent='['+item.ts+'] '+item.line;logEl.appendChild(line);el('last').textContent=item.ts;}while(logEl.children.length>1200)logEl.removeChild(logEl.firstChild);if(autoScroll)logEl.scrollTop=logEl.scrollHeight;}
 function localLine(line){appendLog([{ts:new Date().toLocaleTimeString(),line}]);}
 function clearLog(){logEl.textContent='';}
@@ -15,7 +17,7 @@ function connection(text,ok){el('conn').textContent=text;el('conn').className='p
 function fields(text){const result={};for(const token of text.trim().split(/\s+/)){const at=token.indexOf('=');if(at>0)result[token.slice(0,at)]=token.slice(at+1);}return result;}
 function currentFirmware(){return !!device&&typeof device.version==='string'&&FIRMWARE_PREFIXES.some(prefix=>device.version.startsWith(prefix))&&device.hardware==='JRBOT-HW-04';}
 function oledAvailable(){return !!device&&device.oled_presence==='available'&&['ready','degraded'].includes(device.oled);}
-function refreshControls(){document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);const valid=currentFirmware();el('test_audio').disabled=busy||!valid||!['ready','on_demand'].includes(device?.audio);el('test_camera').disabled=busy||!valid||mode!=='serial'||device?.camera!=='available';el('test_mic').disabled=busy||!valid||device?.mic!=='available';document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!valid||!oledAvailable());el('audio_volume').disabled=busy||!valid;el('apply_volume').disabled=busy||!valid;el('jrskill_devnet_test').disabled=busy||devnetState!=='available';el('jrskill_devnet_check').disabled=busy||devnetChecking;}
+function refreshControls(){document.querySelectorAll('[data-action]').forEach(b=>b.disabled=busy);const valid=currentFirmware();el('test_audio').disabled=busy||!valid||!['ready','on_demand'].includes(device?.audio);el('test_camera').disabled=busy||!valid||mode!=='serial'||device?.camera!=='available';el('test_mic').disabled=busy||!valid||device?.mic!=='available';document.querySelectorAll('#faces button,#demo').forEach(b=>b.disabled=busy||!valid||!oledAvailable());el('audio_volume').disabled=busy||!valid;el('apply_volume').disabled=busy||!valid;el('jrskill_devnet_test').disabled=busy||devnetState!=='available'||!skillWallet.authenticated;el('jrskill_devnet_check').disabled=busy||devnetChecking;}
 function invalidate(message){device=null;el('device_msg').textContent=message;for(const id of ['fw_version','fw_profile','oled_state','audio_state','camera_state','mic_state'])el(id).textContent='Nao verificado';refreshControls();}
 function renderStatus(text){if(!text.startsWith('JR_STATUS protocol=2 ')){invalidate('Firmware sem protocolo V2.');connection('Firmware nao confirmado',false);throw new Error('Firmware sem protocolo V2.');}const next=fields(text);if(!next.version||!next.profile||!next.hardware){invalidate('Estado incompleto.');connection('Firmware nao confirmado',false);throw new Error('Estado incompleto do firmware.');}device=next;const valid=currentFirmware();el('face_controls').open=oledAvailable();el('fw_version').textContent=next.version;el('fw_profile').textContent=next.profile;el('oled_state').textContent=next.oled_presence==='available'?'Disponivel - '+next.oled:'Indisponivel - '+(next.oled||'offline');const audioSeq=Number(next.audio_test_seq||0),audioBytes=Number(next.audio_last_bytes||0);el('audio_state').textContent=!valid?'Firmware antigo/incompativel':next.audio_test_running==='1'?'Teste em andamento':audioSeq>0?'Ultimo teste #'+audioSeq+' - '+(next.audio_last||'?')+' - '+audioBytes+' bytes':'Pronto para teste - MAX98357A';el('camera_state').textContent=next.camera==='available'?'Disponivel - OV5640 '+(next.camera_pid||''):'Indisponivel - OV5640';el('mic_state').textContent=next.mic==='available'?'Disponivel - MS3625 canal '+(next.mic_channel||'?')+' pico '+(next.mic_peak_raw||'0'):'Indisponivel - MS3625';if(/^\d+$/.test(next.volume||'')){el('audio_volume').value=next.volume;el('audioVolText').textContent=next.volume+'%';}el('device_msg').textContent='Estado atualizado. Build: '+(next.build_sp||next.version)+'.'+(next.pending_restart==='1'?' Wi-Fi pendente de reinicializacao.':'');el('audio_msg').textContent=audioSeq>0?'Diagnostico do audio: teste #'+audioSeq+', resultado '+(next.audio_last||'?')+', '+audioBytes+' bytes transmitidos. Se ESP_OK e nao houve som, confira MAX98357A/falante.':'MAX98357A: LRC GPIO47, BCLK GPIO21, DIN GPIO42. O teste usa o volume ja aplicado e envia um unico comando.';el('cam_msg').textContent=next.camera==='available'?'OV5640 detectada. Teste liberado.':'OV5640 nao respondeu. Conecte e clique Atualizar estado.';el('face_msg').textContent=oledAvailable()?'OLED respondeu. Controles liberados.':'OLED nao respondeu; o restante do JrBot continua disponivel.';const micInfo=el('test_mic')?.nextElementSibling;if(micInfo)micInfo.textContent=next.mic==='available'?'MS3625 detectou atividade I2S. Teste liberado.':'MS3625 sem atividade I2S. Conecte e clique Atualizar estado.';connection(valid?(mode==='serial'?'Painel conectado em '+(activePort||'Serial')+' - firmware confirmado':'Wi-Fi - firmware confirmado'):'Firmware nao confirmado',valid);refreshControls();}
 async function api(path,opts={}){const headers={...(opts.headers||{})};if(opts.method==='POST')headers['X-JrBot-Panel']='1';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);try{const r=await fetch(path,{...opts,headers,signal:controller.signal});const text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));return text;}catch(e){if(e.name==='AbortError')throw new Error('Tempo de resposta esgotado.');throw e;}finally{clearTimeout(timer);}}
@@ -48,8 +50,8 @@ function validateCall(call,label){
   if(!Array.isArray(call)||!call.length||typeof call[0]!=='string')throw new Error(label+' possui chamada invalida.');
   if(!/^[a-z][a-z0-9_.-]{0,63}$/.test(call[0]))throw new Error(label+' possui nome de funcao invalido.');
 }
-async function runtimeCapabilities(){
-  const reply=await send('api '+JSON.stringify({v:1,fn:'capabilities',args:{}}));
+async function runtimeCapabilities(sender=send){
+  const reply=await sender('api '+JSON.stringify({v:1,fn:'capabilities',args:{}}));
   const body=readRuntimeApiReply(reply);
   const actions=body.result?.actions;
   if(!Array.isArray(actions))throw new Error('Runtime API nao informou actions.');
@@ -58,6 +60,7 @@ async function runtimeCapabilities(){
 async function executeJrSkillDocument(doc,ctx,label){
   if(ctx.depth>4)throw new Error('Limite de profundidade de recipes excedido.');
   for(let i=0;i<doc.run.length;i++){
+    ctx.guard?.();
     const call=doc.run[i];
     validateCall(call,label);
     const fn=call[0];
@@ -66,6 +69,7 @@ async function executeJrSkillDocument(doc,ctx,label){
       if(call.length!==2||!Number.isInteger(call[1])||call[1]<0||call[1]>5000)throw new Error(label+' wait invalido.');
       localLine('JR_SKILL_V1 call='+position+' fn=wait ms='+call[1]+' depth='+ctx.depth);
       await new Promise(resolve=>setTimeout(resolve,call[1]));
+      ctx.guard?.();
       continue;
     }
     if(fn==='recipe'){
@@ -75,7 +79,7 @@ async function executeJrSkillDocument(doc,ctx,label){
       localLine('JR_SKILL_V1 recipe_enter='+name+' depth='+(ctx.depth+1));
       const raw=await api('/jrskill/recipe/'+encodeURIComponent(name));
       const recipe=parseJrSkillJson(raw,'recipe '+name);
-      await executeJrSkillDocument(recipe,{actions:ctx.actions,depth:ctx.depth+1,stack:ctx.stack.concat([name])},'recipe '+name);
+      await executeJrSkillDocument(recipe,{...ctx,depth:ctx.depth+1,stack:ctx.stack.concat([name])},'recipe '+name);
       localLine('JR_SKILL_V1 recipe_exit='+name+' depth='+(ctx.depth+1));
       continue;
     }
@@ -83,7 +87,9 @@ async function executeJrSkillDocument(doc,ctx,label){
       if(call.length!==2||typeof call[1]!=='string'||!/^[a-z_]{1,32}$/.test(call[1]))throw new Error(label+' face invalida.');
       if(!ctx.actions.has('face'))throw new Error('Capability face nao disponivel neste firmware.');
       localLine('JR_SKILL_V1 call='+position+' fn=face value='+call[1]+' depth='+ctx.depth);
-      const reply=await send('api '+JSON.stringify({v:1,fn:'face',args:{expression:call[1]}}));
+      ctx.guard?.();
+      const reply=await (ctx.sender||send)('api '+JSON.stringify({v:1,fn:'face',args:{expression:call[1]}}));
+      ctx.guard?.();
       const body=readRuntimeApiReply(reply);
       if(body.result?.expression!==call[1])throw new Error('Runtime API nao confirmou face '+call[1]+'.');
       continue;
@@ -96,7 +102,7 @@ function renderDevnetState(state){
   const badge=el('jrskill_devnet_status');
   badge.textContent='Solana Devnet: '+(state==='available'?'disponivel':state==='unavailable'?'indisponivel':'verificando...');
   badge.className='pill '+(state==='available'?'ok':state==='unavailable'?'bad':'');
-  el('jrskill_devnet_msg').textContent=state==='available'?'Consulta Devnet disponivel. Conecte o robo pela Serial para executar a Skill.':state==='unavailable'?'Sem acesso a Devnet. A Skill local e os controles pela Serial continuam disponiveis. Reconecte a Internet e clique Verificar Devnet.':'Verificando acesso a Solana. A Skill local funciona sem Internet.';
+  el('jrskill_devnet_msg').textContent=state==='available'?'Consulta Devnet disponivel. Autentique a carteira licenciada e conecte o robo pela Serial para executar.':state==='unavailable'?'Sem acesso a Devnet. A Skill local e os controles pela Serial continuam disponiveis. Reconecte a Internet e clique Verificar Devnet.':'Verificando acesso a Solana. A Skill local funciona sem Internet.';
   refreshControls();
 }
 async function checkDevnetConnection(){
@@ -114,7 +120,11 @@ async function monitorDevnet(){
 }
 async function runJrSkillTest(source='local-file'){
   return action(async()=>{
+    let sender=send,guard=()=>{};
+    const wallet=skillWallet;
+    if(source==='solana-devnet')guard=()=>{if(!wallet.authenticated||!wallet.address||skillWallet.revision!==wallet.revision)throw new Error('Carteira desconectada, alterada ou nao autenticada; execucao Devnet bloqueada.');};
     try{
+      guard();
       if(mode!=='serial')throw new Error('O teste JrSkill v1 usa somente a conexao Serial.');
       if(!serialConnected)throw new Error('Conecte a Serial antes de executar a Skill.');
       if(!currentFirmware())await send('status');
@@ -126,7 +136,11 @@ async function runJrSkillTest(source='local-file'){
         localLine('JR_SKILL_SOLANA fetch=started');
         let proof;
         try{
-          proof=JSON.parse(await api('/jrskill/skill-devnet'));
+          proof=JSON.parse(await api('/jrskill/wallet/execution/start',{method:'POST',body:new URLSearchParams()}));
+          guard();
+          if(proof.buyer!==wallet.address||typeof proof.execution_permit!=='string'||!proof.execution_permit||!proof.license)throw new Error('Autorizacao nao corresponde a carteira.');
+          sender=async command=>{guard();const result=JSON.parse(await api('/jrskill/wallet/execution/send',{method:'POST',body:new URLSearchParams({permit:proof.execution_permit,command})}));guard();if(typeof result.reply!=='string')throw new Error('Resposta autorizada invalida');localLine(result.reply);return result.reply;};
+          localLine('JR_SKILL_AUTHORIZATION result=allowed buyer='+proof.buyer+' license='+proof.license);
           if(proof.source!==source||proof.hash_verified!==true||proof.matches_checkpoint!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
         }catch(e){renderDevnetState('unavailable');throw e;}
         raw=proof.payload_text;
@@ -135,15 +149,17 @@ async function runJrSkillTest(source='local-file'){
         raw=await api('/jrskill/skill');
       }else throw new Error('Origem da Skill invalida.');
       const skill=parseJrSkillJson(raw,'skill');
-      const actions=await runtimeCapabilities();
+      const actions=await runtimeCapabilities(sender);
       el('jrskill_api_state').textContent='executando';
       el('jrskill_api_msg').textContent='Executando JSON minimo v1 com '+skill.run.length+' chamadas de nivel principal...';
       localLine('JR_SKILL_V1 start=v1 source='+source+' top_calls='+skill.run.length);
-      await executeJrSkillDocument(skill,{actions,depth:0,stack:[]},'skill');
+      await executeJrSkillDocument(skill,{actions,depth:0,stack:[],sender,guard},'skill');
+      guard();
       el('jrskill_api_state').textContent='ok';
       el('jrskill_api_msg').textContent='Skill concluida ('+source+'). Confirme visualmente: happy -> recipe(surprised -> thinking -> happy) -> neutral. Recipe local.';
       localLine('JR_SKILL_V1 result=ok source='+source);
     }catch(e){
+      if(source==='solana-devnet')localLine('JR_SKILL_AUTHORIZATION result=blocked detail='+e.message);
       el('jrskill_api_state').textContent='erro';
       localLine('JR_SKILL_V1 result=error source='+source+' detail='+e.message);
       throw e;

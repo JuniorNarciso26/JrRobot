@@ -1,7 +1,7 @@
 export function createAuthenticator(request, render, log = () => {}, clock = () => Date.now() / 1000) {
   let wallet = null, account = null, epoch = 0, pending = false, expires = 0;
   let message = '', invalidation = Promise.resolve();
-  const emit = () => render({ authenticated: !!account && expires > clock(), pending, message,
+  const emit = () => render({ authenticated: !!account && expires > clock(), address: account?.address || '', pending, message,
     canSign: !!account && !!wallet?.features['solana:signMessage'], expires });
   function invalidate() {
     epoch++; expires = 0; pending = false; message = '';

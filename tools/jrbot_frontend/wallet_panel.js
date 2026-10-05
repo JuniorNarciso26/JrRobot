@@ -217,6 +217,7 @@
     let message = "", invalidation = Promise.resolve();
     const emit = () => render({
       authenticated: !!account && expires > clock(),
+      address: account?.address || "",
       pending,
       message,
       canSign: !!account && !!wallet?.features["solana:signMessage"],
@@ -622,6 +623,7 @@
     authenticator?.observe(state);
     network?.observe(state, authState);
     purchase?.observe(state, authState);
+    if (typeof updateSkillWallet === "function") updateSkillWallet(state.address, !!authState.authenticated && authState.address === state.address && !state.pending && !authState.pending, state.active);
   }, localLog);
   authenticator = createAuthenticator(async (operation, data) => {
     const options2 = data === void 0 ? {} : { method: "POST", headers: {
@@ -640,6 +642,7 @@
     else if (current.address && !state.canSign) element("wallet_msg").textContent = "Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.";
     network?.observe(current, state);
     purchase?.observe(current, state);
+    if (typeof updateSkillWallet === "function") updateSkillWallet(current.address, !!state.authenticated && state.address === current.address && !current.pending && !state.pending, current.active);
   }, localLog);
   authenticator.observe(current);
   network = createNetworkCheck(async () => {

@@ -9,21 +9,31 @@ const recipe = readFileSync(new URL('../jrskill/recipes/face_sequence.json', imp
 
 async function simulate(failure) {
   const logs = [], faces = [], reads = [], elements = new Map();
-  const context = vm.createContext({console, TextEncoder, setTimeout: fn => { fn(); return 1; }, clearTimeout(){},
+  const context = vm.createContext({console, TextEncoder, URLSearchParams, setTimeout: fn => { fn(); return 1; }, clearTimeout(){},
     document: {getElementById(id){if(!elements.has(id)) elements.set(id,{textContent:'',value:''}); return elements.get(id);}},
     logs, capturedFaces: faces, reads, payload, recipe, failure});
   vm.runInContext(source, context);
   vm.runInContext(`
     mode='serial'; serialConnected=true; devnetState='available';
     currentFirmware=()=>true; oledAvailable=()=>true; refreshControls=()=>{};
+    updateSkillWallet('buyer',failure!=='unauth','mock');
     localLine=line=>logs.push(line);
-    api=async path=>{
+    api=async (path,options)=>{
       reads.push(path);
       if(path==='/jrskill/devnet-status')return JSON.stringify({available:failure!=='offline',cluster:'devnet'});
       if(path==='/jrskill/skill')return payload;
-      if(path==='/jrskill/skill-devnet'){
+      if(path==='/jrskill/wallet/execution/start'){
         if(failure==='rpc')throw new Error('RPC offline');
-        return JSON.stringify({source:'solana-devnet',commitment:'finalized',hash_verified:failure!=='hash',matches_checkpoint:true,payload_text:payload,pda:'checkpoint',rpc_slot:123,payload_bytes:128,payload_hash:'verified'});
+        if(failure==='unlicensed')throw new Error('execution_license_absent');
+        if(failure==='late-account')updateSkillWallet('other',false,'mock');
+        return JSON.stringify({buyer:'buyer',execution_permit:'permit',license:'license',source:'solana-devnet',commitment:'finalized',hash_verified:failure!=='hash',matches_checkpoint:true,payload_text:payload,pda:'checkpoint',rpc_slot:123,payload_bytes:128,payload_hash:'verified'});
+      }
+      if(path==='/jrskill/wallet/execution/send'){
+        const command=options.body.get('command');
+        if(failure==='midrun'&&capturedFaces.length===1)throw new Error('RPC offline');
+        const reply=await send(command);
+        if(failure==='account-change'&&capturedFaces.length===1)updateSkillWallet('other',false,'mock');
+        return JSON.stringify({reply});
       }
       if(path==='/jrskill/recipe/face_sequence')return recipe;
       throw new Error('Unexpected read '+path);
@@ -45,9 +55,24 @@ async function simulate(failure) {
 test('Devnet Skill uses existing executor/Recipe without reading local Skill', async()=>{
   const result=await simulate();
   assert.deepEqual(result.faces,['happy','surprised','thinking','happy','neutral']);
-  assert.deepEqual(result.reads,['/jrskill/skill-devnet','/jrskill/recipe/face_sequence']);
+  assert.ok(result.reads.includes('/jrskill/wallet/execution/start'));
+  assert.equal(result.reads.filter(path=>path==='/jrskill/wallet/execution/send').length,6);
+  assert.ok(result.reads.includes('/jrskill/recipe/face_sequence'));
   assert.ok(result.logs.includes('JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4'));
   assert.ok(result.logs.includes('JR_SKILL_V1 result=ok source=solana-devnet'));
+});
+
+test('unlicensed, unauthenticated and late wallet changes dispatch no faces',async()=>{
+  for(const failure of ['unlicensed','unauth','late-account']){
+    const result=await simulate(failure);assert.deepEqual(result.faces,[]);
+    assert.ok(result.logs.some(line=>line.startsWith('JR_SKILL_AUTHORIZATION result=blocked')));
+  }
+});
+test('wallet change and RPC failure stop subsequent physical commands',async()=>{
+  for(const failure of ['account-change','midrun']){
+    const result=await simulate(failure);assert.deepEqual(result.faces,['happy']);
+    assert.ok(!result.logs.includes('JR_SKILL_V1 result=ok source=solana-devnet'));
+  }
 });
 test('RPC failure, rejected proof and absent capability send no face commands', async()=>{
   for(const failure of ['rpc','hash','capability']){

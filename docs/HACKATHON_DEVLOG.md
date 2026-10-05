@@ -20,7 +20,7 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Independent CLI licenses; real Phantom purchase and physical Skill execution |
 
-**Latest checkpoint: Day 6 — real Phantom purchase finalized on Devnet with license and exact payments independently verified; local and Devnet Skill execution logged successfully and visually confirmed by the user on the robot.** Panel PURCHASE-11; software checks: 29 Python and 21 JS tests passed. License authorization before physical execution remains pending: current experimental execution is independent of license ownership. Earlier offline block/recovery proof remains documented in Day 4.
+**Latest physical checkpoint: Day 6 — real Phantom purchase finalized on Devnet with license and exact payments independently verified; local and Devnet Skill execution visually confirmed by the user on the robot.** The subsequent LICENSE-12 panel implements authorization before Devnet execution, with 34 Python and 26 JS tests passing; its physical licensed/unlicensed tests remain pending. Local development controls remain available without a license. Earlier offline block/recovery proof remains documented in Day 4.
 
 ## Public reproducible proof — read the Skill without a wallet
 

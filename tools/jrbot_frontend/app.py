@@ -11,6 +11,7 @@ import solana_skill
 import wallet_auth
 import wallet_network
 import wallet_purchase
+import wallet_execution
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,7 +26,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-11"
+APP_VERSION = "JRBOT-PANEL-V1S-LICENSE-12"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -414,6 +415,23 @@ class Handler(BaseHTTPRequestHandler):
                     wallet_auth.STORE.logout(token)
                     result = {"authenticated": False}
                     cookie = f"{wallet_auth.COOKIE}=; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age=0"
+                elif self.path in ('/jrskill/wallet/execution/start', '/jrskill/wallet/execution/send'):
+                    status = wallet_auth.STORE.status(token, origin)
+                    if not status.get('authenticated'):
+                        add_log('JR_SKILL_AUTHORIZATION result=blocked reason=authentication_required')
+                        self._send(401, 'Autentique a carteira para executar a Skill da Devnet')
+                        return
+                    try:
+                        if self.path.endswith('/start'):
+                            result = wallet_execution.STORE.start(token, origin)
+                            add_log('JR_SKILL_AUTHORIZATION result=allowed buyer=' + result['buyer'] + ' license=' + result['license'])
+                        else:
+                            command = validate_command(get('command'))
+                            result = {'reply': wallet_execution.STORE.send(token, origin, get('permit'), command, serial_request)}
+                            add_log('JR_SKILL_AUTHORIZATION result=command_sent buyer=' + status['address'])
+                    except (ValueError, RuntimeError, TimeoutError, OSError) as exc:
+                        add_log('JR_SKILL_AUTHORIZATION result=blocked buyer=' + status['address'] + ' detail=' + solana_skill.rpc_error_detail(str(exc)))
+                        raise
                 elif self.path in ("/jrskill/wallet/purchase/quote", "/jrskill/wallet/purchase/submit"):
                     status = wallet_auth.STORE.status(token, origin)
                     if not status.get("authenticated"):
