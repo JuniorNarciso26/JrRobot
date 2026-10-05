@@ -6,7 +6,7 @@
 
 Compra Wallet Standard para a mesma Skill/oferta Devnet validada por A/B. Consulta uma licenca por carteira/Skill e apresenta a Skill de teste quando licenciada. Nao e descoberta geral de todas as Skills da carteira.
 
-**Implementado e testado em software; compra pela extensao Phantom real ainda pendente.** Nenhum novo deploy, compra Devnet ou teste fisico realizado nesta implementacao. Programa, firmware, JSON v1 e Recipe preservados. Executor experimental continua independente da licenca; bloqueio no hardware fica para a etapa seguinte.
+**Compra pela extensao Phantom real confirmada em 05/10/2026, log (78), transacao finalized e licenca verificada por RPC independente.** Usuario tambem confirmou visualmente a execucao local e da Skill recuperada da Devnet. Nenhum novo deploy foi necessario. Programa, firmware, JSON v1 e Recipe preservados. Executor experimental continua independente da licenca; bloqueio por licenca antes da execucao ainda pendente.
 
 ## Arquitetura
 
@@ -79,3 +79,13 @@ Cotacao armazena e exibe margem de prioridade 0,0001 SOL, teto de rede igual a t
 Referencia: [Compute Budget](https://solana.com/docs/core/fees/compute-budget), [formula de prioridade](https://solana.com/docs/core/fees/fee-structure).
 
 Verificacao: **29 testes Python e 21 JS passaram**, incluindo parametros observados no log 77, limites/arredondamento, assinatura valida com prefixo, tipos duplicados/desconhecidos, dados/contas de compra alterados, permissao escalada, taxa RPC acima do teto, perda de saldo e aceite com teto consistente. Bundle recompilado. Testes usam carteira/RPC simuladas; nao houve compra/deploy Devnet ou teste real Phantom nesta implementacao. Usuario deve reiniciar PURCHASE-11, conferir Devnet, consultar ausencia/cotacao, aceitar o total maximo e enviar TXT apos uma tentativa, depois consultar licenca finalized.
+
+## Resultado real — Phantom e execucao fisica, log (78)
+
+Teste do usuario em 05/10/2026: 11:44:34 licenca ausente; 11:44:37 cotacao; 11:44:44 retorno da assinatura; 11:44:47 envio; 11:45:18 owned=true. [Transacao Devnet](https://explorer.solana.com/tx/3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9?cluster=devnet), **finalized slot 507765827**, meta.err=null.
+
+Comprador `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R`, licenca `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`, Skill `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux`, modelo 00. RPC independente confirmou dados/identidade da licenca, unica compra correta, prefixo ComputeBudget e repasses. Criador e tesouraria receberam 500000000 lamports cada; deposito da licenca 1346200; taxa efetiva 80000 (75000 prioridade + 5000 base). Debito total **1001426200 lamports = 1,0014262 SOL de teste**, saldo apos transacao 3,9985738 SOL. Taxa ficou abaixo do teto aceito 105000. [Prova RPC publica](HACKATHON_DEVLOG/assets/day6/license-purchase-phantom-proof.json).
+
+Execucao local 11:45:43–11:45:46 result=ok. Leitura Devnet 11:45:48, slot 507766081, 128 bytes, hash verificado e matches_checkpoint=true. Execucao source=solana-devnet 11:45:49–11:45:52 result=ok, sequencia happy -> surprised -> thinking -> happy -> neutral. Usuario confirmou visualmente as faces no hardware. [Trecho selecionado do log (78)](HACKATHON_DEVLOG/assets/day6/panel-log-78-skill-excerpt.txt).
+
+**Compra real e execucao fisica confirmadas; enforcement ainda nao comprovado nem implementado.** Executar depois da compra nao prova que uma carteira sem licenca seja bloqueada: executor experimental permanece independente. Proxima etapa deve consultar/autorizar licenca antes de executar e testar uma carteira sem licenca, uma licenciada, troca/desconexao e indisponibilidade de RPC. Nenhum codigo, firmware ou programa mudou neste registro documental.

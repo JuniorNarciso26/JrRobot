@@ -149,3 +149,7 @@ Depois de git pull, feche o painel antigo e reabra **PAINEL.bat** para carregar 
 ## Etapa 4D — compra no navegador
 
 O painel **JRBOT-PANEL-V1S-PURCHASE-08** implementa cotacao, assinatura Wallet Standard Devnet, envio verificado e consulta finalized da licenca para a Skill conhecida. Testes de software passaram; a compra com Phantom real ainda precisa do teste do usuario. Nenhuma nova compra/deploy Devnet foi realizada neste checkpoint. O executor experimental continua independente da licenca. [Arquitetura, limites e passo a passo](JRSKILL_WALLET_PURCHASE_TEST.md).
+
+### Resultado real posterior — PURCHASE-11 / log (78)
+
+Compra pela Phantom confirmada, transacao finalized slot 507765827, meta.err=null. Carteira `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R` recebeu licenca `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`. Preco 1 SOL de teste dividido 0,5/0,5; deposito 0,0013462; taxa efetiva 0,00008; debito total 1,0014262. Licenca/repasses verificados por RPC independente. Usuario confirmou execucao fisica local/Devnet, tambem result=ok no log; enforcement por licenca continua pendente. [Evidencias e limites](JRSKILL_WALLET_PURCHASE_TEST.md#resultado-real--phantom-e-execucao-fisica-log-78).

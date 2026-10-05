@@ -18,9 +18,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 3](HACKATHON_DEVLOG/day3.md) | 2026-09-30 | First JrSkill contract deployed; original JSON published/retrieved on Devnet |
 | [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill executed on the physical JrBot; positive path validated |
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
-| [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Buyers A/B: independent Devnet licenses, exact payments and client repeat protection |
+| [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Independent CLI licenses; real Phantom purchase and physical Skill execution |
 
-**Latest software checkpoint: Day 6 — CLI buyers A/B purchased independent licenses on Devnet, with exact payments verified. Browser purchase is now implemented in PURCHASE-08, with 23 Python and 18 JavaScript tests passing and a simulated browser flow checked.** Purchase with the real Phantom extension and license enforcement before physical execution remain pending. No new Devnet transaction or hardware test was performed for the browser implementation. Latest physical checkpoint: Day 4 — Stage 3 execution, offline block and online recovery confirmed. Local execution also works without Internet.
+**Latest checkpoint: Day 6 — real Phantom purchase finalized on Devnet with license and exact payments independently verified; local and Devnet Skill execution logged successfully and visually confirmed by the user on the robot.** Panel PURCHASE-11; software checks: 29 Python and 21 JS tests passed. License authorization before physical execution remains pending: current experimental execution is independent of license ownership. Earlier offline block/recovery proof remains documented in Day 4.
 
 ## Public reproducible proof — read the Skill without a wallet
 
