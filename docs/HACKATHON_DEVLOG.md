@@ -18,9 +18,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 3](HACKATHON_DEVLOG/day3.md) | 2026-09-30 | First JrSkill contract deployed; original JSON published/retrieved on Devnet |
 | [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill executed on the physical JrBot; positive path validated |
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
-| [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Independent CLI licenses; real Phantom purchase and physical Skill execution |
+| [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Closed: purchases, license discovery and authorized physical execution |
 
-**Latest physical checkpoint: Day 6 — real Phantom purchase verified; LICENSE-12 licensed/unlicensed execution, mid-run wallet disconnection, communication failure and subsequent recovery recorded in user logs (79) and (80).** Both license states were independently verified by finalized RPC reads in checkpoint (79). The user considers the tests satisfactory; no further simulations are requested for this checkpoint. Log (80) does not isolate a change to a different wallet during an active sequence or establish the physical cause of its I/O failure. Local development controls remain available without a license. Earlier offline block/recovery proof remains documented in Day 4.
+**Day 6 closed and accepted by the user. Latest physical checkpoint: SKILLS-14, log (81), confirms automatic/manual discovery of one licensed Skill and authorized robot execution ending result=ok at 15:10:06.** Earlier Day 6 checkpoints record finalized purchases/revenue splits, unlicensed rejection, wallet-disconnection/communication interruption and recovery, with their evidence limits preserved. Local development controls remain independent; general Skill selection/execution is not yet implemented. Next session (2026-10-06): begin robot app work, then the web marketplace. [Closing evidence and next steps](HACKATHON_DEVLOG/day6.md#day-6-closure--user-log-81).
 
 ## Public reproducible proof — read the Skill without a wallet
 
@@ -28,7 +28,7 @@ The wallet-free verifier, commands and expected output are in [Day 3: public rep
 
 ## Colosseum update — ready-to-publish draft
 
-The English update prepared at the close of Day 3 is in [Day 3: Colosseum draft](HACKATHON_DEVLOG/day3.md#colosseum-update--ready-to-publish-draft).
+The latest English update is [Day 6: Colosseum draft](HACKATHON_DEVLOG/day6.md#colosseum-update--ready-to-publish-draft). It is published in this GitHub diary; submission on Colosseum is not confirmed here. The earlier [Day 3 draft](HACKATHON_DEVLOG/day3.md#colosseum-update--ready-to-publish-draft) remains available.
 
 This index remains at the original URL so previously published links to the diary, public proof and Colosseum draft continue to lead to the relevant entry.
 

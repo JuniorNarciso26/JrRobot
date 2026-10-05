@@ -1,6 +1,6 @@
-# Day 6 — first license purchase on Solana Devnet
+# Day 6 — wallet purchases, license discovery and physical execution
 
-Date: 2026-10-05. Branch: `V1s-00`. Model 00, CLI proof using test SOL.
+Date: 2026-10-05. Branch: `V1s-00`. Model 00, Solana Devnet/test SOL. **Day 6 closed and accepted by the user.** Final panel: **JRBOT-PANEL-V1S-SKILLS-14**. [Closing evidence](#day-6-closure--user-log-81) · [Colosseum update](#colosseum-update--ready-to-publish-draft).
 
 The user funded a separate buyer wallet, reviewed a read-only quote and explicitly sent the purchase. The 1 test SOL price was paid in the same transaction that created the buyer's License PDA.
 
@@ -101,3 +101,35 @@ The proposed three-area layout was reverted at the user's request. **JRBOT-PANEL
 The read-only authenticated endpoint queries model-00 License accounts by buyer, validates their derived addresses and reads linked Skill/Offer accounts with finalized commitment. Skill PDA, hash, schema and offer relationships are checked. The current proof supports up to 32 licenses per search; oversized/invalid replies fail explicitly. General execution selection is not part of this delivery: the existing purchase/execution remains limited to the validated checkpoint, while other discovered Skills are labeled as not yet executable by this panel.
 
 **39 Python and 29 JS tests passed**, and the wallet bundle was rebuilt. Real Devnet reads found the checkpoint Skill for the licensed Phantom address (slot 507816052) and an empty list for the unlicensed wallet (slot 507816055). Local browser inspection confirmed the original layout/new search controls without a connected extension/robot. No new payment, program/firmware build/deploy or physical test occurred. [Architecture and user test steps](../JRSKILL_SKILL_DISCOVERY_TEST.md).
+
+## Day 6 closure — user log (81)
+
+The user tested the discovery delivery on the connected HW04 robot and accepted the result. Log (81) records wallet authentication at 15:09:42, automatic discovery at 15:09:44 (**count=1, slot 507817275**) and refresh at 15:09:47 (**count=1, slot 507817287**). Duplicated lines are client/server reporting of the same events, not additional licenses.
+
+Licensed execution was authorized at 15:09:57 using license `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`. The Skill read at slot **507817329** recovered **128 bytes**, with SHA-256 `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`, hash_verified=true and matches_checkpoint=true. Six authorized commands were dispatched (capabilities + five face actions), with successful hardware replies for happy → surprised → thinking → happy → neutral. Execution ended at **15:10:06**, result=ok/source=solana-devnet. The user reported the test complete and satisfactory. [Selected public log (81)](assets/day6/panel-log-81-discovery-execution-excerpt.txt).
+
+**Completed Day 6 scope:** independent model-00 purchases by buyers A/B; real Phantom purchase with verified 50/50 creator/treasury payments; licensed execution and rejection without a license; wallet-disconnection/communication interruption and recovery; discovery of the connected wallet's licensed Skills with the original development-panel layout preserved. These milestones combine recorded user tests, independent Devnet reads and the software test results described above; they are not all repeated in log (81).
+
+The latest implementation passed 39 Python and 29 JS tests. This closing update only records existing evidence and publishes documentation: no new automated tests, compilation, deployment or payment. Log (81) does not test multiple different Skills or an unlicensed wallet; earlier software/RPC/hardware evidence remains identified in its own checkpoint. General Skill selection/execution is still future work; current robot execution remains the validated checkpoint. JSON v1 and the local Recipe remain unchanged. License enforcement is in the development panel/backend, not firmware DRM; local development controls remain independent.
+
+## Colosseum update — ready-to-publish draft
+
+**Day 6 complete — buy a robot Skill, discover its license and run it on real hardware.**
+
+JrSkill Network now has a working model-00 licensing flow on Solana Devnet. Independent buyers purchased licenses for the same shared Skill, each receiving a separate License PDA. A real Phantom purchase was finalized with the 1 test SOL price split equally between the creator and the JrBot treasury.
+
+The development panel authenticates the wallet, discovers its licensed Skills and verifies the on-chain payload before execution. Our physical JrBot completed the expression sequence happy → surprised → thinking → happy → neutral. Tests also recorded rejection without a license, interruption after wallet disconnection or communication failure, and successful recovery after reauthentication.
+
+Our closing hardware log confirms automatic and manual discovery of one licensed Skill, followed by authorized execution with the original 128-byte JSON and verified SHA-256. The latest implementation passed 39 Python and 29 JavaScript tests.
+
+This is a Devnet development proof using test SOL. Execution currently supports our validated test Skill; general Skill selection and the robot app are next. The licensing gate runs in the panel/backend, with local development controls still available. JrBot hardware predates the hackathon; the new work is the Solana Skill licensing, discovery and execution flow.
+
+Next session: start the robot app work, then build the web marketplace as the separate platform for discovering and buying Skills.
+
+[Verified Phantom purchase](https://explorer.solana.com/tx/3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9?cluster=devnet) · [Day 6 evidence and development log](https://github.com/JuniorNarciso26/JrRobot/blob/V1s-00/docs/HACKATHON_DEVLOG/day6.md) · [Project](https://colosseum.com/arena/projects/jrskill-network)
+
+Publication status: this text is published in the GitHub diary for use on Colosseum. A Colosseum submission is not confirmed by this documentation checkpoint.
+
+## Next session — robot app, then web marketplace
+
+Planned for 2026-10-06: begin the robot app work, using the validated wallet/license discovery flow as the baseline and defining Skill selection/execution before implementation. After the app stage, start building the website/marketplace for discovery and purchases. The development panel remains the test/diagnostic tool. These are planned steps, not work already implemented or an automatic scheduled task.

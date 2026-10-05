@@ -2,6 +2,8 @@
 
 05/10/2026, exclusivamente V1s-00. Versao: **JRBOT-PANEL-V1S-SKILLS-14**. [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
+**Teste do usuario aceito no fechamento do Day 6, log (81): busca automatica/manual retornou uma Skill e execucao licenciada concluiu no robo.** Resultados complementares abaixo; nenhuma nova compra/deploy nesta prova.
+
 ## Escopo
 
 Layout anterior preservado. Somente o bloco Minha Skill de teste recebeu o titulo Minhas Skills, botao Buscar minhas Skills, estado da busca e lista. Busca automatica apos autenticacao, atualizacao manual e nova consulta quando uma compra passa a apresentar licenca. Trocar/desconectar carteira ou perder autenticacao limpa a lista e descarta respostas atrasadas. Falha RPC aparece como busca nao confirmada, nunca como carteira sem licencas.
@@ -25,7 +27,15 @@ Referencia primaria: [Solana getProgramAccounts](https://solana.com/docs/rpc/htt
 - **Leitura real Devnet, sem transacao:** carteira licenciada 6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R retornou minimal_recipe_01/licenca 7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45, hash verificado, finalized slot 507816052. Carteira sem licenca 8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo retornou lista vazia no slot 507816055.
 - Navegador local confirmou layout anterior, SKILLS-14, bloco Minhas Skills e busca bloqueada sem carteira. Sem Phantom conectada nem robo na verificacao: teste real da extensao/hardware desta entrega ainda nao realizado. Nao houve compilacao/deploy de contrato ou firmware.
 
-## Teste no painel
+## Resultado do usuario — log (81)
+
+Carteira licenciada autenticada as 15:09:42. Busca automatica 15:09:44 retornou count=1/slot 507817275; atualizacao 15:09:47 retornou count=1/slot 507817287. Linhas duplicadas preservadas no TXT sao registros frontend/backend do mesmo resultado, nao licencas adicionais.
+
+Autorizacao as 15:09:57, Skill original com 128 bytes/hash verificado no slot 507817329. Comandos capabilities e faces receberam respostas do firmware JrBot_V1S_00/HW04; sequencia happy -> surprised -> thinking -> happy -> neutral terminou as 15:10:06, result=ok source=solana-devnet. Usuario considerou perfeito/finalizado. [Trecho selecionado do TXT](HACKATHON_DEVLOG/assets/day6/panel-log-81-discovery-execution-excerpt.txt).
+
+Este log demonstra descoberta na carteira licenciada e execucao do checkpoint no hardware; nao demonstra busca de multiplas Skills, troca para carteira sem licenca ou erro RPC. Esses casos mantem as evidencias de software/RPC anteriores. Registro documental sem novo codigo/build/deploy/teste automatizado.
+
+## Plano de teste original no painel — resultados registrados acima
 
 1. Fechar servidor. No checkout Windows do PAINEL.bat, confirmar V1s-00 e executar git pull --ff-only origin V1s-00. Abrir PAINEL.bat e Ctrl+F5; conferir SKILLS-14. Nao precisa npm/Anchor, gravar firmware, deploy ou comprar novamente.
 2. Conectar/autenticar a carteira que comprou: Minhas Skills deve listar minimal_recipe_01. Buscar minhas Skills repete a leitura. Abrir Ver Skill e licenca para conferir PDAs.
