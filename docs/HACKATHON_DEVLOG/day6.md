@@ -93,3 +93,11 @@ The unlicensed wallet was rejected again at 13:09:17 with execution_license_abse
 Local-file execution completed at 13:05:21 despite wallet disconnection: this is the intended independent development mode. These observations validate the recorded panel-flow interruptions and recovery; the log does not identify the physical cause of the I/O failure or isolate a switch to a different wallet during an active sequence. Already dispatched commands cannot be undone, and the gate is not firmware DRM.
 
 **The user accepts this checkpoint; no additional simulations or repetitions are requested.** This update records existing user tests only. No code change, new automated test, build, program/firmware deployment or payment occurred.
+
+## Development panel reorganization — LAYOUT-13
+
+The user clarified product boundaries: the web marketplace will handle discovery/purchases, and the robot app will handle Skill selection/execution. The current panel remains a development tool. **JRBOT-PANEL-V1S-LAYOUT-13** organizes existing controls into Robot, Skills and Diagnostics. Skills shows wallet, known test license and execution; the Devnet purchase and independent local test are collapsed. Purchase quotes show the price, revenue split, license deposit, network fee ceiling and maximum authorized total, with full addresses/details available separately.
+
+Existing authentication, explicit purchase acceptance, signed transaction validation and per-command license authorization remain unchanged. No general Skill discovery/selection is implemented yet. Firmware, contract, frozen JSON and Recipe are unchanged, with no deployment.
+
+**34 Python and 26 JS tests passed**; the wallet bundle was rebuilt. Local browser inspection confirmed navigation, collapsed controls and diagnostic log access without a connected wallet/robot. Real Phantom/hardware testing of this layout remains for the user. [Layout and test instructions](../JRSKILL_PANEL_LAYOUT_TEST.md). Next: license discovery/Skill selection, then the robot app.

@@ -677,6 +677,9 @@
     element("purchase_msg").textContent = state.message;
     element("purchase_license").textContent = !state.checked ? "Licenca nao consultada." : state.owned ? "minimal_recipe_01 \u2014 Licenciada nesta carteira. PDA: " + state.license : "Esta carteira ainda nao possui a Skill de teste.";
     element("purchase_terms").textContent = state.quote ? "Comprador: " + state.quote.buyer + "\nPreco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + state.quote.creator + " \u2014 " + sol(state.quote.creator_lamports) + " SOL\nJrBot: " + state.quote.treasury + " \u2014 " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede estimada sem prioridade: " + sol(state.quote.fee_lamports) + " SOL\nPrioridade adicional permitida: ate " + sol(state.quote.priority_fee_limit_lamports) + " SOL\nTeto aceito da taxa de rede: " + sol(state.quote.fee_limit_lamports) + " SOL\nTotal estimado sem prioridade: " + sol(state.quote.total_lamports) + " SOL de teste\nTotal maximo autorizado: " + sol(state.quote.total_limit_lamports) + " SOL de teste" : "";
+    const summary = element("purchase_summary");
+    summary.hidden = !state.quote;
+    summary.textContent = state.quote ? "Preco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + sol(state.quote.creator_lamports) + " SOL \xB7 JrBot: " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede: ate " + sol(state.quote.fee_limit_lamports) + " SOL (inclui prioridade permitida)\nTotal maximo autorizado: " + sol(state.quote.total_limit_lamports) + " SOL de teste" : "";
     const link = element("purchase_transaction");
     link.hidden = !state.signature || state.signature === "unknown";
     if (!link.hidden) link.href = "https://explorer.solana.com/tx/" + state.signature + "?cluster=devnet";

@@ -26,7 +26,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-LICENSE-12"
+APP_VERSION = "JRBOT-PANEL-V1S-LAYOUT-13"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
