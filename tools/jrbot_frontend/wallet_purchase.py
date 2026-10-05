@@ -22,6 +22,30 @@ OFFER = Pubkey.find_program_address([b'offer', b'00', bytes(SKILL)], PROGRAM)[0]
 QUOTE_TTL = 90
 
 
+class PurchaseRejected(ValueError):
+    def __init__(self, code, message, diagnostics=None):
+        super().__init__(code + ': ' + message)
+        self.code = code
+        self.diagnostics = diagnostics or {}
+
+
+def message_summary(message):
+    """Public metadata only: no signature bytes, message bytes or instruction payload."""
+    keys = message.account_keys
+    instructions = []
+    for item in message.instructions[:8]:
+        data = bytes(item.data)
+        instructions.append({'program': str(keys[item.program_id_index]),
+            'accounts': [str(keys[index]) for index in item.accounts],
+            'data_bytes': len(data), 'data_sha256': hashlib.sha256(data).hexdigest(),
+            'discriminator_hex': data[:8].hex()})
+    header = message.header
+    return {'message_sha256': hashlib.sha256(bytes(message)).hexdigest(), 'message_bytes': len(bytes(message)),
+        'blockhash': str(message.recent_blockhash), 'fee_payer': str(keys[0]) if keys else None,
+        'header': [header.num_required_signatures, header.num_readonly_signed_accounts, header.num_readonly_unsigned_accounts],
+        'account_keys': [str(key) for key in keys], 'instruction_count': len(message.instructions), 'instructions': instructions}
+
+
 def license_address(buyer):
     return Pubkey.find_program_address([b'license', bytes(buyer), bytes(SKILL)], PROGRAM)[0]
 
@@ -125,7 +149,7 @@ class PurchaseStore:
             self.quotes = {key: value for key, value in self.quotes.items() if value['expires'] > self.clock() and value['token'] != token}
             if len(self.quotes) >= 256:
                 raise ValueError('Limite de cotacoes atingido')
-            self.quotes[quote_id] = dict(token=token, origin=origin, address=address,
+            self.quotes[quote_id] = dict(token=token, origin=origin, address=address, created=self.clock(),
                 expires=expires, height=height, message=bytes(message))
         return dict(terms, quote_id=quote_id, expires_at=expires, transaction=base64.b64encode(bytes(tx)).decode(),
                     rent_lamports=str(rent), fee_lamports=str(fee), total_lamports=str(total))
@@ -138,18 +162,37 @@ class PurchaseStore:
             raw = base64.b64decode(encoded, validate=True)
             tx = Transaction.from_bytes(raw)
             tx.sanitize()
+        except Exception as exc:
+            raise PurchaseRejected('transaction_decode_failed', 'Transacao/assinatura invalida: formato ou estrutura', {'relay_attempted': False}) from exc
+        try:
             tx.verify()
         except Exception as exc:
-            raise ValueError('Transacao/assinatura invalida') from exc
+            raise PurchaseRejected('signature_invalid', 'Transacao/assinatura invalida: verificacao criptografica', {'relay_attempted': False}) from exc
         with self.lock:
             quote = self.quotes.get(quote_id)
-            if (not quote or quote['token'] != token or quote['origin'] != origin or quote['address'] != address
-                    or quote['expires'] <= self.clock() or tx.message_data() != quote['message'] or bytes(tx) != raw):
-                raise ValueError('Cotacao usada/expirada ou transacao alterada')
+            diagnostics = {'quote_ref': hashlib.sha256(str(quote_id).encode()).hexdigest()[:12],
+                           'signature_verified': True, 'transaction_bytes': len(raw), 'relay_attempted': False}
+            if not quote:
+                raise PurchaseRejected('quote_missing', 'Cotacao ausente, substituida ou ja consumida', diagnostics)
+            diagnostics.update(age_seconds=round(self.clock() - quote['created'], 3),
+                               remaining_seconds=round(quote['expires'] - self.clock(), 3))
+            for field, value in [('token', token), ('origin', origin), ('address', address)]:
+                if quote[field] != value:
+                    raise PurchaseRejected('quote_' + field + '_mismatch', 'Cotacao pertence a outra sessao/origem/carteira', diagnostics)
+            if quote['expires'] <= self.clock():
+                raise PurchaseRejected('quote_expired', 'Cotacao expirou antes da validacao', diagnostics)
+            if tx.message_data() != quote['message']:
+                expected = message_summary(Message.from_bytes(quote['message']))
+                actual = message_summary(tx.message)
+                diagnostics.update(expected=expected, actual=actual,
+                    changed_fields=[key for key in expected if expected[key] != actual[key]])
+                raise PurchaseRejected('message_changed', 'Mensagem assinada difere da cotacao; envio bloqueado', diagnostics)
+            if bytes(tx) != raw:
+                raise PurchaseRejected('transaction_noncanonical', 'Serializacao da transacao nao e canonica', diagnostics)
         if inspect(address, self.rpc)['owned']:
             return {'cluster': 'devnet', 'buyer': address, 'state': 'owned', 'already_exists': True}
         if _integer(self.rpc('getBlockHeight', [{'commitment': 'confirmed'}], 5)) > quote['height']:
-            raise ValueError('Blockhash expirou; consulte nova cotacao')
+            raise PurchaseRejected('blockhash_expired', 'Blockhash expirou; consulte nova cotacao', diagnostics)
         self.authorized(token, origin, address)
         with self.lock:
             if self.quotes.pop(quote_id, None) is not quote:

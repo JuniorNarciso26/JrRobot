@@ -146,6 +146,39 @@ class PurchaseTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.quote()
         self.assertEqual(self.store.quotes, {})
 
+    def test_rejection_codes_and_public_message_comparison(self):
+        from solders.message import Message
+        from solders.instruction import Instruction
+        quote = self.quote()
+        with self.assertRaises(purchase.PurchaseRejected) as error:
+            self.store.submit('token', 'origin', self.address, 'missing', self.signed(quote))
+        self.assertEqual(error.exception.code, 'quote_missing')
+        self.now = 191
+        with self.assertRaises(purchase.PurchaseRejected) as error:
+            self.store.submit('token', 'origin', self.address, quote['quote_id'], self.signed(quote))
+        self.assertEqual(error.exception.code, 'quote_expired')
+        self.assertLess(error.exception.diagnostics['remaining_seconds'], 0)
+        self.now = 100
+        quote = self.quote()
+        tx = Transaction.from_bytes(base64.b64decode(quote['transaction']))
+        message = Message.new_with_blockhash([purchase.instruction(self.address, quote),
+            Instruction(Pubkey.from_string('ComputeBudget111111111111111111111111111111'), b'\x02\x01\x00\x00\x00', [])],
+            self.rpc.buyer.pubkey(), tx.message.recent_blockhash)
+        changed = Transaction.new_unsigned(message); changed.sign([self.rpc.buyer], message.recent_blockhash)
+        with self.assertRaises(purchase.PurchaseRejected) as error:
+            self.store.submit('token', 'origin', self.address, quote['quote_id'], base64.b64encode(bytes(changed)).decode())
+        self.assertEqual(error.exception.code, 'message_changed')
+        diag = error.exception.diagnostics
+        self.assertIn('instructions', diag['changed_fields'])
+        self.assertEqual(diag['actual']['instruction_count'], 2)
+        self.assertEqual(diag['expected']['instruction_count'], 1)
+        self.assertIn('ComputeBudget', diag['actual']['instructions'][1]['program'])
+        self.assertEqual(diag['actual']['blockhash'], diag['expected']['blockhash'])
+        self.assertTrue(diag['signature_verified']); self.assertFalse(diag['relay_attempted'])
+        self.assertNotIn(quote['transaction'], json.dumps(diag))
+        self.assertNotIn('token', diag); self.assertNotIn('origin', diag)
+        self.assertNotIn('sendTransaction', [item[0] for item in self.rpc.calls])
+
 
 class PurchaseHTTPTests(unittest.TestCase):
     def test_origin_cookie_authentication_and_unsigned_submission_are_enforced(self):

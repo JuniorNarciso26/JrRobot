@@ -25,7 +25,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-09"
+APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-10"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -425,6 +425,16 @@ class Handler(BaseHTTPRequestHandler):
                         try:
                             result = wallet_purchase.STORE.submit(token, origin, status["address"], get("quote_id"), get("signed_transaction"))
                         except (ValueError, TimeoutError, OSError) as exc:
+                            if isinstance(exc, wallet_purchase.PurchaseRejected):
+                                diagnostic = dict(exc.diagnostics)
+                                comparisons = {key: diagnostic.pop(key) for key in ('expected', 'actual') if key in diagnostic}
+                                add_log('JR_SKILL_PURCHASE_DIAG code=' + exc.code + ' metadata=' + json.dumps(diagnostic, separators=(',', ':')))
+                                for side, summary in comparisons.items():
+                                    summary = dict(summary)
+                                    instructions = summary.pop('instructions')
+                                    add_log('JR_SKILL_PURCHASE_DIAG side=' + side + ' message=' + json.dumps(summary, separators=(',', ':')))
+                                    for index, item in enumerate(instructions):
+                                        add_log('JR_SKILL_PURCHASE_DIAG side=' + side + ' instruction=' + str(index) + ' detail=' + json.dumps(item, separators=(',', ':')))
                             add_log("JR_SKILL_PURCHASE stage=server_validation state=rejected buyer=" + status["address"]
                                     + " relay_not_completed=true detail=" + solana_skill.rpc_error_detail(type(exc).__name__ + ': ' + str(exc)))
                             raise
