@@ -83,3 +83,13 @@ New wallet `8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo` connected/authenticate
 The user then disconnected and returned to licensed wallet `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R`. Authorization succeeded at 12:56:59, Skill data was verified at slot 507783945, six commands were dispatched and execution finished with result=ok/source=solana-devnet at 12:57:10. The user reported the robot test succeeded. Independent finalized RPC reads confirmed the new wallet remains unlicensed and the original wallet licensed. [License state proof](assets/day6/license-gate-wallets-proof.json), [selected log (79)](assets/day6/panel-log-79-license-excerpt.txt).
 
 The positive/negative panel-flow proof is now recorded. Wallet switching happened between attempts; mid-run switching/disconnection and RPC failure are not claimed as physically validated by this log. Local development controls remain independent. This checkpoint changes documentation/evidence only, with no new build/deploy.
+
+## Interruption and recovery — user checkpoint accepted, log (80)
+
+The user performed further robot tests and considers the results very satisfactory. The licensed Devnet flow completed at 13:04:56. During later active sequences, wallet disconnection at 13:05:01 and 13:05:41 blocked subsequent execution; no successful completion was recorded for those attempts. Reauthentication restored successful Devnet execution at 13:08:10. A connection event for the same wallet at 13:08:19 also invalidated an active sequence.
+
+The unlicensed wallet was rejected again at 13:09:17 with execution_license_absent. Returning to the licensed wallet produced result=ok at 13:09:52. At 13:10:05, an I/O failure (Remote end closed connection without response) blocked an active sequence. After reauthentication at 13:10:25, a new authorized sequence completed at 13:10:37. [Selected log (80) evidence](assets/day6/panel-log-80-interruption-excerpt.txt), [technical results and limits](../JRSKILL_LICENSE_EXECUTION_TEST.md#resultado-complementar--interrupcao-e-recuperacao-log-80).
+
+Local-file execution completed at 13:05:21 despite wallet disconnection: this is the intended independent development mode. These observations validate the recorded panel-flow interruptions and recovery; the log does not identify the physical cause of the I/O failure or isolate a switch to a different wallet during an active sequence. Already dispatched commands cannot be undone, and the gate is not firmware DRM.
+
+**The user accepts this checkpoint; no additional simulations or repetitions are requested.** This update records existing user tests only. No code change, new automated test, build, program/firmware deployment or payment occurred.

@@ -20,7 +20,7 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Independent CLI licenses; real Phantom purchase and physical Skill execution |
 
-**Latest physical checkpoint: Day 6 — real Phantom purchase verified; LICENSE-12 blocked the new unlicensed wallet in three attempts and completed Devnet execution with the licensed wallet, user test/log (79).** Both license states were independently verified by finalized RPC reads. Mid-run wallet change/disconnection and RPC failure still await physical tests. Local development controls remain available without a license. Earlier offline block/recovery proof remains documented in Day 4.
+**Latest physical checkpoint: Day 6 — real Phantom purchase verified; LICENSE-12 licensed/unlicensed execution, mid-run wallet disconnection, communication failure and subsequent recovery recorded in user logs (79) and (80).** Both license states were independently verified by finalized RPC reads in checkpoint (79). The user considers the tests satisfactory; no further simulations are requested for this checkpoint. Log (80) does not isolate a change to a different wallet during an active sequence or establish the physical cause of its I/O failure. Local development controls remain available without a license. Earlier offline block/recovery proof remains documented in Day 4.
 
 ## Public reproducible proof — read the Skill without a wallet
 

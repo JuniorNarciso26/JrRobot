@@ -2,7 +2,7 @@
 
 05/10/2026, exclusivamente V1s-00. Painel **JRBOT-PANEL-V1S-LICENSE-12**. [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Bloqueio sem licenca e execucao com licenca confirmados pelo teste do usuario, log (79), em 05/10/2026.** RPC independente confirmou os estados das duas carteiras. Troca/desconexao durante uma sequencia ativa e falha RPC durante execucao ainda aguardam teste fisico. Sem modificacao/deploy do programa, firmware, JSON v1 ou Recipe.
+**Bloqueio sem licenca, execucao licenciada, interrupcao durante desconexao da carteira e falha de comunicacao, seguida de recuperacao, registrados nos testes do usuario, logs (79) e (80), em 05/10/2026.** RPC independente confirmou os estados das duas carteiras no checkpoint (79). O usuario considerou os testes satisfatorios; este checkpoint nao exige novas simulacoes. Os limites da evidencia estao descritos abaixo. Sem modificacao/deploy do programa, firmware, JSON v1 ou Recipe.
 
 ## Arquitetura
 
@@ -23,7 +23,7 @@ RPC novo a cada comando pode adicionar latencia; wait=500 nao promete intervalo 
 
 34 testes Python, 21 JS de carteira e 5 JS do executor passaram. Incluem sequencia completa, ausencia de licenca, autenticacao, expiracao, troca durante RPC, perda de licenca/RPC, substituicao de permit, replay e comando fora de ordem. Teste HTTP com assinatura de autenticacao real de carteira descartavel e RPC/Serial simulados confirma 401 sem sessao, rejeicao sem licenca, 403 origem incorreta, comando autorizado e logout bloqueando o seguinte. Executor simulado confirma nenhuma face em casos negativos e interrupcao apos primeira face quando conta/RPC muda. Bundle recompilado. Nao houve teste fisico desta entrega.
 
-## Teste do usuario — hardware
+## Plano de teste original — hardware (resultados registrados abaixo)
 
 1. Fechar servidor antigo; atualizar checkout Windows C:\Projetos\JrRobot com git pull --ff-only origin V1s-00; abrir PAINEL.bat, Ctrl+F5, conferir LICENSE-12. Nao gravar firmware nem repetir deploy.
 2. Conectar Serial, confirmar HW04/OLED e Verificar Devnet. Sem carteira autenticada, botao Devnet bloqueado; teste local continua funcionando.
@@ -40,3 +40,26 @@ Carteira nova `8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo` conectada 12:55:43 
 Usuario desconectou 12:56:40, voltou a carteira licenciada `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R` 12:56:50 e autenticou 12:56:55. Autorizacao allowed 12:56:59, licenca `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`. Skill Devnet slot 507783945, 128 bytes/hash verificado. Seis command_sent (capabilities e cinco faces); sequencia happy -> surprised -> thinking -> happy -> neutral; result=ok source=solana-devnet 12:57:10. Usuario relatou sucesso do teste no robo.
 
 RPC independente confirmou nova carteira owned=false e original owned=true, finalized. [Prova publica dos estados](HACKATHON_DEVLOG/assets/day6/license-gate-wallets-proof.json), [trecho selecionado do log (79)](HACKATHON_DEVLOG/assets/day6/panel-log-79-license-excerpt.txt). A alternancia ocorreu entre tentativas, nao durante uma sequencia ativa; nao alegar validacao fisica desse caso ou de offline nesta prova. Controle e do fluxo Devnet do painel, com controles locais de desenvolvimento preservados. Registro documental sem novo codigo/build/deploy.
+
+## Resultado complementar — interrupcao e recuperacao, log (80)
+
+O usuario realizou testes no robo e considerou os resultados muito satisfatorios. O registro abaixo descreve o que o TXT demonstra, sem exigir repeticao ou novas simulacoes neste checkpoint.
+
+| Horario | Evidencia registrada | Resultado |
+| --- | --- | --- |
+| 13:04:56 | Carteira licenciada, payload Devnet verificado | Sequencia concluida, result=ok |
+| 13:05:01–13:05:02 | Carteira desconectada durante nova sequencia | execution_auth_required; sem conclusao result=ok |
+| 13:05:20–13:05:21 | Carteira desconectada durante execucao source=local-file | Teste local concluiu; comportamento previsto do modo de desenvolvimento |
+| 13:05:41 | Desconexao durante outra sequencia Devnet | Guarda do frontend interrompeu proximos comandos |
+| 13:08:10 | Reautenticacao e nova autorizacao | Execucao Devnet concluida, result=ok |
+| 13:08:19 | Evento de conexao com o mesmo endereco durante execucao | Estado da carteira invalidou a sequencia; sem conclusao result=ok |
+| 13:09:17 | Carteira sem licenca, consulta owned=false | execution_license_absent; sem envio autorizado de comando para essa carteira |
+| 13:09:52 | Retorno a carteira licenciada | Nova sequencia Devnet concluida, result=ok |
+| 13:10:05 | Falha de I/O; Remote end closed connection without response | Autorizacao bloqueada; sequencia nao concluida |
+| 13:10:25–13:10:37 | Reautenticacao e nova tentativa apos falha | Payload verificado; sequencia concluida, result=ok |
+
+[Trecho selecionado do log (80)](HACKATHON_DEVLOG/assets/day6/panel-log-80-interruption-excerpt.txt). Foram preservadas as linhas de Skill e eventos de estado da carteira; outras linhas foram omitidas.
+
+O TXT evidencia interrupcao por desconexao/invalidation da carteira e falha de comunicacao, seguida de recuperacao. Nao identifica sozinho a causa fisica da falha de I/O (por exemplo, corte de Internet), nem isola troca para um endereco diferente durante a sequencia ativa. Comandos ja enviados nao podem ser desfeitos. A continuidade do teste local sem carteira e intencional; a autorizacao protege o fluxo Devnet do painel, sem DRM no firmware.
+
+Checkpoint aceito pelo usuario com as evidencias recebidas. Esta atualizacao altera apenas documentacao: nenhum novo teste automatizado, build, deploy, pagamento ou alteracao de firmware/programa/JSON/Recipe foi realizado.
