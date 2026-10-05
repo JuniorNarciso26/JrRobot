@@ -22,6 +22,9 @@
 #define JR_HTTPS_LOCAL_MATERIAL_AVAILABLE 0
 #endif
 
+extern const char jrskill_app_js_start[] asm("_binary_jrskill_app_js_start");
+extern const char jrskill_app_js_end[] asm("_binary_jrskill_app_js_end");
+
 static httpd_handle_t web_server;
 static httpd_handle_t https_server;
 static uint32_t live_frame_count;
@@ -38,7 +41,7 @@ static esp_err_t web_root_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     const char *marker=strstr(JRBOT_WEB_V1_HTML,"</body>");
     if (!marker) return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
-    static const char inject[]="<script src='/v16.js'></script>";
+    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script>";
     esp_err_t err=httpd_resp_send_chunk(req,JRBOT_WEB_V1_HTML,(ssize_t)(marker-JRBOT_WEB_V1_HTML));
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,inject,HTTPD_RESP_USE_STRLEN);
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,marker,HTTPD_RESP_USE_STRLEN);
@@ -50,6 +53,12 @@ static esp_err_t web_v16_js_handler(httpd_req_t *req) {
     httpd_resp_set_type(req,"application/javascript; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     return httpd_resp_send(req,JRBOT_V16_JS,HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t web_jrskill_app_js_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req,"application/javascript; charset=utf-8");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_send(req,jrskill_app_js_start,(ssize_t)(jrskill_app_js_end-jrskill_app_js_start));
 }
 
 static esp_err_t web_status_handler(httpd_req_t *req) {
@@ -187,6 +196,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
     const httpd_uri_t routes[]={
         {.uri="/",.method=HTTP_GET,.handler=web_root_handler},
         {.uri="/v16.js",.method=HTTP_GET,.handler=web_v16_js_handler},
+        {.uri="/jrskill-app.js",.method=HTTP_GET,.handler=web_jrskill_app_js_handler},
         {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
         {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler},
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
