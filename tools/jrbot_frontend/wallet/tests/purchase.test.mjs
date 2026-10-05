@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createPurchase } from '../src/purchase.mjs';
+const fixture = () => {
+  let state, now = 100, signerCalls = [], calls = [], handler;
+  const account = { address: 'buyer', chains: ['solana:devnet'], features: ['solana:signTransaction'] };
+  const wallet = { features: { 'solana:signTransaction': { supportedTransactionVersions: ['legacy'], signTransaction: async input => {
+    signerCalls.push(input); return [{ signedTransaction: new Uint8Array(417) }];
+  } } } };
+  const proof = { cluster: 'devnet', genesis: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG', program: 'Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454',
+    skill: '8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux', buyer: 'buyer', commitment: 'finalized', owned: false, model_version: 0,
+    price_lamports: '1000000000', creator_lamports: '500000000', treasury_lamports: '500000000', license: 'license',
+    quote_id: 'quote', transaction: btoa('transaction'), expires_at: 190, rent_lamports: '1346200', fee_lamports: '5000', total_lamports: '1001351200' };
+  const api = createPurchase(async (op, data) => { calls.push(op); return handler ? handler(op, data) : op === 'submit' ?
+    { buyer: 'buyer', cluster: 'devnet', signature: '2'.repeat(88), state: 'submitted' } : { ...proof }; }, next => state = next, () => {}, () => now);
+  const observe = (address = 'buyer', authenticated = true) => api.observe({ active: wallet, accounts: [{ ...account, address }], address }, { authenticated });
+  observe();
+  return { api, observe, calls, signerCalls, wallet, proof, get state() { return state; }, time: value => now = value, handle: fn => handler = fn };
+};
+test('quote never signs, explicit acceptance signs Devnet exactly once and waits for license', async () => {
+  const f = fixture(); await f.api.prepare(); await f.api.buy(); assert.equal(f.signerCalls.length, 0);
+  f.api.accept(true); await f.api.buy(); assert.equal(f.signerCalls.length, 1);
+  assert.equal(f.signerCalls[0].chain, 'solana:devnet'); assert.equal(f.state.owned, false);
+  await f.api.buy(); assert.equal(f.signerCalls.length, 1);
+  f.handle(() => ({ ...f.proof, owned: true })); await f.api.check(); assert.equal(f.state.owned, true);
+});
+test('refusal and expired quote never submit', async () => {
+  const f = fixture(); await f.api.prepare(); f.api.accept(true); f.time(191); await f.api.buy(); assert.equal(f.signerCalls.length, 0);
+  f.time(100); await f.api.prepare(); f.api.accept(true);
+  f.wallet.features['solana:signTransaction'].signTransaction = async () => { throw Object.assign(new Error('refused'), { code: 4001 }); };
+  await f.api.buy(); assert.ok(!f.calls.includes('submit')); assert.match(f.state.message, /recusada/);
+});
+test('account/session change discards late quote or signature before relay', async () => {
+  const f = fixture(); let finish;
+  f.handle(() => new Promise(resolve => finish = resolve));
+  const waiting = f.api.prepare(); f.observe('other', false); finish(f.proof); await waiting; assert.equal(f.state.quote, null);
+  f.observe(); f.handle(null); await f.api.prepare(); f.api.accept(true);
+  f.wallet.features['solana:signTransaction'].signTransaction = () => new Promise(resolve => finish = resolve);
+  const buying = f.api.buy(); f.observe('other', false); finish([{ signedTransaction: new Uint8Array(417) }]); await buying;
+  assert.ok(!f.calls.includes('submit')); assert.equal(f.state.signature, '');
+});
+test('owned, mismatched and ambiguous submission responses cannot cause repeat payment', async () => {
+  const f = fixture(); f.handle(() => ({ ...f.proof, owned: true })); await f.api.prepare(); assert.equal(f.state.canBuy, false);
+  f.observe('other', true); f.handle(() => f.proof); await f.api.prepare(); assert.equal(f.state.quote, null);
+  f.observe(); f.handle(null); await f.api.prepare(); f.api.accept(true);
+  f.handle(() => { throw new Error('timeout'); }); await f.api.buy(); assert.equal(f.state.signature, 'unknown');
+  await f.api.prepare(); await f.api.buy(); assert.equal(f.signerCalls.length, 1);
+});
+test('RPC uncertainty preserves signature without claiming a successful send', async () => {
+  const f = fixture(); await f.api.prepare(); f.api.accept(true);
+  f.handle(() => ({ buyer: 'buyer', cluster: 'devnet', signature: '2'.repeat(88), state: 'unknown' }));
+  await f.api.buy(); assert.match(f.state.message, /Envio nao confirmado/);
+  assert.equal(f.state.owned, false); assert.equal(f.state.canBuy, false);
+});

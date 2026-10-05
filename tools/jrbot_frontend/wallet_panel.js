@@ -265,7 +265,7 @@
             throw new Error("O servidor nao confirmou a autenticacao desta carteira.");
           }
           expires = result.expires_at;
-          message = "Carteira autenticada nesta sessao local. Licencas e compra ainda nao implementadas.";
+          message = "Carteira autenticada nesta sessao local. Consulte a licenca ou o custo da compra na secao abaixo.";
           log("JR_WALLET_AUTH state=authenticated address=" + selected.address + " expires_at=" + expires);
         } catch (error) {
           if (attempt !== epoch) return;
@@ -367,6 +367,184 @@
     return api;
   }
 
+  // src/purchase.mjs
+  var CHAIN2 = "solana:devnet";
+  var SKILL = "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux";
+  var PROGRAM = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
+  var GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+  function sol(value) {
+    const n = BigInt(value);
+    return (n / 1000000000n).toString() + "." + (n % 1000000000n).toString().padStart(9, "0");
+  }
+  function createPurchase(request, render, log = () => {
+  }, clock = () => Date.now() / 1e3) {
+    let wallet = null, account = null, authenticated = false, epoch = 0, pending = false;
+    let quote = null, owned = false, accepted = false, signature = "", license = "", checked = false;
+    let message = "Conecte e autentique a carteira para consultar.";
+    const canSign = () => !!wallet?.features["solana:signTransaction"]?.supportedTransactionVersions?.includes("legacy") && !!account?.features?.includes("solana:signTransaction") && !!account?.chains?.includes(CHAIN2);
+    const emit = () => render({
+      authenticated,
+      pending,
+      quote,
+      owned,
+      accepted,
+      signature,
+      license,
+      checked,
+      message,
+      canQuote: authenticated && canSign() && !pending && !owned && !signature,
+      canBuy: authenticated && canSign() && !pending && !owned && !signature && accepted && !!quote && quote.expires_at > clock()
+    });
+    function validate(result, address) {
+      if (result.cluster !== "devnet" || result.genesis !== GENESIS || result.program !== PROGRAM || result.skill !== SKILL || result.buyer !== address || result.commitment !== "finalized" || typeof result.owned !== "boolean" || result.model_version !== 0) {
+        throw new Error("Resposta de licenca/cotacao invalida");
+      }
+      for (const name of ["price_lamports", "creator_lamports", "treasury_lamports"]) {
+        if (!/^\d+$/.test(result[name])) throw new Error("Valores da oferta invalidos");
+      }
+      if (BigInt(result.price_lamports) !== BigInt(result.creator_lamports) + BigInt(result.treasury_lamports)) throw new Error("Repasses divergem do preco");
+      return result;
+    }
+    const api = {
+      observe(state, auth) {
+        const next = state.accounts.find((item) => item.address === state.address) || null;
+        if (wallet !== state.active || account?.address !== next?.address || authenticated !== auth.authenticated) {
+          epoch++;
+          pending = false;
+          quote = null;
+          accepted = false;
+          owned = false;
+          signature = "";
+          license = "";
+          checked = false;
+          message = "Conecte e autentique a carteira para consultar.";
+        }
+        wallet = state.active;
+        account = next;
+        authenticated = !!auth.authenticated && !!next;
+        if (authenticated && !canSign()) message = "Esta carteira/conta nao oferece assinatura de transacao legacy Solana Devnet. A consulta de licenca continua disponivel.";
+        emit();
+      },
+      accept(value) {
+        accepted = !!value && !!quote;
+        emit();
+      },
+      async check() {
+        if (!authenticated || pending) return;
+        const attempt = epoch, address = account.address;
+        pending = true;
+        quote = null;
+        accepted = false;
+        message = "Consultando licenca finalized na Devnet...";
+        emit();
+        try {
+          const result = validate(await request("status"), address);
+          if (attempt !== epoch) return;
+          owned = result.owned;
+          license = result.license;
+          checked = true;
+          message = owned ? "Licenca confirmada na Devnet para esta carteira." : signature ? "Compra enviada, licenca ainda nao confirmada. Consulte a transacao antes de tentar outro envio." : "Esta carteira ainda nao possui a licenca.";
+          log("JR_SKILL_LICENSE buyer=" + address + " owned=" + owned + " license=" + license);
+        } catch (error) {
+          if (attempt === epoch) {
+            checked = false;
+            owned = false;
+            message = "Consulta nao confirmada: " + error.message;
+          }
+        } finally {
+          if (attempt === epoch) {
+            pending = false;
+            emit();
+          }
+        }
+      },
+      async prepare() {
+        if (!authenticated || !canSign() || pending || signature || owned) return;
+        const attempt = epoch, address = account.address;
+        pending = true;
+        accepted = false;
+        quote = null;
+        message = "Consultando termos e custo. Nenhuma compra sera enviada.";
+        emit();
+        try {
+          const result = validate(await request("quote", {}), address);
+          if (attempt !== epoch) return;
+          owned = result.owned;
+          checked = true;
+          license = result.license;
+          if (!owned) {
+            for (const key of ["rent_lamports", "fee_lamports", "total_lamports"]) if (!/^\d+$/.test(result[key])) throw new Error("Custos invalidos");
+            if (BigInt(result.total_lamports) !== BigInt(result.price_lamports) + BigInt(result.rent_lamports) + BigInt(result.fee_lamports) || !(result.expires_at > clock()) || !result.quote_id || !result.transaction) throw new Error("Cotacao invalida/expirada");
+            quote = result;
+          }
+          message = owned ? "Licenca ja existente. Nenhuma compra necessaria." : "Confira os valores e marque o aceite antes de comprar. Cotacao valida por ate 90 segundos.";
+        } catch (error) {
+          if (attempt === epoch) {
+            quote = null;
+            message = "Cotacao nao confirmada: " + error.message;
+          }
+        } finally {
+          if (attempt === epoch) {
+            pending = false;
+            emit();
+          }
+        }
+      },
+      async buy() {
+        if (!authenticated || !canSign() || pending || owned || signature || !accepted || !quote || quote.expires_at <= clock()) {
+          if (quote && quote.expires_at <= clock()) {
+            quote = null;
+            accepted = false;
+            message = "Cotacao expirou. Consulte novamente.";
+            emit();
+          }
+          return;
+        }
+        const attempt = epoch, selected = account, provider = wallet, terms = quote;
+        pending = true;
+        accepted = false;
+        message = "Aprove a COMPRA na carteira. Ambiente: Solana Devnet.";
+        emit();
+        try {
+          const transaction = Uint8Array.from(atob(terms.transaction), (char) => char.charCodeAt(0));
+          const [output] = await provider.features["solana:signTransaction"].signTransaction({ account: selected, chain: CHAIN2, transaction });
+          if (attempt !== epoch) return;
+          if (terms.expires_at <= clock()) throw new Error("Cotacao expirou durante a assinatura; nao enviada. Consulte novamente.");
+          if (!(output?.signedTransaction instanceof Uint8Array) || output.signedTransaction.length > 1232) throw new Error("Transacao assinada invalida");
+          message = "Enviando transacao assinada para o RPC Devnet...";
+          emit();
+          signature = "unknown";
+          const result = await request("submit", { quote_id: terms.quote_id, signed_transaction: btoa(String.fromCharCode(...output.signedTransaction)) });
+          if (attempt !== epoch) return;
+          if (result.buyer !== selected.address || result.cluster !== "devnet") throw new Error("Resposta de envio invalida");
+          if (result.already_exists) {
+            owned = true;
+            checked = true;
+            signature = "";
+            message = "Licenca ja existente. Compra nao enviada.";
+          } else {
+            if (!/^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(result.signature)) throw new Error("Assinatura de transacao invalida");
+            signature = result.signature;
+            message = result.state === "submitted" ? "Transacao enviada; clique Consultar minha licenca para confirmar. Em erro ou timeout, confira o Explorer antes de outro envio." : "Envio nao confirmado pelo RPC. Consulte a licenca e a transacao no Explorer antes de outro envio.";
+            log("JR_SKILL_PURCHASE buyer=" + selected.address + " signature=" + signature + " state=" + result.state);
+          }
+        } catch (error) {
+          if (attempt !== epoch) return;
+          message = signature ? "Envio nao confirmado. Nao repita a compra; consulte a licenca e a carteira/Explorer." : error.code === 4001 ? "Compra recusada na carteira. Nenhuma transacao enviada pelo painel." : "Compra nao enviada: " + error.message;
+        } finally {
+          if (attempt === epoch) {
+            pending = false;
+            quote = null;
+            accepted = false;
+            emit();
+          }
+        }
+      }
+    };
+    emit();
+    return api;
+  }
+
   // src/panel.mjs
   var element = (id) => document.getElementById(id);
   var walletSelect = element("wallet_provider");
@@ -376,6 +554,7 @@
   var authenticator;
   var network;
   var authState = { authenticated: false };
+  var purchase;
   var localLog = (line) => {
     if (typeof localLine === "function") localLine(line);
   };
@@ -427,6 +606,7 @@
     if (copiedAddress !== state.address) element("wallet_copy").textContent = "Copiar endereco";
     authenticator?.observe(state);
     network?.observe(state, authState);
+    purchase?.observe(state, authState);
   }, localLog);
   authenticator = createAuthenticator(async (operation, data) => {
     const options2 = data === void 0 ? {} : { method: "POST", headers: {
@@ -444,6 +624,7 @@
     if (state.message) element("wallet_msg").textContent = state.message;
     else if (current.address && !state.canSign) element("wallet_msg").textContent = "Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.";
     network?.observe(current, state);
+    purchase?.observe(current, state);
   }, localLog);
   authenticator.observe(current);
   network = createNetworkCheck(async () => {
@@ -458,6 +639,35 @@
     element("wallet_network_msg").textContent = state.message;
   }, localLog);
   network.observe(current, authState);
+  purchase = createPurchase(async (operation, data) => {
+    const options2 = data === void 0 ? {} : { method: "POST", headers: {
+      "X-JrBot-Panel": "1",
+      "Content-Type": "application/x-www-form-urlencoded"
+    }, body: new URLSearchParams(data) };
+    const response = await fetch(
+      "/jrskill/wallet/purchase/" + operation,
+      { ...options2, credentials: "same-origin", signal: AbortSignal.timeout(6e4) }
+    );
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  }, (state) => {
+    element("purchase_check").disabled = !state.authenticated || state.pending;
+    element("purchase_quote").disabled = !state.canQuote;
+    element("purchase_buy").disabled = !state.canBuy;
+    element("purchase_accept").disabled = !state.quote || state.pending;
+    element("purchase_accept").checked = state.accepted;
+    element("purchase_msg").textContent = state.message;
+    element("purchase_license").textContent = !state.checked ? "Licenca nao consultada." : state.owned ? "minimal_recipe_01 \u2014 Licenciada nesta carteira. PDA: " + state.license : "Esta carteira ainda nao possui a Skill de teste.";
+    element("purchase_terms").textContent = state.quote ? "Comprador: " + state.quote.buyer + "\nPreco: " + sol(state.quote.price_lamports) + " SOL de teste\nCriador: " + state.quote.creator + " \u2014 " + sol(state.quote.creator_lamports) + " SOL\nJrBot: " + state.quote.treasury + " \u2014 " + sol(state.quote.treasury_lamports) + " SOL\nDeposito da licenca: " + sol(state.quote.rent_lamports) + " SOL\nTaxa de rede estimada: " + sol(state.quote.fee_lamports) + " SOL\nTotal estimado: " + sol(state.quote.total_lamports) + " SOL de teste" : "";
+    const link = element("purchase_transaction");
+    link.hidden = !state.signature || state.signature === "unknown";
+    if (!link.hidden) link.href = "https://explorer.solana.com/tx/" + state.signature + "?cluster=devnet";
+  }, localLog);
+  purchase.observe(current, authState);
+  element("purchase_check").addEventListener("click", () => purchase.check());
+  element("purchase_quote").addEventListener("click", () => purchase.prepare());
+  element("purchase_accept").addEventListener("change", (event) => purchase.accept(event.target.checked));
+  element("purchase_buy").addEventListener("click", () => purchase.buy());
   element("wallet_network_check").addEventListener("click", () => network.check());
   element("wallet_authenticate").addEventListener("click", () => authenticator.authenticate());
   setInterval(() => authenticator.check(), 1e4);

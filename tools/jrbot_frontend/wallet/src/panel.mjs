@@ -2,12 +2,14 @@ import { getWallets } from '@wallet-standard/app';
 import { createWalletController } from './controller.mjs';
 import { createAuthenticator } from './auth.mjs';
 import { createNetworkCheck } from './network.mjs';
+import { createPurchase, sol } from './purchase.mjs';
 
 const element = id => document.getElementById(id);
 const walletSelect = element('wallet_provider'), accountSelect = element('wallet_account');
 let current, copiedAddress = '';
 let authenticator;
 let network, authState = { authenticated: false };
+let purchase;
 const localLog = line => { if (typeof localLine === 'function') localLine(line); };
 function options(select, items, selected, placeholder) {
   select.replaceChildren();
@@ -45,6 +47,7 @@ const controller = createWalletController(getWallets(), state => {
   if (copiedAddress !== state.address) element('wallet_copy').textContent = 'Copiar endereco';
   authenticator?.observe(state);
   network?.observe(state, authState);
+  purchase?.observe(state, authState);
 }, localLog);
 
 authenticator = createAuthenticator(async (operation, data) => {
@@ -62,6 +65,7 @@ authenticator = createAuthenticator(async (operation, data) => {
   if (state.message) element('wallet_msg').textContent = state.message;
   else if (current.address && !state.canSign) element('wallet_msg').textContent = 'Esta carteira/conta nao oferece assinatura de mensagem Solana. Conexao mantida; autenticacao indisponivel.';
   network?.observe(current, state);
+  purchase?.observe(current, state);
 }, localLog);
 authenticator.observe(current);
 network = createNetworkCheck(async () => {
@@ -76,6 +80,40 @@ network = createNetworkCheck(async () => {
   element('wallet_network_msg').textContent = state.message;
 }, localLog);
 network.observe(current, authState);
+
+purchase = createPurchase(async (operation, data) => {
+  const options = data === undefined ? {} : { method: 'POST', headers: {
+    'X-JrBot-Panel': '1', 'Content-Type': 'application/x-www-form-urlencoded'
+  }, body: new URLSearchParams(data) };
+  const response = await fetch('/jrskill/wallet/purchase/' + operation,
+    { ...options, credentials: 'same-origin', signal: AbortSignal.timeout(60000) });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}, state => {
+  element('purchase_check').disabled = !state.authenticated || state.pending;
+  element('purchase_quote').disabled = !state.canQuote;
+  element('purchase_buy').disabled = !state.canBuy;
+  element('purchase_accept').disabled = !state.quote || state.pending;
+  element('purchase_accept').checked = state.accepted;
+  element('purchase_msg').textContent = state.message;
+  element('purchase_license').textContent = !state.checked ? 'Licenca nao consultada.' :
+    state.owned ? 'minimal_recipe_01 — Licenciada nesta carteira. PDA: ' + state.license : 'Esta carteira ainda nao possui a Skill de teste.';
+  element('purchase_terms').textContent = state.quote ?
+    'Comprador: ' + state.quote.buyer + '\nPreco: ' + sol(state.quote.price_lamports) + ' SOL de teste' +
+    '\nCriador: ' + state.quote.creator + ' — ' + sol(state.quote.creator_lamports) + ' SOL' +
+    '\nJrBot: ' + state.quote.treasury + ' — ' + sol(state.quote.treasury_lamports) + ' SOL' +
+    '\nDeposito da licenca: ' + sol(state.quote.rent_lamports) + ' SOL' +
+    '\nTaxa de rede estimada: ' + sol(state.quote.fee_lamports) + ' SOL' +
+    '\nTotal estimado: ' + sol(state.quote.total_lamports) + ' SOL de teste' : '';
+  const link = element('purchase_transaction');
+  link.hidden = !state.signature || state.signature === 'unknown';
+  if (!link.hidden) link.href = 'https://explorer.solana.com/tx/' + state.signature + '?cluster=devnet';
+}, localLog);
+purchase.observe(current, authState);
+element('purchase_check').addEventListener('click', () => purchase.check());
+element('purchase_quote').addEventListener('click', () => purchase.prepare());
+element('purchase_accept').addEventListener('change', event => purchase.accept(event.target.checked));
+element('purchase_buy').addEventListener('click', () => purchase.buy());
 element('wallet_network_check').addEventListener('click', () => network.check());
 element('wallet_authenticate').addEventListener('click', () => authenticator.authenticate());
 setInterval(() => authenticator.check(), 10000);

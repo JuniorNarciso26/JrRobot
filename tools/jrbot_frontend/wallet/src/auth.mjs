@@ -39,7 +39,7 @@ export function createAuthenticator(request, render, log = () => {}, clock = () 
           throw new Error('O servidor nao confirmou a autenticacao desta carteira.');
         }
         expires = result.expires_at;
-        message = 'Carteira autenticada nesta sessao local. Licencas e compra ainda nao implementadas.';
+        message = 'Carteira autenticada nesta sessao local. Consulte a licenca ou o custo da compra na secao abaixo.';
         log('JR_WALLET_AUTH state=authenticated address=' + selected.address + ' expires_at=' + expires);
       } catch (error) {
         if (attempt !== epoch) return;

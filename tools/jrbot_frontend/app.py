@@ -10,6 +10,7 @@ import uuid
 import solana_skill
 import wallet_auth
 import wallet_network
+import wallet_purchase
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -24,7 +25,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WALLET-07"
+APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-08"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -297,6 +298,20 @@ class Handler(BaseHTTPRequestHandler):
             token = wallet_auth.cookie_token(self.headers.get("Cookie"))
             status = wallet_auth.STORE.status(token, "http://" + self.headers["Host"])
             self._send(200, json.dumps(status), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/purchase/status":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira para consultar sua licenca")
+                return
+            try:
+                result = wallet_purchase.inspect(status["address"])
+                wallet_purchase.STORE.authorized(token, origin, status["address"])
+            except (ValueError, TimeoutError, OSError) as exc:
+                self._send(502, "Licenca nao confirmada: " + str(exc))
+                return
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
         elif path.path == "/jrskill/wallet/devnet":
             token = wallet_auth.cookie_token(self.headers.get("Cookie"))
             origin = "http://" + self.headers["Host"]
@@ -399,6 +414,17 @@ class Handler(BaseHTTPRequestHandler):
                     wallet_auth.STORE.logout(token)
                     result = {"authenticated": False}
                     cookie = f"{wallet_auth.COOKIE}=; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age=0"
+                elif self.path in ("/jrskill/wallet/purchase/quote", "/jrskill/wallet/purchase/submit"):
+                    status = wallet_auth.STORE.status(token, origin)
+                    if not status.get("authenticated"):
+                        self._send(401, "Autentique a carteira antes da compra")
+                        return
+                    if self.path.endswith("/quote"):
+                        result = wallet_purchase.STORE.quote(token, origin, status["address"])
+                    else:
+                        result = wallet_purchase.STORE.submit(token, origin, status["address"], get("quote_id"), get("signed_transaction"))
+                    add_log("JR_SKILL_PURCHASE buyer=" + status["address"] + " state=" + result.get("state", "quote")
+                            + " signature=" + result.get("signature", "none"))
                 else:
                     self._send(404, "Rota nao encontrada")
                     return
