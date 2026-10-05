@@ -2,6 +2,28 @@
 
 Date: 2026-10-05. Branch: `V1s-00`. Model 00, Solana Devnet/test SOL. **Day 6 closed and accepted by the user.** Final panel: **JRBOT-PANEL-V1S-SKILLS-14**. [Closing evidence](#day-6-closure--user-log-81) · [Colosseum update](#colosseum-update--ready-to-publish-draft).
 
+## Visual evidence — purchase on Solana Devnet
+
+### Purchase quote in the development panel
+
+Original screenshot supplied by the user on Day 6, before the successful purchase: price of 1 test SOL, creator/treasury split and estimated costs. This is a **quote**, not a purchase confirmation. It predates the later priority-fee allowance; the finalized payment below is the actual transaction evidence.
+
+![Original Day 6 panel screenshot displaying the test Skill purchase quote](assets/day6/panel-purchase-quote.png)
+
+### Finalized purchase receipt
+
+Captured from the public Solana Explorer on 2026-10-05. The [receipt for the verified Phantom purchase](https://explorer.solana.com/tx/3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9?cluster=devnet&view=receipt) shows **Devnet / Finalized**, 0.5 test SOL to the creator, 0.5 to the JrBot treasury and a 0.00008 SOL network fee. License rent is recorded separately in the transaction/account evidence below; it is not an additional sale payment.
+
+![Solana Explorer receipt showing the finalized Devnet purchase and both 0.5 SOL transfers](assets/day6/phantom-purchase-devnet-receipt.jpg)
+
+### Transaction status and signature
+
+The [transaction summary](https://explorer.solana.com/tx/3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9?cluster=devnet) displays Success, Finalized, buyer, signature and slot 507765827. These are real Explorer captures, with no reconstructed confirmation screens.
+
+![Solana Explorer transaction summary showing Success and Finalized on Devnet](assets/day6/phantom-purchase-devnet-finalized.jpg)
+
+The available user screenshots do not show a successful purchase confirmation or the final Minhas Skills list in SKILLS-14. Those panel captures are still needed for the visual gallery. Discovery and successful robot execution are already evidenced by [log (81)](assets/day6/panel-log-81-discovery-execution-excerpt.txt). General Skill selection is not implemented yet; this checkpoint confirms discovery of the licensed test Skill and execution through the existing button.
+
 The user funded a separate buyer wallet, reviewed a read-only quote and explicitly sent the purchase. The 1 test SOL price was paid in the same transaction that created the buyer's License PDA.
 
 - Buyer: `E5F1ztxZwgogcwWaryB6uCLXp3iZ2YA6MBzjwv6R51dE`.
