@@ -157,14 +157,18 @@ class PurchaseStore:
         # Consume before relay. A timeout can mean submitted; never auto-resend.
         signature = str(tx.signatures[0])
         state = 'submitted'
+        error_detail = ''
         try:
             sent = self.rpc('sendTransaction', [encoded, {'encoding': 'base64', 'skipPreflight': False,
                        'preflightCommitment': 'confirmed', 'maxRetries': 0}], 10)
             if sent != signature:
                 state = 'unknown'
-        except (ValueError, TimeoutError, OSError):
+                error_detail = 'RPC devolveu assinatura diferente da transacao assinada'
+        except (ValueError, TimeoutError, OSError) as exc:
             state = 'unknown'
+            error_detail = solana_skill.rpc_error_detail(type(exc).__name__ + ': ' + str(exc))
         return {'cluster': 'devnet', 'buyer': address, 'signature': signature, 'state': state,
+                'error_detail': error_detail,
                 'license': str(license_address(Pubkey.from_string(address)))}
 
 

@@ -107,8 +107,22 @@ class PurchaseTests(unittest.TestCase):
         result = self.store.submit('token', 'origin', self.address, quote['quote_id'], signed)
         self.assertEqual(result['state'], 'unknown')
         self.assertTrue(result['signature'])
+        self.assertIn('ambiguous timeout', result['error_detail'])
         with self.assertRaises(ValueError): self.store.submit('token', 'origin', self.address, quote['quote_id'], signed)
         self.assertEqual([method for method, _ in self.rpc.calls].count('sendTransaction'), 1)
+
+    def test_rpc_diagnostic_preserves_simulation_error_without_request_bytes(self):
+        import io
+        from unittest.mock import patch
+        body = json.dumps({'error': {'code': -32002, 'message': 'Transaction simulation failed',
+            'data': {'logs': ['Program log: Error Code: Example', 'A' * 200]}}}).encode()
+        with patch('urllib.request.urlopen', return_value=io.BytesIO(body)):
+            with self.assertRaises(ValueError) as error:
+                solana_skill._rpc('sendTransaction', ['SECRET_REQUEST'], 10)
+        self.assertIn('code=-32002', str(error.exception))
+        self.assertIn('Error Code: Example', str(error.exception))
+        self.assertNotIn('SECRET_REQUEST', str(error.exception))
+        self.assertNotIn('A' * 100, str(error.exception))
 
     def test_actual_license_fixture_and_tampered_account_identity_are_rejected(self):
         import struct
@@ -167,6 +181,10 @@ class PurchaseHTTPTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 request('purchase/submit', {'quote_id': quote['quote_id'], 'signed_transaction': quote['transaction']})
             self.assertEqual(error.exception.code, 400)
+            with app.LOG_LOCK:
+                diagnostics = [line['line'] for line in app.LOGS if 'stage=server_validation' in line['line']]
+            self.assertTrue(any('Transacao/assinatura invalida' in line for line in diagnostics))
+            self.assertTrue(all(quote['transaction'] not in line for line in diagnostics))
             request('logout', {})
             with self.assertRaises(urllib.error.HTTPError) as error: request('purchase/status')
             self.assertEqual(error.exception.code, 401)

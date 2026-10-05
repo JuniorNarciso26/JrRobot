@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import json
+import re
 import struct
 import time
 import urllib.request
@@ -15,6 +16,12 @@ AUTHORITY_BYTES = bytes.fromhex("244730b82bf46825305434825d7413b132296edc9145b23
 EXPECTED_HASH = "416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f"
 
 
+def rpc_error_detail(error):
+    """Bounded public diagnostic; never include a request or signed transaction."""
+    text = str(error).replace('\r', ' ').replace('\n', ' ').replace('\t', ' ')
+    return re.sub(r'[A-Za-z0-9+/=_-]{100,}', '[dados omitidos]', text)[:1200]
+
+
 def _rpc(method, params, timeout):
     request = urllib.request.Request(RPC, data=json.dumps({
         "jsonrpc": "2.0", "id": 1, "method": method, "params": params,
@@ -24,7 +31,15 @@ def _rpc(method, params, timeout):
     if len(raw) > 65536:
         raise ValueError("Resposta RPC excede o limite")
     body = json.loads(raw)
-    if body.get("error") or "result" not in body:
+    if body.get("error"):
+        error = body['error']
+        if isinstance(error, dict):
+            data = error.get('data')
+            logs = data.get('logs', []) if isinstance(data, dict) else []
+            log_text = ' | '.join(str(line) for line in logs[:8]) if isinstance(logs, list) else ''
+            raise ValueError(rpc_error_detail('RPC code=' + str(error.get('code')) + ' message=' + str(error.get('message', 'erro')) + ' logs=' + log_text))
+        raise ValueError('RPC devolveu erro sem detalhe valido')
+    if "result" not in body:
         raise ValueError("RPC nao devolveu um resultado valido")
     return body["result"]
 

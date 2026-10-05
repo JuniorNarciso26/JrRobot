@@ -1,6 +1,6 @@
 # Etapa 4D — compra pelo navegador
 
-05/10/2026, exclusivamente `V1s-00`. Painel **JRBOT-PANEL-V1S-PURCHASE-08**. Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
+05/10/2026, exclusivamente `V1s-00`. Painel atual **JRBOT-PANEL-V1S-PURCHASE-09** (diagnostico corrigido; implementacao inicial PURCHASE-08). Historico [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), regras comerciais [#46](https://github.com/JuniorNarciso26/JrRobot/issues/46).
 
 ## Escopo e estado
 
@@ -42,7 +42,7 @@ Referencias: [solders Transaction](https://heavey.dev/solders/api_reference/tran
 ## Teste do usuario — Windows/Chrome/Phantom
 
 1. Fechar o servidor antigo. No checkout Windows `C:\Projetos\JrRobot`, conferir branch V1s-00/status limpo; git pull --ff-only origin V1s-00. Atualizar o WSL nao atualiza esse checkout.
-2. Reabrir **PAINEL.bat**. Instala requirements se necessario: Python 3.10+, pyserial, cryptography 50.0.1 e solders 0.29.0. Registrar eventual erro pip/porta ocupada. Ctrl+F5, confirmar PURCHASE-08. Sem gravar firmware nem repetir deploy.
+2. Reabrir **PAINEL.bat**. Instala requirements se necessario: Python 3.10+, pyserial, cryptography 50.0.1 e solders 0.29.0. Registrar eventual erro pip/porta ocupada. Ctrl+F5, confirmar PURCHASE-09. Sem gravar firmware nem repetir deploy.
 3. Na Phantom conferir Testnet Mode/Solana Devnet, conectar carteira de teste, autenticar e Verificar Devnet e saldo. A assinatura pede chain Devnet; suporte Wallet Standard nao revela a rede selecionada na interface da extensao.
 4. Consultar minha licenca: usar a Phantom que ainda nao comprou, esperado nao possui. Consultar custo: neste checkpoint 1 SOL, parcelas 0,5/0,5, deposito 0,0013462, taxa estimada 0,000005; conferir os valores atuais apresentados.
 5. Conferir comprador/recebedores, marcar aceite, clicar Comprar com a carteira e aprovar na Phantom. Comprador paga preco/deposito/taxa, somente SOL de teste.
@@ -51,3 +51,11 @@ Referencias: [solders Transaction](https://heavey.dev/solders/api_reference/tran
 8. Enviar log TXT, assinatura publica e screenshot; nunca seed/chave. Registrar resultado real na #33, separado dos testes simulados.
 
 Proximos itens: descoberta geral das Skills/licencas e autorizacao antes da execucao fisica, com provas de carteira sem/com licenca no hardware.
+
+## Correcao do diagnostico — PURCHASE-09
+
+Log fisico do painel (75) mostra autenticacao, saldo Devnet 5 SOL, cotacoes e licenca ausente. Nao registra assinatura/envio concluido. Consulta RPC independente confirmou licenca ausente, saldo 5 SOL e nenhuma transacao no historico do endereco da licenca. A causa original da falha nao pode ser determinada pelo log antigo: o detalhe HTTP era descartado e erros JSON-RPC eram substituidos por mensagem generica.
+
+A consulta posterior nao diz mais "Compra enviada" quando a tentativa foi incerta. Distingue recebimento pelo RPC de licenca finalized. Tela e TXT registram etapas wallet_signature, signed_transaction_check, submit_http, server_validation, rpc_relay, quote e license_query, com motivo da falha/HTTP status e assinatura publica quando disponivel. Codigo, mensagem e primeiros logs de simulacao RPC sao preservados com limites/redacao; nenhum corpo da transacao, cookie ou chave e registrado. Resultado incerto continua bloqueando reenvio automatico; isso nao confirma pagamento.
+
+Verificacao da correcao: **24 testes Python e 20 JS passaram**, incluindo rejeicao HTTP seguida de consulta sem falsa alegacao de envio, timeout com assinatura/sem retry, logs de validacao do servidor e erro RPC de simulacao sem bytes da requisicao. Bundle recompilado. Nenhuma compra/deploy Devnet ou teste real Phantom realizado nesta correcao. Proximo teste: atualizar checkout Windows, reiniciar painel, conferir PURCHASE-09, conferir Devnet na Phantom, consultar licenca/cotacao e enviar o novo TXT apos uma unica tentativa autorizada. Se houver assinatura pendente, consultar antes de tentar novamente.

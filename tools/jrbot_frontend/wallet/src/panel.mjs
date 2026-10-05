@@ -87,7 +87,7 @@ purchase = createPurchase(async (operation, data) => {
   }, body: new URLSearchParams(data) };
   const response = await fetch('/jrskill/wallet/purchase/' + operation,
     { ...options, credentials: 'same-origin', signal: AbortSignal.timeout(60000) });
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) throw new Error('HTTP ' + response.status + ': ' + await response.text());
   return response.json();
 }, state => {
   element('purchase_check').disabled = !state.authenticated || state.pending;

@@ -25,7 +25,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-08"
+APP_VERSION = "JRBOT-PANEL-V1S-PURCHASE-09"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -422,9 +422,17 @@ class Handler(BaseHTTPRequestHandler):
                     if self.path.endswith("/quote"):
                         result = wallet_purchase.STORE.quote(token, origin, status["address"])
                     else:
-                        result = wallet_purchase.STORE.submit(token, origin, status["address"], get("quote_id"), get("signed_transaction"))
+                        try:
+                            result = wallet_purchase.STORE.submit(token, origin, status["address"], get("quote_id"), get("signed_transaction"))
+                        except (ValueError, TimeoutError, OSError) as exc:
+                            add_log("JR_SKILL_PURCHASE stage=server_validation state=rejected buyer=" + status["address"]
+                                    + " relay_not_completed=true detail=" + solana_skill.rpc_error_detail(type(exc).__name__ + ': ' + str(exc)))
+                            raise
                     add_log("JR_SKILL_PURCHASE buyer=" + status["address"] + " state=" + result.get("state", "quote")
-                            + " signature=" + result.get("signature", "none"))
+                             + " signature=" + result.get("signature", "none"))
+                    if result.get("error_detail"):
+                        add_log("JR_SKILL_PURCHASE stage=rpc_relay state=unknown buyer=" + status["address"]
+                                + " signature=" + result.get("signature", "none") + " detail=" + result["error_detail"])
                 else:
                     self._send(404, "Rota nao encontrada")
                     return

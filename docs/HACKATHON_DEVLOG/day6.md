@@ -45,3 +45,9 @@ Panel **JRBOT-PANEL-V1S-PURCHASE-08** now reads the connected authenticated wall
 Validation: **23 Python tests and 18 JavaScript tests passed**; Python/Anchor IDL transaction bytes matched (417 bytes); a Chrome flow passed with a simulated wallet/RPC and real test signatures. The existing A license was also read through the new decoder using real Devnet RPC. These are software tests and a read-only check: no new purchase/deploy on Devnet, real Phantom extension test or physical test occurred. Firmware, program and frozen JSON remain unchanged.
 
 Next: test the purchase with the real Phantom extension, following [Stage 4D instructions](../JRSKILL_WALLET_PURCHASE_TEST.md). General Skill discovery and license authorization before robot execution remain future work.
+
+## Browser purchase diagnostics — PURCHASE-09
+
+The user's panel log (75) records quotes, a 5 test SOL balance and an absent license, without a successful relay signature. An independent RPC check also found no license or transaction history for its address. The original failure reason was hidden by generic HTTP/RPC handling, so it remains undetermined. A later license check incorrectly said "purchase sent" for an uncertain attempt.
+
+PURCHASE-09 corrects that message and records signing, client HTTP, server validation and RPC relay stages with bounded error details, HTTP status and public signature when available. Unknown results retain the no-retry guard; no payment success is inferred. **24 Python and 20 JS tests passed**, and the bundle was rebuilt. No new Devnet purchase/deploy or physical test occurred. The next real Phantom attempt must be captured with the updated panel log. [Details and steps](../JRSKILL_WALLET_PURCHASE_TEST.md).
