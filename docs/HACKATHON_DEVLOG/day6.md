@@ -21,6 +21,19 @@ Independent RPC inspection confirmed finalized transaction slot **507724452**, n
 
 The buyer moved from 5 to 3.9986488 test SOL in this transaction. Full account pre/post balances: [public RPC proof](assets/day6/license-purchase-proof.json). No private keys or seed phrases are included.
 
-This proves one positive Devnet purchase. Duplicate/rollback cases have local-validator evidence; their Devnet follow-ups and a second buyer remain pending. Phantom purchase, licensed Skill listing and authorization before physical execution also remain pending. No firmware, JSON/Recipe or program code changed in this documentation checkpoint.
+## Buyer A repeat and independent buyer B
+
+The user repeated A's --send command; the client returned `already_exists: true` with the same License PDA. This is the client check that skips sending another transaction, not an on-chain duplicate-rejection test. The earlier local-validator tests cover contract rejection and rollback.
+
+Buyer B `Dyf2qbLSn7pW7khP4z4xWykDr7Kuw5uMqmxzMFRuU6vs` was read before purchase: `exists: false`. B then reviewed a quote, explicitly purchased and read the new license: `exists: true`, model 0, price 1000000000 lamports, creator/treasury 500000000 each.
+
+| Buyer | License PDA | Skill |
+| --- | --- | --- |
+| A | `5wjuV3W2fJo9o8U5oqfjcnbUULGxKqRxLXK9AgUvqADR` | `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux` |
+| B | `CdvpW2VoTK4E1H39d688g9mW9vFtLwasqXrdiVuModLo` | Same Skill |
+
+B transaction: [view purchase](https://explorer.solana.com/tx/oZkPZsQXtoYfC5FhjHjKS9zoyhtGsVkERdZaa6HKuBB4Y2x4Fuqif2TEa1ZErUmEsN8HZb5N3gmjk15nLNNd9jD?cluster=devnet). Independent RPC inspection confirms **finalized slot 507731090**, no error, valid buyer/Skill/license/terms and the same exact payment/rent/fee amounts as A. B's debit was 1.0013512 test SOL; the creator and treasury each received another 0.5. [B public RPC proof](assets/day6/license-purchase-b-proof.json).
+
+The positive A/B proof is complete: one shared Skill, independent paid licenses. Remaining work: negative contract cases on Devnet if required, Phantom purchase, licensed Skill listing and authorization before physical execution. No firmware, JSON/Recipe or program code changed in this documentation checkpoint.
 
 Detailed terms/results: [model 00 checkpoint](../JRSKILL_LICENSE_MODEL_00_TEST.md). History: [commercial issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46), [technical issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
