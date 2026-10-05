@@ -2,7 +2,7 @@
 
 05/10/2026, exclusivamente V1s-00. Painel **JRBOT-PANEL-V1S-LICENSE-12**. [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Implementado e testado em software; bloqueio/execucao licenciada no hardware ainda pendentes.** A compra Phantom e a execucao anteriores, log (78), ocorreram antes deste controle. Nao comprovam o bloqueio novo. Sem modificacao/deploy do programa, firmware, JSON v1 ou Recipe.
+**Bloqueio sem licenca e execucao com licenca confirmados pelo teste do usuario, log (79), em 05/10/2026.** RPC independente confirmou os estados das duas carteiras. Troca/desconexao durante uma sequencia ativa e falha RPC durante execucao ainda aguardam teste fisico. Sem modificacao/deploy do programa, firmware, JSON v1 ou Recipe.
 
 ## Arquitetura
 
@@ -32,3 +32,11 @@ RPC novo a cada comando pode adicionar latencia; wait=500 nao promete intervalo 
 5. Desconectar ou trocar carteira durante a sequencia: parar proximos comandos, sem result=ok. Pode permanecer a ultima face ja enviada. Reautenticar para uma nova tentativa.
 6. Sem Internet no computador, Devnet deve bloquear; teste local continua disponivel. Restaurar Internet, verificar Devnet e repetir autorizacao. O Wi-Fi do robo nao substitui a conexao RPC do computador.
 7. Enviar TXT e observacao visual de cada caso. Registrar resultados fisicos na #33, separados dos testes simulados. Se houver erro, nao alterar parametros sem analisar o motivo no log.
+
+## Resultado — log (79), carteiras sem/com licenca
+
+Carteira nova `8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo` conectada 12:55:43 e autenticada 12:55:49. Consulta 12:55:57: owned=false, PDA derivada `FSmHntJybFcGbhZWLBv4Us4AjSEuG92RYEQAenM1jEMT` ausente. Tentativas 12:56:01, 12:56:12 e 12:56:33 bloqueadas com execution_license_absent. Nenhum command_sent da execucao Devnet aparece para essa carteira. Saldo zero nao e a causa registrada: a autorizacao rejeitou a ausencia de licenca.
+
+Usuario desconectou 12:56:40, voltou a carteira licenciada `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R` 12:56:50 e autenticou 12:56:55. Autorizacao allowed 12:56:59, licenca `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`. Skill Devnet slot 507783945, 128 bytes/hash verificado. Seis command_sent (capabilities e cinco faces); sequencia happy -> surprised -> thinking -> happy -> neutral; result=ok source=solana-devnet 12:57:10. Usuario relatou sucesso do teste no robo.
+
+RPC independente confirmou nova carteira owned=false e original owned=true, finalized. [Prova publica dos estados](HACKATHON_DEVLOG/assets/day6/license-gate-wallets-proof.json), [trecho selecionado do log (79)](HACKATHON_DEVLOG/assets/day6/panel-log-79-license-excerpt.txt). A alternancia ocorreu entre tentativas, nao durante uma sequencia ativa; nao alegar validacao fisica desse caso ou de offline nesta prova. Controle e do fluxo Devnet do painel, com controles locais de desenvolvimento preservados. Registro documental sem novo codigo/build/deploy.
