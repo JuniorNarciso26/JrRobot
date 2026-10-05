@@ -4,7 +4,7 @@ Prova isolada da Issue [#33](https://github.com/JuniorNarciso26/JrRobot/issues/3
 
 Arquitetura, limites, evidências e plano de teste: [docs/JRSKILL_SOLANA_STAGE2.md](../../docs/JRSKILL_SOLANA_STAGE2.md).
 
-Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill nem resolve Recipes. A extensão comercial License PDA 00 está implementada, compilada, testada localmente e atualizada na Devnet; a compra na Devnet está pendente. Scripts/crate agora identificam a entrega como 0.2.0; o upgrade anterior foi publicado com metadados 0.1.0. Procedimento e limites: [checkpoint da compra 00](../../docs/JRSKILL_LICENSE_MODEL_00_TEST.md).
+Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill nem resolve Recipes. A extensão comercial License PDA 00 está implementada, compilada, testada localmente e atualizada na Devnet; a primeira compra CLI com repasses e licença foi confirmada em 05/10/2026. Compra pelo painel e demais casos Devnet continuam pendentes. Scripts/crate identificam a entrega como 0.2.0; o upgrade foi publicado com metadados 0.1.0. Procedimento e limites: [checkpoint da compra 00](../../docs/JRSKILL_LICENSE_MODEL_00_TEST.md).
 
 **Etapa 2 validada na Devnet em 2026-09-30:** publicação e leitura independente de 128 bytes, com `byte_equal: true`. Program ID: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. PDA: `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux`. As evidências completas estão no documento da Etapa 2.
 

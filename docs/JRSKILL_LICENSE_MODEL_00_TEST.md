@@ -13,7 +13,7 @@ Data: 02/10/2026. Branch exclusiva: `V1s-00`. Historico comercial: [#46](https:/
 | `anchor test --validator legacy ...` | 2 testes de integracao passaram, incluindo a prova comercial abaixo |
 | Consulta publica da Skill original na Devnet | Passou, compromisso finalized, slot 506702089 |
 | Upgrade comercial na Devnet | Realizado pelo usuario; consulta RPC confirma slot 506708700 |
-| Compra na Devnet | Ainda nao realizada |
+| Primeira compra na Devnet | Realizada em 05/10/2026; RPC finalized no slot 507724452 |
 | Compra via Phantom no painel / bloqueio por licenca no hardware | Nao implementados nesta prova |
 
 Ambiente usado: Ubuntu/WSL, Node 24.10.0, Anchor 1.1.2 e Solana CLI 3.1.10. O validator local usa `[test] upgradeable = true`, pois a inicializacao valida a autoridade de upgrade. Sem essa opcao o programa carregado para teste fica sem autoridade administrativa. Referencia: [configuracao oficial do Anchor](https://www.anchor-lang.com/docs/references/anchor-toml#upgradeable).
@@ -65,7 +65,7 @@ Os testes exigem validator limpo; Anchor inicia o seu. Se ja existir um processo
 
 O usuario compilou, passou os 6 testes cliente, 2 IDL e 2 integracao local e realizou o upgrade do mesmo programa. Assinatura informada: `3Bdw92brd5inoDoMmg7q3SzcMrpDsctoL5pd63r71kMbSM37k6yHCvo6nvpQrF7HBxCXoUoZaF6mmRDPSDWnNYqT`. O CLI ampliou os dados de 191976 para 331392 bytes e atualizou a IDL. Consulta RPC independente confirmou Last Deployed In Slot 506708700, mesma autoridade e mesmo ProgramData. Verificador publico posterior, finalized no slot 506709949, confirmou os 128 bytes/hash originais.
 
-A sequencia abaixo fica como referencia do upgrade ja realizado, nao instrucao para repetir agora. Compra, oferta e configuracao comercial na Devnet continuam pendentes. Use somente SOL de teste; nao troque chaves nem remova a autoridade de upgrade.
+A sequencia abaixo fica como referencia do upgrade ja realizado, nao instrucao para repetir agora. Configuracao, oferta e primeira compra Devnet foram realizadas; evidencias no checkpoint de 05/10 abaixo. Use somente SOL de teste; nao troque chaves nem remova a autoridade de upgrade.
 
 ```bash
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
@@ -104,6 +104,31 @@ npm run market:devnet -- read ENDERECO_PUBLICO_COMPRADOR 8LRRfZVnyjSYPLezJBCdGri
 A cotacao separa preco, parcelas, deposito e estimativa da taxa. Se ja existe licenca valida, o script somente consulta, sem enviar transacao. A leitura publica nao exige wallet; exige IDL local gerada, deps npm e RPC Devnet. Verifica owner, discriminator, PDA, comprador, Skill, oferta, modelo e parcelas registradas.
 
 A carteira Phantom com 5 SOL de teste permanece pronta para a etapa seguinte: compra assinada pela extensao no painel. Esta entrega nao envia transacao por ela. Registrar na #46 assinatura, carteiras, licenca e valores quando a prova Devnet ocorrer; os testes locais nao substituem essa evidencia.
+
+## Primeira compra Devnet — 05/10/2026
+
+Configuracao: `6k8BdUgobWSuwjUTiTvGgBBtK8Zc2vpfpV7vJC8WEe9D`, tesouraria `Ex9pYvpA96dkZF5efdooEU2pQvWr5owpAZPiqXtLYxnh`, comissao 5000 bps. Assinatura de criacao informada pelo usuario: `2YcAUZwRzFBhFMsACpLueaRBRpRTEswrLNqWqSsaXGSgkEeNiUDeELSg9dger2ewvRn9VGnXbmX5Ky57b4MtZFRt`. Repeticao de configure foi rejeitada na simulacao por conta existente; configuracao mantida.
+
+Oferta: `A2n5s6TYEH9oFZNFE1owxN5nEh18WGDHnEvrc5QvBgLR`, Skill original, preco 1000000000 lamports. Assinatura informada: `oASMhPRZB8aA1biQDRsVJeC5dyqA3dYH2QQxCSQ852RFmkw5ogBq7JtcUz9qJKZBtGvDjDJ9vpBBw3E67sZNsLd`. Consultas RPC antes da compra confirmaram owner JrSkill, preco e comissao.
+
+Comprador CLI: `E5F1ztxZwgogcwWaryB6uCLXp3iZ2YA6MBzjwv6R51dE`. Cotacao --quote nao enviou transacao. Compra --send confirmou assinatura `4dwpsPA6GrZNhLuJhmdWQPJSv1r3QLnpMnxGrY4PvdQj2AAEzs2aeWu9YrBS7Kut5rhDgMenq9U7wiEd1GnMLKiY` e License PDA `5wjuV3W2fJo9o8U5oqfjcnbUULGxKqRxLXK9AgUvqADR`, verified=true.
+
+Verificacao independente read-only: RPC Devnet genesis confirmado, transacao finalized no slot **507724452**, meta.err=null. Leitura da licenca valida owner/discriminator/PDA/comprador/Skill/oferta/modelo 0 e parcelas registradas. [Evidencia RPC arquivada](HACKATHON_DEVLOG/assets/day6/license-purchase-proof.json).
+
+| Movimento na transacao | Lamports | SOL de teste |
+| --- | ---: | ---: |
+| Criador recebeu | 500000000 | 0,5 |
+| Tesouraria recebeu | 500000000 | 0,5 |
+| Deposito da License PDA | 1346200 | 0,0013462 |
+| Taxa efetiva da rede | 5000 | 0,000005 |
+| Debito total do comprador | 1001351200 | 1,0013512 |
+| Saldo do comprador apos esta transacao | 3998648800 | 3,9986488 |
+
+Configuracao, oferta e Skill mantiveram seus saldos; nenhum custo foi deduzido dos repasses do criador/tesouraria. Valores acima sao pre/post balances desta transacao, nao promessa de saldo futuro. Os fundos sao SOL de teste; nao receita comercial real.
+
+Verificacao publica da Skill apos a compra: finalized no slot 507725504, 128 bytes, hash original, matches_checkpoint=true.
+
+Ainda pendentes na Devnet: repeticao da compra pelo cliente sem envio, comprador B/licenca independente e eventuais testes negativos on-chain. Duplicidade/rollback ja foram testados no validator local; esta primeira compra positiva nao substitui esses casos Devnet. Compra pela Phantom, listagem e enforcement de licenca no painel/robo continuam pendentes.
 
 ## Identificacao da entrega — correcao de versao
 

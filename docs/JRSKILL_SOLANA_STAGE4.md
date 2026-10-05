@@ -4,7 +4,7 @@
 
 O usuario escolheu manter o modelo de **License PDA**, em vez de NFT, para permitir regras proprias de licenciamento e evolucao do marketplace JrSkill. Esta decisao foi registrada na branch `V1s-00` e na [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Estado atualizado em 02/10/2026: conexao, autenticacao e verificacao RPC Devnet/saldo implementadas no painel; log (74) confirma RPC Devnet, sem confirmar a rede selecionada na extensao. Compra e License PDA 00 implementadas, compiladas, testadas localmente e programa atualizado na Devnet. Compra Devnet e integracao da compra/licencas no painel ainda pendentes. Identificacao atual: painel WALLET-07 e scripts/crate 0.2.0.** [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md), [autenticacao 4B](JRSKILL_WALLET_AUTH_TEST.md), [rede/saldo 4C](JRSKILL_WALLET_DEVNET_TEST.md) e [prova comercial 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
+**Estado atualizado em 05/10/2026: conexao, autenticacao e verificacao RPC Devnet/saldo implementadas no painel; log (74) confirma RPC Devnet, sem confirmar a rede selecionada na extensao. Compra e License PDA 00 implementadas, compiladas, testadas localmente e programa atualizado na Devnet. Primeira compra CLI Devnet finalizada e verificada com repasses/licenca; demais provas Devnet e integracao da compra/licencas no painel ainda pendentes. Identificacao atual: painel WALLET-07 e scripts/crate 0.2.0.** [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md), [autenticacao 4B](JRSKILL_WALLET_AUTH_TEST.md), [rede/saldo 4C](JRSKILL_WALLET_DEVNET_TEST.md) e [prova comercial 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
 
 ## Modelo proposto
 
