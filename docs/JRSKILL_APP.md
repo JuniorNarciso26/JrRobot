@@ -1,7 +1,7 @@
 # JrSkill — App embarcado / Minhas Skills
 
 **Branch:** `V1s-00`  
-**Candidata:** `JrBot_V1S_APP_01`  
+**Candidata:** `JrBot_V1S_APP_02`  
 **Data:** 2026-10-05
 
 ## Decisao
@@ -76,15 +76,20 @@ Nao houve mudanca no JrSkill JSON v1 nem no programa on-chain.
 
 ## Identificacao
 
-Como o firmware foi alterado, a build `JrBot_V1S_00` nao e reutilizada.
+Como o firmware foi alterado, builds instaladas nao sao reutilizadas.
+
+Historico:
+
+- `JrBot_V1S_APP_01`: instalou e exibiu a identificacao correta, mas o board **Minhas Skills** nao apareceu;
+- `JrBot_V1S_APP_02`: corrige a entrega HTTP do JavaScript embarcado.
 
 Nova candidata:
 
 ```text
-JrBot_V1S_APP_01
+JrBot_V1S_APP_02
 ```
 
-A branch `V1s-00` usa o diretorio de build `build-v1s-app-01`.
+A branch `V1s-00` usa o diretorio de build `build-v1s-app-02`.
 
 ## Estado
 
@@ -109,3 +114,24 @@ A branch `V1s-00` usa o diretorio de build `build-v1s-app-01`.
 12. Executar Skill no JrBot;
 13. confirmar fisicamente `happy -> surprised -> thinking -> happy -> neutral`;
 14. confirmar que nao existe fluxo de compra no App.
+
+
+## Correcao APP_02 — JavaScript embarcado
+
+No primeiro teste fisico da `APP_01`, o App principal carregou e mostrou `JrBot_V1S_APP_01`, mas o board **Minhas Skills** nao foi criado.
+
+A causa foi identificada no handler `/jrskill-app.js`: o arquivo foi incorporado com `EMBED_TXTFILES`, que gera uma string terminada em NUL. O handler enviava o intervalo inteiro entre os simbolos `_start` e `_end`, incluindo o terminador NUL no corpo JavaScript.
+
+Um byte NUL no fonte JavaScript torna o script invalido no parser. A `APP_02` passa a servir o recurso como string usando:
+
+```c
+httpd_resp_send(req, jrskill_app_js_start, HTTPD_RESP_USE_STRLEN);
+```
+
+Assim o terminador NUL nao faz parte da resposta HTTP.
+
+Estado da `APP_02`:
+
+- **correcao implementada**;
+- **compilacao:** pendente no hardware do usuario;
+- **teste fisico:** pendente.

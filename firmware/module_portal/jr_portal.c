@@ -58,7 +58,7 @@ static esp_err_t web_v16_js_handler(httpd_req_t *req) {
 static esp_err_t web_jrskill_app_js_handler(httpd_req_t *req) {
     httpd_resp_set_type(req,"application/javascript; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
-    return httpd_resp_send(req,jrskill_app_js_start,(ssize_t)(jrskill_app_js_end-jrskill_app_js_start));
+    return httpd_resp_send(req,jrskill_app_js_start,HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t web_status_handler(httpd_req_t *req) {
