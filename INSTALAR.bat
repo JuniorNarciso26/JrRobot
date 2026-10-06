@@ -335,17 +335,40 @@ echo ERRO: opcao invalida: %ACTION%
 goto help
 
 :ensure_idf
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" call "%%~fD\export.bat" >nul 2>&1
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" call "%%~fD\export.bat" >nul 2>&1
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
-echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
-exit /b 1
-
-:idf_ok
+set "IDF_EXPORT="
+if defined IDF_PATH if exist "%IDF_PATH%\export.bat" set "IDF_EXPORT=%IDF_PATH%\export.bat"
+if not defined IDF_EXPORT for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+if not defined IDF_EXPORT (
+    echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
+    echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    exit /b 1
+)
+echo [INFO] Carregando ambiente ESP-IDF...
+call "%IDF_EXPORT%"
+if errorlevel 1 (
+    echo [ERRO] export.bat do ESP-IDF falhou.
+    exit /b 1
+)
+if not defined IDF_PATH if exist "%~dp0" (
+    echo [ERRO] IDF_PATH nao foi definido pelo export.bat.
+    exit /b 1
+)
+if not exist "%IDF_PATH%\tools\idf.py" (
+    echo [ERRO] idf.py nao encontrado em %IDF_PATH%\tools.
+    exit /b 1
+)
+where cmake.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERRO] CMake nao foi adicionado ao PATH pelo export.bat.
+    exit /b 1
+)
+if not defined IDF_PYTHON_ENV_PATH (
+    echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
+    exit /b 1
+)
 echo [OK] ESP-IDF: %IDF_PATH%
+echo [OK] Python env: %IDF_PYTHON_ENV_PATH%
 exit /b 0
 
 :select_then_prepare
