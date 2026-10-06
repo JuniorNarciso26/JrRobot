@@ -93,6 +93,14 @@ Observed App state:
 
 The user confirmed the App and robot behavior as working correctly.
 
+### Visual proof — licensed Skill executed from the JrBot App
+
+The following physical-test screenshot was supplied by the user after the successful APP_02 run. It visibly records the same wallet/Skill checkpoint used in this Day 7 validation: **Wallet autenticada**, **Devnet confirmada**, `minimal_recipe_01 - licenciada`, **128 bytes**, the known hash prefix `416d6af34ead...`, the Skill selected and the final UI message **`Skill concluida no JrBot: result=ok`**.
+
+![JrBot embedded App showing authenticated wallet, licensed minimal_recipe_01 and successful physical Skill execution](assets/day7/jrskill-app-licensed-execution.webp)
+
+This screenshot is public visual evidence for the hackathon diary and can be reused in the Colosseum project update.
+
 ### Validation status
 
 - **Compilation / installation:** completed on the user's environment;
@@ -150,3 +158,5 @@ We moved the validated wallet/license flow from our development panel into the A
 The validated App recovered the same 128-byte Skill payload and known hash, then finished physical execution with `result=ok`. Purchase is intentionally not part of the robot App: the next product layer is a separate JrSkill Store Web for discovering and buying Skills, while the JrBot App remains focused on using the licenses already owned by the wallet.
 
 This keeps the architecture separated: Store Web for commerce, Solana for Skill/license state, and the JrBot App/Runtime API for safe physical execution.
+
+Visual evidence: [Day 7 App screenshot](assets/day7/jrskill-app-licensed-execution.webp).
