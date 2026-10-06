@@ -19,8 +19,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 4](HACKATHON_DEVLOG/day4.md) | 2026-10-01 | Devnet Skill executed on the physical JrBot; positive path validated |
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Closed: purchases, license discovery and authorized physical execution |
+| [Day 7](HACKATHON_DEVLOG/day7.md) | 2026-10-06 | Embedded App: Wallet, licensed Skill discovery, selection and physical execution validated over HTTPS |
 
-**Day 6 closed and accepted by the user. Latest physical checkpoint: SKILLS-14, log (81), confirms automatic/manual discovery of one licensed Skill and authorized robot execution ending result=ok at 15:10:06.** Earlier Day 6 checkpoints record finalized purchases/revenue splits, unlicensed rejection, wallet-disconnection/communication interruption and recovery, with their evidence limits preserved. Local development controls remain independent; general Skill selection/execution is not yet implemented. Next session (2026-10-06): begin robot app work, then the web marketplace. [Closing evidence and next steps](HACKATHON_DEVLOG/day6.md#day-6-closure--user-log-81).
+**Day 7 closed and accepted by the user. Latest physical checkpoint: `JrBot_V1S_APP_02` validates the embedded JrBot App over HTTPS with Wallet authentication, Devnet verification, licensed `minimal_recipe_01` discovery, Skill selection and physical execution ending `result=ok`.** The robot App deliberately contains no purchase flow. Catalog and purchases now move to the separate `JrBot_Web` repository, tracked by [JrSkill Store issue #16](https://github.com/JuniorNarciso26/JrBot_Web/issues/16). [Day 7 details](HACKATHON_DEVLOG/day7.md).
 
 ## Public reproducible proof — read the Skill without a wallet
 
