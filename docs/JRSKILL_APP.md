@@ -89,8 +89,8 @@ A branch `V1s-00` usa o diretorio de build `build-v1s-app-01`.
 ## Estado
 
 - **IMPLEMENTADO:** codigo na `V1s-00`;
-- **VALIDACAO ESTATICA:** JavaScript verificado sintaticamente antes do commit;
-- **COMPILACAO:** pendente;
+- **VALIDACAO ESTATICA:** analise de codigo realizada; verificacao executavel ainda nao registrada;
+- **COMPILACAO:** pendente; a primeira tentativa foi interrompida antes da compilacao por conflito no ambiente Python do ESP-IDF;
 - **TESTE FISICO:** pendente.
 
 ## Primeiro teste
