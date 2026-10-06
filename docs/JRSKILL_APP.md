@@ -94,9 +94,9 @@ A branch `V1s-00` usa o diretorio de build `build-v1s-app-02`.
 ## Estado
 
 - **IMPLEMENTADO:** codigo na `V1s-00`;
-- **VALIDACAO ESTATICA:** analise de codigo realizada; verificacao executavel ainda nao registrada;
-- **COMPILACAO:** pendente; a primeira tentativa foi interrompida antes da compilacao por conflito no ambiente Python do ESP-IDF;
-- **TESTE FISICO:** pendente.
+- **COMPILACAO/INSTALACAO APP_02:** concluida no ambiente do usuario;
+- **TESTE FISICO DO BOARD MINHAS SKILLS:** validado em 06/10/2026;
+- **ACESSO:** usar o App por **HTTPS**. Em HTTP, recursos de seguranca do navegador/Wallet podem ser bloqueados.
 
 ## Primeiro teste
 
@@ -133,5 +133,21 @@ Assim o terminador NUL nao faz parte da resposta HTTP.
 Estado da `APP_02`:
 
 - **correcao implementada**;
-- **compilacao:** pendente no hardware do usuario;
-- **teste fisico:** pendente.
+- **compilacao/instalacao:** concluida pelo usuario;
+- **teste fisico:** validado em 06/10/2026.
+
+### Evidencia funcional APP_02
+
+No App embarcado acessado por **HTTPS**, o usuario confirmou:
+
+- board **Minhas Skills** visivel;
+- **Wallet autenticada**;
+- **Devnet confirmada**;
+- saldo Devnet exibido;
+- descoberta de `minimal_recipe_01` como licenciada;
+- payload de **128 bytes**;
+- hash exibido com prefixo `416d6af34ead...`;
+- Skill selecionada;
+- execucao concluida com **`result=ok`**.
+
+A tentativa anterior em HTTP encontrou bloqueios do Chrome. Para esta fase, o fluxo Wallet/Devnet do App deve ser aberto em `https://<IP_DO_JRBOT>/`.
