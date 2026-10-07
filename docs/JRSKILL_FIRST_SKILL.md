@@ -8,7 +8,7 @@ This guide is the public onboarding path for the first JrSkill contributors.
 
 You do **not** need to own a JrBot, an ESP32 board, a Solana wallet, or a robotics lab to create a Skill in this pilot.
 
-Your job is to describe a small robot behavior using the JrSkill JSON v1 format. The JrBot maintainer validates the submission and, if it passes the safety/format checks, runs it on the physical JrBot and records the result.
+Your job is to create a new JrSkill JSON v1 file that can pass the same generic publication path already used by the JrSkill Network. The first maintainer-run pilot creates a **second Skill** using the reusable publisher; later contributors repeat the same path without code changes specific to their Skill.
 
 ## 1. What is a JrSkill?
 
@@ -174,11 +174,27 @@ Before opening a submission, confirm:
 - [ ] there is no C/C++, shell command, GPIO access, script, URL, binary, or arbitrary executable content;
 - [ ] the behavior is visibly different from the example above.
 
-## 7. Submit the Skill
+## 7. Publish / submit the Skill
 
-For pilot v0, submit through a new GitHub Issue in:
+The technical pilot now tests the reusable publisher, not only a pasted JSON submission.
 
-**JuniorNarciso26/JrRobot**
+Inside `solana/jrskill-solana`, after the normal environment checks and tests:
+
+```bash
+npm run publish:devnet -- /path/to/your-skill.json
+```
+
+The command must produce a Skill PDA derived from the publisher authority and the new payload hash. It must not require any source-code change that names your Skill.
+
+Then independently read the same Skill:
+
+```bash
+npm run read:devnet -- <PUBLISHER_PUBKEY> /path/to/your-skill.json
+```
+
+Expected evidence includes `result=ok`, the new PDA, payload hash and `byte_equal: true`.
+
+For external contributors who should not publish directly yet, use a GitHub Issue in **JuniorNarciso26/JrRobot** to submit the JSON and attribution; the maintainer can execute the same generic publication flow on their behalf.
 
 Use this title:
 
@@ -252,11 +268,11 @@ Do not describe a Skill as physically validated until the hardware test actually
 
 ## 9. Solana status in pilot v0
 
-Creating a JrSkill does **not automatically publish it on Solana**.
+The first-author pilot is now intended to publish the new JrSkill through the generic Devnet publisher. External contributors may initially submit JSON for maintainer-assisted publication until author-side Wallet/publisher onboarding is productized.
 
-The first Developer Challenge experiment is intentionally testing the lowest-friction question first:
+The first Developer Challenge experiment now asks a stronger question:
 
-> Can an external developer understand the format, create a capability, submit it, and see it executed on a real robot?
+> Can a new author create a different JrSkill, pass the generic validator, create a new Skill PDA without Skill-specific code changes, and continue through licensing and physical execution?
 
 The JrSkill Network already has a validated Solana Devnet Skill PDA and License PDA flow, but onboarding new publishers is a separate product step.
 
