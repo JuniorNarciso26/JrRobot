@@ -1,5 +1,5 @@
 (() => {
-  // src/skills.mjs
+  // tools/jrbot_frontend/wallet/src/skills.mjs
   var GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
   var PROGRAM = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
   function createSkillSearch(request, render, log = () => {
@@ -62,7 +62,7 @@
     return api;
   }
 
-  // node_modules/.pnpm/@wallet-standard+app@1.1.1/node_modules/@wallet-standard/app/lib/esm/wallets.js
+  // tools/jrbot_frontend/wallet/node_modules/.pnpm/@wallet-standard+app@1.1.1/node_modules/@wallet-standard/app/lib/esm/wallets.js
   var __classPrivateFieldGet = function(receiver, state, kind, f) {
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
@@ -168,7 +168,7 @@
   };
   _AppReadyEvent_detail = /* @__PURE__ */ new WeakMap();
 
-  // src/controller.mjs
+  // tools/jrbot_frontend/wallet/src/controller.mjs
   var CHAIN = "solana:devnet";
   function supportedWallet(wallet) {
     return wallet.chains?.includes(CHAIN) && ["standard:connect", "standard:disconnect", "standard:events"].every((key) => wallet.features?.[key]);
@@ -273,7 +273,7 @@
     };
   }
 
-  // src/auth.mjs
+  // tools/jrbot_frontend/wallet/src/auth.mjs
   function createAuthenticator(request, render, log = () => {
   }, clock = () => Date.now() / 1e3) {
     let wallet = null, account = null, epoch = 0, pending = false, expires = 0;
@@ -370,7 +370,7 @@
     };
   }
 
-  // src/network.mjs
+  // tools/jrbot_frontend/wallet/src/network.mjs
   var DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
   function createNetworkCheck(request, render, log = () => {
   }) {
@@ -431,7 +431,7 @@
     return api;
   }
 
-  // src/purchase.mjs
+  // tools/jrbot_frontend/wallet/src/purchase.mjs
   var CHAIN2 = "solana:devnet";
   var SKILL = "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux";
   var PROGRAM2 = "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454";
@@ -624,7 +624,7 @@
     return api;
   }
 
-  // src/panel.mjs
+  // tools/jrbot_frontend/wallet/src/panel.mjs
   var element = (id) => document.getElementById(id);
   var walletSelect = element("wallet_provider");
   var accountSelect = element("wallet_account");
@@ -759,6 +759,12 @@
     element("skills_search").disabled = !state.authenticated || state.pending;
     element("skills_msg").textContent = state.message;
     const list = element("skills_list");
+    const select = element("jrskill_selected");
+    const previous = select.value;
+    select.replaceChildren(new Option("Selecione uma Skill licenciada", ""));
+    for (const item of state.skills) select.append(new Option(item.name, item.skill));
+    select.value = state.skills.some((item) => item.skill === previous) ? previous : "";
+    select.disabled = state.pending || !state.authenticated;
     list.replaceChildren();
     for (const skill of state.skills) {
       const row = document.createElement("div");
@@ -766,7 +772,7 @@
       const title = document.createElement("strong");
       title.textContent = skill.name;
       const status = document.createElement("p");
-      status.textContent = skill.checkpoint_supported ? "Licenciada \u2014 disponivel para o teste de execucao abaixo." : "Licenciada \u2014 descoberta confirmada; execucao desta Skill ainda nao habilitada neste painel.";
+      status.textContent = "Licenciada \u2014 selecione para executar no JrBot.";
       const details = document.createElement("details");
       const summary = document.createElement("summary");
       summary.textContent = "Ver Skill e licenca";

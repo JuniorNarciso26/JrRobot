@@ -129,14 +129,19 @@ skillSearch = createSkillSearch(async () => {
   element('skills_search').disabled = !state.authenticated || state.pending;
   element('skills_msg').textContent = state.message;
   const list = element('skills_list');
+  const select = element('jrskill_selected');
+  const previous = select.value;
+  select.replaceChildren(new Option('Selecione uma Skill licenciada', ''));
+  for (const item of state.skills) select.append(new Option(item.name, item.skill));
+  select.value = state.skills.some(item => item.skill === previous) ? previous : '';
+  select.disabled = state.pending || !state.authenticated;
   list.replaceChildren();
   for (const skill of state.skills) {
     const row = document.createElement('div');
     row.style.cssText = 'padding:10px 0;border-bottom:1px solid #252b38';
     const title = document.createElement('strong'); title.textContent = skill.name;
     const status = document.createElement('p');
-    status.textContent = skill.checkpoint_supported ? 'Licenciada — disponivel para o teste de execucao abaixo.' :
-      'Licenciada — descoberta confirmada; execucao desta Skill ainda nao habilitada neste painel.';
+    status.textContent = 'Licenciada — selecione para executar no JrBot.';
     const details = document.createElement('details');
     const summary = document.createElement('summary'); summary.textContent = 'Ver Skill e licenca';
     const metadata = document.createElement('p'); metadata.textContent = 'Skill: ' + skill.skill + ' | Licenca: ' + skill.license + ' | Hash: ' + skill.payload_hash;

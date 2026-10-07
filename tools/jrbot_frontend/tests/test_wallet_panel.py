@@ -19,10 +19,11 @@ class WalletPanelTests(unittest.TestCase):
         try:
             with urllib.request.urlopen(base) as response:
                 page = response.read().decode()
-                self.assertIn("JRBOT-PANEL-V1S-SKILLS-14", page)
+                self.assertIn("JRBOT-PANEL-V1S-SKILLS-15", page)
                 self.assertIn('src="/wallet_panel.js"', page)
                 self.assertIn('id="wallet_provider"', page)
                 self.assertIn('id="jrskill_devnet_test"', page)
+                self.assertIn('id="jrskill_selected"', page)
             with urllib.request.urlopen(base + "/wallet_panel.js") as response:
                 self.assertIn("javascript", response.headers["Content-Type"])
                 bundle = response.read().decode()

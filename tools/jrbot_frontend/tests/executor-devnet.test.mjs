@@ -11,9 +11,10 @@ async function simulate(failure) {
   const logs = [], faces = [], reads = [], elements = new Map();
   const context = vm.createContext({console, TextEncoder, URLSearchParams, setTimeout: fn => { fn(); return 1; }, clearTimeout(){},
     document: {getElementById(id){if(!elements.has(id)) elements.set(id,{textContent:'',value:''}); return elements.get(id);}},
-    logs, capturedFaces: faces, reads, payload, recipe, failure});
+    logs, capturedFaces: faces, reads, payload: failure === 'new-skill' ? JSON.stringify({v:1,run:[['face','happy'],['face','sad'],['face','worried']]}) : payload, recipe, failure});
   vm.runInContext(source, context);
   vm.runInContext(`
+    el('jrskill_selected').value=failure==='new-skill'?'selected-new':'checkpoint';
     mode='serial'; serialConnected=true; devnetState='available';
     currentFirmware=()=>true; oledAvailable=()=>true; refreshControls=()=>{};
     updateSkillWallet('buyer',failure!=='unauth','mock');
@@ -26,7 +27,7 @@ async function simulate(failure) {
         if(failure==='rpc')throw new Error('RPC offline');
         if(failure==='unlicensed')throw new Error('execution_license_absent');
         if(failure==='late-account')updateSkillWallet('other',false,'mock');
-        return JSON.stringify({buyer:'buyer',execution_permit:'permit',license:'license',source:'solana-devnet',commitment:'finalized',hash_verified:failure!=='hash',matches_checkpoint:true,payload_text:payload,pda:'checkpoint',rpc_slot:123,payload_bytes:128,payload_hash:'verified'});
+        return JSON.stringify({buyer:'buyer',execution_permit:'permit',license:'license',source:'solana-devnet',commitment:'finalized',hash_verified:failure!=='hash',matches_checkpoint:failure!=='new-skill',payload_text:payload,pda:failure==='wrong-skill'?'other':options.body.get('skill'),rpc_slot:123,payload_bytes:128,payload_hash:'verified'});
       }
       if(path==='/jrskill/wallet/execution/send'){
         const command=options.body.get('command');
@@ -75,7 +76,7 @@ test('wallet change and RPC failure stop subsequent physical commands',async()=>
   }
 });
 test('RPC failure, rejected proof and absent capability send no face commands', async()=>{
-  for(const failure of ['rpc','hash','capability']){
+  for(const failure of ['rpc','hash','capability','wrong-skill']){
     const result=await simulate(failure);
     assert.deepEqual(result.faces,[]);
     assert.ok(!result.reads.includes('/jrskill/skill'));
@@ -90,4 +91,11 @@ test('offline status keeps local execution working; successful probe restores av
   const online=await simulate('reconnect');
   assert.equal(online.devnetState,'available');
   assert.deepEqual(online.faces,[]);
+});
+
+test('panel executes selected new Skill without requiring reference checkpoint',async()=>{
+ const result=await simulate('new-skill');
+ assert.deepEqual(result.faces,['happy','sad','worried']);
+ assert.ok(result.logs.some(line=>line.includes('pda=selected-new')));
+ assert.ok(result.logs.includes('JR_SKILL_V1 result=ok source=solana-devnet'));
 });

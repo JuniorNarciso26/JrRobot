@@ -133,18 +133,20 @@ async function runJrSkillTest(source='local-file'){
       let raw;
       if(source==='solana-devnet'){
         if(devnetState!=='available')throw new Error('Devnet indisponivel ou ainda nao verificada. Clique Verificar Devnet.');
-        localLine('JR_SKILL_SOLANA fetch=started');
+        const selected=el('jrskill_selected').value;
+        if(!selected)throw new Error('Selecione uma Skill licenciada.');
+        localLine('JR_SKILL_SOLANA fetch=started skill='+selected);
         let proof;
         try{
-          proof=JSON.parse(await api('/jrskill/wallet/execution/start',{method:'POST',body:new URLSearchParams()}));
+          proof=JSON.parse(await api('/jrskill/wallet/execution/start',{method:'POST',body:new URLSearchParams({skill:selected})}));
           guard();
-          if(proof.buyer!==wallet.address||typeof proof.execution_permit!=='string'||!proof.execution_permit||!proof.license)throw new Error('Autorizacao nao corresponde a carteira.');
+          if(proof.pda!==selected||proof.buyer!==wallet.address||typeof proof.execution_permit!=='string'||!proof.execution_permit||!proof.license)throw new Error('Autorizacao nao corresponde a carteira.');
           sender=async command=>{guard();const result=JSON.parse(await api('/jrskill/wallet/execution/send',{method:'POST',body:new URLSearchParams({permit:proof.execution_permit,command})}));guard();if(typeof result.reply!=='string')throw new Error('Resposta autorizada invalida');localLine(result.reply);return result.reply;};
           localLine('JR_SKILL_AUTHORIZATION result=allowed buyer='+proof.buyer+' license='+proof.license);
-          if(proof.source!==source||proof.hash_verified!==true||proof.matches_checkpoint!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
+          if(proof.source!==source||proof.hash_verified!==true||proof.commitment!=='finalized'||typeof proof.payload_text!=='string')throw new Error('Prova Devnet invalida.');
         }catch(e){renderDevnetState('unavailable');throw e;}
         raw=proof.payload_text;
-        localLine('JR_SKILL_SOLANA source='+source+' pda='+proof.pda+' rpc_slot='+proof.rpc_slot+' payload_bytes='+proof.payload_bytes+' payload_hash='+proof.payload_hash+' hash_verified=true matches_checkpoint=true');
+        localLine('JR_SKILL_SOLANA source='+source+' pda='+proof.pda+' rpc_slot='+proof.rpc_slot+' payload_bytes='+proof.payload_bytes+' payload_hash='+proof.payload_hash+' hash_verified=true matches_checkpoint='+proof.matches_checkpoint);
       }else if(source==='local-file'){
         raw=await api('/jrskill/skill');
       }else throw new Error('Origem da Skill invalida.');
@@ -156,7 +158,7 @@ async function runJrSkillTest(source='local-file'){
       await executeJrSkillDocument(skill,{actions,depth:0,stack:[],sender,guard},'skill');
       guard();
       el('jrskill_api_state').textContent='ok';
-      el('jrskill_api_msg').textContent='Skill concluida ('+source+'). Confirme visualmente: happy -> recipe(surprised -> thinking -> happy) -> neutral. Recipe local.';
+      el('jrskill_api_msg').textContent='Skill concluida ('+source+'): result=ok. Confirme a sequencia visual no robo.';
       localLine('JR_SKILL_V1 result=ok source='+source);
     }catch(e){
       if(source==='solana-devnet')localLine('JR_SKILL_AUTHORIZATION result=blocked detail='+e.message);

@@ -27,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-14"
+APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-15"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -444,7 +444,7 @@ class Handler(BaseHTTPRequestHandler):
                         return
                     try:
                         if self.path.endswith('/start'):
-                            result = wallet_execution.STORE.start(token, origin)
+                            result = wallet_execution.STORE.start(token, origin, get("skill") or solana_skill.PDA)
                             add_log('JR_SKILL_AUTHORIZATION result=allowed buyer=' + result['buyer'] + ' license=' + result['license'])
                         else:
                             command = validate_command(get('command'))

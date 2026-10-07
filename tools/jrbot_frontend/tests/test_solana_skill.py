@@ -37,6 +37,18 @@ class SolanaSkillTests(unittest.TestCase):
         self.assertEqual(proof["payload_hash"], skill.EXPECTED_HASH)
         self.assertEqual(calls[1][1], [skill.PDA, {"encoding": "base64", "commitment": "finalized"}])
 
+    def test_generic_skill_verifies_pda_and_hash_without_reference_fallback(self):
+        from test_wallet_skills import RPC
+        rpc = RPC()
+        raw = base64.b64decode(rpc.values[0]['data'][0])
+        from solders.pubkey import Pubkey
+        pda = str(Pubkey.find_program_address([b'skill',raw[8:40],raw[41:73]],Pubkey.from_string(skill.PROGRAM))[0])
+        result = {'value':rpc.values[0], 'context':{'slot':10}}
+        proof = skill.decode_account(result,pda)
+        self.assertEqual(proof['pda'],pda)
+        self.assertFalse(proof['matches_checkpoint'])
+        with self.assertRaises(ValueError): skill.decode_account(result, str(Pubkey.new_unique()))
+
     def test_wrong_network_stops_before_account_read(self):
         calls = []
         def rpc(method, params, timeout):

@@ -1,4 +1,4 @@
-"""Read-only adapter for the frozen Stage 2 Skill; Python standard library only."""
+"""Read-only Devnet Skill adapter; validates schema, hash and derived PDA."""
 import base64
 import hashlib
 import json
@@ -44,7 +44,7 @@ def _rpc(method, params, timeout):
     return body["result"]
 
 
-def decode_account(result):
+def decode_account(result, pda=PDA):
     account = result.get("value")
     if not account or account.get("owner") != PROGRAM or account.get("executable") is not False:
         raise ValueError("Skill ausente ou owner/tipo incorreto")
@@ -54,15 +54,19 @@ def decode_account(result):
     data = base64.b64decode(encoded[0], validate=True)
     if len(data) != 589 or data[:8] != hashlib.sha256(b"account:Skill").digest()[:8]:
         raise ValueError("Tamanho/discriminator Skill invalido")
-    if data[8:40] != AUTHORITY_BYTES or data[40] != 1:
+    if data[40] != 1 or (pda == PDA and data[8:40] != AUTHORITY_BYTES):
         raise ValueError("Authority/schema invalido")
     length = struct.unpack_from("<I", data, 73)[0]
     if not 1 <= length <= 512 or 77 + length > len(data):
         raise ValueError("Tamanho do payload invalido")
     payload = data[77:77 + length]
     digest = hashlib.sha256(payload).digest()
-    if digest != data[41:73] or digest.hex() != EXPECTED_HASH or length != 128:
-        raise ValueError("Hash/payload difere do checkpoint da Etapa 2")
+    if digest != data[41:73] or (pda == PDA and (digest.hex() != EXPECTED_HASH or length != 128)):
+        raise ValueError("Hash/payload invalido ou referencia divergente")
+    from solders.pubkey import Pubkey
+    expected = Pubkey.find_program_address([b'skill', data[8:40], digest], Pubkey.from_string(PROGRAM))[0]
+    if str(expected) != pda:
+        raise ValueError('Skill PDA nao corresponde ao autor/hash')
     text = payload.decode("utf-8", errors="strict")
     skill = json.loads(text)
     if not isinstance(skill, dict) or type(skill.get("v")) is not int or skill["v"] != 1 or not isinstance(skill.get("run"), list) or not 1 <= len(skill["run"]) <= 64:
@@ -71,9 +75,9 @@ def decode_account(result):
     if type(slot) is not int or slot < 0:
         raise ValueError("Slot RPC invalido")
     return {"source": "solana-devnet", "commitment": "finalized", "rpc_slot": slot,
-            "program": PROGRAM, "pda": PDA, "authority": AUTHORITY, "schema_version": 1,
+            "program": PROGRAM, "pda": pda, "authority": str(Pubkey.from_bytes(data[8:40])), "schema_version": 1,
             "payload_bytes": length, "payload_hash": digest.hex(), "hash_verified": True,
-            "matches_checkpoint": True, "payload_text": text}
+            "matches_checkpoint": pda == PDA, "payload_text": text}
 
 
 def check_connection(rpc=None):
@@ -84,17 +88,19 @@ def check_connection(rpc=None):
     return {"available": True, "cluster": "devnet"}
 
 
-def load_skill(rpc=None):
+def load_skill(rpc=None, pda=PDA):
     # A fresh read per invocation; no local Skill file, cache, wallet or fallback.
     rpc = rpc or _rpc
+    from solders.pubkey import Pubkey
+    Pubkey.from_string(pda)
     deadline = time.monotonic() + 25
     if rpc("getGenesisHash", [], 10) != GENESIS:
         raise ValueError("Devnet obrigatoria: genesis incorreto")
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise TimeoutError("Tempo da consulta Devnet esgotado")
-    result = rpc("getAccountInfo", [PDA, {"encoding": "base64", "commitment": "finalized"}], min(15, remaining))
-    return decode_account(result)
+    result = rpc("getAccountInfo", [pda, {"encoding": "base64", "commitment": "finalized"}], min(15, remaining))
+    return decode_account(result, pda)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 # JrSkill — App embarcado / Minhas Skills
 
 **Branch:** `V1s-00`  
-**Candidata:** `JrBot_V1S_APP_02`  
-**Data:** 2026-10-05
+**Candidata:** `JrBot_V1S_APP_03`
+**Data:** 2026-10-07
 
 ## Decisao
 
@@ -151,3 +151,35 @@ No App embarcado acessado por **HTTPS**, o usuario confirmou:
 - execucao concluida com **`result=ok`**.
 
 A tentativa anterior em HTTP encontrou bloqueios do Chrome. Para esta fase, o fluxo Wallet/Devnet do App deve ser aberto em `https://<IP_DO_JRBOT>/`.
+
+## APP_03 / painel SKILLS-15 — expressoes e selecao generica
+
+O teste fisico de jrteste revelou uma allowlist limitada a quatro faces no App.
+Esta candidata alinha o App e o autorizador do painel com as 16 expressoes do modulo OLED,
+incluindo sad e worried. battery_low passa a ser aceito como nome canonico pelo firmware.
+O App valida o documento inteiro, incluindo recipes, antes do primeiro comando Runtime API.
+
+O painel permite selecionar qualquer Skill JSON v1 licenciada descoberta na Devnet.
+A leitura valida owner, discriminator, schema, tamanho, hash e PDA derivado de autor/hash.
+A permissao de execucao fica vinculada a sessao, comprador e PDA escolhido; uma leitura
+finalized da licenca antecede cada comando. A referencia permanece como fallback
+apenas para chamadas legadas sem parametro skill; a interface exige selecao explicita.
+Outros schemas continuam recusados; compras permanecem na Store.
+
+Teste do usuario:
+1. Atualizar V1s-00 e instalar JrBot_V1S_APP_03 pelo INSTALAR.bat.
+2. Confirmar firmware APP_03 e painel JRBOT-PANEL-V1S-SKILLS-15.
+3. No App, recarregar, autenticar a carteira compradora e buscar as duas Skills.
+4. Selecionar Skill 8AgpL6dM e executar: happy → sad → thinking → neutral → worried.
+5. No painel, autenticar, buscar Skills e escolher o mesmo PDA no seletor antes de executar.
+6. Repetir com minimal_recipe_01 para verificar compatibilidade.
+
+VALIDACAO AUTOMATIZADA: testes Python de leitura/licenca/permissoes e testes Node
+de App, executor, autenticacao e descoberta. TESTE FISICO APP_03: pendente.
+
+COMPILACAO APP_03: concluida em 07/10/2026 com ESP-IDF 5.5.5, ESP32-S3 e
+configuracao sdkconfig.develop-v1.6.3 do HW04. Binario 0x217740 bytes,
+58% livres na particao de aplicacao. Testes: 43 Python + 33 JavaScript
++ 6 verificacoes da politica do painel. Leitura real de jrteste na Devnet
+confirmou 170 bytes, hash verificado e as cinco faces; nenhum comando fisico
+foi enviado nessa verificacao. Instalacao/teste fisico APP_03: pendentes.

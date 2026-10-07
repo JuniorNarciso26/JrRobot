@@ -305,8 +305,8 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     set "BUILD_DIR=build-v1.7-v2"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="V1s-00" (
-    rem V1S App 02: corrige entrega do JavaScript embarcado de Minhas Skills.
-    set "BUILD_DIR=build-v1s-app-02"
+    rem V1S App 03: expressoes completas e execucao generica de Skills licenciadas.
+    set "BUILD_DIR=build-v1s-app-03"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="test/jrbot-v1s-00" (
     rem V1S: variante experimental Solana/JrSkill baseada na V1.7 validada.

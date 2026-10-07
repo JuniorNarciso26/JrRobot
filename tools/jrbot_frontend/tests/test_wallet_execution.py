@@ -22,6 +22,39 @@ class ExecutionTests(unittest.TestCase):
     def send(self, proof, command):
         return self.store.send('token', 'origin', proof['execution_permit'], 'api '+json.dumps(command), lambda cmd: self.calls.append(cmd) or 'ok')
 
+    def test_selected_skill_permit_and_fresh_license_are_bound_to_selected_pda(self):
+        import wallet_skills
+        selected = 'new-skill'
+        self.proof = dict(self.proof, pda=selected, matches_checkpoint=False,
+                          payload_text=json.dumps({'v':1,'run':[['face','happy'],['face','sad'],['face','worried']]}))
+        self.store.load = lambda **kwargs: self.proof if kwargs['pda'] == selected else None
+        with patch.object(wallet_skills, 'discover', return_value={'skills':[{'skill':selected,'license':'new-license'}]}) as discover:
+            proof = self.store.start('token','origin',selected)
+            self.assertEqual(proof['license'], 'new-license')
+            for command in execution.commands_for(proof): self.send(proof, command)
+            self.assertEqual(discover.call_count, 5)
+        self.assertEqual(len(self.calls), 4)
+        with patch.object(wallet_skills,'discover',return_value={'skills':[]}):
+            with self.assertRaisesRegex(ValueError,'license_absent'): self.store.start('token','origin',selected)
+
+    def test_selected_skill_missing_license_midrun_stops_without_dispatch(self):
+        import wallet_skills
+        selected='selected-new'
+        self.proof=dict(self.proof,pda=selected,payload_text=json.dumps({'v':1,'run':[['face','sad']]}))
+        self.store.load=lambda **kwargs:self.proof
+        with patch.object(wallet_skills,'discover',side_effect=[{'skills':[{'skill':selected,'license':'license'}]}, {'skills':[]}]):
+            proof=self.store.start('token','origin',selected)
+            with self.assertRaisesRegex(ValueError,'license_absent'): self.send(proof,execution.commands_for(proof)[0])
+        self.assertEqual(self.calls,[])
+        self.assertEqual(self.store.runs,{})
+
+    def test_invalid_late_face_and_unknown_schema_do_not_create_permit(self):
+        for doc in ({'v':1,'run':[['face','happy'],['face','invalid']]}, {'v':2,'run':[['face','happy']]}):
+            self.proof['payload_text'] = json.dumps(doc)
+            with self.assertRaises(ValueError): self.start()
+            self.assertEqual(self.store.runs, {})
+            self.assertEqual(self.calls, [])
+
     def test_authorized_sequence_is_consumed_and_replay_is_blocked(self):
         proof = self.start()
         sequence = execution.commands_for(proof)
