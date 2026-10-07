@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export const SOURCE_URL = new URL('../../../tools/jrbot_frontend/jrskill/skills/minimal_recipe_01.json', import.meta.url);
 export const MAX_PAYLOAD_BYTES = 512;
@@ -22,10 +23,26 @@ export function validatePayload(bytes) {
   return json;
 }
 
-export function loadPayload() {
-  const payload = readFileSync(SOURCE_URL); // Never stringify, normalize or expand Recipes.
+export function resolvePayloadSource(source) {
+  if (source === undefined || source === null || source === '') return SOURCE_URL;
+  if (source instanceof URL) {
+    if (source.protocol !== 'file:') throw new Error('JrSkill source must be a local file');
+    return source;
+  }
+  if (typeof source !== 'string') throw new Error('JrSkill source must be a file path');
+  return resolve(process.cwd(), source);
+}
+
+export function loadPayload(source) {
+  const resolvedSource = resolvePayloadSource(source);
+  const payload = readFileSync(resolvedSource); // Never stringify, normalize or expand Recipes.
   const json = validatePayload(payload);
-  return { payload, payloadHash: sha256(payload), schemaVersion: json.v };
+  return {
+    payload,
+    payloadHash: sha256(payload),
+    schemaVersion: json.v,
+    source: resolvedSource instanceof URL ? resolvedSource.href : resolvedSource,
+  };
 }
 
 export function verifySkill(account, authority, original) {

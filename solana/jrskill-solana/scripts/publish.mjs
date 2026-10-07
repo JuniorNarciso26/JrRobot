@@ -2,7 +2,8 @@ import { connect, deriveSkill, createInstruction, readVerified, Transaction } fr
 import { loadPayload } from './payload.mjs';
 
 try {
-  const original = loadPayload();
+  const source = process.argv[2] || process.env.JRSKILL_FILE || undefined;
+  const original = loadPayload(source);
   const { program, provider, connection } = await connect();
   const authority = provider.wallet.publicKey;
   const pda = deriveSkill(program.programId, authority, original.payloadHash);
@@ -20,7 +21,18 @@ try {
     signature = await provider.sendAndConfirm(transaction);
     await readVerified(program, authority, original);
   }
-  console.log(JSON.stringify({ result: 'ok', cluster: 'devnet', program: program.programId.toBase58(), authority: authority.toBase58(), pda: pda.toBase58(), payload_bytes: original.payload.length, payload_hash: original.payloadHash.toString('hex'), signature, already_exists: signature === null }));
+  console.log(JSON.stringify({
+    result: 'ok',
+    cluster: 'devnet',
+    program: program.programId.toBase58(),
+    authority: authority.toBase58(),
+    pda: pda.toBase58(),
+    payload_bytes: original.payload.length,
+    payload_hash: original.payloadHash.toString('hex'),
+    signature,
+    already_exists: signature === null,
+    source: original.source,
+  }));
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

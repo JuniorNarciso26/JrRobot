@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { loadPayload, validatePayload, verifySkill, sha256, SOURCE_URL } from '../scripts/payload.mjs';
 
 test('loads the existing v1 file without serialization or Recipe expansion', () => {
@@ -8,6 +10,22 @@ test('loads the existing v1 file without serialization or Recipe expansion', () 
   assert.deepEqual(original.payload, readFileSync(SOURCE_URL));
   assert.deepEqual(JSON.parse(original.payload), { v: 1, run: [['face', 'happy'], ['wait', 500], ['recipe', 'face_sequence'], ['face', 'neutral']] });
   assert.deepEqual(original.payloadHash, sha256(original.payload));
+});
+
+test('loads an arbitrary JrSkill v1 file passed by path', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'jrskill-payload-'));
+  try {
+    const path = join(dir, 'second-skill.json');
+    const bytes = Buffer.from('{"v":1,"run":[["face","love"],["wait",750],["face","neutral"]]}\n');
+    writeFileSync(path, bytes);
+    const original = loadPayload(path);
+    assert.deepEqual(original.payload, bytes);
+    assert.deepEqual(original.payloadHash, sha256(bytes));
+    assert.equal(original.schemaVersion, 1);
+    assert.equal(original.source, path);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('round-trip verification rejects tampered bytes, metadata and hash', () => {
