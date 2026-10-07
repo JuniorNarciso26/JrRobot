@@ -183,3 +183,7 @@ configuracao sdkconfig.develop-v1.6.3 do HW04. Binario 0x217740 bytes,
 + 6 verificacoes da politica do painel. Leitura real de jrteste na Devnet
 confirmou 170 bytes, hash verificado e as cinco faces; nenhum comando fisico
 foi enviado nessa verificacao. Instalacao/teste fisico APP_03: pendentes.
+
+TESTE FISICO APP_03: aprovado pelo usuario em 07/10/2026. jrteste concluiu
+no App e no painel; captura do App mostrou result=ok, 170 bytes e hash
+68688b90b773... . Novo log do painel nao foi fornecido nesta confirmacao.
