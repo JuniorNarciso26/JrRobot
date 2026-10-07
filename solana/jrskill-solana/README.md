@@ -26,6 +26,24 @@ npm ci
 npm test
 ```
 
+### Publicar qualquer JrSkill v1
+
+O publicador não fica mais preso a `minimal_recipe_01.json`. Para publicar uma nova Skill, passe o arquivo como argumento:
+
+```bash
+npm run publish:devnet -- /caminho/para/minha-skill.json
+```
+
+O arquivo histórico `minimal_recipe_01.json` continua sendo usado quando nenhum caminho é informado, preservando compatibilidade com o checkpoint original.
+
+Para recuperar/verificar a mesma Skill publicada por uma authority:
+
+```bash
+npm run read:devnet -- <PUBLISHER_PUBKEY> /caminho/para/minha-skill.json
+```
+
+Também é possível definir `JRSKILL_FILE` no ambiente. O cliente continua validando schema v1, tamanho máximo de 512 bytes, hash SHA-256, PDA derivada e igualdade byte a byte.
+
 ## Program ID e build
 
 O Program ID versionado agora é o programa Devnet validado. Para recompilar ou atualizar esse mesmo programa, preserve/restaure a chave **local** existente em `target/deploy/jrskill-keypair.json`; não gere uma nova no lugar dela. O Git contém apenas o endereço público. Uma nova chave representaria outro programa e outra implantação, fora deste checkpoint.
