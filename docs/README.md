@@ -19,6 +19,7 @@ A documentação geral abaixo acompanha a organização da `main`. O progresso d
 Documentos exclusivos desta linha:
 
 - [JrSkill Execution API](JRSKILL_API.md) — contrato atual do Skill JSON, Executor e Recipes;
+- [Build your first JrSkill](JRSKILL_FIRST_SKILL.md) — onboarding público do Developer Challenge v0, usando somente `face` + `wait`;
 - [Etapa 2 — Solana Skill PDA](JRSKILL_SOLANA_STAGE2.md) — arquitetura, publicação/leitura do JSON v1 e plano de teste isolado;
 - [Hackathon Development Log](HACKATHON_DEVLOG.md) — índice do diário, com Kickoff e Day 1–4 separados em [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/);
 - [JrSkill Solana — Etapa 3](JRSKILL_SOLANA_STAGE3.md) — leitura Devnet no painel, executor existente e roteiro de teste físico;
