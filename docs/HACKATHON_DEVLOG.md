@@ -20,8 +20,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 5](HACKATHON_DEVLOG/day5.md) | 2026-10-02 | Wallet authentication/Devnet balance; License PDA 00 compiled and tested locally |
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Closed: purchases, license discovery and authorized physical execution |
 | [Day 7](HACKATHON_DEVLOG/day7.md) | 2026-10-06 | Embedded App: Wallet, licensed Skill discovery, selection and physical execution validated over HTTPS |
+| [Day 8](HACKATHON_DEVLOG/day8.md) | 2026-10-07 | Public Store + Creator Studio + second Skill purchased and executed physically; external pilot opened |
 
-**Day 7 closed and accepted by the user. Latest physical checkpoint: `JrBot_V1S_APP_02` validates the embedded JrBot App over HTTPS with Wallet authentication, Devnet verification, licensed `minimal_recipe_01` discovery, Skill selection and physical execution ending `result=ok`.** The robot App deliberately contains no purchase flow. Catalog and purchases now move to the separate `JrBot_Web` repository, tracked by [JrSkill Store issue #16](https://github.com/JuniorNarciso26/JrBot_Web/issues/16). [Day 7 details](HACKATHON_DEVLOG/day7.md).
+**Day 8 closes the internal reusable-pipeline proof.** The public Store and Creator Studio now cover Skill creation, Offer publication, purchase by another Phantom wallet, License discovery and generic physical execution. The second Skill `jrteste` was created through the website, purchased on Devnet and executed successfully on `JrBot_V1S_APP_03` / `SKILLS-15`. The first external contributor pilot is now open through issue #53; no external participation is claimed yet. [Day 8 details](HACKATHON_DEVLOG/day8.md).
 
 ## Public reproducible proof — read the Skill without a wallet
 
@@ -29,7 +30,7 @@ The wallet-free verifier, commands and expected output are in [Day 3: public rep
 
 ## Colosseum update — ready-to-publish draft
 
-The latest English update is [Day 6: Colosseum draft](HACKATHON_DEVLOG/day6.md#colosseum-update--ready-to-publish-draft). It is published in this GitHub diary; submission on Colosseum is not confirmed here. The earlier [Day 3 draft](HACKATHON_DEVLOG/day3.md#colosseum-update--ready-to-publish-draft) remains available.
+The latest English update is [Day 8: Colosseum draft](HACKATHON_DEVLOG/day8.md#colosseum-update--ready-to-publish-draft). It is published in this GitHub diary; submission on Colosseum is not confirmed here. Earlier drafts remain available in their daily entries.
 
 This index remains at the original URL so previously published links to the diary, public proof and Colosseum draft continue to lead to the relevant entry.
 
