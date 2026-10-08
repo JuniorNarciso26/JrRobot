@@ -145,6 +145,60 @@ Verified state:
 
 This proves the Store path with a Skill created through the new Creator Studio, not only the historical reference Skill.
 
+## Visual evidence — user-supplied test screenshots
+
+These original screenshots were supplied by the maintainer during the Day 8 tests on 2026-10-07 and added to the diary on 2026-10-08. They document the visible Store/App states and transaction receipt. Physical robot behavior was confirmed separately by the maintainer; an App success message alone is not a video of the hardware.
+
+### 1. Public Store purchase: License confirmed
+
+The public Store displays **Licenciada nesta Wallet** after the reference Skill purchase. The screenshot includes the Devnet price and License confirmation.
+
+![Public JrSkill Store showing the purchased reference Skill licensed in the wallet](assets/day8/public-store-license-confirmed.png)
+
+[Public Store purchase transaction on Solana Devnet](https://explorer.solana.com/tx/4KVAAo9osfgFBBLpdkvzM5wrDKujckSUjQBrvu1PQ7vWQnk6ruMEzuh9BvneVWbHRBJfD5hEYkKkAcm2mDmwHiSs?cluster=devnet).
+
+### 2. Creator Studio output appears in the catalogue
+
+The catalogue contains both `minimal_recipe_01` and the newly created `jrteste`, with its description and `happy -> sad -> thinking -> neutral -> worried` sequence. This capture also records the intermediate layout/detail-link issue reported at that time; it is not a screenshot of the corrected final catalogue layout.
+
+![Catalogue showing the reference Skill and the newly published jrteste Skill](assets/day8/creator-skill-catalog.png)
+
+[jrteste creation transaction on Solana Devnet](https://explorer.solana.com/tx/3sXFxUjrh5ACADGEx3oXtZerkAZR4U8TQEnsJxSXtmyezkSNiVbKprvNYhaezTQhUb4bVBkMmbhWWt7A3oQftq1A?cluster=devnet).
+
+### 3. Another wallet purchases jrteste: 50/50 split
+
+The finalized Devnet receipt shows two transfers of **0.5 test SOL**: one to the creator (`EzFFu...fX8aA`) and one to the JrBot treasury (`Ex9pY...LYxnh`). The receipt shows an effective fee of **0.00008 test SOL**. The full addresses and verified transaction state are recorded above.
+
+![Finalized Solana Devnet purchase receipt showing 0.5 test SOL to creator and 0.5 test SOL to treasury](assets/day8/jrteste-purchase-receipt.png)
+
+[jrteste purchase transaction on Solana Devnet](https://explorer.solana.com/tx/4VGJAhSuE9ocEG4V2Gw1UjeyvjVEKocXYCm5di3d5A5GBhSD4VGt9trEyEj2pYvHWGyM3M2Ux3x9Zf6pB9MA634s?cluster=devnet).
+
+### 4. Buyer discovers two licensed Skills
+
+The authenticated buyer's App lists both `minimal_recipe_01` and `Skill 8AgpL6dM` as licensed, and reports **2 Skill(s) licenciada(s) encontrada(s)**. The PDA-prefix label identifies `jrteste`; the image does not imply its catalogue name had already been resolved in the App.
+
+![Buyer App dropdown listing two licensed Skills, including Skill 8AgpL6dM and minimal_recipe_01](assets/day8/buyer-two-licensed-skills.png)
+
+### 5. Reference Skill completes execution
+
+The selected `minimal_recipe_01` shows **128 bytes**, hash prefix **416d6af34ead...**, and **Skill concluida no JrBot: result=ok**.
+
+![Authenticated buyer App showing successful reference Skill execution](assets/day8/reference-skill-execution-ok.png)
+
+### 6. Compatibility incident before APP_03
+
+The first `jrteste` execution attempt shows the correct **170-byte** payload and hash prefix **68688b90b773...**, but stops with **Execucao interrompida: Face nao permitida nesta versao**. This is the failure that motivated the allowlist and pre-validation correction described below.
+
+![jrteste execution interrupted before the firmware face compatibility fix](assets/day8/jrteste-face-validation-before-fix.png)
+
+### 7. New Skill completes execution after the correction
+
+After installing APP_03, the App selects the same `Skill 8AgpL6dM`, retains the **170-byte** payload and matching hash prefix, and displays **Skill concluida no JrBot: result=ok**. The maintainer also confirmed the physical behavior and development-panel execution. A separate post-fix panel screenshot was not supplied in this conversation.
+
+![App showing successful jrteste execution after the APP_03 compatibility correction](assets/day8/jrteste-app-execution-ok.png)
+
+These images are stored in the repository so the diary's evidence does not depend on temporary clipboard paths.
+
 ## Generic publisher and onboarding path
 
 The Devnet publisher/read tools in `V1s-00` were generalized so they can receive an arbitrary JrSkill JSON v1 file while keeping the old reference file as a compatibility fallback.
