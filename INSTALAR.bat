@@ -293,9 +293,17 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
 ) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Release oficial JrBot_V1.7.04.
+    rem Isola o build da release oficial conforme firmware/version.txt.
+    rem Evita reutilizar o build da V1.7.04 ao promover V1S APP_03 para main.
     set "BUILD_DIR=build-v1.7.04"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+    set "JRBOT_MAIN_VERSION="
+    if exist "firmware\version.txt" (
+        set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
+        if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_APP_03" (
+            set "BUILD_DIR=build-v1s-app-03-main"
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="develop" (
     rem Integracao baseada na release oficial JrBot_V1.7.04.
     set "BUILD_DIR=build-v1.7.04-develop"
