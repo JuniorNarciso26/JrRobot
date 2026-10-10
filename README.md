@@ -28,6 +28,8 @@ See. Hear. Speak. Connect. Express.
 
 ## AI is leaving the screen.
 
+[Watch JrBot in action — Instagram Reel](https://www.instagram.com/reel/Ddpiov9N8Ts/?obrf=MWN5Mmw0ZGZzazk4Zg==)
+
 Most AI assistants live inside a browser, phone or computer. **JrBot explores what happens when AI has a physical presence.**
 
 JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expressive OLED face, local connectivity and real-time audio/video. Its hardware foundation supports future voice, intelligence and portable Skills.
