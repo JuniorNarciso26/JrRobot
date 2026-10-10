@@ -1,0 +1,73 @@
+{
+  "cluster": "devnet",
+  "commitment": "finalized",
+  "signature": "4dwpsPA6GrZNhLuJhmdWQPJSv1r3QLnpMnxGrY4PvdQj2AAEzs2aeWu9YrBS7Kut5rhDgMenq9U7wiEd1GnMLKiY",
+  "transaction_slot": 507724452,
+  "program": "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454",
+  "buyer": "E5F1ztxZwgogcwWaryB6uCLXp3iZ2YA6MBzjwv6R51dE",
+  "skill": "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux",
+  "license": "5wjuV3W2fJo9o8U5oqfjcnbUULGxKqRxLXK9AgUvqADR",
+  "model_version": 0,
+  "price_lamports": "1000000000",
+  "creator_lamports": "500000000",
+  "treasury_lamports": "500000000",
+  "rent_lamports": 1346200,
+  "fee_lamports": 5000,
+  "balances": [
+    {
+      "address": "E5F1ztxZwgogcwWaryB6uCLXp3iZ2YA6MBzjwv6R51dE",
+      "before_lamports": 5000000000,
+      "after_lamports": 3998648800,
+      "delta_lamports": -1001351200
+    },
+    {
+      "address": "3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij",
+      "before_lamports": 8296471025,
+      "after_lamports": 8796471025,
+      "delta_lamports": 500000000
+    },
+    {
+      "address": "5wjuV3W2fJo9o8U5oqfjcnbUULGxKqRxLXK9AgUvqADR",
+      "before_lamports": 0,
+      "after_lamports": 1346200,
+      "delta_lamports": 1346200
+    },
+    {
+      "address": "Ex9pYvpA96dkZF5efdooEU2pQvWr5owpAZPiqXtLYxnh",
+      "before_lamports": 0,
+      "after_lamports": 500000000,
+      "delta_lamports": 500000000
+    },
+    {
+      "address": "11111111111111111111111111111111",
+      "before_lamports": 1,
+      "after_lamports": 1,
+      "delta_lamports": 0
+    },
+    {
+      "address": "6k8BdUgobWSuwjUTiTvGgBBtK8Zc2vpfpV7vJC8WEe9D",
+      "before_lamports": 1026160,
+      "after_lamports": 1026160,
+      "delta_lamports": 0
+    },
+    {
+      "address": "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux",
+      "before_lamports": 3642360,
+      "after_lamports": 3642360,
+      "delta_lamports": 0
+    },
+    {
+      "address": "A2n5s6TYEH9oFZNFE1owxN5nEh18WGDHnEvrc5QvBgLR",
+      "before_lamports": 1056640,
+      "after_lamports": 1056640,
+      "delta_lamports": 0
+    },
+    {
+      "address": "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454",
+      "before_lamports": 833120,
+      "after_lamports": 833120,
+      "delta_lamports": 0
+    }
+  ],
+  "verified": true
+}

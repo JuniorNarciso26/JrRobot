@@ -1,0 +1,3 @@
+[13:24:43] JR_WALLET state=connected address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R scope=connection
+[13:25:01] JR_WALLET_AUTH state=authenticated address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R expires_at=1790958901.9527512
+[13:25:01] JR_WALLET_AUTH state=authenticated address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R

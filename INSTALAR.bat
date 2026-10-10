@@ -293,9 +293,17 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
 ) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Release oficial JrBot_V1.7.04.
+    rem Isola o build da release oficial conforme firmware/version.txt.
+    rem Evita reutilizar o build da V1.7.04 ao promover V1S APP_03 para main.
     set "BUILD_DIR=build-v1.7.04"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+    set "JRBOT_MAIN_VERSION="
+    if exist "firmware\version.txt" (
+        set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
+        if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_APP_03" (
+            set "BUILD_DIR=build-v1s-app-03-main"
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="develop" (
     rem Integracao baseada na release oficial JrBot_V1.7.04.
     set "BUILD_DIR=build-v1.7.04-develop"
@@ -303,6 +311,14 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
 ) else if /i "%CURRENT_BRANCH%"=="v1.7-v2" (
     rem Branch historica da derivacao experimental que originou a V1.7.04.
     set "BUILD_DIR=build-v1.7-v2"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+) else if /i "%CURRENT_BRANCH%"=="V1s-00" (
+    rem V1S App 03: expressoes completas e execucao generica de Skills licenciadas.
+    set "BUILD_DIR=build-v1s-app-03"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+) else if /i "%CURRENT_BRANCH%"=="test/jrbot-v1s-00" (
+    rem V1S: variante experimental Solana/JrSkill baseada na V1.7 validada.
+    set "BUILD_DIR=build-v1s-00"
     set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v2" (
     set "BUILD_DIR=build-runtime-api-v1-05"
@@ -327,17 +343,40 @@ echo ERRO: opcao invalida: %ACTION%
 goto help
 
 :ensure_idf
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" call "%%~fD\export.bat" >nul 2>&1
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" call "%%~fD\export.bat" >nul 2>&1
-if defined IDF_PATH if exist "%IDF_PATH%\tools\idf.py" goto idf_ok
-echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
-echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
-exit /b 1
-
-:idf_ok
+set "IDF_EXPORT="
+if defined IDF_PATH if exist "%IDF_PATH%\export.bat" set "IDF_EXPORT=%IDF_PATH%\export.bat"
+if not defined IDF_EXPORT for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+if not defined IDF_EXPORT (
+    echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
+    echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    exit /b 1
+)
+echo [INFO] Carregando ambiente ESP-IDF...
+call "%IDF_EXPORT%"
+if errorlevel 1 (
+    echo [ERRO] export.bat do ESP-IDF falhou.
+    exit /b 1
+)
+if not defined IDF_PATH if exist "%~dp0" (
+    echo [ERRO] IDF_PATH nao foi definido pelo export.bat.
+    exit /b 1
+)
+if not exist "%IDF_PATH%\tools\idf.py" (
+    echo [ERRO] idf.py nao encontrado em %IDF_PATH%\tools.
+    exit /b 1
+)
+where cmake.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERRO] CMake nao foi adicionado ao PATH pelo export.bat.
+    exit /b 1
+)
+if not defined IDF_PYTHON_ENV_PATH (
+    echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
+    exit /b 1
+)
 echo [OK] ESP-IDF: %IDF_PATH%
+echo [OK] Python env: %IDF_PYTHON_ENV_PATH%
 exit /b 0
 
 :select_then_prepare

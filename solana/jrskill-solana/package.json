@@ -1,0 +1,22 @@
+{
+  "name": "jrskill-solana",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/payload.test.mjs tests/network.test.mjs tests/commerce.test.mjs",
+    "test:idl": "node --test tests/idl.test.mjs",
+    "test:chain": "node --test tests/chain.test.mjs tests/commerce-chain.test.mjs",
+    "publish:devnet": "node scripts/publish.mjs",
+    "read:devnet": "node scripts/read.mjs",
+    "verify:public": "node scripts/verify-public.mjs",
+    "market:devnet": "node scripts/market.mjs"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "1.1.2",
+    "@solana/web3.js": "1.98.4"
+  }
+}

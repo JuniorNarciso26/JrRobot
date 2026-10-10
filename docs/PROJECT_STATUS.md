@@ -1,6 +1,6 @@
 # Estado do projeto
 
-Atualização: 2026-09-29.
+Atualização da integração documental: 2026-10-10.
 
 ## Hardware de referência
 
@@ -14,7 +14,7 @@ Atualização: 2026-09-29.
 
 ## Release oficial
 
-A versão oficialmente promovida em `main` é **`JrBot_V1.7.04`**.
+A referência de release estável fisicamente validada permanece **`JrBot_V1.7.04`**. A linha JrSkill adiciona o build `JrBot_V1S_APP_03`, validado para o MVP na **Solana Devnet**, mas sua incorporação ao código não deve ser confundida com uma nova certificação de firmware estável ou operação Mainnet.
 
 A `develop` está baseada na mesma baseline.
 
@@ -36,7 +36,7 @@ Limitações conhecidas da release estável incluem AEC/eco acústico, acesso We
 
 ### `main`
 
-Release oficial estável: `JrBot_V1.7.04`.
+Referência oficial de release estável local: `JrBot_V1.7.04`. A integração do código V1S é um marco separado, validado no escopo do hackathon.
 
 ### `develop`
 
@@ -44,9 +44,9 @@ Integração de trabalho já validado antes de uma nova promoção.
 
 ### `V1s-00` — JrSkill Network
 
-Linha oficial paralela dedicada a **Skills portáveis para IA física**, com distribuição, versionamento e licenciamento apoiados por Solana e execução protegida por uma camada local de capabilities.
+**MVP do Colosseum concluído em 2026-10-10.** A linha JrSkill Network implementou criação e publicação pela Store, Wallet/Phantom, Skill/Offer/License PDA em Devnet, descoberta e execução física de Skills limitadas pelas capabilities do JrBot. Build de referência: `JrBot_V1S_APP_03`; validação física da segunda Skill registrada em 07/10/2026.
 
-A documentação pública da `main` registra somente esse objetivo. O andamento e as etapas internas dessa linha pertencem à própria branch `V1s-00`.
+O histórico, Day 1–9, transações e screenshots ficam em [HACKATHON_DEVLOG.md](HACKATHON_DEVLOG.md) e também na branch original `V1s-00`. A próxima etapa de produto será definida separadamente; não foi demonstrada Mainnet ou adoção global.
 
 ### `v2`
 

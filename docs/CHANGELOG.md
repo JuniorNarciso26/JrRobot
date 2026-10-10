@@ -2,6 +2,21 @@
 
 Este arquivo registra as mudanças promovidas para a linha de integração do produto.
 
+## JrSkill Network / Colosseum — MVP conquistado (2026-10-10)
+
+Marco do hackathon: após quase duas semanas, o JrBot passou a contar, na linha `V1s-00`, com um ecossistema de Skills declarativas e licenciadas via **Solana Devnet**:
+
+- projeto original de hardware e controle local V1.7.04 preservado;
+- Creator Studio e Store Web em repositório separado `JrBot_Web`;
+- backend comercial `JrBot_Cloud` (Store API 0.3.0) em seu repositório privado;
+- Skill/Offer/License, Phantom, compra em test SOL e divisão de receita de demonstração;
+- painel e App `Minhas Skills` no JrBot para seleção de licença e execução de funções permitidas;
+- build experimental `JrBot_V1S_APP_03` e painel `JRBOT-PANEL-V1S-SKILLS-15`.
+
+O registro do [Day 8](HACKATHON_DEVLOG/day8.md) reúne transações, screenshots, compilação e testes; a execução física de `jrteste` foi confirmada pelo mantenedor em 07/10/2026. O [Day 9](HACKATHON_DEVLOG/day9.md) formaliza a conquista do MVP e a visão de marketplace mundial.
+
+**Escopo:** MVP Devnet validado, não Mainnet ou lançamento comercial. A referência da release estável local continua sendo `JrBot_V1.7.04`. Esta integração documental não representa nova compilação nem novo teste físico; novas linhas de desenvolvimento dependerão de planejamento próprio.
+
 
 ## JrBot_V1.7.04 — 2026-09-28
 

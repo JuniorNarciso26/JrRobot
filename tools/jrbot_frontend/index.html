@@ -65,6 +65,63 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       </dl>
       <p id="device_msg" role="status" aria-live="polite">Conecte para consultar. Porta aberta nao significa firmware confirmado.</p>
     </div>
+    <h2>Carteira JrSkill</h2>
+    <div class="autonomous" id="wallet_box">
+      <span class="pill">Ambiente do painel: Solana Devnet</span>
+      <span class="pill" id="wallet_state">Desconectada</span>
+      <label for="wallet_provider">Carteira instalada</label>
+      <select id="wallet_provider"><option>Carregando carteiras...</option></select>
+      <button id="wallet_connect" class="green" disabled>Conectar carteira</button>
+      <button id="wallet_authenticate" class="purple" disabled>Autenticar carteira</button>
+      <button id="wallet_refresh" class="gray">Atualizar carteiras</button>
+      <label id="wallet_account_label" for="wallet_account" hidden>Conta autorizada</label>
+      <select id="wallet_account" hidden></select>
+      <div class="msg" id="wallet_address" style="user-select:all">Nenhuma carteira conectada</div>
+      <button id="wallet_copy" class="gray" disabled>Copiar endereco</button>
+      <button id="wallet_disconnect" class="red" disabled>Desconectar carteira</button>
+      <div class="msg" id="wallet_msg" role="status" aria-live="polite">Carregando conexao de carteira. Se esta mensagem continuar, recarregue com Ctrl+Shift+R.</div>
+      <span class="pill" id="wallet_rpc">RPC: nao confirmado</span>
+      <span class="pill" id="wallet_support">Carteira: suporte Devnet nao confirmado</span>
+      <button id="wallet_network_check" class="gray" disabled>Verificar Devnet e saldo</button>
+      <div class="msg" id="wallet_balance">Saldo Devnet: nao consultado</div>
+      <div class="msg" id="wallet_network_msg" role="status" aria-live="polite">Conecte e autentique a carteira para consultar Devnet.</div>
+      <details><summary>Como ativar Solana Devnet na Phantom</summary>
+        <p class="hint">A Devnet nao precisa ser instalada. Na extensao: avatar/perfil → Settings (Configuracoes) → Developer Settings → ativar Testnet Mode → escolher Solana Devnet. Confira o aviso de modo de teste na carteira.</p>
+        <p class="hint">A rede selecionada na extensao nao e informada por esta conexao Wallet Standard. Confirme na propria carteira. Suporte Devnet anunciado e saldo consultado pelo painel nao comprovam essa selecao.</p>
+        <p class="hint"><a href="https://help.phantom.com/articles/use-testnets-in-phantom-5997313271699" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Guia oficial da Phantom</a> · Para outras carteiras, use as configuracoes e a documentacao do aplicativo.</p>
+      </details>
+      <div class="msg">Autenticar assina uma mensagem, sem pagamento. A compra abaixo pede outra assinatura, de transacao Devnet. Executar a Skill da Devnet exige carteira autenticada e licenca valida. O teste JSON local continua disponivel para desenvolvimento.</div>
+      <div class="msg"><a href="https://phantom.com/download" target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Instalar Phantom pelo site oficial</a> · Use uma carteira nova de teste no Chrome.</div>
+    </div>
+    <h2>Comprar Skill — Devnet</h2>
+    <div class="autonomous" id="purchase_box">
+      <p>Skills JSON v1 — escolha uma Skill licenciada. Licenca modelo 00, vinculada a carteira, sem transferencia. Somente SOL de teste.</p>
+      <button id="purchase_check" class="gray" disabled>Consultar minha licenca</button>
+      <button id="purchase_quote" class="gray" disabled>Consultar custo da compra</button>
+      <div id="purchase_terms" class="msg" style="white-space:pre-wrap"></div>
+      <label><input id="purchase_accept" type="checkbox" disabled> Aceito os valores exibidos para comprar esta Skill na Devnet.</label>
+      <button id="purchase_buy" class="green" disabled>Comprar com a carteira</button>
+      <div id="purchase_msg" class="msg" role="status" aria-live="polite">Conecte e autentique a carteira para consultar.</div>
+      <a id="purchase_transaction" hidden target="_blank" rel="noopener noreferrer" style="color:#b9d9ff">Ver transacao na Devnet</a>
+      <h3>Minhas Skills</h3>
+      <button id="skills_search" class="gray" disabled>Buscar minhas Skills</button>
+      <div id="skills_msg" class="msg" role="status" aria-live="polite">Conecte e autentique a carteira para buscar.</div>
+      <div id="skills_list" class="msg"></div>
+      <div id="purchase_license" class="msg">Licenca nao consultada.</div>
+      <p class="hint">A compra e a execucao continuam limitadas a Skill de teste. A busca lista as licencas modelo 00 deste programa. A assinatura usa solana:devnet; nao exporte sua seed/chave. A assinatura da compra nao autentica nem altera o firmware.</p>
+    </div>
+    <h2>JrSkill JSON v1</h2>
+    <div class="autonomous" id="jrskill_api_box">
+      <span id="jrskill_devnet_status" class="pill">Solana Devnet: verificando...</span>
+      <button id="jrskill_devnet_check" data-action onclick="checkDevnetConnection()" class="gray">Verificar Devnet</button>
+      <div id="jrskill_devnet_msg" class="msg">Verificando acesso a Solana. A Skill local funciona sem Internet.</div>
+      <button id="jrskill_api_test" data-action onclick="runJrSkillTest()" class="green">Executar Skill JSON local</button>
+      <label for="jrskill_selected">Skill licenciada para executar</label><select id="jrskill_selected"><option value="">Selecione uma Skill licenciada</option></select>
+      <button id="jrskill_devnet_test" data-action onclick="runJrSkillTest('solana-devnet')" class="green" disabled>Executar Skill da Devnet</button>
+      <p class="hint">Execucao Devnet: carteira autenticada e licenca verificada antes de cada comando. Execucao local: teste de desenvolvimento sem licenca. Troca/desconexao da carteira ou falha de consulta interrompe os proximos comandos.</p>
+      <span id="jrskill_api_state" class="state">aguardando</span>
+      <div class="msg" id="jrskill_api_msg">Teste do schema minimo: chamada direta face + wait local + recipe local + face. O firmware continua JrBot_V1S_00.</div>
+    </div>
     <h2>Modo autonomo / voz</h2>
     <div class="autonomous">
       <button id="autonomous_toggle" data-action onclick="toggleAutonomous()" class="purple">Ativar autonomo</button>
@@ -127,6 +184,7 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
   </section>
 </main>
 <script src="/panel.js"></script>
+<script src="/wallet_panel.js"></script>
 <script>
 let autonomousEnabled=false;
 async function wifiBoardData(){

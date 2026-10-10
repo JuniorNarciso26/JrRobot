@@ -1,16 +1,30 @@
 # Documentação do JrBot
 
-Este diretório contém a documentação **ativa** do projeto. O estado vigente deve ser lido a partir destes documentos e do `README.md` da raiz.
+Este diretório contém a documentação **ativa** do JrBot e o histórico técnico preservado do MVP JrSkill Network/Colosseum. O estado das releases deve ser lido em conjunto com o `README.md`, `PROJECT_STATUS.md` e os registros de validação.
 
 ## Estado atual
 
 - release oficial: **`JrBot_V1.7.04`** em `main`;
 - integração: `develop`, atualmente na mesma baseline da release;
-- linha oficial paralela JrSkill/Solana: **`V1s-00`** / `JrBot_V1S_00`;
+- marco JrSkill/Solana: **MVP concluído** em `V1s-00` (`JrBot_V1S_APP_03`, Solana Devnet);
 - linha de voz local: `v2`;
 - referência histórica da V1: `v1`.
 
-A documentação da `main` descreve apenas o **objetivo e o papel** da V1S. Andamento, etapas, provas e decisões internas da JrSkill Network permanecem documentados na própria branch `V1s-00`.
+A documentação ativa incorpora as fontes de evidência da V1S, incluindo o diário do Colosseum, decisões, testes e provas da integração. A branch histórica `V1s-00` também deve ser preservada. O MVP na Devnet foi comprovado, mas não equivale a produto Mainnet ou nova release estável homologada.
+
+## Histórico do hackathon e JrSkill Network
+
+**O histórico original deve permanecer acessível e nunca ser movido para `trash/` como documentação obsoleta.** O MVP da V1S alcançou seu objetivo em 2026-10-10; uma futura linha de desenvolvimento será definida separadamente.
+
+- [Diário Colosseum — Kickoff e Day 1–9](HACKATHON_DEVLOG.md) — cronologia do desenvolvimento;
+- [Day 8](HACKATHON_DEVLOG/day8.md) — Store, criação de `jrteste`, licenças, compras, evidências e teste físico;
+- [Day 9](HACKATHON_DEVLOG/day9.md) — conquista do MVP e potencial de marketplace global;
+- [JrSkill Execution API](JRSKILL_API.md) — formato, executor e histórico inicial; conferir a nota de atualização no documento;
+- [App embarcado / Minhas Skills](JRSKILL_APP.md) — `JrBot_V1S_APP_03` e testes registrados;
+- [Primeira Skill](JRSKILL_FIRST_SKILL.md) — guia para criadores;
+- [Stage 2: Skill PDA](JRSKILL_SOLANA_STAGE2.md), [Stage 3](JRSKILL_SOLANA_STAGE3.md), [Stage 4](JRSKILL_SOLANA_STAGE4.md) — evolução das validações;
+- [Modelo License PDA](JRSKILL_LICENSE_MODEL_00.md) e [Piloto](JRSKILL_PILOT.md) — regras e limitações do ciclo;
+- [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico e rastreabilidade.
 
 ## Documentos principais
 

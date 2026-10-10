@@ -1,0 +1,42 @@
+JrBot-painel-log (79).txt — selected Skill/license evidence; other lines omitted.
+[12:53:56] JR_WALLET state=connected address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R scope=connection
+[12:55:02] JR_WALLET state=disconnected scope=connection
+[12:55:43] JR_WALLET state=connected address=8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo scope=connection
+[12:55:57] JR_SKILL_LICENSE buyer=8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo owned=false license=FSmHntJybFcGbhZWLBv4Us4AjSEuG92RYEQAenM1jEMT
+[12:56:00] JR_SKILL_SOLANA fetch=started
+[12:56:01] JR_SKILL_AUTHORIZATION result=blocked detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:01] JR_SKILL_V1 result=error source=solana-devnet detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:01] JR_SKILL_AUTHORIZATION result=blocked buyer=8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:11] JR_SKILL_SOLANA fetch=started
+[12:56:12] JR_SKILL_AUTHORIZATION result=blocked detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:12] JR_SKILL_V1 result=error source=solana-devnet detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:12] JR_SKILL_AUTHORIZATION result=blocked buyer=8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:32] JR_SKILL_SOLANA fetch=started
+[12:56:33] JR_SKILL_AUTHORIZATION result=blocked detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:33] JR_SKILL_V1 result=error source=solana-devnet detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:33] JR_SKILL_AUTHORIZATION result=blocked buyer=8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo detail=execution_license_absent: esta carteira nao possui licenca
+[12:56:40] JR_WALLET state=disconnected scope=connection
+[12:56:50] JR_WALLET state=connected address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R scope=connection
+[12:56:57] JR_SKILL_SOLANA fetch=started
+[12:56:59] JR_SKILL_AUTHORIZATION result=allowed buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R license=7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45
+[12:56:59] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=507783945 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[12:56:59] JR_SKILL_AUTHORIZATION result=allowed buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R license=7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45
+[12:57:00] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[12:57:00] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[12:57:00] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[12:57:01] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[12:57:01] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[12:57:02] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[12:57:02] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[12:57:03] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[12:57:03] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[12:57:03] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[12:57:04] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[12:57:04] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[12:57:05] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[12:57:08] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[12:57:08] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[12:57:08] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[12:57:08] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[12:57:10] JR_SKILL_V1 result=ok source=solana-devnet
+[12:57:10] JR_SKILL_AUTHORIZATION result=command_sent buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
