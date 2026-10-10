@@ -47,11 +47,17 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | **Connect** | Wi-Fi (DHCP, saved configuration and reconnection), responsive web interface, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
 
-These capabilities form the **physically validated local-control baseline**, not a claim that every future AI feature is already available.
+### JrBot V1.8S firmware
 
-**Firmware reference:** `JrBot_V1S_APP_03` — JrSkill Network MVP with licensed Skill discovery, selection and controlled physical execution, validated on Solana Devnet. It is the candidate for the next `main` promotion, pending final integration tests. Previous releases, including `JrBot_V1.7.04`, remain documented in the [Changelog](docs/CHANGELOG.md).
+**JrBot V1.8S** brings together the robot's existing developed and validated capabilities, including camera, bidirectional audio, OLED expressions, connectivity and real-time control.
 
-**Known boundaries:** Live operates on the local network; Internet WebRTC, STUN/TURN and remote signaling are future work. Further AEC/echo and video-backpressure improvements remain separate engineering work. See [Testing](docs/TESTING.md) and [Project status](docs/PROJECT_STATUS.md).
+This version also integrates **JrSkill Network**, allowing users to acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
+
+The initial JrSkill Network stage has been completed and validated. **The new Skill development and publishing platform is under development**, expanding opportunities for creators and developers.
+
+### Current limitations
+
+Live communication currently works on the local network. Remote Internet connectivity and audio/video improvements remain planned for future versions. See [Testing](docs/TESTING.md) and [Project status](docs/PROJECT_STATUS.md).
 
 ## Build your own JrBot
 
