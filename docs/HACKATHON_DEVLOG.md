@@ -21,8 +21,9 @@ The detailed entries are organized under [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/).
 | [Day 6](HACKATHON_DEVLOG/day6.md) | 2026-10-05 | Closed: purchases, license discovery and authorized physical execution |
 | [Day 7](HACKATHON_DEVLOG/day7.md) | 2026-10-06 | Embedded App: Wallet, licensed Skill discovery, selection and physical execution validated over HTTPS |
 | [Day 8](HACKATHON_DEVLOG/day8.md) | 2026-10-07 | Public Store + Creator Studio + second Skill purchased and executed physically; external pilot opened |
+| [Day 9](HACKATHON_DEVLOG/day9.md) | 2026-10-10 | MVP achieved: nearly two weeks of Solana-powered Skill ecosystem development; global marketplace vision and next direction |
 
-**Day 8 closes the internal reusable-pipeline proof.** The public Store and Creator Studio now cover Skill creation, Offer publication, purchase by another Phantom wallet, License discovery and generic physical execution. The second Skill `jrteste` was created through the website, purchased on Devnet and executed successfully on `JrBot_V1S_APP_03` / `SKILLS-15`. The first external contributor pilot is now open through issue #53; no external participation is claimed yet. [Day 8 details](HACKATHON_DEVLOG/day8.md).
+**MVP achieved — Day 9.** In nearly two weeks, the hackathon work built an end-to-end Solana-powered Skill economy layer on top of the pre-existing JrBot: Creator Studio, public Store, Cloud API, Devnet Skill/Offer/License registration, Phantom purchasing, and licensed physical execution. Day 8 proved the pipeline with a second independently created Skill, `jrteste`, purchased by a different wallet and executed on real hardware. Day 9 celebrates the milestone and outlines its potential as the foundation for a **global marketplace of robot Skills**. This is a validated **Devnet MVP**, not a Mainnet product or a claim of external adoption. The `V1s-00` hackathon MVP development scope is complete; any future evolution belongs to a separately defined development path. [Milestone and victory message](HACKATHON_DEVLOG/day9.md).
 
 ## Public reproducible proof — read the Skill without a wallet
 
@@ -30,7 +31,7 @@ The wallet-free verifier, commands and expected output are in [Day 3: public rep
 
 ## Colosseum update — ready-to-publish draft
 
-The latest English update is [Day 8: Colosseum draft](HACKATHON_DEVLOG/day8.md#colosseum-update--ready-to-publish-draft). It is published in this GitHub diary; submission on Colosseum is not confirmed here. Earlier drafts remain available in their daily entries.
+The latest English update is the [Day 9 MVP achievement and vision message](HACKATHON_DEVLOG/day9.md#colosseum-update--victory-message-ready-to-publish). It celebrates the proven Devnet creator-to-wallet-to-physical-robot journey and the potential of a worldwide robot Skill marketplace. The message is published in this GitHub diary; submission on the Colosseum platform is not confirmed. Earlier drafts and technical evidence remain available in their original daily entries.
 
 This index remains at the original URL so previously published links to the diary, public proof and Colosseum draft continue to lead to the relevant entry.
 
