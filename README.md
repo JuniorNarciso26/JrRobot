@@ -49,10 +49,7 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 
 These capabilities form the **physically validated local-control baseline**, not a claim that every future AI feature is already available.
 
-### Verified firmware baselines
-
-- **`JrBot_V1.7.04` — stable local-control release (HW04).** Microphone, speaker, OLED, camera and local WebRTC Live were physically validated. The hardware uses shared I2S BCLK/WS for simultaneous RX/TX, with `jr_mode_manager` and `jr_resource_manager` managing mode and I2S ownership. The final recorded V1.7.04 test returned the resource owner to `none` without reset or watchdog.
-- **`JrBot_V1S_APP_03` — JrSkill / Solana Devnet MVP.** A separately tested firmware line added licensed Skill discovery, selection and constrained physical execution. Its second-Skill hardware test was confirmed on 2026-10-07; this does **not** constitute a new stable-release certification or a Solana Mainnet launch.
+**Firmware reference:** `JrBot_V1S_APP_03` — JrSkill Network MVP with licensed Skill discovery, selection and controlled physical execution, validated on Solana Devnet. It is the candidate for the next `main` promotion, pending final integration tests. Previous releases, including `JrBot_V1.7.04`, remain documented in the [Changelog](docs/CHANGELOG.md).
 
 **Known boundaries:** Live operates on the local network; Internet WebRTC, STUN/TURN and remote signaling are future work. Further AEC/echo and video-backpressure improvements remain separate engineering work. See [Testing](docs/TESTING.md) and [Project status](docs/PROJECT_STATUS.md).
 
