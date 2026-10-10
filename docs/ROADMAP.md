@@ -1,10 +1,10 @@
 # Roadmap oficial do JrBot
 
-Atualizado em 2026-09-29.
+Atualizado em 2026-10-10 para documentar o marco JrSkill MVP.
 
 ## Baseline oficial
 
-A release estável atual é **`JrBot_V1.7.04`**, promovida em `main`.
+A referência estável fisicamente validada para controle local é **`JrBot_V1.7.04`**. O MVP JrSkill usa o build experimental `JrBot_V1S_APP_03` e comprova um fluxo Devnet distinto de uma nova release Mainnet.
 
 `develop` parte da mesma baseline e recebe somente trabalho validado que esteja sendo preparado para futura promoção.
 
@@ -14,7 +14,7 @@ A release estável atual é **`JrBot_V1.7.04`**, promovida em `main`.
 | --- | --- |
 | `main` | release oficial estável — `JrBot_V1.7.04` |
 | `develop` | integração de entregas validadas |
-| `V1s-00` | linha oficial paralela JrSkill Network / Solana |
+| `V1s-00` | MVP JrSkill / Solana concluído; histórico do Colosseum preservado |
 | `v2` | linha preservada para controle por voz local |
 | `v1` | referência histórica da linha V1 |
 
@@ -59,7 +59,7 @@ O histórico detalhado de releases permanece em [CHANGELOG.md](CHANGELOG.md).
 
 ## V1S — JrSkill Network
 
-A **V1S** é uma linha oficial paralela do projeto, mantida na branch `V1s-00`.
+A **V1S** é a linha JrSkill Network. Seu **MVP do Colosseum foi concluído em 2026-10-10**, com testes em Solana Devnet e execução física validada no JrBot.
 
 Objetivo: permitir que capacidades de IA física sejam descritas como Skills portáveis e declarativas, distribuídas/versionadas/licenciadas por uma camada baseada em **Solana**, sem permitir que conteúdo externo controle diretamente GPIO, drivers ou código nativo do ESP32.
 
@@ -79,7 +79,7 @@ Solana
 publicação / versão / licença / distribuição
 ```
 
-O andamento, as etapas, as provas e a arquitetura experimental detalhada dessa linha permanecem exclusivamente na branch `V1s-00`.
+O andamento, as etapas, as provas e a arquitetura experimental detalhada foram preservados em [HACKATHON_DEVLOG.md](HACKATHON_DEVLOG.md), com Kickoff e Day 1–9, e na branch de origem `V1s-00`. O projeto poderá prosseguir numa **nova linha definida separadamente**. O marketplace global continua uma visão futura, não uma operação Mainnet já validada.
 
 ## JrBot V2 — voz local
 

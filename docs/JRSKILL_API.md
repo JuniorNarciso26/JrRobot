@@ -2,7 +2,9 @@
 
 **Status:** Hackathon architecture document for **JrSkill Network — Crypto World's Fair / Colosseum 2026**.
 
-**Current experimental line:** `JrBot_V1S_00` on `V1s-00`.
+**Original experimental line:** `JrBot_V1S_00` on `V1s-00`.
+
+> **Historical-status notice (2026-10-10):** The stage descriptions, examples and “planned” labels below document the early hackathon design, especially Days 2–3. The later Devnet MVP **was achieved**, including License PDA, wallet purchase, generic Skill discovery and physically validated execution through `JrBot_V1S_APP_03`. Use [Day 8](HACKATHON_DEVLOG/day8.md), [Day 9](HACKATHON_DEVLOG/day9.md) and [embedded App validation](JRSKILL_APP.md) for the final MVP state. This original technical design is retained to preserve the chronological record, not presented as the latest implementation checklist.
 
 This document is the current reference for how a JrSkill is represented, resolved and executed. Older Runtime API candidate/test documents are kept as technical history.
 

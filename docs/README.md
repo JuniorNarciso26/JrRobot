@@ -1,31 +1,30 @@
 # Documentação do JrBot
 
-Este diretório segue a mesma organização da documentação ativa da `main` e adiciona os documentos exclusivos da linha **JrSkill Network / V1s-00**.
-
-Assim, a branch V1s permanece atualizada com a baseline documental do projeto sem perder o histórico, as provas e as decisões específicas do hackathon.
+Este diretório contém a documentação **ativa** do JrBot e o histórico técnico preservado do MVP JrSkill Network/Colosseum. O estado das releases deve ser lido em conjunto com o `README.md`, `PROJECT_STATUS.md` e os registros de validação.
 
 ## Estado atual
 
 - release oficial: **`JrBot_V1.7.04`** em `main`;
-- integração: `develop`;
-- linha oficial paralela JrSkill/Solana: **`V1s-00`** / `JrBot_V1S_00`;
+- integração: `develop`, atualmente na mesma baseline da release;
+- marco JrSkill/Solana: **MVP concluído** em `V1s-00` (`JrBot_V1S_APP_03`, Solana Devnet);
 - linha de voz local: `v2`;
 - referência histórica da V1: `v1`.
 
-A documentação geral abaixo acompanha a organização da `main`. O progresso da V1s fica registrado somente nesta branch.
+A documentação ativa incorpora as fontes de evidência da V1S, incluindo o diário do Colosseum, decisões, testes e provas da integração. A branch histórica `V1s-00` também deve ser preservada. O MVP na Devnet foi comprovado, mas não equivale a produto Mainnet ou nova release estável homologada.
 
-## JrSkill Network / V1s-00
+## Histórico do hackathon e JrSkill Network
 
-Documentos exclusivos desta linha:
+**O histórico original deve permanecer acessível e nunca ser movido para `trash/` como documentação obsoleta.** O MVP da V1S alcançou seu objetivo em 2026-10-10; uma futura linha de desenvolvimento será definida separadamente.
 
-- [JrSkill Execution API](JRSKILL_API.md) — contrato atual do Skill JSON, Executor e Recipes;
-- [Build your first JrSkill](JRSKILL_FIRST_SKILL.md) — onboarding público do Developer Challenge v0, usando somente `face` + `wait`;
-- [Etapa 2 — Solana Skill PDA](JRSKILL_SOLANA_STAGE2.md) — arquitetura, publicação/leitura do JSON v1 e plano de teste isolado;
-- [Hackathon Development Log](HACKATHON_DEVLOG.md) — índice do diário, com Kickoff e Day 1–4 separados em [HACKATHON_DEVLOG/](HACKATHON_DEVLOG/);
-- [JrSkill Solana — Etapa 3](JRSKILL_SOLANA_STAGE3.md) — leitura Devnet no painel, executor existente e roteiro de teste físico;
-- [Issue #33 — JrSkill Network / Solana Hackathon 2026](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico técnico e decisões.
-
-Esses documentos devem ser preservados durante toda a V1s. Quando a linha for aprovada para integração, eles fornecem o histórico necessário para decidir o que deve subir para a documentação oficial.
+- [Diário Colosseum — Kickoff e Day 1–9](HACKATHON_DEVLOG.md) — cronologia do desenvolvimento;
+- [Day 8](HACKATHON_DEVLOG/day8.md) — Store, criação de `jrteste`, licenças, compras, evidências e teste físico;
+- [Day 9](HACKATHON_DEVLOG/day9.md) — conquista do MVP e potencial de marketplace global;
+- [JrSkill Execution API](JRSKILL_API.md) — formato, executor e histórico inicial; conferir a nota de atualização no documento;
+- [App embarcado / Minhas Skills](JRSKILL_APP.md) — `JrBot_V1S_APP_03` e testes registrados;
+- [Primeira Skill](JRSKILL_FIRST_SKILL.md) — guia para criadores;
+- [Stage 2: Skill PDA](JRSKILL_SOLANA_STAGE2.md), [Stage 3](JRSKILL_SOLANA_STAGE3.md), [Stage 4](JRSKILL_SOLANA_STAGE4.md) — evolução das validações;
+- [Modelo License PDA](JRSKILL_LICENSE_MODEL_00.md) e [Piloto](JRSKILL_PILOT.md) — regras e limitações do ciclo;
+- [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) — histórico e rastreabilidade.
 
 ## Documentos principais
 
@@ -60,9 +59,7 @@ Esses documentos devem ser preservados durante toda a V1s. Quando a linha for ap
 
 Arquivos que descrevem branches, firmwares ou experimentos antigos foram movidos para `../trash/`.
 
-Esse conteúdo foi preservado apenas para revisão histórica e **não deve ser usado como referência do estado atual**.
-
-Os documentos específicos da V1s — `JRSKILL_API.md`, o índice `HACKATHON_DEVLOG.md` e os registros diários em `HACKATHON_DEVLOG/` — permanecem ativos em `docs/`.
+Esse conteúdo foi preservado apenas para revisão histórica e **não deve ser usado como referência do estado atual**. O diretório será revisado manualmente antes de qualquer exclusão definitiva.
 
 ## Níveis de evidência
 
