@@ -51,7 +51,7 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 
 **JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
 
-The initial JrSkill Network integration has been completed and validated. **A new platform for developing and publishing Skills is under development**, expanding opportunities for creators and developers.
+The initial Creator Studio, Store, licensing and Skill execution flow have been completed and validated. **An expanded platform for developing and publishing Skills is now under development**, offering new possibilities for creators and developers.
 
 ### Current limitations
 
@@ -73,7 +73,7 @@ At its heart is an **ESP32-S3 CAM (N16R8)** board with an **OV5640 camera**. It 
 
 The ecosystem connects four parts:
 
-1. **Creator Studio** — a space for developers to build and publish Skills as structured instructions.
+1. **Creator Studio** — the initial, validated interface for creating and publishing structured Skills; its developer tools are being expanded.
 2. **JrSkill Store** — a place to discover Skills and acquire licenses using a Solana wallet such as Phantom.
 3. **Solana + JrBot Cloud** — the licensing, transaction and verification layer, currently validated on **Solana Devnet**.
 4. **My Skills on JrBot** — the robot's interface for finding licensed Skills and executing supported actions through its controlled runtime.
@@ -83,7 +83,7 @@ Create a Skill → Publish to Store → Acquire a license
         → My Skills → Execute on JrBot
 ~~~
 
-Skills run through approved robot operations rather than unrestricted access to hardware or native code. The new developer platform for creating and publishing Skills continues to evolve.
+Skills run through approved robot operations rather than unrestricted access to hardware or native code. **The existing creation and publishing flow is operational on Devnet; the expanded developer platform is the next development stage.**
 
 ### Developed during Colosseum 2026
 
