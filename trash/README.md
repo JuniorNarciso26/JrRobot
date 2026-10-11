@@ -1,15 +1,14 @@
-# Trash / documentação antiga
+# Archived and Superseded Documentation
 
-Este diretório reúne documentação antiga ou desatualizada que foi retirada da documentação ativa do JrBot em 2026-09-29.
+This directory contains older or outdated JrBot documentation removed from the active documentation on **September 29, 2026**.
 
-Os arquivos foram **movidos, não apagados**, para revisão manual antes de uma possível exclusão futura.
+The files were **moved, not deleted**, so they can be reviewed before any future removal.
 
-Regras:
+Rules:
 
-- não usar estes documentos como referência do estado atual do projeto;
-- o estado vigente está em `README.md` e `docs/`;
-- informações históricas continuam preservadas aqui apenas para análise;
-- nenhum arquivo deste diretório deve ser promovido novamente sem revisão técnica.
+- Do not use these documents as the source of truth for current project behavior.
+- Refer to the root `README.md` and `docs/` for current documentation.
+- Archived content remains available for historical analysis.
+- Do not promote archived documents back into active documentation without technical review.
 
-A linha oficial estável atual é `JrBot_V1.7.04`.
-A linha paralela JrSkill/Solana é `V1s-00`; detalhes de desenvolvimento dessa linha permanecem na própria branch.
+The last officially promoted stable build is `JrBot_V1.7.04`. The JrSkill/Solana integration is maintained in `V1s-00`, with **JrBot V1.8S** planned as the next product release.

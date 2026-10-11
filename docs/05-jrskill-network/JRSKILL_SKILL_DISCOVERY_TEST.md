@@ -1,45 +1,53 @@
-# Busca das Skills da carteira — SKILLS-14
+# Discovering Wallet-Licensed Skills — SKILLS-14
 
-05/10/2026, exclusivamente V1s-00. Versao: **JRBOT-PANEL-V1S-SKILLS-14**. [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
+**Date:** October 5, 2026. **Branch:** `V1s-00` only. **Panel:** `JRBOT-PANEL-V1S-SKILLS-14`. [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Teste do usuario aceito no fechamento do Day 6, log (81): busca automatica/manual retornou uma Skill e execucao licenciada concluiu no robo.** Resultados complementares abaixo; nenhuma nova compra/deploy nesta prova.
+**User acceptance (Day 6 closing, Log 81):** automatic/manual discovery returned one licensed Skill, and licensed execution completed on the robot. Details follow. No new purchase or program deployment occurred in this checkpoint.
 
-## Escopo
+## Scope
 
-Layout anterior preservado. Somente o bloco Minha Skill de teste recebeu o titulo Minhas Skills, botao Buscar minhas Skills, estado da busca e lista. Busca automatica apos autenticacao, atualizacao manual e nova consulta quando uma compra passa a apresentar licenca. Trocar/desconectar carteira ou perder autenticacao limpa a lista e descarta respostas atrasadas. Falha RPC aparece como busca nao confirmada, nunca como carteira sem licencas.
+The existing layout was preserved. The original **My Test Skill** area was renamed **My Skills**, with a **Find My Skills** button, search status, and a Skill list.
 
-Esta entrega implementa descoberta, sem seletor de execucao geral. Compra e autorizacao/execucao continuam no checkpoint minimal_recipe_01. Outras Skills validas sao listadas como licenciadas com execucao ainda nao habilitada. A lista nao emite permit, nao envia comando ao robo e nao substitui a consulta de licenca antes de cada comando do fluxo existente. Sem contrato/firmware/JSON/Recipe novos ou deploy.
+Discovery runs automatically after authentication, on manual refresh, and after purchasing a new license. Changing or disconnecting wallets or losing authentication clears the list and discards delayed responses. An RPC failure must be reported as **unconfirmed search**, never as confirmation that the wallet owns no Skills.
 
-## Arquitetura
+This work added discovery **without general execution selection**. Purchasing and authorized execution continued using the existing `minimal_recipe_01` checkpoint. Other valid licensed Skills could be listed but were marked not yet executable. Discovery did not issue a permit, send physical commands, or replace the per-command license checks of the existing executor. No new contract, firmware, JSON schema, Recipe, or deployment.
 
-GET /jrskill/wallet/skills usa a carteira da sessao autenticada, sem aceitar comprador informado na URL. Autenticacao e comprador sao conferidos antes e depois da consulta. Confirmar genesis Devnet; getProgramAccounts finalized/withContext filtra License de 137 bytes pelo discriminator e comprador no offset 9. Revalidar owner, discriminator, versao 00, comprador, PDA derivada, oferta derivada, valores pagos e ausencia de duplicatas no servidor.
+## Architecture
 
-Carregar Skills/ofertas vinculadas em getMultipleAccounts finalized, com minContextSlot da descoberta. Validar owner/tamanho, schema 1, SHA-256 dos bytes, PDA [skill, authority, hash], JSON v1 e relacao Skill/oferta/criador/preco. Sem cache/fallback local. Limite de 32 licencas por busca nesta prova; excesso ou resposta RPC acima de 64 KiB retorna erro explicito, sem truncar a lista nem alegar resultado vazio. Nao ha paginacao/indexador nesta entrega.
+`GET /jrskill/wallet/skills` uses the wallet bound to the authenticated session; it does not accept a client-supplied buyer in the URL. Authentication and buyer identity are checked both before and after the request.
 
-O schema atual nao tem nome/descricao: o checkpoint conhecido usa minimal_recipe_01; outros resultados recebem Skill + prefixo do endereco. Enderecos/hash ficam em Ver Skill e licenca. Nao inferir nome comercial do payload.
+After verifying the Devnet genesis hash, `getProgramAccounts` with `finalized/withContext` discovers **137-byte License** accounts using the discriminator and buyer at **offset 9**. The server validates owner, discriminator, version 00, buyer, derived License PDA, derived Offer PDA, amounts paid, and duplicates.
 
-Referencia primaria: [Solana getProgramAccounts](https://solana.com/docs/rpc/http/getprogramaccounts). Layouts e seeds conferidos no programa JrSkill atual da V1s-00.
+Linked Skill/Offer accounts are loaded using `getMultipleAccounts` at `finalized` commitment with `minContextSlot`. Checks include owner, account size, schema v1, SHA-256 payload hash, PDA derived from `[skill, authority, hash]`, JSON v1 validity, and Skill/Offer/creator/price relationships.
 
-## Verificacao realizada
+There is no cache or local fallback. The pilot limits each search to **32 licenses** and reports an error if that limit is exceeded or the RPC response is larger than **64 KiB**. It must not silently truncate results or display an empty list. Pagination and external indexing are outside this checkpoint.
 
-- **39 testes Python passaram:** inclui duas Skills de criadores diferentes para um comprador, filtros, vinculos/PDA/hash/owner, duplicata/limite, rede incorreta, falha RPC, resposta vazia e sessao trocada durante HTTP.
-- **29 testes JS passaram:** 24 de carteira (inclui busca, atualizacao, autenticacao e resposta atrasada) e 5 do executor existente. Bundle recompilado.
-- **Leitura real Devnet, sem transacao:** carteira licenciada 6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R retornou minimal_recipe_01/licenca 7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45, hash verificado, finalized slot 507816052. Carteira sem licenca 8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo retornou lista vazia no slot 507816055.
-- Navegador local confirmou layout anterior, SKILLS-14, bloco Minhas Skills e busca bloqueada sem carteira. Sem Phantom conectada nem robo na verificacao: teste real da extensao/hardware desta entrega ainda nao realizado. Nao houve compilacao/deploy de contrato ou firmware.
+The current on-chain schema has **no name or description fields**. The known reference checkpoint is labeled `minimal_recipe_01`; other results display `Skill` plus an address prefix. Addresses and hashes appear under **View Skill and License**. Do not invent commercial titles from payload data.
 
-## Resultado do usuario — log (81)
+Primary API reference: [Solana getProgramAccounts](https://solana.com/docs/rpc/http/getprogramaccounts).
 
-Carteira licenciada autenticada as 15:09:42. Busca automatica 15:09:44 retornou count=1/slot 507817275; atualizacao 15:09:47 retornou count=1/slot 507817287. Linhas duplicadas preservadas no TXT sao registros frontend/backend do mesmo resultado, nao licencas adicionais.
+## Verification performed
 
-Autorizacao as 15:09:57, Skill original com 128 bytes/hash verificado no slot 507817329. Comandos capabilities e faces receberam respostas do firmware JrBot_V1S_00/HW04; sequencia happy -> surprised -> thinking -> happy -> neutral terminou as 15:10:06, result=ok source=solana-devnet. Usuario considerou perfeito/finalizado. [Trecho selecionado do TXT](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day6/panel-log-81-discovery-execution-excerpt.txt).
+- **39 Python tests passed**, covering two Skills from different creators licensed to one buyer, filters, PDA/hash/owner relationships, duplicates and limits, wrong network, RPC failures, empty results, and a session change during HTTP.
+- **29 JavaScript tests passed**: 24 wallet tests (including discovery, refresh, authentication, delayed responses) and five existing executor tests. The bundle was rebuilt.
+- **Live Devnet read, without transaction:** licensed wallet `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R` returned `minimal_recipe_01`, License PDA `7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45`, verified hash, `finalized` slot **507816052**. Unlicensed wallet `8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo` returned an empty list at slot **507816055**.
+- A local browser check confirmed the prior layout, SKILLS-14, My Skills area, and blocked discovery without a connected wallet. With neither Phantom nor a physical robot attached during this particular check, that check did **not** prove extension or hardware behavior. No contract or firmware build/deploy occurred.
 
-Este log demonstra descoberta na carteira licenciada e execucao do checkpoint no hardware; nao demonstra busca de multiplas Skills, troca para carteira sem licenca ou erro RPC. Esses casos mantem as evidencias de software/RPC anteriores. Registro documental sem novo codigo/build/deploy/teste automatizado.
+## User result — Log 81
 
-## Plano de teste original no painel — resultados registrados acima
+A licensed wallet authenticated at **15:09:42**. Automatic discovery at **15:09:44** returned `count=1` at slot **507817275**. Manual refresh at **15:09:47** returned `count=1` at slot **507817287**. Duplicate frontend/backend log lines represent **one result**, not extra licenses.
 
-1. Fechar servidor. No checkout Windows do PAINEL.bat, confirmar V1s-00 e executar git pull --ff-only origin V1s-00. Abrir PAINEL.bat e Ctrl+F5; conferir SKILLS-14. Nao precisa npm/Anchor, gravar firmware, deploy ou comprar novamente.
-2. Conectar/autenticar a carteira que comprou: Minhas Skills deve listar minimal_recipe_01. Buscar minhas Skills repete a leitura. Abrir Ver Skill e licenca para conferir PDAs.
-3. Trocar para carteira sem licenca e autenticar: lista anterior deve desaparecer; busca concluida deve informar ausencia de Skills licenciadas neste programa na Devnet. Erro de rede deve informar busca nao confirmada.
-4. Execucao da Skill de teste permanece no botao existente, exigindo a carteira licenciada e Serial. Descoberta nao executa nada automaticamente.
+Authorization at **15:09:57** read the original **128-byte** Skill with verified hash at slot **507817329**. `capabilities` and OLED face commands were acknowledged by `JrBot_V1S_00` / HW04. The sequence `happy -> surprised -> thinking -> happy -> neutral` ended at **15:10:06** with `result=ok` and `source=solana-devnet`. The user accepted the test as complete.
 
-Proxima etapa a discutir: selecao/execucao de Skills descobertas e transporte do fluxo para o app do robo. Marketplace fica na plataforma web, painel permanece desenvolvimento.
+[Log 81 excerpt](../06-colosseum-history/HACKATHON_DEVLOG/assets/day6/panel-log-81-discovery-execution-excerpt.txt).
+
+This log supports discovery by the licensed wallet and reference-Skill execution on hardware. It does **not** prove discovery of multiple Skills, switching to an unlicensed wallet, or RPC-error handling on hardware. Those cases rely on earlier software/RPC verification. This was a documentation checkpoint without new code, build, deployment, or automated test.
+
+## Original panel test procedure — results documented above
+
+1. Stop the panel server. Confirm `V1s-00` in the Windows checkout, run `git pull --ff-only origin V1s-00`, launch `PAINEL.bat`, refresh with Ctrl+F5, and confirm SKILLS-14. No npm/Anchor, firmware flash, contract deployment, or repeat purchase is needed.
+2. Connect/authenticate the licensed buyer wallet. **My Skills** should show `minimal_recipe_01`. **Find My Skills** repeats discovery. **View Skill and License** shows PDAs.
+3. Switch to a wallet without a license and authenticate. The old list must be cleared; successful discovery should report no licenses for this program on Devnet. A network error must instead report **unconfirmed search**.
+4. The original Skill's existing execution button still requires the licensed wallet and Serial. Discovery must not execute actions automatically.
+
+**Next proposed step at the time:** generic selection/execution of discovered Skills and integration into the embedded robot App. The web Store remains the marketplace; the panel remains a development tool.

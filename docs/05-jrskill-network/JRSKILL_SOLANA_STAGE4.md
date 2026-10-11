@@ -1,58 +1,64 @@
-# Etapa 4 — licenciamento com License PDA
+# Stage 4 — Licensing Through License PDAs
 
-## Decisao de arquitetura — 01/10/2026
+## Architecture decision — October 1, 2026
 
-O usuario escolheu manter o modelo de **License PDA**, em vez de NFT, para permitir regras proprias de licenciamento e evolucao do marketplace JrSkill. Esta decisao foi registrada na branch `V1s-00` e na [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
+The project owner chose **License PDAs** instead of NFTs to support custom license rules and the future JrSkill marketplace. This decision was recorded on `V1s-00` and in [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Estado atualizado em 05/10/2026: compras CLI A/B e compra pela Phantom real finalizadas na Devnet, com licencas e repasses verificados. Log (78) registra compra pelo painel e execucao local/Devnet result=ok; usuario confirmou visualmente as faces no hardware. Logs (79) e (80) registram execucao licenciada, bloqueio sem licenca, interrupcao por desconexao/falha de comunicacao e recuperacao. O usuario considerou os testes satisfatorios. Identificacao atual: JRBOT-PANEL-V1S-SKILLS-14 e scripts/crate 0.2.0. [Busca de Skills implementada](JRSKILL_SKILL_DISCOVERY_TEST.md), layout anterior preservado; testes fisicos de autorizacao registrados na LICENSE-12.** [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md), [autenticacao 4B](JRSKILL_WALLET_AUTH_TEST.md), [rede/saldo 4C](JRSKILL_WALLET_DEVNET_TEST.md), [compra pelo navegador 4D](JRSKILL_WALLET_PURCHASE_TEST.md) e [prova comercial 00](JRSKILL_LICENSE_MODEL_00_TEST.md). A busca lista as Skills das licencas modelo 00 da carteira. Compra e execucao continuam limitadas a Skill de teste; selecao/execucao geral continua futura. [Etapa 4E: arquitetura e resultados fisicos, com limites da evidencia](JRSKILL_LICENSE_EXECUTION_TEST.md). O bloqueio controla o fluxo Devnet do painel; ferramentas locais de desenvolvimento continuam independentes.
+**Updated status (October 5, 2026):** CLI purchases by buyers A/B and a real Phantom purchase were finalized on Devnet, with verified License PDAs and payment distributions. Log 78 records panel purchase and successful local/Devnet execution (`result=ok`); the user visually confirmed OLED expressions. Logs 79 and 80 document licensed execution, unlicensed blocking, interruption after disconnection or communication failure, and recovery.
 
-## Modelo proposto
+The accepted development state was `JRBOT-PANEL-V1S-SKILLS-14` and scripts/crate 0.2.0. [Skill discovery](JRSKILL_SKILL_DISCOVERY_TEST.md) was implemented with the earlier layout retained; LICENSE-12 recorded physical authorization tests.
 
-- Skill PDA: conteudo executavel, schema, hash e publicador.
-- License PDA: registro de autorizacao vinculado a uma wallet e a uma Skill.
-- Programa JrSkill: instrucoes que controlam emissao e validacao das licencas.
-- Painel: autentica a carteira, consulta as licencas e apresenta as Skills autorizadas.
+Related milestones: [Stage 4A wallet connection](JRSKILL_WALLET_CONNECTION_TEST.md), [4B authentication](JRSKILL_WALLET_AUTH_TEST.md), [4C Devnet/balance](JRSKILL_WALLET_DEVNET_TEST.md), [4D browser purchase](JRSKILL_WALLET_PURCHASE_TEST.md), and [commercial model 00](JRSKILL_LICENSE_MODEL_00_TEST.md). Discovery listed Skills licensed under wallet model 00, while generic Skill selection/execution was still planned at this checkpoint. [Stage 4E](JRSKILL_LICENSE_EXECUTION_TEST.md) covers authorization and physical tests.
 
-Derivacao proposta, a confirmar no desenho detalhado:
+The license gate protects the panel's **Devnet execution flow**; local development controls remain independent.
+
+## Proposed model
+
+- **Skill PDA:** executable content, schema, hash, and publisher.
+- **License PDA:** authorization record tied to a wallet and one Skill.
+- **JrSkill program:** instructions to issue and validate licenses.
+- **Panel:** authenticates the wallet, discovers its licenses, and displays authorized Skills.
+
+Proposed derivation, subject to detailed validation:
 
 ```text
 License PDA = ["license", wallet, skill_pda]
 ```
 
-Uma mesma Skill pode ter licencas para A e B, sem duplicar o payload. A conta License PDA e um registro do programa, nao um NFT exibido automaticamente na carteira; a lista sera apresentada pelo painel JrSkill.
+Buyers A and B may own separate licenses for the same Skill without duplicating the payload. A License PDA is a **program data account**, not an NFT that necessarily appears automatically in a wallet UI. The JrSkill panel displays licensed Skills.
 
-PDA e uma conta de dados, nao outro contrato executavel. Skill e License podem ficar no mesmo programa; um marketplace separado podera chamar instrucoes desse programa via CPI se necessario futuramente.
+A PDA is not an independent executable smart contract. Skill and License accounts can reside under the same program; a future marketplace contract could call its instructions through CPI.
 
-## Regras ainda a definir
+## Licensing questions requiring separate decisions
 
-- Quem pode emitir uma licenca e como o programa verifica essa autoridade.
-- Licenca permanente ou com validade; possibilidade de revogacao.
-- Transferencia entre wallets e eventual recuperacao de acesso.
-- Direito a uma versao especifica da Skill ou a atualizacoes futuras.
-- Compra de teste com pagamento e entrega atomicos: escopo comercial 00 discutido na Issue #46.
-- Prova de controle da wallet por assinatura e descoberta/validacao das licencas no painel.
+- Who may issue licenses, and how the program verifies authority.
+- Perpetual or expiring licenses, including revocation.
+- Wallet-to-wallet transfers and access recovery.
+- License rights for a specific Skill version versus future upgrades.
+- Atomic test purchase and issuance, with commercial model 00 tracked in Issue #46.
+- Wallet proof of control through signatures and correct discovery/validation in the panel.
 
-A escolha de PDA nao implementa automaticamente pagamento, revenda, expiracao ou recuperacao. Essas regras precisarao de desenho, codigo e testes. A autenticacao da wallet nao pode se limitar a informar um endereco publico.
+Choosing PDAs does not automatically implement payments, resale, expiration, or recovery. These require separate specification, implementation, and tests. Wallet authentication cannot rely solely on a user-entered public address.
 
-## Proxima prova
+## Next proof as originally planned
 
-Atualizacao de sequencia em 02/10/2026: o usuario decidiu antecipar a selecao/conexao de carteira no painel. A [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md) implementa somente conexao, sem assinatura, compra ou autorizacao de execucao. Depois seguimos com autenticacao e a prova isolada de compra, repasse e registro de License PDA da [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). Desenho e plano de teste: [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md). Preco e divisao apresentados na issue sao exemplos para discussao.
+On October 2, the user moved the wallet connection experiment earlier in the sequence. [Stage 4A](JRSKILL_WALLET_CONNECTION_TEST.md) tested connection only, without signature, purchase, or execution authorization. Authentication and isolated purchase/revenue-sharing License PDA tests followed in [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46), using the [model 00 design](JRSKILL_LICENSE_MODEL_00.md). The prices and revenue split in that design were examples, not final commercial terms.
 
-A integracao abaixo vem depois da prova de compra:
+Planned integration after purchasing:
 
 ```text
-Conectar e autenticar wallet
-  → listar licencas emitidas pelo programa JrSkill
-  → conferir autorizacao da Skill selecionada
-  → recuperar e validar o payload
-  → executor existente → Runtime API → JrBot
+Connect and authenticate wallet
+  → list licenses issued by JrSkill
+  → verify permission for selected Skill
+  → retrieve and validate payload
+  → existing executor → Runtime API → JrBot
 ```
 
-Comparar uma wallet licenciada com outra sem licenca. A carteira sem autorizacao deve ser bloqueada antes de enviar acoes ao robo. O payload publico continua copiavel; o controle de licenca vale para o fluxo que aplica essas regras.
+Compare licensed and unlicensed wallets. The unlicensed wallet must be rejected **before** any action reaches the robot. Public payloads remain copyable: license enforcement only applies to clients that honor these checks.
 
-O contrato, o JSON v1, a Recipe e o firmware permanecem inalterados nesta decisao documental. Antes de upgrade, preservar o layout das Skills existentes e validar compatibilidade.
+This design decision did not itself change the contract, JSON v1, Recipes, or firmware. Preserve existing Skill layouts and confirm compatibility before upgrades.
 
-## Referencias do projeto
+## References
 
-- [Etapa 3 validada](JRSKILL_SOLANA_STAGE3.md)
-- [Diario Day 4](../06-historico-colosseum/HACKATHON_DEVLOG/day4.md)
+- [Validated Stage 3](JRSKILL_SOLANA_STAGE3.md)
+- [Day 4 Development Log](../06-colosseum-history/HACKATHON_DEVLOG/day4.md)

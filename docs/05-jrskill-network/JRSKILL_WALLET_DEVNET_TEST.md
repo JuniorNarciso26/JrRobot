@@ -25,7 +25,7 @@ RPC incorreto, offline ou resposta malformada mostram **nao confirmado**, sem tr
 
 ## Evidencia de autenticacao do usuario — log (73)
 
-[Original](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-auth-log.txt), SHA-256 `291f1e247b6698057730017ef65bcb47f755fac63292bc58b8d2fe4bef35d445`, preservado byte a byte.
+[Original](../06-colosseum-history/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-auth-log.txt), SHA-256 `291f1e247b6698057730017ef65bcb47f755fac63292bc58b8d2fe4bef35d445`, preservado byte a byte.
 
 - 13:24:43: conectada, carteira `6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R`.
 - 13:25:01: autenticada; evento do navegador com expiracao e evento do servidor confirmando verificacao.
@@ -56,7 +56,7 @@ Teste WALLET-06 recebido no log (74) e screenshot abaixo. Permanece pendente a c
 
 ## Teste do usuario — log (74) e captura do painel
 
-Recebido em 02/10/2026. [Log original](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-log.txt), SHA-256 `77a1df69e6ec99c35aff8d321146fbaa88c63392f1704d4bc5f255a7d1905bfa`, preservado byte a byte.
+Recebido em 02/10/2026. [Log original](../06-colosseum-history/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-log.txt), SHA-256 `77a1df69e6ec99c35aff8d321146fbaa88c63392f1704d4bc5f255a7d1905bfa`, preservado byte a byte.
 
 - 13:34:16: carteira conectada; 13:34:44: autenticacao confirmada pelo navegador e servidor.
 - 13:34:45, 13:34:49, 13:35:13 e 13:35:54: `rpc=devnet genesis_verified=true`, saldo 0 lamports, slots finalized 506697543, 506697560, 506697659 e 506697824.
@@ -65,6 +65,6 @@ Recebido em 02/10/2026. [Log original](../06-historico-colosseum/HACKATHON_DEVLO
 
 Horarios do painel sem timezone no arquivo. A captura confirma os indicadores de RPC Devnet, suporte anunciado pela carteira e saldo 0 SOL de teste. Nao mostra as configuracoes da Phantom nem comprova compra/licenca/execucao fisica.
 
-![Painel do usuario: RPC Devnet confirmado e saldo zero](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-panel.png)
+![Painel do usuario: RPC Devnet confirmado e saldo zero](../06-colosseum-history/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-devnet-panel.png)
 
 Referencias: [Wallet Standard — campos chains](https://github.com/wallet-standard/wallet-standard/blob/master/packages/core/base/src/wallet.ts), [Etapa 4B](JRSKILL_WALLET_AUTH_TEST.md), [modelo comercial 00](JRSKILL_LICENSE_MODEL_00.md).

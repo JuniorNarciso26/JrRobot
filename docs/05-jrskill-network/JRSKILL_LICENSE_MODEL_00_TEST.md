@@ -113,7 +113,7 @@ Oferta: `A2n5s6TYEH9oFZNFE1owxN5nEh18WGDHnEvrc5QvBgLR`, Skill original, preco 10
 
 Comprador CLI: `E5F1ztxZwgogcwWaryB6uCLXp3iZ2YA6MBzjwv6R51dE`. Cotacao --quote nao enviou transacao. Compra --send confirmou assinatura `4dwpsPA6GrZNhLuJhmdWQPJSv1r3QLnpMnxGrY4PvdQj2AAEzs2aeWu9YrBS7Kut5rhDgMenq9U7wiEd1GnMLKiY` e License PDA `5wjuV3W2fJo9o8U5oqfjcnbUULGxKqRxLXK9AgUvqADR`, verified=true.
 
-Verificacao independente read-only: RPC Devnet genesis confirmado, transacao finalized no slot **507724452**, meta.err=null. Leitura da licenca valida owner/discriminator/PDA/comprador/Skill/oferta/modelo 0 e parcelas registradas. [Evidencia RPC arquivada](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day6/license-purchase-proof.json).
+Verificacao independente read-only: RPC Devnet genesis confirmado, transacao finalized no slot **507724452**, meta.err=null. Leitura da licenca valida owner/discriminator/PDA/comprador/Skill/oferta/modelo 0 e parcelas registradas. [Evidencia RPC arquivada](../06-colosseum-history/HACKATHON_DEVLOG/assets/day6/license-purchase-proof.json).
 
 | Movimento na transacao | Lamports | SOL de teste |
 | --- | ---: | ---: |
@@ -134,7 +134,7 @@ Usuario repetiu buy --send com A: cliente retornou `already_exists: true`, compr
 
 B `Dyf2qbLSn7pW7khP4z4xWykDr7Kuw5uMqmxzMFRuU6vs` foi consultada antes da compra: `exists: false`, PDA calculada `CdvpW2VoTK4E1H39d688g9mW9vFtLwasqXrdiVuModLo`. Depois de cotar e comprar a mesma Skill por 1 SOL, leitura confirmou `exists: true`, modelo 0 e parcelas 0,5/0,5. Assinatura: `oZkPZsQXtoYfC5FhjHjKS9zoyhtGsVkERdZaa6HKuBB4Y2x4Fuqif2TEa1ZErUmEsN8HZb5N3gmjk15nLNNd9jD`.
 
-RPC independente confirmou finalized slot **507731090**, meta.err=null, licenca B valida e distinta da de A para a mesma Skill. Debito de B: **1001351200 lamports**; criador +500000000, tesouraria +500000000, deposito da licenca 1346200 e taxa efetiva 5000. [Pre/post balances e evidencia RPC de B](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day6/license-purchase-b-proof.json).
+RPC independente confirmou finalized slot **507731090**, meta.err=null, licenca B valida e distinta da de A para a mesma Skill. Debito de B: **1001351200 lamports**; criador +500000000, tesouraria +500000000, deposito da licenca 1346200 e taxa efetiva 5000. [Pre/post balances e evidencia RPC de B](../06-colosseum-history/HACKATHON_DEVLOG/assets/day6/license-purchase-b-proof.json).
 
 **Prova positiva A/B na Devnet concluida.** Duplicidade/rollback do contrato foram testados no validator local; nao sao alegados como novos testes negativos Devnet. Compra pela Phantom, listagem e enforcement de licenca no painel/robo continuam pendentes.
 

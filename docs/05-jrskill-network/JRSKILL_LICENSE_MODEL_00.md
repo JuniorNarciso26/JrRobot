@@ -1,96 +1,113 @@
-# JrSkill — prova de compra de licenca, modelo 00
+# JrSkill — License Purchase Proof, Commercial Model 00
 
-## Escopo e estado — 02/10/2026
+## Scope and status — October 2, 2026
 
-Desenho da proxima prova isolada na `V1s-00`, conforme a [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). A [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) continua com integracao, autenticacao no painel e execucao fisica.
+This was the next isolated proof on `V1s-00`, tracked in [Issue #46](https://github.com/JuniorNarciso26/JrRobot/issues/46). [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33) covered integration, panel authentication, and physical execution.
 
-**Estado: implementacao, compilacao SBF/IDL, testes locais e upgrade comercial na Devnet realizados em 02/10/2026; primeira compra de licenca CLI confirmada na Devnet em 05/10/2026.** RPC finalized confirma repasses 0,5/0,5 SOL e License PDA para o comprador no slot 507724452. Compra Phantom/painel e demais provas Devnet continuam pendentes. Identificacao: scripts/crate 0.2.0 e painel WALLET-07; metadados do upgrade anterior ainda 0.1.0. Evidencias e limites estao no [checkpoint da compra 00](JRSKILL_LICENSE_MODEL_00_TEST.md).
+**Recorded status:** implementation, SBF/IDL compilation, local tests, and Devnet commercial-program upgrade completed on **October 2, 2026**. The first CLI License purchase was confirmed on Devnet on **October 5, 2026**. A finalized RPC read verified **0.5/0.5 test SOL** distributions and the buyer's License PDA at slot **507724452**.
 
-O escopo comercial 00 continua sendo compra, repasse e registro da licenca. Atualizacao de ordem em 02/10/2026: por decisao do usuario, antecipamos uma prova somente de conexao da carteira no painel, documentada na [Etapa 4A](JRSKILL_WALLET_CONNECTION_TEST.md). Ela nao implementa compra ou licenciamento. A numeracao comercial 00/01/02 e independente do schema JSON v1 e do firmware JrBot_V1S_00.
+At this intermediate checkpoint, Phantom/panel purchases and other Devnet tests remained pending. Identifiers: scripts/crate **0.2.0**, panel `WALLET-07`; the previous upgrade's metadata still showed **0.1.0**. See [purchase checkpoint 00](JRSKILL_LICENSE_MODEL_00_TEST.md) for evidence and limitations.
 
-## Desenho minimo da 00
+Commercial model 00 covers **purchase, revenue distribution, and license recording**. On October 2, the project owner chose to run the panel's wallet-connection proof first, as [Stage 4A](JRSKILL_WALLET_CONNECTION_TEST.md), without implementing purchasing or licensing in that step.
 
-Manter um unico programa JrSkill e preservar o layout da Skill existente. Nenhuma nova instrucao deve modificar seu payload, authority, schema ou hash.
+Commercial numbering 00/01/02 is independent of JrSkill JSON v1 and firmware `JrBot_V1S_00`.
 
-| Entidade | Responsabilidade |
+## Minimum Model 00 design
+
+Keep a single JrSkill program and preserve the existing Skill layout. No new instruction may change the original payload, authority, schema, or hash.
+
+| Entity | Responsibility |
 | --- | --- |
-| Skill existente | Conteudo e identificacao do criador. |
-| Configuracao comercial 00 | Carteira de comissao JrBot e percentual do teste. |
-| Oferta 00 | Skill, criador, preco em lamports e termos da divisao. |
-| License PDA | Carteira compradora, Skill, modelo 00 e registro da compra. |
+| Existing Skill | Content and creator identity |
+| Market configuration 00 | JrBot commission wallet and test percentage |
+| Offer 00 | Skill, creator, price in lamports, and allocation terms |
+| License PDA | Buyer wallet, Skill, model 00, and purchase record |
 
-Derivacao proposta da licenca: `["license", comprador, skill_pda]`. A e B podem comprar a mesma Skill sem duplicar o JSON. Uma carteira nao recebe duas licencas da mesma Skill nesta prova.
+Proposed license derivation: `["license", buyer, skill_pda]`. Buyers A and B can license the same Skill without duplicating JSON. This proof permits only **one license per buyer and Skill**.
 
-A configuracao comercial precisa de inicializacao restrita a uma autoridade JrBot verificada pelo programa; nao basta deixar o primeiro chamador escolher a carteira que recebe a comissao. A oferta exige a assinatura do criador correspondente a `Skill.authority`. Endereco de recebedor informado pelo cliente nao substitui essa verificacao.
+The market configuration must be initialized by an authority verified **by the program**; the first caller must not be allowed to choose a commission wallet arbitrarily. Offer creation requires the actual `Skill.authority` signature. A recipient address supplied by the client cannot substitute for that authority verification.
 
-Para simplificar a 00, propor configuracao e termos da oferta imutaveis durante a prova. Atualizacao de preco/comissao, retirada de venda e migracao ficam para discussao posterior. A configuracao comercial nao deve alterar quem pode publicar uma Skill pelo fluxo atual.
+For model 00, market configuration and Offer terms were proposed as immutable during the proof. Changes to price/commission, delisting, and migration were deferred. Commercial configuration must not change who may publish an ordinary Skill.
 
-## Compra proposta
+## Proposed purchase flow
 
 ```text
-Comprador consulta oferta e aceita seus termos
-  -> assina compra com limite de preco aceito
-  -> programa valida Skill, oferta, recebedores e assinatura
-  -> distribui o preco para criador e JrBot
-  -> registra License PDA do comprador
-  -> cliente confirma transacao e consulta a licenca
+Buyer reads Offer and accepts its terms
+  → signs purchase with an accepted maximum price
+  → program validates Skill, Offer, recipients, and signatures
+  → distributes payment to creator and JrBot
+  → creates buyer's License PDA
+  → client confirms transaction and queries license
 ```
 
-Pagamento e emissao devem ocorrer na mesma transacao. A licenca fica vinculada a Skill e, portanto, ao conteudo adquirido. Uma falha nao pode deixar pagamento parcial ou licenca criada sem o pagamento exigido. Taxas de rede sao distintas e podem existir mesmo em transacoes que falham.
+Payment and issuance must happen in **the same transaction**. The License is associated with a specific Skill and the purchased content. A failure must not leave partial payment or a License without the required payment. Network transaction fees are separate and may still apply when a transaction fails.
 
-O comprador proposto paga preco, taxa da transacao e deposito necessario para a conta da licenca. Essa responsabilidade e os valores devem ser mostrados separadamente antes de assinar; ainda precisam ser fechados como regra do teste na #46.
+The proposed buyer pays the Skill price, network fee, and rent deposit for the License account. Those amounts must be displayed separately before signing; the model's acceptance criteria were tracked in Issue #46.
 
-Calculos em lamports inteiros, com verificacao de overflow e percentual limitado a 0..10000 basis points. Proposta de arredondamento: comissao = piso(preco * percentual / 10000); criador = preco - comissao. Assim as duas parcelas somam exatamente o preco.
+All arithmetic uses **integer lamports**, with overflow checks and commission constrained to **0–10,000 basis points**. Proposed rounding:
 
-Preco de 1 SOL de teste e comissao de 5000 basis points (50%) sao exemplos, nao tabela definitiva. Os scripts devem receber termos explicitamente e exibir a divisao antes da compra. Nao deve existir compra automatica ao abrir o painel ou consultar uma oferta.
+```text
+commission = floor(price * basis_points / 10000)
+creator    = price - commission
+```
 
-Antes de enviar, o cliente pode detectar uma licenca existente e apenas consulta-la. O programa tambem deve impedir compra duplicada, inclusive quando dois clientes tentam comprar simultaneamente. Uma segunda tentativa enviada a rede pode pagar taxa de rede, mas nao pode pagar novamente o preco da licenca.
+The two shares therefore always total the purchase price.
 
-## Prova em duas fases
+A **1 test SOL** price and **5,000 basis points (50%)** commission were test examples, not commercial pricing. Scripts must accept terms explicitly and display the split before the purchase. Opening the panel or reading an Offer must **never** initiate an automatic purchase.
 
-### 1. Validator local
+A client may detect an existing License before sending a transaction. The on-chain program must also block duplicate purchases, including simultaneous attempts. A duplicate transaction may incur a network fee, but it must not pay the License price again.
 
-Usar carteiras descartaveis distintas para administracao, criador, comissao JrBot, comprador A e comprador B. Provar:
+## Two-stage proof
 
-- criador autorizado cria oferta; outro signer nao pode vender aquela Skill;
-- configuracao comercial nao pode ser capturada por um chamador arbitrario;
-- A compra: parcelas corretas, licenca com comprador/Skill/modelo corretos;
-- B nao tem licenca; ao comprar recebe outra PDA para a mesma Skill;
-- duplicidade nao repete o pagamento;
-- preco acima do limite aceito, recebedor incorreto, saldo insuficiente ou oferta/Skill invalida nao deixam pagamento ou emissao parcial;
-- uma falha depois de alguma operacao de pagamento tambem reverte os efeitos da compra;
-- rejeitar overflow e percentual invalido; conferir arredondamento;
-- a Skill publicada antes da extensao continua sendo lida com bytes e hash identicos.
+### 1. Local validator
 
-Comparar parcelas usando recebedores que nao pagam a taxa da transacao. Separar deposito da License PDA e taxa da rede da variacao de saldo do comprador. Registrar tambem o saldo e a ausencia de conta nos cenarios de rollback.
+Use distinct disposable wallets for administrator, creator, JrBot commission receiver, buyer A, and buyer B. Validate:
+
+- The authorized creator can create an Offer; another signer cannot sell that Skill.
+- An arbitrary caller cannot seize the market configuration.
+- Buyer A pays correct shares and receives a License with correct buyer/Skill/model.
+- Buyer B initially has no License; after purchasing, B has a **different PDA for the same Skill**.
+- A duplicate purchase does not repeat payment.
+- Excessive price versus accepted maximum, wrong recipient, insufficient funds, or invalid Offer/Skill cannot cause partial payment or issuance.
+- A failure after an intermediate payment operation rolls back the entire purchase.
+- Invalid commission/overflow is rejected; rounding is correct.
+- The previously published Skill remains readable with identical bytes and hash.
+
+To compare recipient balances precisely, use recipients who are **not** paying the transaction fee. Separate network fees and the License PDA rent deposit from the buyer's balance changes. Record balances and absence of accounts after rollback tests.
 
 ### 2. Solana Devnet
 
-Somente depois da compilacao e testes locais: preservar a chave original do programa, verificar compatibilidade e preparar o upgrade do mesmo Program ID. Este documento nao executa nem confirma esse upgrade.
+Only after successful compilation and local testing, preserve the original program key, confirm compatibility, and prepare an upgrade of the **same Program ID**. The initial design document itself did not deploy that upgrade.
 
-Os clientes devem confirmar o genesis hash da Devnet antes de qualquer escrita. Mainnet fica fora desta prova. Usar carteiras locais de teste; nunca versionar suas chaves privadas.
+Every writing client must verify the Devnet genesis hash before changing on-chain state. Mainnet is excluded. Use disposable local test wallets; never commit private keys.
 
-Publicar os termos da prova e registrar uma compra com assinatura, enderecos publicos, preco, parcelas, deposito, taxa e License PDA. A consulta publica precisa conferir owner, tipo da conta, comprador, Skill e modelo, nao apenas a existencia de qualquer conta naquele endereco.
+Record a signed purchase with public addresses, exact price, allocations, deposit, fee, and License PDA. Public verification must check owner, account type, buyer, Skill, and model; merely finding any account at an address is insufficient.
 
-## Entregaveis da implementacao seguinte
+## Deliverables for the next implementation
 
-- Instrucoes e contas comerciais minimas no programa existente.
-- Scripts separados para configurar a prova, criar a oferta, comprar e consultar licenca.
-- Testes locais de compra, repasse, permissao, duplicidade e rollback.
-- Relatorio de evidencias que separe analise estatica, compilacao, teste local e Devnet.
+- Minimal commercial accounts and instructions in the existing program.
+- Separate scripts for market setup, Offer creation, purchase, and License lookup.
+- Local tests for purchase, distribution, access controls, duplicates, and rollback.
+- Evidence distinguishing static review, compilation, local testing, and Devnet.
 
-Sem compra pela carteira do painel, alteracao de firmware, novas Recipes, mudanca no JSON v1, NFT, revenda ou expansao do marketplace nesta primeira prova. A conexao/autenticacao da carteira ja existe no painel. A futura verificacao de licenca nao torna o JSON publico impossivel de copiar.
+This first proof excluded panel-wallet purchasing, firmware changes, new Recipes, JSON v1 changes, NFT, resale, and marketplace expansion. Wallet connection/authentication existed separately. A future License check does not prevent copying a publicly readable Skill JSON.
 
-## Decisoes implementadas em 02/10/2026
+## Decisions implemented on October 2, 2026
 
-Configuracao `["market", "00"]` imutavel, inicializada somente pelo signer que corresponde a autoridade de upgrade no ProgramData do proprio JrSkill. Oferta `["offer", "00", Skill]` imutavel e assinada por `Skill.authority`. Licenca `["license", comprador, Skill]`, modelo 0, sem instrucoes de alteracao, transferencia ou encerramento nesta prova.
+- Immutable market configuration `["market", "00"]`, initialized only by a signer matching the JrSkill program's **ProgramData upgrade authority**.
+- Immutable Offer `["offer", "00", Skill]`, signed by `Skill.authority`.
+- License `["license", buyer, Skill]`, model 0, with no modify, transfer, or close instructions in this version.
 
-A compra exige recebedores correspondentes a oferta/configuracao e um limite maximo de preco. Comprador diferente do criador e do recebedor da comissao nesta 00; evita apresentar uma transferencia para si mesmo como pagamento externo. Criador e tesouraria podem coincidir, caso em que recebem o preco agregado. Carteiras recebedoras devem ser contas do System Program.
+A purchase must match Offer/market recipients and satisfy the maximum accepted price. Model 00 requires the buyer to differ from creator and commission receiver, so self-transfers are not misrepresented as external payments. Creator and treasury may coincide; in that case they receive the combined price. Recipient wallets must be System Program accounts.
 
-O comprador paga preco e deposito da licenca; o fee payer da transacao paga a taxa de rede. No script de compra os dois papeis sao o comprador. Nos testes locais o administrador paga a taxa para permitir comparar os saldos do comprador e recebedores exatamente. Preco/percentual sao argumentos explicitos, sem tabela comercial definitiva. Calculo de comissao usa u128 intermediario e resultado u64, incluindo o maior preco u64 sem overflow de multiplicacao.
+The buyer pays the price and License deposit; the transaction fee payer pays the network fee. In the purchase script, both roles are the buyer. In local tests, the administrator pays the fee so buyer/recipient balance changes can be compared exactly.
 
-Novas instrucoes: `initialize_market`, `create_offer`, `buy_license`. Os discriminadores, seeds e campos de `Skill` e a instrucao `create_skill` foram preservados. Os erros anteriores continuam na mesma ordem. O programa permanece atualizavel; a imutabilidade das contas descreve as instrucoes da versao atual, nao uma promessa de impossibilidade de upgrade futuro.
+Price and commission are explicit arguments, not a fixed commercial price list. Commission math uses an intermediate `u128` and `u64` result, including the maximum `u64` price without multiplication overflow.
 
-## Evolucao
+New instructions: `initialize_market`, `create_offer`, and `buy_license`. Existing `Skill` discriminators, seeds, fields, and `create_skill` were preserved. Previous errors remain in the same order.
 
-Fechar resultados da 00 na #46 antes de definir a 01. Registrar o efeito de qualquer nova regra sobre compradores anteriores. Conexao e autenticacao de carteira, descoberta de licencas e autorizacao antes das acoes fisicas seguem na [Etapa 4](JRSKILL_SOLANA_STAGE4.md), depois da compra isolada.
+The program remains **upgradeable**; immutable account behavior describes the current instruction set, **not** a promise that upgrades will always be impossible.
+
+## Evolution
+
+Close the results of model 00 in Issue #46 before defining model 01. Record any new licensing rule's effect on previous buyers. Wallet connection/authentication, License discovery, and pre-execution authorization are tracked in [Stage 4](JRSKILL_SOLANA_STAGE4.md) after the isolated purchase proof.

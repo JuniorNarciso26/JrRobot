@@ -4,7 +4,7 @@
 
 **Original experimental line:** `JrBot_V1S_00` on `V1s-00`.
 
-> **Historical-status notice (2026-10-10):** The stage descriptions, examples and “planned” labels below document the early hackathon design, especially Days 2–3. The later Devnet MVP **was achieved**, including License PDA, wallet purchase, generic Skill discovery and physically validated execution through `JrBot_V1S_APP_03`. Use [Day 8](../06-historico-colosseum/HACKATHON_DEVLOG/day8.md), [Day 9](../06-historico-colosseum/HACKATHON_DEVLOG/day9.md) and [embedded App validation](JRSKILL_APP.md) for the final MVP state. This original technical design is retained to preserve the chronological record, not presented as the latest implementation checklist.
+> **Historical-status notice (2026-10-10):** The stage descriptions, examples and “planned” labels below document the early hackathon design, especially Days 2–3. The later Devnet MVP **was achieved**, including License PDA, wallet purchase, generic Skill discovery and physically validated execution through `JrBot_V1S_APP_03`. Use [Day 8](../06-colosseum-history/HACKATHON_DEVLOG/day8.md), [Day 9](../06-colosseum-history/HACKATHON_DEVLOG/day9.md) and [embedded App validation](JRSKILL_APP.md) for the final MVP state. This original technical design is retained to preserve the chronological record, not presented as the latest implementation checklist.
 
 This document is the current reference for how a JrSkill is represented, resolved and executed. Older Runtime API candidate/test documents are kept as technical history.
 
@@ -296,7 +296,7 @@ The test also queried `face.current` after the transitions and completed with:
 JR_SKILL_API_TEST result=ok
 ```
 
-This first baseline proves the low-level execution path. Later on 2026-09-29, the minimal v1 executor and local `face_sequence` Recipe were also physically validated (`JR_SKILL_V1 result=ok`), as recorded in the [Day 2 development log](../06-historico-colosseum/HACKATHON_DEVLOG/day2.md). Solana and licensing were not part of those physical tests.
+This first baseline proves the low-level execution path. Later on 2026-09-29, the minimal v1 executor and local `face_sequence` Recipe were also physically validated (`JR_SKILL_V1 result=ok`), as recorded in the [Day 2 development log](../06-colosseum-history/HACKATHON_DEVLOG/day2.md). Solana and licensing were not part of those physical tests.
 
 ## 11. Current implementation status
 
@@ -339,4 +339,4 @@ The JSON and existing Recipe remain unchanged. Stage 2 stores only the Skill pay
 - Technical tracking: [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)
 - Experimental branch: [V1s-00](https://github.com/JuniorNarciso26/JrRobot/tree/V1s-00)
 - Colosseum project: https://colosseum.com/arena/projects/jrskill-network
-- Low-level Runtime API history: [API_RUNTIME.md](../04-firmware-desenvolvimento/API_RUNTIME.md)
+- Low-level Runtime API history: [API_RUNTIME.md](../04-firmware-development/API_RUNTIME.md)

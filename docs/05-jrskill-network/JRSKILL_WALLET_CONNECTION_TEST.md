@@ -51,7 +51,7 @@ Se nao detectar a extensao: confirmar instalacao/desbloqueio no mesmo perfil Chr
 
 ## Teste do usuario — log (72)
 
-Arquivo original: [jrskill-wallet-connection-log.txt](../06-historico-colosseum/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-connection-log.txt), preservado byte a byte. SHA-256: `b01c39723e29c0e334e6d301766ccdf6739e5a807b8a55c3249b35d8b936f3b5`.
+Arquivo original: [jrskill-wallet-connection-log.txt](../06-colosseum-history/HACKATHON_DEVLOG/assets/day5/jrskill-wallet-connection-log.txt), preservado byte a byte. SHA-256: `b01c39723e29c0e334e6d301766ccdf6739e5a807b8a55c3249b35d8b936f3b5`.
 
 Horarios do painel, sem timezone gravado no arquivo:
 

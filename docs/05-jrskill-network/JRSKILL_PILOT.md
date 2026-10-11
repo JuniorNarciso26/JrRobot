@@ -1,87 +1,59 @@
-# Piloto externo JrSkill — crie uma Skill e veja no robô
+# JrSkill External Pilot — Build a Skill and See It Run on a Robot
 
-O piloto interno foi concluído em 07/10/2026: `jrteste` foi criada na Store,
-comprada por outra carteira e executada no App e no painel do JrBot.
-Agora buscamos os primeiros **3 colaboradores externos**. Isso é uma meta,
-não uma contagem de participantes já confirmados.
+The internal pilot was completed on **October 7, 2026**: `jrteste` was created through the Store, purchased with a different wallet, and executed using the JrBot App and development panel.
 
-Você pode participar com ou sem JrBot. Sem hardware, o mantenedor faz o teste.
-Ponto de entrada e respostas: [convite no GitHub #53](https://github.com/JuniorNarciso26/JrRobot/issues/53).
+We are now seeking the first **three external contributors**. This is a target, **not** a claim that three external contributors have already joined.
 
-## Caminho A — publicar pela Store
+You can participate with or without a JrBot. Contributors without hardware can request a physical test from the maintainer. The entry point is [GitHub invitation #53](https://github.com/JuniorNarciso26/JrRobot/issues/53).
 
-1. Abra [Crie sua Skill](https://jrbot.com.br/pt/store/create/) no navegador com Phantom.
-2. Conecte e autentique a carteira. A autenticação é uma assinatura de mensagem.
-3. Use Solana Devnet e solicite SOL de teste no [Faucet](https://faucet.solana.com/).
-4. Preencha nome, descrição, preço em test SOL e uma sequência original de 3 a 8 expressões.
-5. Para esta primeira rodada, use `happy`, `sad`, `surprised`, `thinking`, `worried` e `neutral`,
-   já exercitadas nos testes físicos. Prefira esperas de 500 a 1000 ms e termine em `neutral`.
-6. Prepare a cotação, confira os custos, aceite e assine a publicação na Phantom.
-   Aguarde a confirmação; guarde o link da Skill e da transação.
-7. Confira sua Skill no [catálogo](https://jrbot.com.br/pt/store/) e envie o link na issue #53.
+## Path A — Publish through the Store
 
-Limites: JSON v1, payload de até 512 bytes; até 32 etapas na interface, com
-espera inteira de 0 a 5000 ms. O tamanho em bytes pode limitar a sequência antes
-das 32 etapas. O piloto usa somente expressões e esperas, sem recipes externas.
+1. Open [Create Your Skill](https://jrbot.com.br/en/store/create/) in a browser with Phantom.
+2. Connect and authenticate your wallet by signing a message.
+3. Select Solana **Devnet** and request test SOL through the [faucet](https://faucet.solana.com/).
+4. Enter a name, description, price in test SOL, and an original sequence of three to eight expressions.
+5. For this first pilot, use `happy`, `sad`, `surprised`, `thinking`, `worried`, and `neutral`, which were exercised in physical tests. Prefer waits of 500–1000 ms and end with `neutral`.
+6. Prepare the quotation, review costs, accept the terms, and sign publication in Phantom. Wait for confirmation and save the Skill and transaction URLs.
+7. Check the Skill in the [Store catalog](https://jrbot.com.br/en/store/) and post its link in issue #53.
 
-Ao publicar com sua carteira, ela é o creator on-chain. O preço e a divisão
-creator/JrBot aparecem na cotação de compra. Tudo ocorre em test SOL na Devnet.
+**Limits:** JSON v1, payload up to 512 bytes, up to 32 editor steps, and integer waits of 0–5000 ms. Payload size may limit the sequence before 32 steps. This pilot uses expressions and waits only, without external recipes.
 
-## Caminho B — contribuir sem carteira ou sem publicação própria
+When you publish using your wallet, it becomes the on-chain creator. The price and creator/JrBot allocation appear in the purchase quotation. All transactions use **test SOL on Devnet**.
 
-Envie na issue #53 o nome, a descrição, o crédito desejado e um JSON original:
+## Path B — Contribute without a wallet or your own publication
+
+Send an original JSON, Skill name, description, and preferred attribution in issue #53:
 
 ```json
 {"v":1,"run":[["face","happy"],["wait",500],["face","worried"],["wait",500],["face","neutral"]]}
 ```
 
-Esse JSON é apenas um exemplo. Crie uma sequência diferente para participar.
-O mantenedor revisa e pode publicar por sua carteira. Nesse caminho, **o creator
-on-chain é a carteira publicadora do mantenedor**; seu crédito como autor fica
-registrado na submissão e na demonstração. Para ser o creator on-chain, use o caminho A.
+This JSON is an example; submit your own sequence. The maintainer can review it and publish from a maintainer wallet. In that case, **the maintainer's publishing wallet is the on-chain creator**, while your authorship is credited in the submission and demonstration. Choose Path A if your wallet must be the on-chain creator.
 
-## Testar com ou sem robô
+## Testing with or without a robot
 
-**Com JrBot:** use a linha `V1s-00`, firmware `JrBot_V1S_APP_03` ou uma sucessora
-documentada que suporte esse piloto, e painel `JRBOT-PANEL-V1S-SKILLS-15`.
-Use uma carteira compradora diferente da creator para adquirir a licença na Store.
-No App ou painel: autenticar → confirmar Devnet → buscar Skills → selecionar → executar.
-Envie a versão exata, resultado, log e, se possível, vídeo.
+**With a JrBot:** use `V1s-00`, firmware `JrBot_V1S_APP_03` or a documented successor supporting the pilot, and panel `JRBOT-PANEL-V1S-SKILLS-15`. Purchase the license using a different buyer wallet. In the App or panel, authenticate → verify Devnet → discover Skills → select → execute. Submit the exact version, result, logs, and a video if available.
 
-**Sem JrBot:** depois da publicação, o mantenedor adquire/confirma a licença com
-a carteira de teste e executa a Skill no robô. Não é necessário comprar uma licença
-para apenas submeter sua criação. O mantenedor responde com aprovação, erro ou
-pedido de ajuste, e registra a evidência física quando o teste acontecer.
+**Without a JrBot:** once published, the maintainer can acquire/verify the license using a test wallet and execute the Skill on physical hardware. You do not need to purchase a license merely to submit an idea. The maintainer reports approval, failure, or required changes and records physical evidence when available.
 
-## O que enviar e como acompanhamos
+## Submission and tracking
 
-Na [issue #53](https://github.com/JuniorNarciso26/JrRobot/issues/53), informe:
+In [issue #53](https://github.com/JuniorNarciso26/JrRobot/issues/53), provide the Skill name and URL/PDA or assisted-publication JSON, intended behavior, whether you own a JrBot, preferred credit, permission to publish a demonstration, and results or difficulties when applicable.
 
-- nome e link/PDA da Skill, ou JSON para publicação assistida;
-- comportamento esperado e se você possui JrBot;
-- crédito desejado e autorização, ou não, para publicar uma demonstração;
-- resultado/log com versão, se testou, e dificuldades encontradas.
+Each contribution follows this lifecycle:
 
-O registro de cada contribuição segue: recebida → validada → publicada → licenciada
-→ teste físico → evidência e feedback. O mantenedor confirma cada etapa separadamente;
-uma criação na blockchain não é, por si só, teste físico aprovado.
+```text
+Received → Validated → Published → Licensed → Physical test → Evidence and feedback
+```
 
-Depois do primeiro colaborador, ajustamos o roteiro pelo feedback e seguimos com
-os próximos dois. A expansão do convite vem após essa rodada, com resultados reais.
+Each step must be confirmed separately; on-chain publication does not by itself establish successful physical execution.
 
-## Texto para compartilhar
+After the first external contributor, the team will refine onboarding based on feedback and proceed with the next two.
 
-> Crie uma Skill e veja sua ideia rodar em um robô real! Estamos buscando os primeiros
-> colaboradores do JrSkill Network. Monte uma sequência de expressões, publique na
-> Solana Devnet ou envie um JSON. Não precisa ter JrBot: nós testamos no robô e
-> registramos o resultado com seu crédito. É um piloto com SOL de teste.
-> Participe: https://github.com/JuniorNarciso26/JrRobot/issues/53
+## Shareable invitation
 
-> Build a JrSkill. We'll run it on a real robot! Join the JrSkill Network pilot:
-> create an original OLED expression sequence, publish it on Solana Devnet or submit
-> JSON for assisted publication. No robot required: we can test it on a physical
-> JrBot and record the result with your chosen attribution. Test SOL only.
+> Build a JrSkill and see your idea run on a real robot! We are looking for the first external contributors. Create an original OLED expression sequence, publish it on Solana Devnet, or submit JSON for assisted publication. No robot required: we can test your Skill on a physical JrBot and share the results with your chosen attribution. Test SOL only.
+>
 > Join: https://github.com/JuniorNarciso26/JrRobot/issues/53
 
-Histórico: [issue #52](https://github.com/JuniorNarciso26/JrRobot/issues/52).
-Detalhes do firmware/painel: [JRSKILL_APP.md](JRSKILL_APP.md).
+History: [issue #52](https://github.com/JuniorNarciso26/JrRobot/issues/52). Implementation details: [JrSkill App](JRSKILL_APP.md).

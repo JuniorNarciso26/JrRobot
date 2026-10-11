@@ -1,18 +1,18 @@
-# Documentacao do JrBot
+# JrBot Documentation
 
-Bem-vindo a documentacao tecnica do JrBot. Ela foi organizada por **assunto principal** para facilitar a montagem, o desenvolvimento e a consulta ao historico.
+This documentation is organized by **primary topic**, so readers can understand the robot, assemble its hardware, develop its firmware, and explore the JrSkill ecosystem without navigating the hackathon records first.
 
-## Areas
+## Documentation sections
 
-1. **[História e planejamento do JrBot](01-historia-roadmap/README.md)** — evolução das versões e próximos objetivos.
-2. **[Montagem do JrBot](02-montagem/README.md)** — materiais, pinagem, ligacoes e revisao eletronica.
-3. **[Corpo e impressao 3D](03-impressao-3d/README.md)** — projeto mecanico e montagem do corpo; arquivos e instrucoes detalhadas ainda precisam ser reunidos.
-4. **[Firmware e desenvolvimento](04-firmware-desenvolvimento/README.md)** — instalacao, arquitetura, APIs, interfaces e validacao.
-5. **[JrSkill Network](05-jrskill-network/README.md)** — criacao, licencas, Solana e execucao de Skills.
-6. **[Historico do Colosseum 2026](06-historico-colosseum/README.md)** — diarios Day 1–9 e evidencias preservadas.
+1. **[History and Roadmap](01-history-roadmap/README.md)** — project introduction, documented versions, current status, and future plans.
+2. **[Hardware Assembly](02-assembly/README.md)** — components, pin mapping, electrical connections, and reference hardware.
+3. **[3D Printing and Body](03-3d-printing/README.md)** — mechanical design and body assembly; complete printable models and instructions still need to be gathered.
+4. **[Firmware and Development](04-firmware-development/README.md)** — architecture, setup, Runtime API, and testing.
+5. **[JrSkill Network](05-jrskill-network/README.md)** — Skills, licensing, Solana Devnet, and controlled physical execution.
+6. **[Colosseum 2026 History](06-colosseum-history/README.md)** — preserved Kickoff and Day 1–9 development logs and evidence.
 
-## Sobre as versoes
+## Version status
 
-**JrBot V1.8S** e a versao definida para integrar as funcionalidades do robô e a JrSkill Network; sua promocao para `main` e a revisao dos documentos tecnicos serao tratadas separadamente.
+**JrBot V1.8S** is the planned next product version integrating JrSkill Network with JrBot's existing capabilities. The latest version promoted to `main` remains `JrBot_V1.7.04`. See [Project Status](01-history-roadmap/PROJECT_STATUS.md).
 
-Esta reorganizacao altera **apenas a localizacao e navegacao dos arquivos**, sem validar novamente as informacoes tecnicas antigas. Documentos arquivados permanecem em [trash](../trash/README.md).
+This documentation follows the [MIT-licensed repository](../LICENSE). Historical material remains preserved in [trash/](../trash/README.md) for review; archived records are not necessarily up to date.
