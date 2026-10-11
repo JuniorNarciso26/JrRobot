@@ -39,18 +39,43 @@
     "SD": 41,
     "LR": "GND"
   },
-  "usb_native": [19, 20],
-  "uart0": [43, 44],
-  "memory_reserved": [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
-  "boot_reserved": [0, 3, 45, 46],
+  "usb_native": [
+    19,
+    20
+  ],
+  "uart0": [
+    43,
+    44
+  ],
+  "memory_reserved": [
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37
+  ],
+  "boot_reserved": [
+    0,
+    3,
+    45,
+    46
+  ],
   "ports_reported_by_owner": {
     "flash": "COM6",
     "panel": "COM4"
   },
   "notes": [
-    "GPIO21 e GPIO47 sao clocks I2S compartilhados entre microfone e amplificador.",
-    "GPIO41 recebe SD do microfone; GPIO42 envia DOUT para DIN do MAX98357A.",
-    "O driver de microfone ainda nao esta implementado; a pinagem fica reservada para ele.",
-    "OLED permanece em GPIO1/2 e fica desabilitado no perfil headless atual."
+    "GPIO21 and GPIO47 are shared I2S clock signals for microphone and amplifier.",
+    "GPIO41 receives microphone SD; GPIO42 sends DOUT to MAX98357A DIN.",
+    "The current firmware includes the I2S microphone RX driver; earlier headless-stage notes are obsolete.",
+    "OLED remains on GPIO1/2 and is enabled by the current HW04 board profile.",
+    "COM6 (flash) and COM4 (panel) are example Windows ports observed on the reference PC; enumerate ports on each host."
   ]
 }

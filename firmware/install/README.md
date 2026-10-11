@@ -4,6 +4,6 @@
 
 The original workflow used a revised V2 branch and `DIAG_V2.bat` at the repository root. In that environment, `build` compiled the firmware; `flash` compiled and flashed through COM6. The panel was opened through `PAINEL.bat` and connected on COM4, without requiring a separate monitor.
 
-The original guide also required reviewing the historical `APLICAR_BRANCH_V2.md` instructions and the [HW04 Wiring Diagram](../../docs/02-assembly/ESQUEMA_LIGACAO.md) before enabling additional modules. Older audio configurations were not approved in the HW03 revision.
+The original guide also required reviewing the historical `APLICAR_BRANCH_V2.md` instructions and the [HW04 Wiring Diagram](../../docs/02-assembly/WIRING.md) before enabling additional modules. Older audio configurations were not approved in the HW03 revision.
 
 For current development and installation, use the [Development Guide](../../docs/04-firmware-development/DEVELOPMENT.md) and verify the actual build installed on the device.

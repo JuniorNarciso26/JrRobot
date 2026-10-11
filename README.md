@@ -63,7 +63,7 @@ JrBot is designed so technology enthusiasts can build their own robot using **wi
 
 At its heart is an **ESP32-S3 CAM (N16R8)** board with an **OV5640 camera**. It uses the familiar **MS3625 microphone** and **MAX98357A audio amplifier** for sound, while a small **SSD1306 OLED display** brings its expressions to life.
 
-**Want to build your own JrBot?** Explore the [parts list](docs/02-assembly/MATERIAIS.md) and [wiring guide](docs/02-assembly/ESQUEMA_LIGACAO.md).
+**Want to build your own JrBot?** Explore the [parts list](docs/02-assembly/BILL_OF_MATERIALS.md), [wiring reference](docs/02-assembly/WIRING.md), and [assembly guide](docs/02-assembly/ASSEMBLY_GUIDE.md).
 
 ## JrSkill Network — The JrBot Skills Ecosystem
 

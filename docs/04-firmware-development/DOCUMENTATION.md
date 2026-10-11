@@ -51,8 +51,7 @@ Do not confuse a human-friendly Flow syntax with arbitrary code execution.
 Update these references together:
 
 - `hardware/pinmap.json`.
-- `docs/02-assembly/PINAGEM.md`.
-- The relevant wiring diagram.
+- `docs/02-assembly/WIRING.md` (wiring and GPIO reference).
 - GPIO tests and policies.
 
 ## Future Architecture Decision Records (ADRs)

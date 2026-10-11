@@ -27,6 +27,20 @@ During Colosseum 2026, JrSkill's creation, publication, license purchase, and ph
 
 Mechanical design and the JrSkill platform can progress in parallel with firmware work. **No confirmed delivery dates** are asserted for V2, V3, JrBrain, or a Mainnet marketplace.
 
+## Proposed movement and actuator control
+
+**Status: planning only — not implemented or electrically validated for motor driving.** The earlier HW04 pin review recorded candidate **control signals**, not a final motor wiring diagram:
+
+| Candidate GPIO | Planned role | Constraint |
+| ---: | --- | --- |
+| **14** | Head movement control | Needs a validated actuator/driver design |
+| **38** | Left-wheel movement control | Needs a validated actuator/driver design |
+| **48** | Possible right-wheel control | Must first confirm the physical board does not use it for an onboard RGB LED or other function |
+
+**GPIO39 and GPIO40 are avoided** because they belong to the JTAG/debug group and unexpected behavior was observed during tests. If GPIO48 is unavailable, evaluate an external motor driver or I/O expander instead of reusing Flash/PSRAM, USB, camera or audio pins.
+
+No actuator, supply, motor-driver circuit or 3D body mount is approved by this proposal. **Do not power motors or servos directly from the ESP32-S3 3V3 rail.** Document and validate each part before moving it to the [HW04 Wiring Reference](../02-assembly/WIRING.md).
+
 ## Release-readiness checklist
 
 1. Identify the firmware build, branch, and reference hardware.
