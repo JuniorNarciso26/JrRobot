@@ -59,37 +59,11 @@ Live communication currently works on the local network. Remote Internet connect
 
 ## Build your own JrBot
 
-JrBot is designed to be built, modified and extended.
+JrBot is designed so technology enthusiasts can build their own robot using **widely available, off-the-shelf electronic components**.
 
-### HW04 reference hardware
+At its heart is an **ESP32-S3 CAM (N16R8)** board with an **OV5640 camera**. It uses the familiar **MS3625 microphone** and **MAX98357A audio amplifier** for sound, while a small **SSD1306 OLED display** brings its expressions to life.
 
-| Component | Role |
-| --- | --- |
-| **ESP32-S3 N16R8** | Main controller |
-| **OV5640** | Camera; validated orientation -90° / 270° |
-| **SSD1306 OLED** | Face and expressions |
-| **MS3625 I2S** | Microphone |
-| **MAX98357A** | Audio amplifier and speaker output |
-
-The microphone and amplifier share the following I2S clock signals:
-
-| Signal | GPIO |
-| --- | ---: |
-| BCLK / SCK | 21 |
-| WS / LRCLK | 47 |
-| MS3625 SD | 41 |
-| MAX98357A DIN | 42 |
-
-For the remaining hardware details, see [Pin mapping](docs/PINAGEM.md) and the [wiring diagram](docs/ESQUEMA_LIGACAO.md).
-
-### Firmware installation (Windows)
-
-1. Clone or download the repository and connect the ESP32-S3 via USB.
-2. Run **`INSTALAR.bat`** from the repository root.
-3. Select the intended branch in the installer, then compile and flash.
-4. Confirm the actual firmware version in the device log/status.
-
-The installer allows choosing between available branches; **check the firmware version rather than assuming every branch uses the same build**. Development and validation instructions are in [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+**Want to build your own JrBot?** Explore the [parts list](docs/MATERIAIS.md) and [wiring guide](docs/ESQUEMA_LIGACAO.md).
 
 ## JrSkill Network — Colosseum 2026 MVP achieved
 
