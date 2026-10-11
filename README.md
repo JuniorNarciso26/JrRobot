@@ -15,7 +15,7 @@ See. Hear. Speak. Connect. Express.
 
 [Website](https://jrbot.com.br) ·
 [Build your own](#build-your-own-jrbot) ·
-[JrSkill Network](#jrskill-network--colosseum-2026-mvp-achieved) ·
+[JrSkill Network](#jrskill-network--the-jrbot-skills-ecosystem) ·
 [Documentation](docs/README.md) ·
 [Roadmap](docs/ROADMAP.md) ·
 [Contribute](CONTRIBUTING.md)
@@ -65,50 +65,35 @@ At its heart is an **ESP32-S3 CAM (N16R8)** board with an **OV5640 camera**. It 
 
 **Want to build your own JrBot?** Explore the [parts list](docs/MATERIAIS.md) and [wiring guide](docs/ESQUEMA_LIGACAO.md).
 
-## JrSkill Network — Colosseum 2026 MVP achieved
+## JrSkill Network — The JrBot Skills Ecosystem
 
-In nearly two weeks of hackathon development, we built an entirely new **Solana-powered Skill economy layer** on top of the pre-existing JrBot platform. The **Colosseum / Crypto World's Fair 2026 MVP was achieved**: Skill creation, publication, wallet-based purchasing, license verification and execution on a physical robot worked together on **Solana Devnet**.
+**JrSkill Network** extends JrBot with a way to discover, acquire and execute new robot abilities, called **Skills**. Users can browse Skills, connect a Solana wallet, manage their licenses and run supported actions on their own JrBot.
 
-### One end-to-end ecosystem
+### How it works
 
-- **Creator Studio and bilingual JrSkill Store** (`JrBot_Web`): authors create a declarative JSON Skill, publish an Offer and make it available to other wallets.
-- **Store API** (`JrBot_Cloud`): HTTPS backend for transaction validation, publication and license-state checks.
-- **Solana Devnet**: Skill, Offer and License accounts; Phantom / Wallet Standard integration and test-SOL payments.
-- **JrBot My Skills App** (`JrRobot`): authenticated wallet, licensed Skill discovery and selection, followed by approved robot operations.
+The ecosystem connects four parts:
+
+1. **Creator Studio** — a space for developers to build and publish Skills as structured instructions.
+2. **JrSkill Store** — a place to discover Skills and acquire licenses using a Solana wallet such as Phantom.
+3. **Solana + JrBot Cloud** — the licensing, transaction and verification layer, currently validated on **Solana Devnet**.
+4. **My Skills on JrBot** — the robot's interface for finding licensed Skills and executing supported actions through its controlled runtime.
 
 ~~~text
-Creator Studio -> Skill JSON v1
-        |
-JrSkill Store -> Publish Skill + Offer
-        |
-Solana Devnet -> Phantom purchase + License
-        |
-My Skills App -> Verify + select licensed Skill
-        |
-Controlled Skill Executor / Runtime API
-        |
-Physical JrBot -> Authorized behavior
+Create a Skill → Publish to Store → Acquire a license
+        → My Skills → Execute on JrBot
 ~~~
 
-### What the MVP proved
+Skills run through approved robot operations rather than unrestricted access to hardware or native code. The new developer platform for creating and publishing Skills continues to evolve.
 
-The reference Skill demonstrated the original store-to-robot path. We then created a second, independently authored Skill, **`jrteste`**, through the website. Another Phantom wallet purchased its license, and `JrBot_V1S_APP_03` executed it on real hardware with `result=ok`, as confirmed by the maintainer on 2026-10-07.
+### Developed during Colosseum 2026
 
-The demonstrated **1 test SOL** purchase allocated **0.5 test SOL to the creator and 0.5 test SOL to the JrBot treasury**. This validates the proposed revenue-sharing mechanism in a test environment, not real Mainnet revenue.
+**JrSkill Network began as a major JrBot upgrade during the Colosseum / Crypto World's Fair 2026 hackathon** and is now part of **JrBot V1.8S**. During the event, we completed and validated the entire flow on Solana Devnet: creating and publishing Skills, acquiring licenses through the Store and executing a licensed Skill on a physical JrBot. The independent test Skill `jrteste` was successfully executed on the robot.
 
-**Security boundary:** the physically validated MVP limits declarative Skill execution to allowlisted OLED expressions (`face`) and delays (`wait`). Blockchain data and third-party Skills cannot directly execute arbitrary native code, shell commands or raw GPIO operations on the ESP32. Broader capabilities, a production marketplace and further security validation remain future work.
+That first stage is complete. Work now continues on expanding the Skill development and publishing platform. **Devnet validation is not a claim of a live Solana Mainnet marketplace.**
 
-### From an MVP to a global Skill economy
+**Want to see how we built JrSkill Network?** Follow the complete [Colosseum 2026 development diary — Kickoff and Day 1–9](docs/HACKATHON_DEVLOG.md), including tests, screenshots and physical validation.
 
-The proven architecture is a foundation for a possible worldwide marketplace where creators can publish reusable robot capabilities, offer verifiable licenses and reach robot owners across borders. **The V1S hackathon milestone is complete; the JrSkill Network vision continues.** Global commercial operation, Mainnet deployment and external adoption are not claimed.
-
-**Explore the evidence and project:**
-
-- [Hackathon development log — Kickoff and Day 1–9](docs/HACKATHON_DEVLOG.md)
-- [Day 8 — transactions, screenshots and physical validation](docs/HACKATHON_DEVLOG/day8.md)
-- [Day 9 — MVP victory and global vision](docs/HACKATHON_DEVLOG/day9.md)
-- [JrSkill Execution API](docs/JRSKILL_API.md) · [My Skills App](docs/JRSKILL_APP.md)
-- [JrSkill Store](https://jrbot.com.br/en/store/) · [Colosseum project](https://colosseum.com/arena/projects/jrskill-network) · [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33)
+[Explore the JrSkill Store](https://jrbot.com.br/en/store/) · [JrSkill technical documentation](docs/JRSKILL_API.md) · [Colosseum project](https://colosseum.com/arena/projects/jrskill-network)
 
 ## Project status and roadmap
 
