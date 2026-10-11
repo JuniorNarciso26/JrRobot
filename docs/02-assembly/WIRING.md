@@ -1,58 +1,45 @@
-# JrBot — HW04 Wiring Reference
+# JrBot Wiring and Hardware Reference — HW04
 
-This is the **confirmed electronic pin map** for `JRBOT-HW-04`. Keep it synchronized with [`hardware/pinmap.json`](../../hardware/pinmap.json) and the [firmware's generated pin header](../../firmware/core/jr_pinmap_fixed.h).
+**JRBOT-HW-04** uses an ESP32-S3 N16R8 (16 MB Flash, 8 MB PSRAM), OV5640 camera, SSD1306 OLED, MS3625 microphone and MAX98357A amplifier. This file is the **single human-readable reference** for HW04 electrical connections and constraints.
 
-## Quick connection map
+## Electrical connections
 
-| Component | Module signal | ESP32-S3 / supply |
+| Device | Module pins | Connection |
 | --- | --- | --- |
-| OLED SSD1306 | SDA / SCL | **GPIO1 / GPIO2** |
-| OLED SSD1306 | VCC / GND | **3V3 / GND** |
-| Microphone MS3625 | SCK / WS / SD | **GPIO21 / GPIO47 / GPIO41** |
-| Microphone MS3625 | VDD / GND / L/R | **3V3 / GND / GND** |
-| Amplifier MAX98357A | BCLK / LRC / DIN | **GPIO21 / GPIO47 / GPIO42** |
-| Amplifier MAX98357A | VIN / GND | **5V / GND** |
-| Speaker 4 Ω / 3 W | Positive / negative | **MAX98357A OUT+ / OUT-** |
+| **SSD1306 OLED** | SDA / SCL | GPIO1 / GPIO2 |
+| | VCC / GND | 3V3 / GND |
+| **MS3625 microphone** | SCK / WS / SD | GPIO21 / GPIO47 / GPIO41 |
+| | VDD / GND / L/R | 3V3 / GND / GND |
+| **MAX98357A amplifier** | BCLK / LRC / DIN | GPIO21 / GPIO47 / GPIO42 |
+| | VIN / GND | 5V / GND |
+| | GAIN / SD | Leave unconnected in the confirmed HW04 reference |
+| **4 Ω / 3 W speaker** | + / − | MAX98357A OUT+ / OUT− (not GND) |
 
-**Important:** the microphone and amplifier intentionally **share the same I2S BCLK (GPIO21) and WS (GPIO47)**. The microphone supplies RX data on GPIO41; amplifier output data uses GPIO42.
+**Shared I2S signals:** the microphone and amplifier use the same BCLK (**GPIO21**) and WS (**GPIO47**). Microphone data enters through **GPIO41**; amplifier data leaves through **GPIO42**. The speaker must connect across the amplifier outputs; neither lead goes to GND.
 
-## MAX98357A — seven-pin header, as documented for HW04
+The confirmed MAX98357A **seven-pin header order** is `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Always confirm labels on the specific breakout board before applying power.
 
-| Header order | Pin | Connection |
-| ---: | --- | --- |
-| 1 | `LRC` | GPIO47 |
-| 2 | `BCLK` | GPIO21 |
-| 3 | `DIN` | GPIO42 |
-| 4 | `GAIN` | Leave unconnected in the HW04 reference assembly |
-| 5 | `SD` | Leave unconnected in the HW04 reference assembly |
-| 6 | `GND` | GND |
-| 7 | `VIN` | 5V |
+## OV5640 camera
 
-Connect the speaker **between `OUT+` and `OUT-` only**. Do **not** connect either speaker lead to ground. Confirm the exact module's printed pin labels before applying power.
+Attach the OV5640 using the controller board's **dedicated camera connector**, not individual jumper wires.
 
-## OV5640 camera connection
+| Signal | GPIO | Signal | GPIO |
+| --- | ---: | --- | ---: |
+| XCLK | 15 | SCCB SDA / SCL | 4 / 5 |
+| D0 / D1 / D2 / D3 | 11 / 9 / 8 / 10 | D4 / D5 / D6 / D7 | 12 / 18 / 17 / 16 |
+| VSYNC / HREF / PCLK | 6 / 7 / 13 | PWDN / RESET | −1 / −1 (not assigned) |
 
-The OV5640 connects to the controller board's **dedicated camera connector**; it is not intended to be rewired as individual jumper cables during normal HW04 assembly.
+The previously validated camera orientation is **−90° / 270°**.
 
-| Camera signal | GPIO |
-| --- | ---: |
-| XCLK | 15 |
-| SCCB SDA / SCL | 4 / 5 |
-| D0 / D1 / D2 / D3 | 11 / 9 / 8 / 10 |
-| D4 / D5 / D6 / D7 | 12 / 18 / 17 / 16 |
-| VSYNC / HREF / PCLK | 6 / 7 / 13 |
-| PWDN / RESET | -1 / -1 (not assigned in this board map) |
+## Constraints and validation
 
-## USB and port identification
+- **GPIO26–37:** reserved for Flash/PSRAM-related functions in the HW04 pin policy; GPIO35–37 are used by octal PSRAM.
+- **GPIO39/40:** JTAG/debug functions. These are not approved for the proposed motor controls.
+- **GPIO0/3/45/46**, native USB and camera pins: reserved or assigned to boot and board functions.
+- The current firmware includes I2S microphone RX and OLED support. Earlier notes stating otherwise describe superseded diagnostic revisions.
+- V1.7.04 validated camera, microphone, playback and local WebRTC on HW04 and introduced I2S resource arbitration. These records do not replace a consolidated V1.8S release test.
+- Motors and servos require their **own driver and power design**. Proposed motion controls are tracked in the [Roadmap](../01-history-roadmap/ROADMAP.md), not defined by this wiring map.
 
-The development reference reported **COM6 for flashing** and **COM4 for panel/Serial commands**. These are **historical Windows port assignments**. Discover the actual COM ports on each computer and select them in the installer or panel; the numbers are not fixed.
+**Sources of truth:** [`hardware/pinmap.json`](../../hardware/pinmap.json), [generated firmware definitions](../../firmware/core/jr_pinmap_fixed.h), [pin policy tests](../../tests/hardware/test_pin_policy.py), and the [original assembly confirmation](../../hardware/CONFIRMAR_MONTAGEM.txt).
 
-## Safety and constraints
-
-- Disconnect USB/power before connecting or moving wires. Inspect supply voltage, common ground, orientation and shorts before powering on.
-- Do not power motors or servos directly from the ESP32-S3's 3V3 rail.
-- Camera, flash/PSRAM, USB and boot pins already have reserved functions. Do not reassign them without a pin-policy review.
-- GPIO35–37 are used internally for octal PSRAM on N16R8. GPIO39/40 belong to the JTAG/debug group and are **not approved motor-control choices in the current plan**.
-- **No motor wiring is part of the confirmed HW04 build.** Proposed movement pins belong in the [Roadmap](../01-history-roadmap/ROADMAP.md), not in this assembly reference.
-
-See the [HW04 Hardware Reference](HARDWARE_HW04.md) for module notes and [Assembly Guide](ASSEMBLY_GUIDE.md) for the order of work.
+For a practical build sequence, see the [Assembly Guide](ASSEMBLY_GUIDE.md).

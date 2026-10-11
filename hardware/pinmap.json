@@ -67,15 +67,10 @@
     45,
     46
   ],
-  "ports_reported_by_owner": {
-    "flash": "COM6",
-    "panel": "COM4"
-  },
   "notes": [
     "GPIO21 and GPIO47 are shared I2S clock signals for microphone and amplifier.",
     "GPIO41 receives microphone SD; GPIO42 sends DOUT to MAX98357A DIN.",
     "The current firmware includes the I2S microphone RX driver; earlier headless-stage notes are obsolete.",
-    "OLED remains on GPIO1/2 and is enabled by the current HW04 board profile.",
-    "COM6 (flash) and COM4 (panel) are example Windows ports observed on the reference PC; enumerate ports on each host."
+    "OLED remains on GPIO1/2 and is enabled by the current HW04 board profile."
   ]
 }
