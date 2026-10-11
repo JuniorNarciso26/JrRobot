@@ -2,9 +2,9 @@
 
 Prova isolada da Issue [#33](https://github.com/JuniorNarciso26/JrRobot/issues/33), exclusivamente em `V1s-00`.
 
-Arquitetura, limites, evidências e plano de teste: [docs/JRSKILL_SOLANA_STAGE2.md](../../docs/JRSKILL_SOLANA_STAGE2.md).
+Arquitetura, limites, evidências e plano de teste: [docs/05-jrskill-network/JRSKILL_SOLANA_STAGE2.md](../../docs/05-jrskill-network/JRSKILL_SOLANA_STAGE2.md).
 
-Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill nem resolve Recipes. A extensão comercial License PDA 00 está implementada, compilada, testada localmente e atualizada na Devnet; a primeira compra CLI com repasses e licença foi confirmada em 05/10/2026. Compra pelo painel e demais casos Devnet continuam pendentes. Scripts/crate identificam a entrega como 0.2.0; o upgrade foi publicado com metadados 0.1.0. Procedimento e limites: [checkpoint da compra 00](../../docs/JRSKILL_LICENSE_MODEL_00_TEST.md).
+Este diretório armazena e recupera os bytes do JSON v1 já existente. Não executa a Skill nem resolve Recipes. A extensão comercial License PDA 00 está implementada, compilada, testada localmente e atualizada na Devnet; a primeira compra CLI com repasses e licença foi confirmada em 05/10/2026. Compra pelo painel e demais casos Devnet continuam pendentes. Scripts/crate identificam a entrega como 0.2.0; o upgrade foi publicado com metadados 0.1.0. Procedimento e limites: [checkpoint da compra 00](../../docs/05-jrskill-network/JRSKILL_LICENSE_MODEL_00_TEST.md).
 
 **Etapa 2 validada na Devnet em 2026-09-30:** publicação e leitura independente de 128 bytes, com `byte_equal: true`. Program ID: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. PDA: `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux`. As evidências completas estão no documento da Etapa 2.
 
@@ -104,7 +104,7 @@ Para demonstração pública, use o verificador independente:
 node scripts/verify-public.mjs
 ```
 
-Ele exige apenas Node.js 20+ e HTTPS para a RPC Devnet, sem wallet, chave privada, npm, IDL ou JSON local. Consulta a conta pública, valida o layout/hash do checkpoint e imprime o JSON recebido da blockchain. Comandos para qualquer diretório/servidor e saída esperada estão na seção [Public reproducible proof do Day 3](../../docs/HACKATHON_DEVLOG/day3.md#public-reproducible-proof--read-the-skill-without-a-wallet). O script é específico da prova congelada da Etapa 2.
+Ele exige apenas Node.js 20+ e HTTPS para a RPC Devnet, sem wallet, chave privada, npm, IDL ou JSON local. Consulta a conta pública, valida o layout/hash do checkpoint e imprime o JSON recebido da blockchain. Comandos para qualquer diretório/servidor e saída esperada estão na seção [Public reproducible proof do Day 3](../../docs/06-historico-colosseum/HACKATHON_DEVLOG/day3.md#public-reproducible-proof--read-the-skill-without-a-wallet). O script é específico da prova congelada da Etapa 2.
 
 Envie versões das ferramentas, commit testado, Program ID, public key da authority, PDA, assinatura, `payload_bytes`, `payload_hash`, `byte_equal`, resultados dos testes e logs de erro (se houver). Não envie conteúdo de keypair ou seed phrase.
 

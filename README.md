@@ -17,7 +17,7 @@ See. Hear. Speak. Connect. Express.
 [Build your own](#build-your-own-jrbot) ·
 [JrSkill Network](#jrskill-network--the-jrbot-skills-ecosystem) ·
 [Documentation](docs/README.md) ·
-[Roadmap](docs/ROADMAP.md) ·
+[Roadmap](docs/01-historia-roadmap/ROADMAP.md) ·
 [Contribute](CONTRIBUTING.md)
 
 </div>
@@ -55,7 +55,7 @@ The initial Creator Studio, Store, licensing and Skill execution flow have been 
 
 ### Current limitations
 
-Live communication currently works on the local network. Remote Internet connectivity and audio/video improvements remain planned for future versions. See [Testing](docs/TESTING.md) and [Project status](docs/PROJECT_STATUS.md).
+Live communication currently works on the local network. Remote Internet connectivity and audio/video improvements remain planned for future versions. See [Testing](docs/04-firmware-desenvolvimento/TESTING.md) and [Project status](docs/01-historia-roadmap/PROJECT_STATUS.md).
 
 ## Build your own JrBot
 
@@ -63,7 +63,7 @@ JrBot is designed so technology enthusiasts can build their own robot using **wi
 
 At its heart is an **ESP32-S3 CAM (N16R8)** board with an **OV5640 camera**. It uses the familiar **MS3625 microphone** and **MAX98357A audio amplifier** for sound, while a small **SSD1306 OLED display** brings its expressions to life.
 
-**Want to build your own JrBot?** Explore the [parts list](docs/MATERIAIS.md) and [wiring guide](docs/ESQUEMA_LIGACAO.md).
+**Want to build your own JrBot?** Explore the [parts list](docs/02-montagem/MATERIAIS.md) and [wiring guide](docs/02-montagem/ESQUEMA_LIGACAO.md).
 
 ## JrSkill Network — The JrBot Skills Ecosystem
 
@@ -91,9 +91,9 @@ Skills run through approved robot operations rather than unrestricted access to 
 
 That first stage is complete. Work now continues on expanding the Skill development and publishing platform. **Devnet validation is not a claim of a live Solana Mainnet marketplace.**
 
-**Want to see how we built JrSkill Network?** Follow the complete [Colosseum 2026 development diary — Kickoff and Day 1–9](docs/HACKATHON_DEVLOG.md), including tests, screenshots and physical validation.
+**Want to see how we built JrSkill Network?** Follow the complete [Colosseum 2026 development diary — Kickoff and Day 1–9](docs/06-historico-colosseum/HACKATHON_DEVLOG.md), including tests, screenshots and physical validation.
 
-[Explore the JrSkill Store](https://jrbot.com.br/en/store/) · [JrSkill technical documentation](docs/JRSKILL_API.md) · [Colosseum project](https://colosseum.com/arena/projects/jrskill-network)
+[Explore the JrSkill Store](https://jrbot.com.br/en/store/) · [JrSkill technical documentation](docs/05-jrskill-network/JRSKILL_API.md) · [Colosseum project](https://colosseum.com/arena/projects/jrskill-network)
 
 ## Project status and roadmap
 
@@ -107,7 +107,7 @@ That first stage is complete. Work now continues on expanding the Skill developm
 | **JrBot V3** | Programmatic control and Runtime API evolution — planned |
 | **JrBrain** | Memory, personality, context and AI — future vision |
 
-Explore the full [project roadmap](docs/ROADMAP.md). The [Colosseum 2026 development diary](docs/HACKATHON_DEVLOG.md) preserves the history of the JrSkill upgrade.
+Explore the full [project roadmap](docs/01-historia-roadmap/ROADMAP.md). The [Colosseum 2026 development diary](docs/06-historico-colosseum/HACKATHON_DEVLOG.md) preserves the history of the JrSkill upgrade.
 
 ## Contributing and documentation
 
@@ -115,7 +115,7 @@ JrBot welcomes contributions in ESP32-S3 firmware, hardware, audio/WebRTC, camer
 
 Start with the [Contribution Guide](CONTRIBUTING.md) and [open Issues](https://github.com/JuniorNarciso26/JrRobot/issues). Describe the change, evidence and any missing physical tests in a Pull Request.
 
-**Documentation:** [Index](docs/README.md) · [Architecture](docs/ARCHITECTURE.md) · [Development](docs/DEVELOPMENT.md) · [Testing](docs/TESTING.md) · [Runtime API](docs/API_RUNTIME.md) · [Changelog](docs/CHANGELOG.md)
+**Documentation:** [Index](docs/README.md) · [Architecture](docs/04-firmware-desenvolvimento/ARCHITECTURE.md) · [Development](docs/04-firmware-desenvolvimento/DEVELOPMENT.md) · [Testing](docs/04-firmware-desenvolvimento/TESTING.md) · [Runtime API](docs/04-firmware-desenvolvimento/API_RUNTIME.md) · [Changelog](docs/01-historia-roadmap/CHANGELOG.md)
 
 ## License
 

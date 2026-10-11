@@ -9,11 +9,11 @@ O projeto combina firmware embarcado, hardware, áudio, visão, WebRTC, interfac
 Leia:
 
 1. [Documentação](docs/README.md)
-2. [Estado do projeto](docs/PROJECT_STATUS.md)
-3. [Roadmap](docs/ROADMAP.md)
-4. [Arquitetura](docs/ARCHITECTURE.md)
-5. [Desenvolvimento](docs/DEVELOPMENT.md)
-6. [Testes](docs/TESTING.md)
+2. [Estado do projeto](docs/01-historia-roadmap/PROJECT_STATUS.md)
+3. [Roadmap](docs/01-historia-roadmap/ROADMAP.md)
+4. [Arquitetura](docs/04-firmware-desenvolvimento/ARCHITECTURE.md)
+5. [Desenvolvimento](docs/04-firmware-desenvolvimento/DEVELOPMENT.md)
+6. [Testes](docs/04-firmware-desenvolvimento/TESTING.md)
 
 ## Branches oficiais
 
@@ -95,7 +95,7 @@ GPIOs compartilhados, alimentação e conflitos de periféricos precisam ser doc
 
 ## Níveis de evidência
 
-Use os níveis definidos em [docs/TESTING.md](docs/TESTING.md):
+Use os níveis definidos em [docs/04-firmware-desenvolvimento/TESTING.md](docs/04-firmware-desenvolvimento/TESTING.md):
 
 - planejado;
 - implementado;
