@@ -2,22 +2,56 @@
 
 **JRBOT-HW-04** uses an ESP32-S3 N16R8 (16 MB Flash, 8 MB PSRAM), OV5640 camera, SSD1306 OLED, MS3625 microphone and MAX98357A amplifier. This file is the **single human-readable reference** for HW04 electrical connections and constraints.
 
-## Electrical connections — grouped by accessory
+## Electrical connections
 
-Each row contains **all connections for one component**. Follow the pin names printed on your actual module.
+Connect each accessory according to its own pin list. **Disconnect power before wiring.** Check the printed pin labels on your modules.
 
-| Accessory | Signal connections | Power and other connections |
-| --- | --- | --- |
-| **SSD1306 OLED** | `SDA` → **GPIO1**; `SCL` → **GPIO2** | `VCC` → **3V3**; `GND` → **GND** |
-| **MS3625 microphone** | `SCK` → **GPIO21**; `WS` → **GPIO47**; `SD` → **GPIO41** | `VDD` → **3V3**; `GND` → **GND**; `L/R` → **GND** |
-| **MAX98357A amplifier** | `BCLK` → **GPIO21**; `LRC` → **GPIO47**; `DIN` → **GPIO42** | `VIN` → **5V**; `GND` → **GND**; **leave `GAIN` and `SD` disconnected** |
-| **Speaker (4 Ω / 3 W)** | Speaker `+` → amplifier **OUT+**; speaker `−` → amplifier **OUT−** | **Never connect either speaker lead to GND** |
+### 1. OLED — SSD1306
 
-**Important wiring notes**
+| OLED pin | Connect to |
+| --- | --- |
+| `SDA` | **GPIO1** |
+| `SCL` | **GPIO2** |
+| `VCC` | **3V3** |
+| `GND` | **GND** |
 
-- **I2S clock sharing:** the microphone and amplifier use the same **GPIO21 (BCLK/SCK)** and **GPIO47 (WS/LRC)**. Microphone data enters through **GPIO41**; amplifier data leaves through **GPIO42**.
-- **MAX98357A header order (HW04 reference):** `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Check the markings on your actual amplifier board; do not assume every breakout uses this order.
-- **Disconnect USB/power** before connecting or adjusting modules, and verify their voltage ratings before powering on.
+### 2. Microphone — MS3625 (I2S)
+
+| Microphone pin | Connect to |
+| --- | --- |
+| `SCK` | **GPIO21** |
+| `WS` | **GPIO47** |
+| `SD` | **GPIO41** |
+| `VDD` | **3V3** |
+| `GND` | **GND** |
+| `L/R` | **GND** |
+
+### 3. Amplifier — MAX98357A (I2S)
+
+| Amplifier pin | Connect to |
+| --- | --- |
+| `LRC` | **GPIO47** |
+| `BCLK` | **GPIO21** |
+| `DIN` | **GPIO42** |
+| `GAIN` | **Not connected** |
+| `SD` | **Not connected** |
+| `GND` | **GND** |
+| `VIN` | **5V** |
+
+**HW04 seven-pin order:** `LRC → BCLK → DIN → GAIN → SD → GND → VIN`. Use the pin labels on your actual board; layouts can vary.
+
+### 4. Speaker — 4 Ω / 3 W
+
+| Speaker terminal | Connect to |
+| --- | --- |
+| `+` | Amplifier **OUT+** |
+| `−` | Amplifier **OUT−** |
+
+**Warning:** Never connect either speaker terminal to GND.
+
+### Shared I2S signals
+
+The microphone and amplifier share **GPIO21 (BCLK/SCK)** and **GPIO47 (WS/LRC)**. The microphone sends data through **GPIO41**, while the amplifier receives data through **GPIO42**. This sharing is intentional in HW04.
 
 ## OV5640 camera
 
