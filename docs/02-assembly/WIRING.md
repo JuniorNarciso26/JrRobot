@@ -2,35 +2,22 @@
 
 **JRBOT-HW-04** uses an ESP32-S3 N16R8 (16 MB Flash, 8 MB PSRAM), OV5640 camera, SSD1306 OLED, MS3625 microphone and MAX98357A amplifier. This file is the **single human-readable reference** for HW04 electrical connections and constraints.
 
-## Electrical connections
+## Electrical connections — grouped by accessory
 
-Connect **one module pin to the destination shown on each row**. The component names repeat intentionally so that each wire can be checked independently.
+Each row contains **all connections for one component**. Follow the pin names printed on your actual module.
 
-| Component | Pin on module | Connect to |
+| Accessory | Signal connections | Power and other connections |
 | --- | --- | --- |
-| **SSD1306 OLED** | `SDA` | ESP32-S3 **GPIO1** |
-| SSD1306 OLED | `SCL` | ESP32-S3 **GPIO2** |
-| SSD1306 OLED | `VCC` | **3V3** |
-| SSD1306 OLED | `GND` | **GND** |
-| **MS3625 microphone** | `SCK` | ESP32-S3 **GPIO21** |
-| MS3625 microphone | `WS` | ESP32-S3 **GPIO47** |
-| MS3625 microphone | `SD` | ESP32-S3 **GPIO41** |
-| MS3625 microphone | `VDD` | **3V3** |
-| MS3625 microphone | `GND` | **GND** |
-| MS3625 microphone | `L/R` | **GND** |
-| **MAX98357A amplifier** | `BCLK` | ESP32-S3 **GPIO21** |
-| MAX98357A amplifier | `LRC` | ESP32-S3 **GPIO47** |
-| MAX98357A amplifier | `DIN` | ESP32-S3 **GPIO42** |
-| MAX98357A amplifier | `VIN` | **5V** |
-| MAX98357A amplifier | `GND` | **GND** |
-| MAX98357A amplifier | `GAIN` | **Not connected** (HW04 reference) |
-| MAX98357A amplifier | `SD` | **Not connected** (HW04 reference) |
-| **4 Ω / 3 W speaker** | Speaker `+` | Amplifier **OUT+** |
-| 4 Ω / 3 W speaker | Speaker `−` | Amplifier **OUT−** |
+| **SSD1306 OLED** | `SDA` → **GPIO1**; `SCL` → **GPIO2** | `VCC` → **3V3**; `GND` → **GND** |
+| **MS3625 microphone** | `SCK` → **GPIO21**; `WS` → **GPIO47**; `SD` → **GPIO41** | `VDD` → **3V3**; `GND` → **GND**; `L/R` → **GND** |
+| **MAX98357A amplifier** | `BCLK` → **GPIO21**; `LRC` → **GPIO47**; `DIN` → **GPIO42** | `VIN` → **5V**; `GND` → **GND**; **leave `GAIN` and `SD` disconnected** |
+| **Speaker (4 Ω / 3 W)** | Speaker `+` → amplifier **OUT+**; speaker `−` → amplifier **OUT−** | **Never connect either speaker lead to GND** |
 
-**Shared I2S signals:** the microphone and amplifier use the same BCLK (**GPIO21**) and WS (**GPIO47**). Microphone data enters through **GPIO41**; amplifier data leaves through **GPIO42**. The speaker must connect across the amplifier outputs; neither lead goes to GND.
+**Important wiring notes**
 
-The confirmed MAX98357A **seven-pin header order** is `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Always confirm labels on the specific breakout board before applying power.
+- **I2S clock sharing:** the microphone and amplifier use the same **GPIO21 (BCLK/SCK)** and **GPIO47 (WS/LRC)**. Microphone data enters through **GPIO41**; amplifier data leaves through **GPIO42**.
+- **MAX98357A header order (HW04 reference):** `LRC, BCLK, DIN, GAIN, SD, GND, VIN`. Check the markings on your actual amplifier board; do not assume every breakout uses this order.
+- **Disconnect USB/power** before connecting or adjusting modules, and verify their voltage ratings before powering on.
 
 ## OV5640 camera
 
@@ -57,11 +44,20 @@ Attach the OV5640 using the controller board's **dedicated camera connector**, n
 
 The previously validated camera orientation is **−90° / 270°**.
 
-## Constraints and validation
+## Reserved pins — do not repurpose for other accessories
 
-- **GPIO26–37:** reserved for Flash/PSRAM-related functions in the HW04 pin policy; GPIO35–37 are used by octal PSRAM.
-- **GPIO39/40:** JTAG/debug functions. These are not approved for the proposed motor controls.
-- **GPIO0/3/45/46**, native USB and camera pins: reserved or assigned to boot and board functions.
+These restrictions apply to the **JRBOT-HW-04** reference design:
+
+| Pins | Reserved use / warning |
+| --- | --- |
+| **GPIO26–37** | **Flash/PSRAM:** keep reserved; GPIO35–37 are used by octal PSRAM on N16R8. |
+| **GPIO0, 3, 45, 46** | **Boot/strapping:** do not reuse for new HW04 accessories without hardware review. |
+| **GPIO19, 20** | **Native USB:** do not repurpose while using the board's USB functions. |
+| **GPIO43, 44** | **UART0:** preserve for Serial/diagnostic functions in the HW04 reference. |
+| **GPIO39, 40** | **JTAG/debug:** not approved for the proposed motor controls. |
+| **Camera, OLED and I2S GPIOs listed above** | Already allocated: do not reuse for another module without a pin-policy review. |
+
+### Hardware validation and additional cautions
 - The current firmware includes I2S microphone RX and OLED support. Earlier notes stating otherwise describe superseded diagnostic revisions.
 - V1.7.04 validated camera, microphone, playback and local WebRTC on HW04 and introduced I2S resource arbitration. These records do not replace a consolidated V1.8S release test.
 - Motors and servos require their **own driver and power design**. Proposed motion controls are tracked in the [Roadmap](../01-history-roadmap/ROADMAP.md), not defined by this wiring map.
