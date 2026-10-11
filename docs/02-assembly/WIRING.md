@@ -4,16 +4,29 @@
 
 ## Electrical connections
 
-| Device | Module pins | Connection |
+Connect **one module pin to the destination shown on each row**. The component names repeat intentionally so that each wire can be checked independently.
+
+| Component | Pin on module | Connect to |
 | --- | --- | --- |
-| **SSD1306 OLED** | SDA / SCL | GPIO1 / GPIO2 |
-| | VCC / GND | 3V3 / GND |
-| **MS3625 microphone** | SCK / WS / SD | GPIO21 / GPIO47 / GPIO41 |
-| | VDD / GND / L/R | 3V3 / GND / GND |
-| **MAX98357A amplifier** | BCLK / LRC / DIN | GPIO21 / GPIO47 / GPIO42 |
-| | VIN / GND | 5V / GND |
-| | GAIN / SD | Leave unconnected in the confirmed HW04 reference |
-| **4 Ω / 3 W speaker** | + / − | MAX98357A OUT+ / OUT− (not GND) |
+| **SSD1306 OLED** | `SDA` | ESP32-S3 **GPIO1** |
+| SSD1306 OLED | `SCL` | ESP32-S3 **GPIO2** |
+| SSD1306 OLED | `VCC` | **3V3** |
+| SSD1306 OLED | `GND` | **GND** |
+| **MS3625 microphone** | `SCK` | ESP32-S3 **GPIO21** |
+| MS3625 microphone | `WS` | ESP32-S3 **GPIO47** |
+| MS3625 microphone | `SD` | ESP32-S3 **GPIO41** |
+| MS3625 microphone | `VDD` | **3V3** |
+| MS3625 microphone | `GND` | **GND** |
+| MS3625 microphone | `L/R` | **GND** |
+| **MAX98357A amplifier** | `BCLK` | ESP32-S3 **GPIO21** |
+| MAX98357A amplifier | `LRC` | ESP32-S3 **GPIO47** |
+| MAX98357A amplifier | `DIN` | ESP32-S3 **GPIO42** |
+| MAX98357A amplifier | `VIN` | **5V** |
+| MAX98357A amplifier | `GND` | **GND** |
+| MAX98357A amplifier | `GAIN` | **Not connected** (HW04 reference) |
+| MAX98357A amplifier | `SD` | **Not connected** (HW04 reference) |
+| **4 Ω / 3 W speaker** | Speaker `+` | Amplifier **OUT+** |
+| 4 Ω / 3 W speaker | Speaker `−` | Amplifier **OUT−** |
 
 **Shared I2S signals:** the microphone and amplifier use the same BCLK (**GPIO21**) and WS (**GPIO47**). Microphone data enters through **GPIO41**; amplifier data leaves through **GPIO42**. The speaker must connect across the amplifier outputs; neither lead goes to GND.
 
@@ -23,11 +36,24 @@ The confirmed MAX98357A **seven-pin header order** is `LRC, BCLK, DIN, GAIN, SD,
 
 Attach the OV5640 using the controller board's **dedicated camera connector**, not individual jumper wires.
 
-| Signal | GPIO | Signal | GPIO |
-| --- | ---: | --- | ---: |
-| XCLK | 15 | SCCB SDA / SCL | 4 / 5 |
-| D0 / D1 / D2 / D3 | 11 / 9 / 8 / 10 | D4 / D5 / D6 / D7 | 12 / 18 / 17 / 16 |
-| VSYNC / HREF / PCLK | 6 / 7 / 13 | PWDN / RESET | −1 / −1 (not assigned) |
+| Camera signal | ESP32-S3 GPIO |
+| --- | ---: |
+| `XCLK` | 15 |
+| `SCCB SDA` | 4 |
+| `SCCB SCL` | 5 |
+| `D0` | 11 |
+| `D1` | 9 |
+| `D2` | 8 |
+| `D3` | 10 |
+| `D4` | 12 |
+| `D5` | 18 |
+| `D6` | 17 |
+| `D7` | 16 |
+| `VSYNC` | 6 |
+| `HREF` | 7 |
+| `PCLK` | 13 |
+| `PWDN` | Not assigned (`-1`) |
+| `RESET` | Not assigned (`-1`) |
 
 The previously validated camera orientation is **−90° / 270°**.
 
