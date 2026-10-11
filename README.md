@@ -47,13 +47,11 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | **Connect** | Wi-Fi (DHCP, saved configuration and reconnection), responsive web interface, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
 
-### JrBot V1.8S firmware
+### What's new in JrBot V1.8S
 
-**JrBot V1.8S** brings together the robot's existing developed and validated capabilities, including camera, bidirectional audio, OLED expressions, connectivity and real-time control.
+**JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
 
-This version also integrates **JrSkill Network**, allowing users to acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
-
-The initial JrSkill Network stage has been completed and validated. **The new Skill development and publishing platform is under development**, expanding opportunities for creators and developers.
+The initial JrSkill Network integration has been completed and validated. **A new platform for developing and publishing Skills is under development**, expanding opportunities for creators and developers.
 
 ### Current limitations
 
