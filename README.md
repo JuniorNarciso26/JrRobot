@@ -97,15 +97,17 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-| Project line | Current status |
-| --- | --- |
-| **V1 — local control** | **`JrBot_V1.7.04`**, stable and physically validated |
-| **V1S — JrSkill / Solana** | **`JrBot_V1S_APP_03`**, Devnet MVP achieved on `V1s-00`; integration candidate |
-| **V2 — local voice** | Separate development line |
-| **V3 — programmatic control** | Future product line built on Runtime API |
-| **JrBrain** | Future memory, personality, context, LLM and Skills |
+**JrBot V1.8S** is the defined next version of JrBot, combining all existing robot capabilities with **JrSkill Network**. The robot functions and the Solana Devnet flow for acquiring, licensing and executing Skills have been validated. The `V1s-00` branch is being prepared for promotion to `main`.
 
-The `main` branch remains the reference for officially promoted releases; `V1s-00` preserves the complete Colosseum development history. **The next JrSkill development line will be planned separately.** See the [official roadmap](docs/ROADMAP.md) for the longer-term direction.
+| Project | Status |
+| --- | --- |
+| **JrBot V1.8S** | Integrated robot and JrSkill capabilities; preparing the official release |
+| **JrSkill development platform** | Expanding tools for creators to develop and publish new Skills |
+| **JrBot V2** | Local voice control — future development |
+| **JrBot V3** | Programmatic control and Runtime API evolution — planned |
+| **JrBrain** | Memory, personality, context and AI — future vision |
+
+Explore the full [project roadmap](docs/ROADMAP.md). The [Colosseum 2026 development diary](docs/HACKATHON_DEVLOG.md) preserves the history of the JrSkill upgrade.
 
 ## Contributing and documentation
 
