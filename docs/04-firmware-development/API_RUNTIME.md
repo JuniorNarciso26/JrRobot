@@ -1,88 +1,26 @@
 # JrBot Runtime API v1
 
-## Current contract
+The Runtime API is the firmware's **registered-function interface**. It does not execute arbitrary text or direct GPIO operations.
 
-Protocol on the stable `main` baseline:
+## Contract
 
-```text
-major protocol: 1
-implementation: 1.1
-```
+| Property | Value |
+| --- | --- |
+| Protocol major | `1` |
+| Implementation | `1.1` |
+| Stable registered functions | `capabilities`, `get`, `face` |
+| Response prefix | `JR_API ` |
+| Availability | Stable V1.7.04 baseline; V1.8S integration extends the wider ecosystem |
 
-The Runtime API separates clients and interfaces from the firmware's physical implementations. It accepts **registered functions only** and does not execute arbitrary text, native code, or direct GPIO commands.
+## Calls and parameters
 
-## Implemented functions
+| Function | Purpose | Arguments |
+| --- | --- | --- |
+| `capabilities` | Discover registered functions, paths, transports and feature flags | `{}` |
+| `get` | Read an allowed property | `{"path":"system.version"}` |
+| `face` | Set an expression using the OLED module | `{"expression":"happy"}` |
 
-The stable baseline registers:
-
-- `capabilities` — query.
-- `get` — query.
-- `face` — action.
-
-Dynamic discovery also reports available transports.
-
-## Request and response envelope
-
-Request:
-
-```json
-{
-  "v": 1,
-  "id": "req01",
-  "fn": "capabilities",
-  "args": {}
-}
-```
-
-Response:
-
-```text
-JR_API {"v":1,"ok":true,"id":"req01","result":{...}}
-```
-
-Errors use the same envelope with `ok=false`. The `id` field is optional and allows clients to correlate requests and responses.
-
-## Transports
-
-### Serial
-
-```text
-api {"v":1,"fn":"capabilities","args":{}}
-```
-
-### Local HTTP
-
-```text
-POST /cmd
-X-JrBot-Command: 1
-Content-Type: text/plain
-```
-
-Body:
-
-```text
-api {"v":1,"fn":"capabilities","args":{}}
-```
-
-The current HTTP command interface is intended for a trusted local network. The `X-JrBot-Command: 1` header is **not authentication** for public Internet exposure.
-
-## `capabilities`
-
-The response describes the API version, protocol, firmware, hardware, profile, functions, `get` paths, actions, transports, and flags for features that are not yet available.
-
-Stable baseline:
-
-```text
-functions = capabilities, get, face
-actions   = face
-persistent_config = false
-flow_engine       = false
-playground        = false
-```
-
-## `get`
-
-Registered paths:
+Available `get` paths:
 
 ```text
 api.version
@@ -97,50 +35,58 @@ wifi.status
 wifi.diagnostics
 ```
 
-Example:
+The exact supported OLED expressions are defined by the firmware's face renderer. Unknown values must return an error rather than bypass validation.
+
+## Request and response
+
+Example request:
 
 ```json
-{
-  "v": 1,
-  "fn": "get",
-  "args": { "path": "system.version" }
-}
+{"v":1,"id":"req01","fn":"face","args":{"expression":"happy"}}
 ```
 
-## `face`
+Example response envelope:
 
-The `face` action accepts expressions supported by the OLED renderer:
-
-```json
-{
-  "v": 1,
-  "fn": "face",
-  "args": { "expression": "happy" }
-}
+```text
+JR_API {"v":1,"ok":true,"id":"req01","result":{...}}
 ```
 
-This invokes only the registered firmware face module. Unknown expressions produce a structured error and do not authorize direct access to the display or GPIO.
+The optional `id` links a response to its request; failures use `ok=false` and a structured `error`.
 
-## Structured errors
+## Transports
+
+**Serial command:**
+
+```text
+api {"v":1,"fn":"capabilities","args":{}}
+```
+
+**Local HTTP command:**
+
+```text
+POST /cmd
+X-JrBot-Command: 1
+Content-Type: text/plain
+
+api {"v":1,"fn":"capabilities","args":{}}
+```
+
+**Security:** `X-JrBot-Command: 1` is a command indicator, **not an authentication mechanism**. The portal's local HTTP API must not be exposed directly to the Internet as a secure remote-control service.
+
+## Error codes
 
 | Code | Meaning |
 | --- | --- |
-| `invalid_json` | Invalid JSON body |
+| `invalid_json` | Cannot parse JSON |
 | `invalid_request` | Invalid request envelope |
-| `invalid_args` | Incompatible arguments |
-| `unsupported_version` | Unsupported major version |
-| `not_found` | Function/path unavailable |
-| `no_memory` | Allocation or serialization failure |
-| `response_too_large` | Response exceeds the buffer |
+| `invalid_args` | Arguments are incompatible |
+| `unsupported_version` | Unsupported protocol major |
+| `not_found` | Unknown function/path |
+| `no_memory` | Memory or serialization failure |
+| `response_too_large` | Buffer too small for the response |
 
-## Security
+## Capability negotiation
 
-The Runtime API enforces a function allowlist. Its contract does **not** permit arbitrary C/C++ execution, a shell, raw GPIO access, direct memory access, or unknown function names.
+The stable `capabilities` response reports `persistent_config=false`, `flow_engine=false`, and `playground=false`. Plans for those features in [Flows](FLOWS.md) and [Playground](PLAYGROUND.md) must **not** be mistaken for implemented Runtime API functions.
 
-These restrictions are also the foundation for future voice, JrBrain, and JrSkill Network integration.
-
-## Compatibility and evolution
-
-Compatible capabilities may continue to use `v=1`, and must appear in `capabilities()`. Breaking changes require a new major protocol version.
-
-Older candidate specifications and test plans were moved to `trash/`; they do not define the current contract.
+Maintain the major version for compatible additions and declare new functions in `capabilities()`. Breaking protocol changes require a new major version. No client may invoke unregistered functions, arbitrary code, a shell, raw GPIO or memory.

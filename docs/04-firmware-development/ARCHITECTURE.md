@@ -1,128 +1,79 @@
-# JrBot Architecture
+# JrBot Firmware Architecture
 
 ## Overview
 
-JrBot separates physical hardware, safe capabilities, and control interfaces.
+JrBot separates user interfaces, approved operations, resource coordination and physical modules.
 
 ```text
-Interfaces / App / Panel / future AI systems
-                  ↓
-         Controlled capabilities
-                  ↓
-        Modes / physical resources
-                  ↓
+Browser / JrBot App / development panel
+                  |
+          Approved operations
+                  |
+      Runtime API and Skill executor
+                  |
+        Mode / resource management
+                  |
                ESP32-S3
-      OLED · camera · audio · mic
+       OLED · OV5640 · I2S audio
 ```
 
-**Core rule:** an external layer must not have arbitrary access to GPIO, memory, or hardware drivers.
+External clients and Skills must not gain arbitrary access to native code, GPIO or memory.
 
-## Stable baseline — V1.7.04
+## Main firmware components
 
-### Local WebRTC
+| Component | Responsibility |
+| --- | --- |
+| **Camera** | OV5640 image capture and JPEG streaming |
+| **Face** | OLED expressions |
+| **Audio** | Microphone, playback, I2S RX/TX |
+| **Portal / Live** | Local browser interface, HTTPS signaling and WebRTC |
+| **Runtime API** | Structured requests restricted to registered functions |
+| **Mode Manager** | Logical operating mode and transitions |
+| **Resource Manager** | Ownership of shared I2S resources |
 
-Live uses one WebRTC session for bidirectional audio and camera JPEG:
+See [HW04 Wiring](../02-assembly/WIRING.md) for all GPIOs and electrical connections; they are intentionally not duplicated here.
+
+## Live WebRTC — V1.6.3/V1.7.04 baseline
 
 ```text
-OV5640 -> JPEG -> DataChannel/SCTP -> browser
-MS3625 -> I2S RX -> G.711A/PCMA -> RTP/SRTP -> browser
-browser -> RTP/SRTP -> G.711A/PCMA -> I2S TX -> MAX98357A
+OV5640 → JPEG → WebRTC DataChannel → browser
+MS3625 → I2S RX → G.711A/PCMA → WebRTC audio → browser
+browser → WebRTC audio → G.711A/PCMA → I2S TX → MAX98357A
 ```
 
-On HW04:
+The documented Live implementation operates on the **local network**. Audio input and output share I2S clocks on HW04. See [Project Status](../01-history-roadmap/PROJECT_STATUS.md) for current release context.
 
-- BCLK GPIO21.
-- WS/LRCLK GPIO47.
-- RX SD GPIO41.
-- TX DIN GPIO42.
+## Operating modes and resource ownership
 
-RX and TX operate simultaneously with shared BCLK/WS.
+| Manager | Defined values | Validated behavior |
+| --- | --- | --- |
+| `jr_mode_manager` | `IDLE`, `AUTONOMOUS`, `LIVE`, `RECORDING`, `PLAYBACK`, `DIAGNOSTIC` | `IDLE → LIVE → IDLE` on V1.7.04 |
+| `jr_resource_manager` | I2S owners `NONE`, `LIVE`, `MIC`, `PLAYBACK`, `LEGACY_VOICE` | I2S ownership acquisition/release and telemetry |
 
-### Mode Manager
+Drivers configure hardware; the resource manager arbitrates access and tracks busy, acquisition, release and mismatch events. A defined mode is **not** proof that all behavior for that mode has been physically validated.
 
-V1.7.04 implements a minimal `jr_mode_manager` to track the system's logical operating mode.
-
-Defined modes:
+## JrSkill integration — V1.8S
 
 ```text
-IDLE
-AUTONOMOUS
-LIVE
-RECORDING
-PLAYBACK
-DIAGNOSTIC
+Store / Solana Devnet license and Skill data
+                   ↓
+       Browser/App verification
+                   ↓
+      Approved local Skill execution
+                   ↓
+           Runtime API / capabilities
+                   ↓
+                 JrBot
 ```
 
-The main physically validated stable-baseline transition is `IDLE -> LIVE -> IDLE`.
+JrSkill uses **declarative, validated actions**, not uploaded native code. The Solana layer supports publishing and licensing; it does **not** replace the local executor. The first Devnet-to-robot execution flow was physically validated. See [JrSkill Network](../05-jrskill-network/README.md) for accounts, licensing, wallets and execution details.
 
-### Resource Manager
+## Technical boundaries
 
-The `jr_resource_manager` is the central authority for shared I2S ownership.
+- Only allowlisted functions and validated arguments may reach physical modules.
+- Shared audio resources must be acquired and released through the resource manager.
+- An invalid configuration must not make the robot unrecoverable.
+- Local command headers do not provide authentication suitable for public Internet exposure.
+- V2 offline-voice development remains a **separate workstream**, not an existing V1.8S capability.
 
-Defined owners:
-
-```text
-NONE
-MIC
-PLAYBACK
-LIVE
-LEGACY_VOICE
-```
-
-The manager tracks ownership and telemetry; individual drivers still configure their own physical channels.
-
-## Runtime API
-
-The Runtime API provides a structured contract for registered firmware functions. It allows the panel, tools, future applications, and other layers to reuse approved operations rather than gaining direct hardware access.
-
-Current contract: [Runtime API](API_RUNTIME.md).
-
-## V1S — JrSkill Network
-
-V1S introduced a new architecture separating **the behavior requested by a Skill** from **how the hardware carries it out**:
-
-```text
-Declarative Skill
-      ↓
-Safe Skill Executor
-      ↓
-Capability / Runtime API
-      ↓
-Physical JrBot hardware
-```
-
-The Solana-based layer represents publication, versions, distribution, and licensing; it does **not** replace the local safe executor.
-
-```text
-Solana
-   ↓
-Skill data / license
-   ↓
-Local validation
-   ↓
-Skill Executor
-   ↓
-Approved capabilities
-   ↓
-JrBot
-```
-
-The initial JrSkill flow was validated on Devnet as part of the next defined version, **JrBot V1.8S**. Its development evidence remains in `V1s-00` and the [Colosseum archive](../06-colosseum-history/README.md).
-
-## V2 — local voice
-
-The V2 development line explores local voice control using the same physical capabilities. ESP-SR/MultiNet and its specific resource conflicts belong to this workstream.
-
-## Security principles
-
-1. External content does not write GPIO directly.
-2. Available functions must be registered and allowlisted.
-3. Arguments must be validated before execution.
-4. Shared physical resources require explicit arbitration.
-5. State and build version must be observable through logs/status.
-6. Invalid configuration must not block basic robot recovery.
-7. Future remote connectivity requires an authentication and security architecture of its own.
-
-## Evolution
-
-The architecture should evolve additively. Validated protocols and modules should not be rewritten merely to accommodate a new experimental development line.
+For supported requests and errors, use [Runtime API](API_RUNTIME.md). For the distinction between compilation, simulation and physical tests, use [Testing](TESTING.md).

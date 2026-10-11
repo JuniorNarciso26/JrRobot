@@ -1,91 +1,47 @@
-# Testing and Validation
+# JrBot Testing and Validation
 
-JrBot is a physical robotics project. Successfully compiling firmware does **not** prove physical behavior.
+**A successful build, HTTP response or log entry is not proof of physical behavior.** Every report should state the evidence level.
 
 ## Evidence levels
 
-### 1. Planned
+| Level | What is verified |
+| --- | --- |
+| **Planned** | Design or documentation only |
+| **Implemented** | Code exists, but build is not confirmed |
+| **Build verified** | Firmware compiles for the intended target |
+| **Bench / simulated** | Logic exercised with a mock, simulator or diagnostic |
+| **Physically validated** | Behavior directly observed on real hardware |
 
-Only design or documentation exists.
+## What to observe
 
-### 2. Implemented
+| Feature | Required distinction |
+| --- | --- |
+| **OLED** | A successful `face` response is not sufficient; confirm the visible expression |
+| **Microphone** | Driver success does not prove audible captured audio; listen to the recording |
+| **Speaker** | `ESP_OK` does not prove sound was heard; record actual playback |
+| **Camera** | A valid JPEG does not establish correct focus, exposure or visual quality |
+| **Live WebRTC** | Observe video and both audio directions on the local network |
+| **Voice / wake word** | Simulated `brain_test` is not acoustic recognition; record spoken positive/negative trials |
+| **JrSkill** | A Devnet transaction or `result=ok` is not, on its own, proof that physical actions occurred |
 
-Code exists, without verified build or hardware behavior.
+## Voice experiment checklist
 
-### 3. Build verified
+For a real voice test, record the board/build and speech model; ensure the microphone is active; repeat the target phrase at different distances/volumes; include unrelated speech, noise and silence; record recognizer scores; confirm behavior and listening recovery; save logs; check for watchdogs or reboots.
 
-The project compiles and packages successfully for the intended target.
-
-### 4. Bench or simulated
-
-The logical path was exercised in simulation, through diagnostics, or with a mock.
-
-### 5. Physically validated
-
-The function was directly observed on real hardware.
-
-## Examples
-
-### Voice recognition
-
-Simulating a wake word through `brain_test` demonstrates integration with the brain/face path, **not** acoustic recognition.
-
-A log containing:
-
-```text
-name detected ... probability=...
-```
-
-during a real spoken test may support acoustic validation of that specific test.
-
-### Audio
-
-```text
-PLAY_RECORDING_END result=ESP_OK
-```
-
-confirms completion of the software/I2S path. To claim the sound was audible, record human confirmation during the physical test.
-
-### Camera
-
-A valid JPEG confirms digital capture but does not prove good focus, exposure, or visual quality.
-
-## Voice candidate checklist
-
-1. Confirm the board version.
-2. Confirm the loaded model.
-3. Confirm the microphone is active.
-4. Perform multiple real spoken trials.
-5. Record confidence/probability scores.
-6. Speak unrelated phrases.
-7. Test noise, television, and silence when relevant.
-8. Check audio responses.
-9. Confirm listening resumes afterward.
-10. Look for reboots and assertions.
-11. Save the full log.
-
-## Playground calibration
-
-A calibration session should distinguish actual positive spoken attempts, negative/background speech or noise, received candidates, confidence scores, and detections accepted by the selected configuration.
-
-Choose a threshold that balances false positives and false negatives based on actual hardware measurements.
-
-## Project criteria versus model guarantees
-
-Internal targets such as "8/10 detections and 0/20 false positives" may be used as project acceptance criteria, but they must be described as **JrBot targets**, not guarantees from ESP-SR.
+The planned [Playground](PLAYGROUND.md) should distinguish positive spoken trials from background/negative samples. Acceptance criteria such as "8 of 10 positive trials" must be described as **project targets**, never guarantees of the speech-recognition library.
 
 ## Minimum test report
 
 ```text
-Firmware:
-Hardware:
-Branch/commit:
 Date:
-Environment:
-Procedure:
+Firmware build / branch / commit:
+Hardware:
+Test procedure:
 Expected result:
 Observed result:
-Logs:
-Physical validation:
-Issues found:
+Evidence (logs, images, video):
+Evidence level:
+Known issues:
 ```
+
+For current release-readiness work, use [Project Status](../01-history-roadmap/PROJECT_STATUS.md) and the [Roadmap](../01-history-roadmap/ROADMAP.md).

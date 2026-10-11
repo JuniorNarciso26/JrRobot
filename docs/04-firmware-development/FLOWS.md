@@ -1,132 +1,55 @@
-# JrBot Flow Engine
+# JrBot Flow Engine — Future Design
 
-**Status: PLANNED / initial specification.**
+**Status: PLANNED.** This document specifies a possible local automation system. It does **not** claim that the Flow Engine is available in the stable Runtime API.
 
-Flows describe behavior without recompiling firmware.
-
-## Model
+## Concept
 
 ```text
-TRIGGER
-   ↓
-CONDITIONS
-   ↓
-ACTIONS
+TRIGGER → CONDITIONS → APPROVED ACTIONS
 ```
 
-Example:
+Illustrative behavior:
 
 ```text
-voice("JR BOT")
-confidence >= 0.58
--> face("happy")
--> say("hi")
--> wait(300)
--> listen()
+voice("JR BOT") when confidence >= 0.58
+→ face("happy") → say("hi") → wait(300) → listen()
 ```
 
-## Structured representation
+## Proposed structured format
 
 ```json
 {
   "schema": 1,
   "id": "wake_jrbot",
   "enabled": true,
-  "trigger": {
-    "fn": "voice",
-    "args": {
-      "phrase": "JR BOT",
-      "confidence": 0.58
-    }
-  },
+  "trigger": {"fn": "voice", "args": {"phrase": "JR BOT", "confidence": 0.58}},
   "actions": [
     {"fn": "face", "args": {"expression": "happy"}},
-    {"fn": "say", "args": {"content": "oi"}},
+    {"fn": "say", "args": {"content": "hi"}},
     {"fn": "wait", "args": {"ms": 300}},
     {"fn": "listen", "args": {}}
   ]
 }
 ```
 
-The JSON retains the original sample payload as historical data.
+This is a **design example**, not a currently executable contract.
 
-## Why structured JSON rather than arbitrary code?
+## Action and trigger plans
 
-Firmware must execute **registered, validated functions only**.
+| Type | Candidates |
+| --- | --- |
+| **Actions** | `face`, `say`, `play`, `wait`, `listen`, `stopListen`, `camera.capture` |
+| **Trigger** | `voice` |
+| **Possible future triggers** | Timer, sensor event, validated API/VPS event |
 
-Never:
+Each action would require a registry entry with argument types, allowed values, resources and version. Movement actions require separate hardware, limits and safety validation.
 
-```text
-receive text -> interpret C/Python -> write GPIO
-```
+## Constraints before implementation
 
-Always:
+- **Allowlist:** never execute arbitrary C, Python, shell commands or raw GPIO from Flow text.
+- **Nonblocking:** `wait` schedules a continuation; it must not block critical tasks.
+- **Concurrency:** define priorities, cancellation, timeout, failure handling and resource conflicts. One active local Flow at a time is the initial design preference.
+- **Events:** plan `flow.started`, `flow.finished`, `flow.error`, `action.started`, `action.finished`, and `action.error`.
+- **Versioning:** persist a `schema` version, reject unsupported data clearly, and preserve saved configuration for recovery.
 
-```text
-Flow -> action registry -> validation -> safe capability
-```
-
-## Action Registry
-
-Each function requires metadata.
-
-Conceptual example:
-
-```json
-{
-  "name": "face",
-  "version": 1,
-  "args": {"expression": "enum"},
-  "resource": "oled"
-}
-```
-
-This enables `capabilities()` and pre-save Flow validation.
-
-## Proposed initial actions
-
-- `face`
-- `say`
-- `play`
-- `wait`
-- `listen`
-- `stopListen`
-- `camera.capture`
-
-Movement actions may only be added after their physical drivers and limits are implemented and validated.
-
-## Proposed initial triggers
-
-- `voice`
-- Future: local timer.
-- Future: sensor event.
-- Future: safe event received through an API/VPS.
-
-## Execution
-
-The Flow Engine must not block critical tasks. `wait(5000)` means schedule the Flow's continuation, **not** suspend essential processing for five seconds.
-
-## Concurrency
-
-Before implementation, define whether one or multiple Flows can run simultaneously, priority, cancellation, timeout, conflicts over audio/camera/motors, and behavior on action failure.
-
-For the first release, **one local Flow at a time** is the simplest predictable choice.
-
-## Errors
-
-A Flow should emit structured events:
-
-```text
-flow.started
-flow.finished
-flow.error
-action.started
-action.finished
-action.error
-```
-
-When an action fails, explicitly define whether the Flow aborts, continues, or runs a fallback. The schema should express that policy.
-
-## Versioning
-
-Every persisted Flow must have a `schema` version. New firmware that cannot interpret an older schema must reject it clearly and preserve its saved configuration for recovery, rather than executing partially understood behavior.
+**Implementation and physical validation remain pending.** For the functions currently available, consult [Runtime API](API_RUNTIME.md).

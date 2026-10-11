@@ -1,145 +1,74 @@
-# JrBot Development Guide
+# JrBot Firmware Development Guide
 
-## Prerequisites
+Use this guide to prepare the environment, build and flash firmware, and submit changes. The [Architecture](ARCHITECTURE.md), [Runtime API](API_RUNTIME.md) and [Testing Guide](TESTING.md) cover their own subjects.
 
-- ESP-IDF 5.5.x for the current line.
-- Python available in the development environment.
-- Panel dependencies listed in `tools/jrbot_frontend/requirements.txt`.
-- `JRBOT-HW-04`-compatible hardware for physical validation.
+## Environment
 
-## Project branches
+| Component | Requirement |
+| --- | --- |
+| Firmware toolchain | **ESP-IDF 5.5.x** for the documented development line |
+| Target | ESP32-S3; **JRBOT-HW-04** for physical validation |
+| Panel | Python 3 and dependencies from `tools/jrbot_frontend/requirements.txt` |
+| Repository | Git and access to the selected branch |
+
+**Keep ESP-IDF and panel Python environments separate.** `PAINEL.bat` uses `%LOCALAPPDATA%\JrBot\panel-venv` through the Windows `py -3` launcher. Never install panel requirements into the ESP-IDF private `python_env`.
+
+An October 6, 2026 build failed because the panel had installed `cryptography 50.0.1` in the ESP-IDF 5.5.5 environment, which required `cryptography<45,>=2.1.4`. The isolated panel environment prevents recurrence. If ESP-IDF was already modified, repair its environment before building.
+
+## Branches
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Official stable release — `JrBot_V1.7.04` |
-| `develop` | Integration before the next promotion |
-| `V1s-00` | JrSkill Network / Solana integration and Colosseum development history |
-| `v2` | Local voice control |
+| `main` | Official stable release; most recently `JrBot_V1.7.04` |
+| `V1s-00` | Completed V1.8S development; documentation/release preparation |
+| `develop` | Integration baseline |
+| `v2` | Experimental local voice control |
 | `v1` | Historical V1 reference |
 
-`V1s-00` is a dedicated project development line, not an arbitrary temporary feature branch. Its integration into `main` must be explicitly approved and validated. The next planned product version is **JrBot V1.8S**.
+Do not push directly to `main`. Promotion requires explicit approval and release checks. For current release status, always use [Project Status](../01-history-roadmap/PROJECT_STATUS.md).
 
-## Standard development workflow
+## Build, flash and open the panel
 
-For work derived from the official baseline:
+From the repository root on Windows:
 
-```text
-IDEA
-→ RESEARCH
-→ ISSUE
-→ ARCHITECTURE
-→ ISOLATED BRANCH
-→ PROOF
-→ BUILD
-→ PHYSICAL TEST
-→ DOCUMENTATION
-→ develop
-→ main
+```bat
+INSTALAR.bat build
+INSTALAR.bat flash
+PAINEL.bat
 ```
 
-Avoid mixing unrelated experiments in one branch. `test/*` branches are laboratories and should not be promoted directly to `develop`. Once a proof works, clean the solution and integrate it through the appropriate reviewed branch.
+The installer can synchronize a chosen branch. Check **which branch and firmware identifier** are active before proceeding; select the USB/Serial port reported by your computer rather than assuming a fixed number.
 
-## Work on the integration baseline
-
-```bash
-git switch develop
-git pull --ff-only origin develop
-```
-
-New feature:
-
-```bash
-git switch -c feature/<name>
-```
-
-Hotfix:
-
-```bash
-git switch -c hotfix/<name>
-```
-
-## Work on JrSkill / Solana
+For manual branch preparation:
 
 ```bash
 git switch V1s-00
 git pull --ff-only origin V1s-00
 ```
 
-Do not copy experimental V1S changes into `main` or `develop` automatically. Preserve the original development evidence until integration is approved.
+Or use `develop` or `v2` only for work specific to those branches. A successful build proves compilation, **not** real-world behavior.
 
-## Work on local voice (V2)
-
-```bash
-git switch v2
-git pull --ff-only origin v2
-```
-
-The local voice workstream remains separate from the JrSkill workstream.
-
-## Hardware checks
-
-Before changing the pin map:
+## Change workflow
 
 ```text
+Issue → design → implementation → build → tests → documentation → review → approved promotion
+```
+
+Use a focused working branch when needed; do not create unrelated branches for the same feature. Keep experimental work away from `main` and avoid mixing V2 voice experiments with V1.8S release preparation.
+
+Before changing hardware pins:
+
+```bash
 python tools/generate_pinmap.py --check
 python tests/hardware/test_pin_policy.py
 ```
 
-The machine-readable source of truth remains `hardware/pinmap.json`.
+The authoritative pin map is `hardware/pinmap.json`; document changes in [Wiring](../02-assembly/WIRING.md).
 
-## Build
+## Documentation and Pull Requests
 
-```bat
-INSTALAR.bat build
-```
+Each change should record: purpose, affected modules, build and test results, **physical validation or explicit pending status**, known limitations, and links to its Issue/PR. Do not call a feature physically tested based on logs or simulations alone.
 
-A successful build proves **compilation**, not physical operation.
+For a public API, document functions, arguments, returns, errors and security constraints. For hardware changes, update the JSON pin map, generated definitions, wiring guide and tests. Maintain active documentation **in English** and preserve literal code, identifiers and JSON examples.
 
-## Flash
-
-```bat
-INSTALAR.bat flash
-```
-
-After flashing, confirm the exact firmware identifier in the device log/status.
-
-## Physical testing
-
-Record the installed build/version, scenario, observed behavior, relevant logs, result, and known limitations. Never treat an `ESP_OK` response, HTTP success, JPEG frame, or log message alone as proof of an observed physical outcome.
-
-## Pull Requests
-
-Every PR should document its purpose, related Issue when applicable, source branch and base, affected modules, hardware/resource impacts, build status, tests, physical validation, known limitations, and updated documentation.
-
-## Documentation updates
-
-When integrating a meaningful change, review the applicable files:
-
-- Root `README.md`.
-- `docs/01-history-roadmap/ROADMAP.md`.
-- `docs/01-history-roadmap/PROJECT_STATUS.md`.
-- `docs/04-firmware-development/ARCHITECTURE.md`.
-- `docs/01-history-roadmap/CHANGELOG.md`.
-- Any affected technical documents.
-
-Move obsolete material to `trash/` for review rather than immediately deleting its history.
-
-## Main repository structure
-
-```text
-firmware/
-  core/
-  main/
-  module_audio/
-  module_brain/
-  module_camera/
-  module_face/
-  module_portal/
-  module_runtime/
-
-tools/jrbot_frontend/
-hardware/
-docs/
-tests/
-trash/              archived material awaiting review
-```
+Update [Project Status](../01-history-roadmap/PROJECT_STATUS.md) only for the **current situation**, the [Changelog](../01-history-roadmap/CHANGELOG.md) for **completed changes**, and the [Roadmap](../01-history-roadmap/ROADMAP.md) for **future work**. Move outdated reference materials into `trash/` for review rather than erasing their history.
