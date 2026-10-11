@@ -2,6 +2,7 @@
 
 Referencias tecnicas do firmware, arquitetura e validacao do JrBot. Os documentos foram apenas organizados por assunto; uma revisao de conteudo sera feita depois.
 
+- [Estado técnico atual](PROJECT_STATUS.md)
 - [API_RUNTIME.md](API_RUNTIME.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEVELOPMENT.md](DEVELOPMENT.md)

@@ -55,7 +55,7 @@ The initial Creator Studio, Store, licensing and Skill execution flow have been 
 
 ### Current limitations
 
-Live communication currently works on the local network. Remote Internet connectivity and audio/video improvements remain planned for future versions. See [Testing](docs/04-firmware-desenvolvimento/TESTING.md) and [Project status](docs/01-historia-roadmap/PROJECT_STATUS.md).
+Live communication currently works on the local network. Remote Internet connectivity and audio/video improvements remain planned for future versions. See [Testing](docs/04-firmware-desenvolvimento/TESTING.md) and [Project status](docs/04-firmware-desenvolvimento/PROJECT_STATUS.md).
 
 ## Build your own JrBot
 

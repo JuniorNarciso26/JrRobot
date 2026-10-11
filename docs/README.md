@@ -4,7 +4,7 @@ Bem-vindo a documentacao tecnica do JrBot. Ela foi organizada por **assunto prin
 
 ## Areas
 
-1. **[Historia, versoes e roadmap](01-historia-roadmap/README.md)** — trajetoria do projeto, changelog, estado e proximos objetivos.
+1. **[História e planejamento do JrBot](01-historia-roadmap/README.md)** — evolução das versões e próximos objetivos.
 2. **[Montagem do JrBot](02-montagem/README.md)** — materiais, pinagem, ligacoes e revisao eletronica.
 3. **[Corpo e impressao 3D](03-impressao-3d/README.md)** — projeto mecanico e montagem do corpo; arquivos e instrucoes detalhadas ainda precisam ser reunidos.
 4. **[Firmware e desenvolvimento](04-firmware-desenvolvimento/README.md)** — instalacao, arquitetura, APIs, interfaces e validacao.

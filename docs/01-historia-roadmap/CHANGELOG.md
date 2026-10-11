@@ -1,8 +1,8 @@
-# Changelog do JrBot
+# Histórico de versões do JrBot
 
-Este arquivo registra as mudanças promovidas para a linha de integração do produto.
+Registro cronológico das entregas, decisões e validações documentadas. Os identificadores das builds são mantidos para rastreabilidade; o planejamento das próximas versões está no [Roadmap](ROADMAP.md).
 
-## JrSkill Network / Colosseum — MVP conquistado (2026-10-10)
+## JrSkill Network / Colosseum — etapa inicial concluída (2026-10-10)
 
 Marco do hackathon: após quase duas semanas, o JrBot passou a contar, na linha `V1s-00`, com um ecossistema de Skills declarativas e licenciadas via **Solana Devnet**:
 
@@ -15,7 +15,7 @@ Marco do hackathon: após quase duas semanas, o JrBot passou a contar, na linha 
 
 O registro do [Day 8](../06-historico-colosseum/HACKATHON_DEVLOG/day8.md) reúne transações, screenshots, compilação e testes; a execução física de `jrteste` foi confirmada pelo mantenedor em 07/10/2026. O [Day 9](../06-historico-colosseum/HACKATHON_DEVLOG/day9.md) formaliza a conquista do MVP e a visão de marketplace mundial.
 
-**Escopo:** MVP Devnet validado, não Mainnet ou lançamento comercial. A referência da release estável local continua sendo `JrBot_V1.7.04`. Esta integração documental não representa nova compilação nem novo teste físico; novas linhas de desenvolvimento dependerão de planejamento próprio.
+**Situação:** a integração inicial foi validada na Devnet e passou a compor a próxima versão definida, **JrBot V1.8S**. Isso não significa operação em Mainnet nem publicação da V1.8S na `main`. A build de referência desse marco continua identificada como `JrBot_V1S_APP_03`.
 
 
 ## JrBot_V1.7.04 — 2026-09-28

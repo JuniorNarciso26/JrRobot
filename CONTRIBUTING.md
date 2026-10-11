@@ -9,7 +9,7 @@ O projeto combina firmware embarcado, hardware, áudio, visão, WebRTC, interfac
 Leia:
 
 1. [Documentação](docs/README.md)
-2. [Estado do projeto](docs/01-historia-roadmap/PROJECT_STATUS.md)
+2. [Estado do projeto](docs/04-firmware-desenvolvimento/PROJECT_STATUS.md)
 3. [Roadmap](docs/01-historia-roadmap/ROADMAP.md)
 4. [Arquitetura](docs/04-firmware-desenvolvimento/ARCHITECTURE.md)
 5. [Desenvolvimento](docs/04-firmware-desenvolvimento/DEVELOPMENT.md)

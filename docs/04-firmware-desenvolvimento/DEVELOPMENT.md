@@ -145,7 +145,7 @@ Ao integrar trabalho relevante, revisar conforme o escopo:
 
 - `README.md`;
 - `docs/01-historia-roadmap/ROADMAP.md`;
-- `docs/01-historia-roadmap/PROJECT_STATUS.md`;
+- `docs/04-firmware-desenvolvimento/PROJECT_STATUS.md`;
 - `docs/04-firmware-desenvolvimento/ARCHITECTURE.md`;
 - `docs/01-historia-roadmap/CHANGELOG.md`;
 - documento técnico afetado.

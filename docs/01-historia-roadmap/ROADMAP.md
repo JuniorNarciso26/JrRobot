@@ -1,117 +1,45 @@
-# Roadmap oficial do JrBot
+# Planejamento e evolução do JrBot
 
-Atualizado em 2026-10-10 para documentar o marco JrSkill MVP.
+Este documento apresenta **o que foi concluído, o que está em integração e o que vem depois**. O detalhamento de cada versão fica no [Histórico de versões](CHANGELOG.md).
 
-## Baseline oficial
+## Evolução documentada
 
-A referência estável fisicamente validada para controle local é **`JrBot_V1.7.04`**. O MVP JrSkill usa o build experimental `JrBot_V1S_APP_03` e comprova um fluxo Devnet distinto de uma nova release Mainnet.
+| Versão | Entrega principal | Situação |
+| --- | --- | --- |
+| **V1.6.1** | Controle via navegador, câmera, áudio e interfone PTT | Revisão histórica |
+| **V1.6.2** (19/09/2026) | Instalador com seleção dinâmica de branches | Registrada |
+| **V1.6.3** (23/09/2026) | Live WebRTC local: áudio bidirecional e vídeo JPEG | Validada fisicamente |
+| **V1.7.04** (28/09/2026) | Gestão central de modos e recursos/I2S | **Última versão estável promovida à `main`** |
+| **V1.8S** (versão definida) | Integração do JrBot com a JrSkill Network | **Integração preparada na `V1s-00`; promoção pendente** |
 
-`develop` parte da mesma baseline e recebe somente trabalho validado que esteja sendo preparado para futura promoção.
+A versão **V1.8S** preserva as funções existentes do robô e adiciona o ecossistema de Skills. Durante o Colosseum 2026, o fluxo de criação, publicação, aquisição de licença e execução física foi validado em **Solana Devnet**. O firmware experimental desse marco ainda se identifica como `JrBot_V1S_APP_03`; **V1.8S é o nome de produto definido para a próxima promoção**, não uma release já publicada.
 
-## Branches oficiais abertas
+## Frentes de evolução
 
-| Branch | Papel |
-| --- | --- |
-| `main` | release oficial estável — `JrBot_V1.7.04` |
-| `develop` | integração de entregas validadas |
-| `V1s-00` | MVP JrSkill / Solana concluído; histórico do Colosseum preservado |
-| `v2` | linha preservada para controle por voz local |
-| `v1` | referência histórica da linha V1 |
+| Frente | Situação documentada | Próximo objetivo |
+| --- | --- | --- |
+| **JrBot V1.8S** | Funções V1 e integração JrSkill validadas em seus respectivos testes | Concluir testes do conjunto integrado, alinhar identificação e promover à `main` |
+| **Plataforma JrSkill** | Creator Studio, Store, licenças e execução demonstrados na Devnet | Ampliar ferramentas de criação e publicação de Skills |
+| **Montagem e corpo 3D** | Montagem eletrônica documentada; projeto mecânico registrado na [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Reunir modelos imprimíveis, documentar corpo e validar a montagem completa |
+| **JrBot V2** | Linha de desenvolvimento de voz local preservada | Evoluir reconhecimento e comandos locais |
+| **JrBot V3** | Runtime API existente como base técnica | Definir futura linha de controle programático |
+| **JrBrain** | Visão de longo prazo | Explorar memória, contexto, personalidade e integração de IA |
 
-Branches temporárias de pesquisa, feature, fix, hotfix ou teste não são linhas oficiais de produto.
+As frentes de corpo mecânico e JrSkill podem evoluir em paralelo ao firmware. Não há neste documento datas de lançamento confirmadas para V2, V3, JrBrain ou para uma plataforma Mainnet.
 
-## Direção do projeto
+## Marcos necessários antes de promover uma versão
 
-```text
-JrBot V1  -> controle local pelo navegador, câmera, áudio e WebRTC
-JrBot V2  -> controle por voz local
-JrBot V3  -> controle programático / evolução da Runtime API
-JrBrain   -> memória, personalidade, contexto e inteligência
+1. Identificar claramente firmware, branch e hardware de referência.
+2. Compilar a versão que será promovida.
+3. Executar os testes funcionais e físicos pertinentes.
+4. Registrar resultados, limitações e pendências.
+5. Atualizar documentação e [Histórico de versões](CHANGELOG.md) antes da promoção.
 
-V1S / JrSkill Network
-     -> linha paralela para Skills portáveis
-     -> distribuição/versionamento/licenciamento via Solana
-     -> execução física somente por capabilities seguras
-```
+A distinção entre **compilado**, **testado em bancada** e **validado fisicamente** segue o [guia de testes](../04-firmware-desenvolvimento/TESTING.md).
 
-## JrBot V1 — concluída
+## Onde consultar os detalhes
 
-Objetivo: permitir o controle local do JrBot pelo navegador, com mídia e interação física no HW04.
-
-Versão oficial: **`JrBot_V1.7.04`**.
-
-A baseline consolidada inclui:
-
-- ESP32-S3 N16R8;
-- OLED SSD1306;
-- câmera OV5640;
-- microfone MS3625;
-- amplificador MAX98357A;
-- Wi-Fi e HTTPS local;
-- foto e Live;
-- WebRTC local com áudio full-duplex;
-- JPEG por DataChannel;
-- I2S RX/TX simultâneo com BCLK/WS compartilhados;
-- `jr_mode_manager`;
-- `jr_resource_manager` para ownership do I2S.
-
-O histórico detalhado de releases permanece em [CHANGELOG.md](CHANGELOG.md).
-
-## V1S — JrSkill Network
-
-A **V1S** é a linha JrSkill Network. Seu **MVP do Colosseum foi concluído em 2026-10-10**, com testes em Solana Devnet e execução física validada no JrBot.
-
-Objetivo: permitir que capacidades de IA física sejam descritas como Skills portáveis e declarativas, distribuídas/versionadas/licenciadas por uma camada baseada em **Solana**, sem permitir que conteúdo externo controle diretamente GPIO, drivers ou código nativo do ESP32.
-
-Arquitetura conceitual:
-
-```text
-Skill
-  ↓
-Skill Executor seguro
-  ↓
-capabilities / Runtime API
-  ↓
-JrBot físico
-
-Solana
-  ↓
-publicação / versão / licença / distribuição
-```
-
-O andamento, as etapas, as provas e a arquitetura experimental detalhada foram preservados em [HACKATHON_DEVLOG.md](../06-historico-colosseum/HACKATHON_DEVLOG.md), com Kickoff e Day 1–9, e na branch de origem `V1s-00`. O projeto poderá prosseguir numa **nova linha definida separadamente**. O marketplace global continua uma visão futura, não uma operação Mainnet já validada.
-
-## JrBot V2 — voz local
-
-Objetivo: reutilizar as capabilities físicas do JrBot através de comandos por voz local.
-
-A branch `v2` permanece preservada como linha própria. Questões específicas de ESP-SR/MultiNet e coexistência com outros recursos pertencem a essa frente.
-
-## JrBot V3 — controle programático
-
-Objetivo: evoluir o controle estruturado do robô por API, reutilizando as mesmas capabilities utilizadas pelas interfaces locais.
-
-A Runtime API existente é uma base técnica; a V3 de produto deve ser definida separadamente quando a linha for oficialmente iniciada.
-
-## JrBrain
-
-Objetivo futuro: memória, personalidade, contexto, LLM, comportamento e integração de Skills.
-
-## Regra de integração
-
-Uma linha paralela não é promovida automaticamente para `develop` ou `main`.
-
-Antes de integrar:
-
-```text
-Issue
-→ pesquisa/arquitetura
-→ branch isolada
-→ implementação
-→ build
-→ teste físico
-→ documentação
-→ decisão de integração
-→ develop
-→ main
-```
+- [Estado técnico e branches](../04-firmware-desenvolvimento/PROJECT_STATUS.md)
+- [Montagem e hardware](../02-montagem/README.md)
+- [JrSkill Network](../05-jrskill-network/README.md)
+- [Diário do Colosseum 2026](../06-historico-colosseum/HACKATHON_DEVLOG.md)
