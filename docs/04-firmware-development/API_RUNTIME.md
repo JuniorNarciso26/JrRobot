@@ -1,92 +1,122 @@
-# JrBot Runtime API v1
+# JrBot — Commands, HTTP Interfaces and Runtime API
 
-The Runtime API is the firmware's **registered-function interface**. It does not execute arbitrary text or direct GPIO operations.
+This document describes **three distinct interfaces** implemented by the current firmware: legacy Serial commands, local HTTP/HTTPS routes and the **Runtime API v1**. They are not interchangeable.
 
-## Contract
+## 1. Serial/USB command interface
+
+Commands are plain text passed to `jr_commands.c` through UART/USB terminal paths.
+
+| Command | Function |
+| --- | --- |
+| `help`, `version`, `status` | Discover commands, installed build and module/network state |
+| `happy`, `neutral`, `surprised` and other listed expressions | Change the OLED face |
+| `camera_test` | Perform the local camera diagnostic (**Serial-only**) |
+| `mic_test`, `mic_status` | Microphone diagnostics |
+| `audio_test`, `audio_diag`, `audio_play_recording` | Audio diagnostics and last-recording playback |
+| `audio_volume 50` | Set output volume from 0 to 100 |
+| `autonomo_on`, `autonomo_off`, `brain_status`, `brain_test` | Experimental local-brain control and simulation/diagnostics |
+| `wifi_config_pct ...`, `wifi_clear` | Save or clear Wi-Fi settings via **Serial only**, then restart |
+| `api {JSON}` | Invoke a registered Runtime API function |
+
+For Wi-Fi, the **existing development panel** assembles and sends `wifi_config_pct` safely, with encoded SSID/password and optional static IP fields. Use its form instead of manually typing credentials into shared logs. See [Development](DEVELOPMENT.md).
+
+**Important:** `brain_test` exercises the test path; it does not prove that a real spoken wake word was recognized.
+
+## 2. Firmware HTTP routes
+
+The device starts **HTTP on port 80** after network initialization. Additional routes are registered on HTTPS when local certificate material is provisioned.
+
+| Method and path | Behavior |
+| --- | --- |
+| `GET /` | Embedded browser interface, including Live/JrSkill browser assets |
+| `GET /status` | Device status text |
+| `POST /cmd` | Command text with `X-JrBot-Command: 1` |
+| `GET /cmd?c=status` or `?c=help` | Legacy read-only command access (only these two values) |
+| `GET /capture` | JPEG camera snapshot |
+| `GET /mic-record` | Record microphone audio and return WAV data |
+| `GET /mic-live`, `/mic-stream`, `/mic-ws` | Legacy microphone live/stream/WebSocket interfaces |
+| `POST /audio` | Receive supported WAV/audio input |
+| `GET /live-diag` | Legacy Live microphone diagnostics |
+| `GET /jrskill-app.js` | Browser-side JrSkill application asset |
+| `GET /autofocus`, `/manual-focus` | Currently return **503**, not an implemented focusing control |
+
+**HTTPS-only WebRTC endpoints**, registered if HTTPS starts successfully:
+
+| Method and path | Behavior |
+| --- | --- |
+| `GET /webrtc-audio` | Local Live interface |
+| `GET/POST /webrtc-audio/signal` | Session signaling |
+| `GET /webrtc-audio/status` | Live session status |
+
+The HTTPS requirement is **conditional on local `jr_https_material_local.h`**; a clean checkout does not contain this ignored certificate/key material. If the device logs `JR_HTTPS_DISABLED`, do not expect the WebRTC routes to exist. Refer to [Development](DEVELOPMENT.md).
+
+**Security boundary:** The `X-JrBot-Command: 1` header is required on `POST /cmd`, but **is not authentication**. Firmware blocks Wi-Fi configuration and `camera_test` from this network command path. Do not expose this interface directly to the public Internet.
+
+## 3. Runtime API v1 contract
 
 | Property | Value |
 | --- | --- |
-| Protocol major | `1` |
+| Major protocol | `1` |
 | Implementation | `1.1` |
-| Stable registered functions | `capabilities`, `get`, `face` |
-| Response prefix | `JR_API ` |
-| Availability | Stable V1.7.04 baseline; V1.8S integration extends the wider ecosystem |
+| Functions | `capabilities`, `get`, `face` |
+| Reply prefix | `JR_API ` |
+| No general flow engine | `flow_engine=false` and `playground=false` |
 
-## Calls and parameters
+### Example calls
 
-| Function | Purpose | Arguments |
-| --- | --- | --- |
-| `capabilities` | Discover registered functions, paths, transports and feature flags | `{}` |
-| `get` | Read an allowed property | `{"path":"system.version"}` |
-| `face` | Set an expression using the OLED module | `{"expression":"happy"}` |
-
-Available `get` paths:
-
-```text
-api.version
-system.version
-system.hardware
-system.profile
-brain.status
-voice.status
-audio.volume
-face.current
-wifi.status
-wifi.diagnostics
-```
-
-The exact supported OLED expressions are defined by the firmware's face renderer. Unknown values must return an error rather than bypass validation.
-
-## Request and response
-
-Example request:
-
-```json
-{"v":1,"id":"req01","fn":"face","args":{"expression":"happy"}}
-```
-
-Example response envelope:
-
-```text
-JR_API {"v":1,"ok":true,"id":"req01","result":{...}}
-```
-
-The optional `id` links a response to its request; failures use `ok=false` and a structured `error`.
-
-## Transports
-
-**Serial command:**
+Serial:
 
 ```text
 api {"v":1,"fn":"capabilities","args":{}}
+api {"v":1,"fn":"get","args":{"path":"system.version"}}
+api {"v":1,"fn":"face","args":{"expression":"happy"}}
 ```
 
-**Local HTTP command:**
+Via local HTTP:
 
 ```text
 POST /cmd
 X-JrBot-Command: 1
 Content-Type: text/plain
 
-api {"v":1,"fn":"capabilities","args":{}}
+api {"v":1,"id":"req01","fn":"face","args":{"expression":"happy"}}
 ```
 
-**Security:** `X-JrBot-Command: 1` is a command indicator, **not an authentication mechanism**. The portal's local HTTP API must not be exposed directly to the Internet as a secure remote-control service.
+Example success-envelope shape:
 
-## Error codes
+```text
+JR_API {"v":1,"ok":true,"id":"req01","result":{...}}
+```
+
+On failure, the same envelope includes `ok=false` and an `error` object. `id` is optional.
+
+The `get` function supports these registered paths:
+
+```text
+api.version        system.version      system.hardware
+system.profile     brain.status        voice.status
+audio.volume       face.current        wifi.status
+wifi.diagnostics
+```
+
+The `face` expression must be recognized by the firmware's OLED renderer; arbitrary names or direct GPIO writes are not authorized.
+
+### Errors
 
 | Code | Meaning |
 | --- | --- |
-| `invalid_json` | Cannot parse JSON |
-| `invalid_request` | Invalid request envelope |
-| `invalid_args` | Arguments are incompatible |
-| `unsupported_version` | Unsupported protocol major |
+| `invalid_json` | Invalid JSON |
+| `invalid_request` | Bad envelope, function name or identifier |
+| `invalid_args` | Invalid arguments or expression |
+| `unsupported_version` | Incorrect major protocol |
 | `not_found` | Unknown function/path |
-| `no_memory` | Memory or serialization failure |
-| `response_too_large` | Buffer too small for the response |
+| `no_memory` | Allocation/serialization failure |
+| `response_too_large` | Response exceeds the output buffer |
 
-## Capability negotiation
+**Only registered Runtime API functions are callable**. This is not arbitrary Python/C, a shell, raw-memory access or motor control. New functions must be advertised through `capabilities`; incompatible changes require a protocol-major change.
 
-The stable `capabilities` response reports `persistent_config=false`, `flow_engine=false`, and `playground=false`. Plans for those features in [Flows](FLOWS.md) and [Playground](PLAYGROUND.md) must **not** be mistaken for implemented Runtime API functions.
+## 4. JrSkill is a client of this API
 
-Maintain the major version for compatible additions and declare new functions in `capabilities()`. Breaking protocol changes require a new major version. No client may invoke unregistered functions, arbitrary code, a shell, raw GPIO or memory.
+The `jrskill_app.js` browser App checks a Devnet license and JSON payload, then sends registered `face` calls through `POST /cmd`. Browser-side `wait` and `recipe` steps do **not** imply new ESP32 Runtime API functions.
+
+See [Architecture](ARCHITECTURE.md) for the complete action path and [JrSkill Network](../05-jrskill-network/README.md) for the blockchain accounts and licensing process.
