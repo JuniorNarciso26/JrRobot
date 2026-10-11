@@ -1,127 +1,158 @@
-# JrSkill Network — Etapa 2: Skill PDA na Solana Devnet
+# JrSkill Network — Stage 2: Skill PDA on Solana Devnet
 
-Data: **2026-09-30**. Linha: **V1s-00**. Registro técnico: [Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
+**Date:** September 30, 2026. **Development line:** `V1s-00`. [Technical tracking: Issue #33](https://github.com/JuniorNarciso26/JrRobot/issues/33).
 
-**Estado atual: Etapa 2 concluída — JSON v1 publicado e recuperado byte a byte na Devnet.** Os checkpoints intermediários abaixo preservam o histórico; as evidências finais estão na seção de conclusão.
+**Final status: Stage 2 completed.** The original JSON v1 was published to Solana Devnet and recovered with **byte-for-byte equality**. Intermediate checkpoints below are preserved as the historical sequence; the final evidence is in the completion section.
 
-## Objetivo e baseline
+## Objective and baseline
 
-Publicar o arquivo `tools/jrbot_frontend/jrskill/skills/minimal_recipe_01.json` e recuperá-lo byte a byte, sem alterar o JSON v1 validado na Etapa 1.
+Publish `tools/jrbot_frontend/jrskill/skills/minimal_recipe_01.json` and retrieve the **exact original bytes**, without changing the JSON v1 validated in Stage 1.
 
-Estado remoto conferido antes da implementação: `V1s-00` em `6fee26ec0e1168207ce245c41731db0ca7ac9859`. A Issue #33 estava aberta, com a prova local validada e a Skill PDA ainda como próxima etapa. As referências antigas a `test/jrbot-v1s-00` na Issue são históricas; este checkpoint usa somente `V1s-00`.
+Before implementation, remote `V1s-00` was at `6fee26ec0e1168207ce245c41731db0ca7ac9859`. Issue #33 was open; local execution had been validated, and Skill PDA publication was the next task. Earlier references to `test/jrbot-v1s-00` in that issue are historical.
 
-Blob original no Git (LF): **128 bytes**, SHA-256 **`416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`**. Cópia Windows usada nos testes locais (CRLF por configuração de checkout): **137 bytes**, SHA-256 **`b4b75ec8bf66012e7d3308d046d230998eb99cdc2b2386d4299791f5ed3f0714`**. O blob versionado não foi alterado. Os scripts calculam o hash dos bytes lidos do arquivo, inclusive espaços e quebras de linha. Não usam `JSON.stringify`, minificação ou expansão da Recipe. Uma diferença de terminação de linha entre checkouts gera outro hash/PDA; a prova compara exatamente o arquivo do checkout usado para publicar. Guarde o hash impresso pela publicação junto dos logs.
+The original Git blob (LF endings) had **128 bytes**, SHA-256 `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f`. The Windows checkout used in some local tests (CRLF endings) had **137 bytes**, SHA-256 `b4b75ec8bf66012e7d3308d046d230998eb99cdc2b2386d4299791f5ed3f0714`.
 
-## Arquitetura
+The versioned Git blob was not changed. Publication scripts hash bytes read from disk **including spaces and line endings**, without `JSON.stringify`, minifying, or expanding a Recipe. Different checkout line endings create a different hash/PDA. Proofs must compare against the exact file used for publication; record the printed publication hash with the logs.
+
+## Architecture
 
 ```text
-JSON existente (bytes UTF-8)
-    ↓ cliente valida JrSkill v1 e calcula SHA-256
+Existing JSON (UTF-8 bytes)
+    ↓ client validates JrSkill v1 and calculates SHA-256
 create_skill(schema_version, payload_hash, payload)
-    ↓ authority assina e paga rent/taxa
+    ↓ authority signs and pays rent/fees
 Skill PDA: ["skill", authority, payload_hash] + Program ID
-    ↓ RPC + owner + discriminator + desserialização Borsh
-cliente verifica authority, versão, hash e igualdade dos bytes
+    ↓ RPC + owner + discriminator + Borsh deserialization
+client verifies authority, schema, hash, byte-for-byte equality
     ↓
-artifacts/<PDA>.json (sem execução no robô)
+artifacts/<PDA>.json (not executed on the robot)
 ```
 
-Estrutura mínima Anchor de arquivo único em `solana/jrskill-solana`, fixada em Anchor **1.1.2** para acompanhar o CLI já presente no WSL. Cliente JavaScript com `@anchor-lang/core` **1.1.2** e `@solana/web3.js` **1.98.4** (API v1 compatível com Anchor). `Cargo.lock` e `package-lock.json` registram a resolução de dependências. Rust SHA-256 usa `sha2` **0.10.9**.
+The minimal single-file Anchor program was placed in `solana/jrskill-solana`, pinned to **Anchor 1.1.2** to match the WSL toolchain. The JavaScript client uses `@anchor-lang/core` **1.1.2** and `@solana/web3.js` **1.98.4** (Web3 API v1 compatible with Anchor). `Cargo.lock` and `package-lock.json` pin dependency resolution. Rust SHA-256 uses `sha2` **0.10.9**.
 
-### Conta Skill
+### Skill account
 
-| Campo | Tipo | Responsabilidade |
+| Field | Type | Responsibility |
 | --- | --- | --- |
-| `authority` | `Pubkey` | Signer que publica e paga a criação |
-| `schema_version` | `u8` | Versão do envelope de armazenamento: 1 |
-| `payload_hash` | `[u8; 32]` | SHA-256 dos bytes originais |
-| `payload` | `Vec<u8>` | JSON original, sem reserialização |
+| `authority` | `Pubkey` | Publisher and creation-fee signer |
+| `schema_version` | `u8` | Stored-envelope schema version: 1 |
+| `payload_hash` | `[u8; 32]` | SHA-256 of original payload bytes |
+| `payload` | `Vec<u8>` | Original JSON without reserialization |
 
-Espaço reservado: `8 + 32 + 1 + 32 + 4 + 512 = 589 bytes`. O overhead inclui discriminator Anchor e prefixo de comprimento Borsh. O limite de **512 bytes** mantém esta prova numa instrução/transação pequena; o cliente verifica também o limite de transação de **1.232 bytes**. Não há protocolo de chunks nesta etapa.
+Reserved account space: `8 + 32 + 1 + 32 + 4 + 512 = 589 bytes`, including the Anchor discriminator and Borsh vector length prefix.
 
-### Regras e limites
+The **512-byte payload limit** keeps this proof within a small instruction/transaction. The client also verifies the **1,232-byte transaction size limit**. There was no chunking protocol in this stage.
 
-- `create_skill` exige signer/payer e PDA derivada pelas seeds esperadas;
-- o programa aceita somente `schema_version = 1`, payload não vazio de até 512 bytes e SHA-256 correto;
-- `init` permite uma única criação por authority/hash; não existem update, delete, close, registry ou licença;
-- o mesmo conteúdo de outra authority gera outra PDA; conteúdo diferente também gera outra PDA;
-- não é necessário armazenar bump: a derivação canônica o calcula;
-- o programa guarda bytes e valida integridade; **não interpreta JSON nem resolve Recipes**;
-- a validação de `{v, run}` e das chamadas v1 existentes fica no cliente. Um cliente alternativo pode publicar bytes que não sejam JrSkill válido; qualquer executor futuro deverá validar novamente;
-- imutabilidade refere-se às instruções deste programa. O programa ainda pode ser atualizado pela upgrade authority; esta prova não congela a upgrade authority;
-- a referência `recipe("face_sequence")` permanece no JSON, mas a Recipe local não é publicada nem executada nesta etapa;
-- scripts de publicação/leitura exigem genesis hash da Devnet; testes on-chain aceitam somente localhost;
-- o ID versionado agora é o programa Devnet validado `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. Preserve a chave já usada para esse programa; não a substitua. Sincronize devnet e localnet com a mesma chave antes do build/deploy.
+### Rules and limits
 
-## Plano de teste
+- `create_skill` requires the payer/authority signature and correctly derived PDA.
+- The program accepts only `schema_version=1`, a nonempty payload of up to 512 bytes, and a matching SHA-256.
+- `init` permits one creation per authority/hash combination. No update, delete, close, registry, or License operation was present yet.
+- Identical content published by different authorities results in separate PDAs; different content also results in a different PDA.
+- The canonical PDA bump can be calculated; it does not need to be stored.
+- The program stores and checks **byte integrity**, without interpreting JSON or resolving Recipes.
+- Validation of `{v,run}` and individual v1 operations remains client-side. Another client could publish bytes that are not valid JrSkill. **Every executor must revalidate** them.
+- Immutable data describes the current program instructions. The program still has an **upgrade authority**; the proof does not freeze or relinquish it.
+- `recipe("face_sequence")` remains a reference in JSON, but the local Recipe is neither published nor executed on-chain at this stage.
+- Publisher/reader scripts verify the **Devnet genesis hash**; on-chain tests accept only localhost.
+- Preserve the versioned validated Devnet Program ID `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454` and its existing program key. Synchronize **devnet and localnet** using the same key before build/deploy.
 
-Os comandos completos estão em [solana/jrskill-solana/README.md](../../solana/jrskill-solana/README.md).
+## Test plan
 
-| Prova | Critério | Nível de evidência |
+Complete commands are in [the Solana project README](../../solana/jrskill-solana/README.md).
+
+| Proof | Acceptance criterion | Evidence level |
 | --- | --- | --- |
-| `npm test` | Arquivo preservado, schema v1, comparação e rejeição de alterações | Teste local do cliente |
-| `cargo check -p jrskill` | Tipos/macros Rust conferidos no host | Checagem de compilação host; não produz SBF |
-| `anchor idl build` + `npm run test:idl` | IDL real codifica instrução/conta, tx cabe e bytes retornam iguais | Compilação host da IDL + teste local do codec |
-| `anchor build` | Gera `target/deploy/jrskill.so` e IDL | Compilação SBF |
-| `anchor test --validator legacy --provider.cluster localnet` | Cria/lê, rejeita duplicata, hash errado, schema 2, vazio, >512 e PDA incorreta; falha não deixa conta | Validator local; não prova Devnet |
-| Deploy Devnet | Program ID executável no cluster correto | Deploy, ainda sem provar publicação de Skill |
-| `publish:devnet` | Transação confirmada, PDA e todos os campos iguais ao original | Escrita e leitura on-chain |
-| `read:devnet -- <authority>` | Leitura independente, owner/discriminator/hash/versão/authority/bytes corretos | Critério de conclusão da Etapa 2 |
-| Repetir `publish:devnet` | Mesma PDA, apenas conferência, nenhuma substituição | Repetibilidade do cliente |
+| `npm test` | Original file preserved; schema v1, equality, and rejection of altered data | Local client test |
+| `cargo check -p jrskill` | Host checks Rust types/macros | Host compilation check, not SBF |
+| `anchor idl build` + `npm run test:idl` | Real IDL encodes instruction/account; transaction fits; returned bytes match | IDL build and local codec test |
+| `anchor build` | Generates `target/deploy/jrskill.so` and IDL | SBF compilation |
+| `anchor test --validator legacy --provider.cluster localnet` | Create/read, reject duplicate, wrong hash, schema 2, empty/>512 payload, and wrong PDA; failures leave no account | Local validator; not proof of Devnet |
+| Devnet deployment | Executable Program ID on the correct cluster | Deployment alone does not prove Skill publication |
+| `publish:devnet` | Confirmed transaction, PDA, and fields identical to original | On-chain write and read |
+| `read:devnet -- <authority>` | Independently check owner/discriminator/hash/version/authority/bytes | Stage 2 completion criterion |
+| Repeat `publish:devnet` | Same PDA, read-only verification, no replacement | Client repeatability |
 
-O cliente também rejeita respostas com authority/versão/hash/payload alterados. Os testes do programa exigem validator limpo porque tentam a primeira criação do payload congelado.
+The client rejects modified authority, version, hash, or payload responses. Program tests require a clean local validator because they exercise first-time creation of the frozen payload.
 
-## Checkpoint de implementação
+## Implementation checkpoints
 
-Implementados programa, scripts de publicação/leitura e testes. Evidências executadas:
+Program, publication/read scripts, and tests were implemented. Recorded validation:
 
-- **Checagem Rust host:** `cargo check -p jrskill` concluído;
-- **Compilação da IDL:** `anchor idl build -p jrskill -o target/idl/jrskill.json` concluído;
-- **Compilação SBF:** `anchor build` concluído, gerando `.so` e IDL; o ID placeholder difere da chave local de laboratório, por isso o fluxo do usuário exige `anchor keys sync`;
-- **Testes locais:** 3 testes de payload e 2 testes do codec/IDL aprovados;
-- **Validator local:** 1 teste on-chain aprovado, incluindo criação, leitura e todos os casos negativos da tabela. O `.so` foi carregado explicitamente pelo `solana-test-validator --bpf-program`, usando o ID placeholder e uma wallet descartável. O cliente Node executou no Windows e o validator no WSL, na porta RPC 18899. Não foi executado `anchor test` integrado, pois Node/npm não estavam no PATH do WSL.
+- **Host Rust check:** `cargo check -p jrskill` passed.
+- **IDL build:** `anchor idl build -p jrskill -o target/idl/jrskill.json` passed.
+- **SBF build:** `anchor build` generated `.so` and IDL; a placeholder ID initially differed from the laboratory key, so the user workflow required `anchor keys sync`.
+- **Local tests:** three payload tests and two IDL/codec tests passed.
+- **Local validator:** one on-chain test passed, including account creation, reading, and all negative cases. The `.so` was loaded using `solana-test-validator --bpf-program` with a placeholder ID and disposable wallet. Node ran on Windows; the validator ran in WSL on RPC port **18899**. The integrated `anchor test` command had not yet been run because Node/npm were missing from WSL PATH.
 
-**Checkpoint posterior no WSL do usuário (2026-09-30):** após selecionar `--validator legacy` e sincronizar os IDs explicitamente para devnet e localnet, `anchor test` integrado foi aprovado: **1 teste, 1 aprovado, 0 falhas**, em 500.476268 ms. Os 3 testes de payload e 2 testes da IDL também foram aprovados no WSL. Chave pública local do programa: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`, sem comprovação de deploy Devnet. A compilação exibiu os perfis release e test concluídos. Evidência: logs enviados pelo usuário na Issue #33.
+### Subsequent user WSL checkpoint — September 30, 2026
 
-**Checkpoint de deploy Devnet (2026-09-30):** o usuário recompilou para devnet, aprovou os 2 testes de IDL e executou o deploy. O log confirmou `Deploy success` e inicialização da IDL (metadata `2nKon1p32sHB7DWLrpcxh5x6z5s864KYM6RZ675baeaa`). Consulta independente `solana program show --url devnet` confirmou Program ID `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`, upgrade authority `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij`, slot de deploy **505968344** e binário de **191976 bytes**. O log fornecido não exibiu assinatura de transação de deploy.
+After selecting `--validator legacy` and synchronizing program IDs for devnet and localnet, the integrated `anchor test` **passed: 1 test, 0 failures, in 500.476268 ms**. All three payload tests and two IDL tests also passed in WSL.
 
-**Programa publicado na Devnet; publicação do JSON na Skill PDA e leitura independente ainda pendentes.** Não houve compilação de firmware nem teste físico do JrBot nesta etapa. A Etapa 2 ainda depende da prova de round-trip do payload na Devnet.
+Local program public key: `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`. At that moment, there was not yet Devnet deployment proof. The build showed successful release and test profiles. The user's logs were submitted to Issue #33.
 
-Nenhuma nova função, Recipe, licença ou integração com o executor/painel foi adicionada. A Etapa 3 depende da comprovação deste round-trip na Devnet.
+### Devnet deployment checkpoint — September 30, 2026
 
-### Correção do guard de rede antes da publicação (2026-09-30)
+The user rebuilt for Devnet, passed both IDL tests, and deployed. Logs reported `Deploy success` and IDL metadata address `2nKon1p32sHB7DWLrpcxh5x6z5s864KYM6RZ675baeaa`.
 
-A primeira tentativa de `publish:devnet` do usuário foi bloqueada antes de enviar transação. Diagnóstico: a constante `DEVNET_GENESIS` estava truncada. A RPC oficial e `solana genesis-hash --url devnet` retornaram o hash completo `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`. O cliente foi corrigido para exigir esse valor completo, com erro que informa o genesis recebido. Dois testes de regressão foram adicionados: aceitação do hash oficial completo e rejeição de outra rede/valor ausente/hash truncado. Os 5 testes de payload + rede e uma consulta RPC somente leitura passaram no ambiente do agente. Isso não comprova publicação nem leitura da Skill. A correção altera apenas o cliente e não exige novo deploy do programa.
+An independent `solana program show --url devnet` query verified:
 
-Durante a instalação, `npm audit` reportou avisos em dependências transitivas do stack Anchor/Web3 (toml, stream-json e uuid). O lock foi preservado sem `audit fix --force`; a avaliação/atualização desse stack deve preceder uso em produção. Esta prova permanece isolada de laboratório.
+- **Program ID:** `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454`.
+- **Upgrade authority:** `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij`.
+- **Deployment slot:** **505968344**.
+- **Binary size:** **191,976 bytes**.
 
-## Conclusão da Etapa 2 — Devnet, 2026-09-30
+The supplied log did not display the deployment transaction signature. At this intermediate point, the program was deployed, but publication of the JSON to a Skill PDA and independent reading were still pending. No firmware compilation or physical JrBot test occurred in this stage.
 
-Logs enviados pelo usuário confirmaram publicação com `result: "ok"`, `already_exists: false` e posterior execução independente de `read:devnet` com `result: "ok"`, `byte_equal: true`.
+No new runtime functions, Recipes, licenses, or panel integration were added. Stage 3 depended on a completed Devnet round trip.
 
-| Evidência | Valor |
+### Devnet network-guard fix before publication — September 30, 2026
+
+The first user `publish:devnet` attempt was blocked **before submitting a transaction** because `DEVNET_GENESIS` was truncated.
+
+The official RPC and `solana genesis-hash --url devnet` returned the full value:
+
+```text
+EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG
+```
+
+The client was corrected to require that exact hash and report unexpected values. Regression tests were added for the full official value and rejection of another network, missing value, or truncated hash. Five payload/network tests and one read-only RPC query passed. That fix affected only the client and required no new program deployment; it was **not** yet proof of publication.
+
+During installation, `npm audit` reported transitive dependency advisories in the Anchor/Web3 stack (`toml`, `stream-json`, `uuid`). The lockfile was preserved without `audit fix --force`. Dependencies require reassessment before production use.
+
+## Stage 2 completion — Devnet, September 30, 2026
+
+User-supplied logs confirmed publication with `result: "ok"`, `already_exists: false`, followed by an independent `read:devnet` with `result: "ok"` and `byte_equal: true`.
+
+| Evidence | Value |
 | --- | --- |
-| Programa | `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454` |
+| Program | `Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454` |
 | Authority | `3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij` |
 | Skill PDA | `8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux` |
-| Assinatura de publicação | `4MJJ8awPvv4LKjHHemodRbSKAwMgcJaUZRyudNP81ZzVGUao8cHXLskGadF5VyjVwNh4iKQw8dLNn9frnMthogC6` |
+| Publication transaction signature | `4MJJ8awPvv4LKjHHemodRbSKAwMgcJaUZRyudNP81ZzVGUao8cHXLskGadF5VyjVwNh4iKQw8dLNn9frnMthogC6` |
 | Payload | **128 bytes** |
 | SHA-256 | `416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f` |
-| Transação | **410 bytes** |
-| Conta reservada | **589 bytes** |
-| Rent informado | **3642360 lamports** |
-| Igualdade na leitura independente | **`byte_equal: true`** |
+| Transaction size | **410 bytes** |
+| Reserved account space | **589 bytes** |
+| Reported rent | **3,642,360 lamports** |
+| Independent read equality | **`byte_equal: true`** |
 
-Arquivo recuperado no WSL: `solana/jrskill-solana/artifacts/8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux.json`, mantido localmente fora do Git. O hash coincide com o blob original LF do JSON v1. Além dos logs de publicação/leitura do usuário, o agente repetiu a leitura pela RPC Devnet e confirmou `result: "ok"`, os mesmos PDA/bytes/hash e `byte_equal: true`. O cliente exige owner, discriminator, authority, schema, hash e igualdade dos bytes.
+The WSL-recovered file was `solana/jrskill-solana/artifacts/8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux.json`, kept locally outside Git. Its hash matched the original LF Git blob.
 
-**Critério da Etapa 2 atendido: JSON original → Skill PDA Devnet → JSON recuperado idêntico.** Não houve integração com o JrBot, execução física a partir da blockchain, publicação de Recipe ou licenciamento. A repetição de publicação (`already_exists: true`) permanece um teste opcional ainda não comprovado nos logs deste checkpoint. Próximo estudo: arquitetura da Etapa 3, Solana → executor já validado → Runtime API → JrBot.
+In addition to the user's publication/read logs, an independent Devnet RPC read verified the same PDA, bytes, hash, and `byte_equal: true`. The client checked owner, discriminator, authority, schema, hash, and byte equality.
 
-## Referências oficiais
+**Stage 2 completion criterion achieved: original JSON → Devnet Skill PDA → identical recovered JSON.**
+
+At this point, the stage had **not** integrated the robot executor, achieved physical execution from blockchain data, published a Recipe, or implemented licensing. Repeated publication returning `already_exists: true` remained an optional test not evidenced in these checkpoint logs.
+
+The next stage was **Solana Skill → existing executor → Runtime API → JrBot**.
+
+## Official references
 
 - [Anchor 1.1.2](https://www.anchor-lang.com/docs/updates/release-notes/1-1-2)
-- [Cliente Anchor e compatibilidade Web3 v1](https://www.anchor-lang.com/docs/clients/typescript)
-- [Account constraints](https://www.anchor-lang.com/docs/references/account-constraints)
-- [Account space](https://www.anchor-lang.com/docs/references/space)
-- [Solana PDA](https://solana.com/docs/core/pda)
+- [Anchor TypeScript client](https://www.anchor-lang.com/docs/clients/typescript)
+- [Anchor account constraints](https://www.anchor-lang.com/docs/references/account-constraints)
+- [Anchor account space](https://www.anchor-lang.com/docs/references/space)
+- [Solana PDAs](https://solana.com/docs/core/pda)
 - [Solana transactions](https://solana.com/docs/core/transactions)
 - [JrSkill Execution API](JRSKILL_API.md)
