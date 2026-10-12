@@ -60,10 +60,11 @@ static const char *TAG = "jrbot_webrtc_audio";
 static void log_heap_state(const char *stage)
 {
     ESP_LOGI(TAG,
-             "HEAP stage=%s internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u",
+             "HEAP stage=%s internal_free=%u internal_largest=%u internal_min=%u psram_free=%u psram_largest=%u",
              stage,
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
 }
@@ -1043,12 +1044,30 @@ static void stop_session_unlocked(void)
     restore_autonomous_after_live(has_resources ? "live_end" : "start_failed");
 }
 
+static void live_memory_snapshot(const char *stage, const char *result)
+{
+    /* Capture before allocating the diagnostic message itself. */
+    char text[320];
+    snprintf(text, sizeof(text),
+             "stage=%s result=%s internal_free=%u internal_largest=%u internal_min=%u psram_free=%u psram_largest=%u",
+             stage, result,
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+    ESP_LOGI(TAG, "LIVE_MEMORY %s", text);
+    (void)queue_signal_object("memory", (const uint8_t *)text, (int)strlen(text));
+}
+
 static esp_err_t start_session_unlocked(void)
 {
     stop_session_unlocked();
     flush_signal_queue();
     flush_audio_queue();
     reset_session_counters();
+    live_memory_snapshot("before_session", "pending");
+    const char *failure_stage = "i2s_open";
 
     live_previous_mode = jr_mode_set(JR_MODE_LIVE, "webrtc_start");
     live_mode_entered = true;
@@ -1057,6 +1076,7 @@ static esp_err_t start_session_unlocked(void)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "JR_MODE live_start result=error stage=autonomous_suspend error=%s",
                  esp_err_to_name(err));
+        live_memory_snapshot("autonomous_suspend", esp_err_to_name(err));
         restore_autonomous_after_live("suspend_failed");
         return err;
     }
@@ -1065,6 +1085,7 @@ static esp_err_t start_session_unlocked(void)
         ESP_LOGE(TAG, "audio bus busy");
         ESP_LOGE(TAG, "JR_MODE live_start result=error stage=audio_bus error=%s",
                  esp_err_to_name(ESP_ERR_TIMEOUT));
+        live_memory_snapshot("audio_bus", "ESP_ERR_TIMEOUT");
         restore_autonomous_after_live("audio_bus_busy");
         return ESP_ERR_TIMEOUT;
     }
@@ -1109,6 +1130,7 @@ static esp_err_t start_session_unlocked(void)
     }
     log_heap_state("before_peer_open");
 
+    failure_stage = "peer_open";
     int ret = esp_peer_open(&cfg, esp_peer_get_default_impl(), &peer);
     log_heap_state("after_peer_open");
     if (ret != ESP_PEER_ERR_NONE || !peer) {
@@ -1124,22 +1146,35 @@ static esp_err_t start_session_unlocked(void)
     status_state.sessions++;
     portEXIT_CRITICAL(&state_lock);
 
+    failure_stage = "task_peer";
+    log_heap_state("before_task_peer");
+    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_peer stack_bytes=%u", (unsigned)JR_WA_PEER_TASK_STACK);
     if (xTaskCreatePinnedToCore(peer_loop_task, "jr_wa_peer", JR_WA_PEER_TASK_STACK,
                                 NULL, JR_WA_PEER_TASK_PRIORITY, &peer_task_handle, 1) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
+    log_heap_state("after_task_peer");
+    failure_stage = "task_mic";
+    log_heap_state("before_task_mic");
+    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_mic stack_bytes=%u", (unsigned)JR_WA_MIC_TASK_STACK);
     if (xTaskCreatePinnedToCore(mic_send_task, "jr_wa_mic", JR_WA_MIC_TASK_STACK,
                                 NULL, JR_WA_TASK_PRIORITY, &mic_task_handle, 0) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
+    log_heap_state("after_task_mic");
+    failure_stage = "task_play";
+    log_heap_state("before_task_play");
+    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_play stack_bytes=%u", (unsigned)JR_WA_PLAY_TASK_STACK);
     if (xTaskCreatePinnedToCore(playback_task, "jr_wa_play", JR_WA_PLAY_TASK_STACK,
                                 NULL, JR_WA_TASK_PRIORITY, &play_task_handle, 0) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
+    log_heap_state("after_task_play");
 
+    failure_stage = "peer_new_connection";
     ret = esp_peer_new_connection(peer);
     if (ret != ESP_PEER_ERR_NONE) {
         ESP_LOGE(TAG, "esp_peer_new_connection failed ret=%d", ret);
@@ -1171,12 +1206,15 @@ static esp_err_t start_session_unlocked(void)
              mode_status.autonomous_before_live ? 1 : 0,
              mode_status.autonomous_suspended ? 1 : 0,
              mode_status.autonomous_restore_pending ? 1 : 0);
+    live_memory_snapshot("after_session", "ESP_OK");
     return ESP_OK;
 
 fail:
-    ESP_LOGE(TAG, "JR_MODE live_start result=error stage=session_setup error=%s",
-             esp_err_to_name(err));
+    ESP_LOGE(TAG, "JR_MODE live_start result=error stage=%s error=%s",
+             failure_stage, esp_err_to_name(err));
+    live_memory_snapshot(failure_stage, esp_err_to_name(err));
     stop_session_unlocked();
+    log_heap_state("after_failed_session_cleanup");
     return err;
 }
 
