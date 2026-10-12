@@ -46,6 +46,12 @@ int main(int argc,char **argv){
  else if(!strcmp(argv[1],"serial_clear")){stored=false;profiles=1;}
  else if(!strcmp(argv[1],"fresh")){stored=false;}
  else if(!strcmp(argv[1],"legacy")){stored=true;}
+ else if(!strcmp(argv[1],"static_migration")){
+   stored=true;legacy.use_static=1;
+   copy_checked(legacy.ip,sizeof(legacy.ip),"192.168.1.36");
+   copy_checked(legacy.gateway,sizeof(legacy.gateway),"192.168.1.1");
+   copy_checked(legacy.host,sizeof(legacy.host),"old-robot");
+ }
  else if(!strcmp(argv[1],"experiment")){stored=true;profiles=1;}
  else if(!strcmp(argv[1],"deleted")){stored=true;migrated=1;}
  else if(!strcmp(argv[1],"pending_config")){stored=true;pending=1;migrated=1;}
@@ -53,6 +59,13 @@ int main(int argc,char **argv){
  else return 2;
  jr_wifi_start();
  assert(jr_wifi_network_ready());
+ if(!strcmp(argv[1],"static_migration")){
+   assert(stored && legacy.use_static==0 && !strcmp(legacy.host,"jrbot"));
+   assert(!strcmp(legacy.ssid,"Legacy") && !strcmp(legacy.pass,"password123"));
+   assert(pending==0 && added==1);
+   puts("PASS static IP metadata migrated to DHCP; credentials retained");
+   return 0;
+ }
  if(!strcmp(argv[1],"serial_save")||!strcmp(argv[1],"serial_clear")){
    char response[256];
    bool save=!strcmp(argv[1],"serial_save");
@@ -63,7 +76,7 @@ int main(int argc,char **argv){
    assert(pending==0 && !state.pending_restart);
    if(save)assert(added==1 && profiles==1);
    else assert(cleared==1 && profiles==0);
-   printf("PASS %s actual serial persistence/restart (mock backend only)\n",argv[1]);
+   printf("PASS %s actual serial persistence/restart (mock backend only)\\n",argv[1]);
    return 0;
  }
  assert(migrated==1);

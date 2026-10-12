@@ -11,16 +11,25 @@ static bool s_started;
 
 esp_err_t jr_mdns_start(void)
 {
-    if (s_started) {
-        return ESP_OK;
-    }
     esp_netif_t *sta = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     ESP_RETURN_ON_FALSE(sta, ESP_ERR_INVALID_STATE, TAG, "Wi-Fi station interface not ready");
+    if (s_started) {
+        /* Re-enable and announce the interface after every DHCP lease. */
+        ESP_RETURN_ON_ERROR(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4),
+                            TAG, "mDNS IPv4 enable failed");
+        ESP_RETURN_ON_ERROR(mdns_netif_action(sta, MDNS_EVENT_ANNOUNCE_IP4),
+                            TAG, "mDNS IPv4 announcement failed");
+        ESP_LOGI(TAG, "DHCP address announced: http://jrbot.local");
+        return ESP_OK;
+    }
     ESP_RETURN_ON_ERROR(esp_netif_set_hostname(sta, "jrbot"), TAG, "Set DHCP hostname failed");
     ESP_RETURN_ON_ERROR(mdns_init(), TAG, "mDNS init failed");
     esp_err_t ret = mdns_hostname_set("jrbot");
     if (ret == ESP_OK) {
         ret = mdns_instance_name_set("JrBot");
+    }
+    if (ret == ESP_OK) {
+        ret = mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
     }
     if (ret != ESP_OK) {
         mdns_free();
@@ -30,6 +39,10 @@ esp_err_t jr_mdns_start(void)
      * literal IP: reconnects and DHCP changes must publish the current address.
      */
     s_started = true;
+    esp_netif_ip_info_t info = {0};
+    if (esp_netif_get_ip_info(sta, &info) == ESP_OK && info.ip.addr != 0) {
+        return jr_mdns_start();
+    }
     ESP_LOGI(TAG, "Local name ready: jrbot.local (automatic DHCP address)");
     return ESP_OK;
 }

@@ -44,10 +44,10 @@ static bool copy_checked(char *dst,size_t cap,const char *src) {
     memcpy(dst,src,strlen(src)+1); return true;
 }
 static void defaults(wifi_settings_t *c) {
-    memset(c,0,sizeof(*c)); c->schema=CFG_SCHEMA; c->use_static=JR_WIFI_USE_STATIC_IP?1:0;
+    memset(c,0,sizeof(*c)); c->schema=CFG_SCHEMA; c->use_static=0;
     copy_checked(c->ssid,sizeof(c->ssid),JR_WIFI_SSID);
     copy_checked(c->pass,sizeof(c->pass),JR_WIFI_PASSWORD);
-    copy_checked(c->host,sizeof(c->host),JR_WIFI_HOSTNAME);
+    copy_checked(c->host,sizeof(c->host),"jrbot");
     copy_checked(c->ip,sizeof(c->ip),JR_WIFI_STATIC_IP);
     copy_checked(c->gateway,sizeof(c->gateway),JR_WIFI_GATEWAY);
     copy_checked(c->mask,sizeof(c->mask),JR_WIFI_SUBNET);
@@ -135,6 +135,20 @@ void jr_wifi_prepare(void) {
             } else { active.ssid[0]='\0'; err=ESP_ERR_INVALID_STATE; }
             nvs_close(h);
         } else if (err==ESP_ERR_NVS_NOT_FOUND) err=ESP_OK;
+    }
+    /* Preserve credentials, but migrate obsolete addressing metadata to DHCP.
+     * Do not set import_pending: deleted profiles must not be reimported. */
+    if (err==ESP_OK && valid_settings(&active,true) &&
+        (active.use_static || strcmp(active.host,"jrbot"))) {
+        active.use_static=0;
+        copy_checked(active.host,sizeof(active.host),"jrbot");
+        nvs_handle_t h;
+        err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+        if (err==ESP_OK) {
+            err=nvs_set_blob(h,"cfg_v2",&active,sizeof(active));
+            if (err==ESP_OK) err=nvs_commit(h);
+            nvs_close(h);
+        }
     }
     if (!valid_settings(&active,true)) { active.ssid[0]='\0'; err=ESP_ERR_INVALID_ARG; }
     if (err!=ESP_OK) active.ssid[0]='\0';
@@ -327,8 +341,8 @@ static void wifi_service_event(const adf_event_t *event,void *ctx) {
         memcpy(state.ip,ip,sizeof(ip)); state.connected=true;
         state.configured=true; state.last_error=ESP_OK;
         portEXIT_CRITICAL(&state_lock);
-        (void)jr_mdns_start();
-        printf("JR_WIFI conectado ip=%s nome=jrbot.local\n",ip);
+        esp_err_t mdns_err=jr_mdns_start();
+        printf("JR_WIFI conectado DHCP ip=%s nome=jrbot.local mdns=%s\n",ip,esp_err_to_name(mdns_err));
     } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_PROV_CREDENTIAL_RECEIVED) {
         portENTER_CRITICAL(&state_lock);
         state.configured=true; state.pending_restart=false;
@@ -405,7 +419,6 @@ void jr_wifi_start(void) {
         nvs_close(h);
         if (err!=ESP_OK) goto fail;
     }
-    if (active.use_static) puts("JR_WIFI migracao usa_DHCP nome=jrbot.local");
     esp_wifi_service_prov_http_config_t http_cfg={
         .name="http",.profile_manager=profile_manager,.port=8080,
         .softap={.ssid="JrBot-Config",.channel=1,.max_connection=2},
@@ -418,8 +431,6 @@ void jr_wifi_start(void) {
     };
     err=esp_wifi_service_create(&cfg,&wifi_service);
     if (err!=ESP_OK) goto fail;
-    err=jr_mdns_start();
-    if (err!=ESP_OK) printf("JR_MDNS_ERROR %s WiFi_acessivel_por_IP\n",esp_err_to_name(err));
     adf_event_subscribe_info_t sub=ADF_EVENT_SUBSCRIBE_INFO_DEFAULT();
     sub.event_id=ADF_EVENT_ANY_ID;
     sub.handler=wifi_service_event;
@@ -427,6 +438,9 @@ void jr_wifi_start(void) {
     if (err!=ESP_OK) goto fail;
     err=esp_service_start((esp_service_t *)wifi_service);
     if (err!=ESP_OK) goto fail;
+    /* Start after the service has created its station interface. */
+    esp_err_t mdns_err=jr_mdns_start();
+    if (mdns_err!=ESP_OK) printf("JR_MDNS_ERROR %s WiFi_acessivel_por_IP\n",esp_err_to_name(mdns_err));
     portENTER_CRITICAL(&state_lock);
     state.network_ready=true; state.configured=count!=0; state.pending_restart=false; state.last_error=ESP_OK;
     portEXIT_CRITICAL(&state_lock);
@@ -457,11 +471,12 @@ static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
 }
 bool jr_wifi_configure(const char *ssid,const char *password,const char *hostname,bool use_static_ip,
     const char *ip,const char *gw,const char *mask,const char *dns1,const char *dns2,char *response,unsigned cap) {
+    (void)hostname; /* The local address is always jrbot.local. */
     if (use_static_ip) { snprintf(response,cap,"JR_WIFI_ERROR use_DHCP_com_jrbot.local"); return false; }
     wifi_settings_t candidate; defaults(&candidate); candidate.use_static=use_static_ip?1:0;
     bool valid=copy_checked(candidate.ssid,sizeof(candidate.ssid),ssid) &&
         copy_checked(candidate.pass,sizeof(candidate.pass),password) &&
-        copy_checked(candidate.host,sizeof(candidate.host),hostname&&*hostname?hostname:"jrbot") &&
+        copy_checked(candidate.host,sizeof(candidate.host),"jrbot") &&
         copy_checked(candidate.ip,sizeof(candidate.ip),ip&&*ip?ip:JR_WIFI_STATIC_IP) &&
         copy_checked(candidate.gateway,sizeof(candidate.gateway),gw&&*gw?gw:JR_WIFI_GATEWAY) &&
         copy_checked(candidate.mask,sizeof(candidate.mask),mask&&*mask?mask:JR_WIFI_SUBNET) &&

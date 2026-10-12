@@ -10,5 +10,5 @@ with tempfile.TemporaryDirectory(prefix="jrbot_wifi_") as tmp:
     subprocess.run([cc,"-std=c11","-Wall","-Wextra","-Werror","-fsanitize=undefined",
         "-I",str(here),"-I",str(root/"firmware/core"),
         str(here/"test_wifi_integration.c"),"-o",str(binary)],check=True)
-    for case in ("fresh","legacy","experiment","deleted","pending_config","pending_clear","serial_save","serial_clear"):
+    for case in ("fresh","legacy","static_migration","experiment","deleted","pending_config","pending_clear","serial_save","serial_clear"):
         subprocess.run([str(binary),case],check=True)
