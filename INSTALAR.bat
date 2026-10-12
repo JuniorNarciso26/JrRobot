@@ -288,6 +288,9 @@ cd /d "%~dp0"
 set "CURRENT_BRANCH="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 
+rem Experimento Wi-Fi: nao compilar o firmware principal nem usar perfil legado.
+if /i "%CURRENT_BRANCH%"=="test/esp-wifi-provisioning" goto wifi_experiment
+
 if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
@@ -341,6 +344,87 @@ if /i "%ACTION%"=="menuconfig" goto menuconfig
 
 echo ERRO: opcao invalida: %ACTION%
 goto help
+
+
+:wifi_experiment
+if /i "%ACTION%"=="help" goto wifi_help
+if /i "%ACTION%"=="panel" (
+    echo [ERRO] Este experimento usa o navegador do celular, nao o painel JrBot.
+    goto failure
+)
+if /i not "%ACTION%"=="build" if /i not "%ACTION%"=="flash" if /i not "%ACTION%"=="all" if /i not "%ACTION%"=="menuconfig" if /i not "%ACTION%"=="monitor" goto wifi_help
+echo.
+echo [INFO] Experimento independente: ESP Wi-Fi Service.
+echo [INFO] Projeto: experiments\esp-wifi-service\wifi_service_example
+echo [INFO] O firmware principal do JrBot nao sera compilado.
+echo [ATENCAO] Gravar este exemplo substitui temporariamente a aplicacao JrBot.
+echo [ATENCAO] Tenha o firmware/configuracao para restauracao ou use placa reserva.
+call :ensure_idf
+if errorlevel 1 goto failure
+if /i "%ACTION%"=="build" goto wifi_prepare
+if /i "%ACTION%"=="menuconfig" goto wifi_prepare
+call :select_port
+if errorlevel 1 goto failure
+
+:wifi_prepare
+pushd "%~dp0experiments\esp-wifi-service\wifi_service_example"
+if errorlevel 1 goto failure
+if /i "%ACTION%"=="menuconfig" (
+    python "%IDF_PATH%\tools\idf.py" -B build-wifi-only -D IDF_TARGET=esp32s3 -D SDKCONFIG=sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.esp32s3" menuconfig
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    popd
+    goto wifi_success
+)
+if /i "%ACTION%"=="monitor" (
+    python "%IDF_PATH%\tools\idf.py" -B build-wifi-only -D IDF_TARGET=esp32s3 -D SDKCONFIG=sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.esp32s3" -p "%JR_FLASH_PORT%" monitor
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    popd
+    goto wifi_success
+)
+python "%IDF_PATH%\tools\idf.py" -B build-wifi-only -D IDF_TARGET=esp32s3 -D SDKCONFIG=sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.esp32s3" build
+if errorlevel 1 (
+    popd
+    goto failure
+)
+if /i "%ACTION%"=="build" (
+    popd
+    goto wifi_success
+)
+python "%IDF_PATH%\tools\idf.py" -B build-wifi-only -D IDF_TARGET=esp32s3 -D SDKCONFIG=sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.esp32s3" -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (
+    popd
+    goto failure
+)
+popd
+goto wifi_success
+
+:wifi_success
+echo.
+echo [OK] Experimento Wi-Fi: %ACTION% concluido.
+echo Branch: %CURRENT_BRANCH%
+echo Projeto: wifi_service_example
+echo Rede de configuracao: ESP_SVC_XXXXXX
+echo Conecte o celular e abra o portal; se necessario use o endereco do gateway.
+echo Para acompanhar logs: INSTALAR.bat monitor
+exit /b 0
+
+:wifi_help
+echo.
+echo Experimento ESP Wi-Fi Service:
+echo   INSTALAR.bat build       atualiza e compila apenas o exemplo Wi-Fi
+echo   INSTALAR.bat flash       atualiza, compila e grava o exemplo
+echo   INSTALAR.bat             atualiza, compila e grava o exemplo
+echo   INSTALAR.bat menuconfig  configura o exemplo
+echo   INSTALAR.bat monitor     abre logs na porta selecionada
+echo.
+echo Este exemplo substitui temporariamente a aplicacao do robo ao gravar.
+exit /b 0
 
 :ensure_idf
 set "IDF_EXPORT="

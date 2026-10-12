@@ -16,7 +16,13 @@ Adaptations:
 - Defaults select HTTP provisioning with the embedded Web UI, and disable Bluetooth and MCP for this Wi-Fi-only experiment.
 - Added this guide, source inventory and local ignore rules.
 
-The stable JrBot firmware and root installer are not connected to this experiment. Run commands from the standalone project, **not** the root `INSTALAR.bat`.
+The JrBot firmware remains unchanged. On this experimental branch, the root `INSTALAR.bat` now routes directly to the standalone Wi-Fi example, with its own `build-wifi-only` directory and SDK configuration. It does not compile `firmware/` or open the JrBot Python panel.
+
+## Windows installer
+
+From the repository root run `INSTALAR.bat build` and select `test/esp-wifi-provisioning`. Once compilation succeeds, run `INSTALAR.bat flash` and select the same branch. The installer loads ESP-IDF and discovers the serial port using the existing helper. Use `INSTALAR.bat monitor` for logs. The default action builds and flashes the example.
+
+A previous attempt through the root installer selected the legacy `sdkconfig.runtime-api-v1-02` and compiled `esp_peer` under `firmware/`, producing missing DTLS/SRTP symbols. Those paths identify the robot application rather than this Wi-Fi experiment. The routing fix prevents that unintended compilation; it does not claim to repair a local robot SDK configuration.
 
 ## Compile first
 
