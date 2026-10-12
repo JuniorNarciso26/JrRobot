@@ -19,3 +19,11 @@ __pycache__/
 
 # Resultado gerado localmente pelos testes de hardware
 tests/hardware/results.json
+
+# Generated Wi-Fi experiment files may remain after switching to develop.
+# Ignore only known build/config/cache output; keep unknown experiment files visible.
+experiments/esp-wifi-service/wifi_service_example/build*/
+experiments/esp-wifi-service/wifi_service_example/sdkconfig
+experiments/esp-wifi-service/wifi_service_example/sdkconfig.old
+experiments/esp-wifi-service/wifi_service_example/managed_components/
+experiments/esp-wifi-service/wifi_service_example/dependencies.lock
