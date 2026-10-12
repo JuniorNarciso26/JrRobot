@@ -107,3 +107,19 @@ The page now uses SSID as the profile identifier for DELETE and enable/disable, 
 The example supports up to eight profiles. Enabled profiles are candidates for the selector, according to configured priority/quality policy. Enable/disable does not force an immediate connection switch, especially while provisioning pauses the selector. Persistence/reboot behavior and these actions must be revalidated on hardware.
 
 Validation: extracted C decoder compiled and tested on host (spaces, reserved characters, UTF-8, invalid encoding and length); JS action tests for correct SSID payloads and failures passed; enabled-handler lifetime inspected. Full ESP-IDF build/physical test pending.
+
+
+## Stable local hostname (12 October 2026)
+
+The experiment starts official `espressif/mdns 1.14.0` with hostname **jrbot**, so the name is **jrbot.local**. The station DHCP hostname is also jrbot. DHCP remains automatic; the router can assign the same IP again or a different IP. No address is forced random and no IP is persisted in the hostname mapping. mDNS follows the Wi-Fi/IP events and answers with the current interface address.
+
+This step validates name discovery in the standalone experiment. It does not add the full robot web portal: the example's HTTP configuration server is still closed after successful setup. Thus a resolved name does not imply an HTTP page is active after setup. When the function is integrated, the robot's normal HTTP/HTTPS portal will use this hostname. The reported portal failure after wrong credentials remains a separate unresolved investigation.
+
+Test after flashing:
+1. Keep computer/phone on the same home network as the ESP32.
+2. Confirm `JR_MDNS: Local name ready: jrbot.local` and `Current network address: jrbot.local -> ...` in the log.
+3. From the computer, run `ping jrbot.local`; compare the resolved address with STA_GOT_IP.
+4. Repeat after robot reboot and router reconnect. If DHCP assigns a different IP, verify the name resolves to the new address.
+5. If Windows/network does not resolve .local, verify mDNS/multicast support. Do not use nslookup alone as an mDNS test.
+
+No fixed IP or router port-forwarding is required. Hostname setup failure is logged and does not stop Wi-Fi. ESP-IDF compilation and physical mDNS validation are pending.

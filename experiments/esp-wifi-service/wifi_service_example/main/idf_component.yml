@@ -9,3 +9,5 @@ dependencies:
     override_path: ../../components/esp_wifi_service
   espressif/adf_event_hub:
     override_path: ../../components/adf_event_hub
+  espressif/mdns:
+    version: "1.14.0"

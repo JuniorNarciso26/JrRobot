@@ -52,6 +52,7 @@
 #include "esp_wifi_service_prov_http.h"
 #endif  /* CONFIG_WIFI_SERVICE_PROV_HTTP_ENABLE */
 #include "wifi_service_console.h"
+#include "jr_mdns.h"
 
 static const char *TAG = "WIFI_SVC_EXAMPLE";
 
@@ -479,6 +480,7 @@ static void wifi_event_handler(const adf_event_t *event, void *ctx)
             ESP_LOGI(TAG, "Payload: ip=" IPSTR " netmask=" IPSTR " gw=" IPSTR " ip_changed=%u",
                      IP2STR(&info->ip_info.ip), IP2STR(&info->ip_info.netmask), IP2STR(&info->ip_info.gw),
                      (unsigned)info->ip_changed);
+            ESP_LOGI(TAG, "Current network address: jrbot.local -> " IPSTR, IP2STR(&info->ip_info.ip));
             break;
         }
         case ESP_WIFI_SERVICE_EVENT_STA_CONFIG: {
@@ -729,6 +731,12 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_wifi_service_create(&cfg, &wifi_service));
     esp_service_t *service_base = (esp_service_t *)wifi_service;
     ESP_ERROR_CHECK(service_base ? ESP_OK : ESP_FAIL);
+
+    /* Configure discovery before starting the selector/DHCP connection. */
+    ret = jr_mdns_start();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Local name setup failed: %s (Wi-Fi remains usable by IP)", esp_err_to_name(ret));
+    }
 
     adf_event_subscribe_info_t sub_info = ADF_EVENT_SUBSCRIBE_INFO_DEFAULT();
     sub_info.event_id = ADF_EVENT_ANY_ID;
