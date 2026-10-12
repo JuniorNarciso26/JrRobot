@@ -98,3 +98,12 @@ Adapted source files are listed in UPSTREAM.json. JavaScript behavior tested in 
 ## Automatic completion (12 October 2026)
 
 After a successful credential submission and profile save, the server schedules shutdown of the provisioning service/SoftAP two seconds after sending the response. Failed submissions keep provisioning active for retries. The web page no longer requests confirmation and disables duplicate submissions after success. iOS controls its captive-window behavior: the firmware closes the setup service, but cannot guarantee that every browser window closes itself. Build and physical validation of automatic completion are pending.
+
+
+## Saved-network actions (12 October 2026)
+
+The page now uses SSID as the profile identifier for DELETE and enable/disable, matching the HTTP API. Row numbering is presentation only. DELETE decodes percent-encoded SSIDs with a 32-byte limit; the enable handler copies the SSID before freeing parsed JSON. UI actions report failed requests and use Portuguese labels that distinguish enabled profiles from the active connection.
+
+The example supports up to eight profiles. Enabled profiles are candidates for the selector, according to configured priority/quality policy. Enable/disable does not force an immediate connection switch, especially while provisioning pauses the selector. Persistence/reboot behavior and these actions must be revalidated on hardware.
+
+Validation: extracted C decoder compiled and tested on host (spaces, reserved characters, UTF-8, invalid encoding and length); JS action tests for correct SSID payloads and failures passed; enabled-handler lifetime inspected. Full ESP-IDF build/physical test pending.

@@ -72,10 +72,11 @@
     <div id="scan_choices" class="scan-choice-list"></div>
   </div>
 
-  <h3>Saved networks</h3>
+  <h3>Redes salvas</h3>
+  <p class="hint">Até 8 redes. Habilitar permite a conexão automática; não seleciona a rede atual. A prioridade e o sinal orientam a escolha.</p>
   <table>
     <thead>
-      <tr><th>#</th><th>SSID</th><th>Prio</th><th>On</th><th></th></tr>
+      <tr><th>#</th><th>SSID</th><th>Prioridade</th><th>Habilitada</th><th></th></tr>
     </thead>
     <tbody id="profiles"></tbody>
   </table>
@@ -273,23 +274,23 @@
 
       b.innerHTML = '';
 
-      (x.json.profiles || []).forEach(function(x) {
+      (x.json.profiles || []).forEach(function(x, rowIndex) {
         var tr = document.createElement('tr');
         var td = document.createElement('td');
         var del = document.createElement('button');
         var tog = document.createElement('button');
 
-        tr.innerHTML = '<td>' + x.index + '</td><td></td><td>' + x.priority + '</td><td>' + x.enabled + '</td>';
+        tr.innerHTML = '<td>' + (rowIndex + 1) + '</td><td></td><td>' + x.priority + '</td><td>' + (x.enabled ? 'Sim' : 'Não') + '</td>';
         tr.cells[1].textContent = x.ssid;
 
-        del.textContent = 'Delete';
+        del.textContent = 'Apagar';
         del.onclick = function() {
-          deleteProfile(x.index);
+          deleteProfile(x.ssid);
         };
 
-        tog.textContent = x.enabled ? 'Off' : 'On';
+        tog.textContent = x.enabled ? 'Desabilitar' : 'Habilitar';
         tog.onclick = function() {
-          setEnabled(x.index, !x.enabled);
+          setEnabled(x.ssid, !x.enabled);
         };
 
         td.appendChild(del);
@@ -299,9 +300,18 @@
       });
     }
 
-    async function deleteProfile(i) {
-      await req('/prov/profiles?index=' + i, { method: 'DELETE' });
-      await refreshProfiles();
+    async function deleteProfile(ssid) {
+      try {
+        var x = await req('/prov/profiles?ssid=' + encodeURIComponent(ssid), { method: 'DELETE' });
+        if (!x.ok || !x.json || x.json.result !== 'ok') {
+          setMsg('Não foi possível apagar a rede. Tente novamente.');
+          return;
+        }
+        await refreshProfiles();
+        setMsg('Rede removida da memória.', '#0a0');
+      } catch (e) {
+        setMsg('Não foi possível apagar a rede. Verifique a conexão com o robô.');
+      }
     }
 
     async function clearProfiles() {
@@ -320,13 +330,22 @@
       }
     }
 
-    async function setEnabled(i, en) {
-      await req('/prov/profiles/enabled', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: i, enabled: !!en })
-      });
-      await refreshProfiles();
+    async function setEnabled(ssid, en) {
+      try {
+        var x = await req('/prov/profiles/enabled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ssid: ssid, enabled: !!en })
+        });
+        if (!x.ok || !x.json || x.json.result !== 'ok') {
+          setMsg('Não foi possível alterar a rede. Tente novamente.');
+          return;
+        }
+        await refreshProfiles();
+        setMsg(en ? 'Rede habilitada para conexão automática.' : 'Rede desabilitada, sem apagar a configuração.', '#0a0');
+      } catch (e) {
+        setMsg('Não foi possível alterar a rede. Verifique a conexão com o robô.');
+      }
     }
 
     async function provSave(form) {

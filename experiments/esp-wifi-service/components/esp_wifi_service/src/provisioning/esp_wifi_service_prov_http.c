@@ -631,6 +631,37 @@ post_response:
     return send_ret;
 }
 
+/* httpd_query_key_value does not decode percent-encoded SSIDs. */
+static int http_hex_digit(char ch)
+{
+    if (ch >= '0' && ch <= '9') return ch - '0';
+    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+    return -1;
+}
+
+static esp_err_t http_decode_ssid(const char *encoded, char *ssid, size_t capacity)
+{
+    size_t used = 0;
+    for (size_t i = 0; encoded[i]; ++i) {
+        unsigned char ch = (unsigned char)encoded[i];
+        if (ch == '%') {
+            if (!encoded[i + 1] || !encoded[i + 2]) return ESP_ERR_INVALID_ARG;
+            int hi = http_hex_digit(encoded[i + 1]);
+            int lo = http_hex_digit(encoded[i + 2]);
+            if (hi < 0 || lo < 0) return ESP_ERR_INVALID_ARG;
+            ch = (unsigned char)((hi << 4) | lo);
+            i += 2;
+        } else if (ch == '+') {
+            ch = ' ';
+        }
+        if (!ch || used + 1 >= capacity) return ESP_ERR_INVALID_ARG;
+        ssid[used++] = (char)ch;
+    }
+    ssid[used] = '\0';
+    return used ? ESP_OK : ESP_ERR_INVALID_ARG;
+}
+
 static esp_err_t http_profiles_delete(httpd_req_t *req)
 {
     wifi_prov_http_t *prov = (wifi_prov_http_t *)req->user_ctx;
@@ -646,9 +677,11 @@ static esp_err_t http_profiles_delete(httpd_req_t *req)
     char query[256] = {0};
     httpd_req_get_url_query_str(req, query, sizeof(query));
 
+    char encoded_ssid[97] = {0};
     char ssid[33] = {0};
     esp_err_t ret = ESP_ERR_INVALID_ARG;
-    if (httpd_query_key_value(query, "ssid", ssid, sizeof(ssid)) == ESP_OK) {
+    if (httpd_query_key_value(query, "ssid", encoded_ssid, sizeof(encoded_ssid)) == ESP_OK &&
+        http_decode_ssid(encoded_ssid, ssid, sizeof(ssid)) == ESP_OK) {
         ret = esp_wifi_service_profile_mgr_delete(prov->cfg.profile_manager, ssid);
     }
     if (ret != ESP_OK) {
@@ -706,14 +739,15 @@ static esp_err_t http_profiles_enabled_post(httpd_req_t *req)
 
     cJSON *ssid_item = cJSON_GetObjectItemCaseSensitive(root, "ssid");
     cJSON *enabled_item = cJSON_GetObjectItemCaseSensitive(root, "enabled");
-    if (!cJSON_IsString(ssid_item) || !ssid_item->valuestring || ssid_item->valuestring[0] == '\0' || !cJSON_IsBool(enabled_item)) {
+    if (!cJSON_IsString(ssid_item) || !ssid_item->valuestring || ssid_item->valuestring[0] == '\0' || strlen(ssid_item->valuestring) > 32 || !cJSON_IsBool(enabled_item)) {
         ESP_LOGW(TAG, "HTTP set profile enabled failed: parse body='%s'", body);
         heap_caps_free(body);
         cJSON_Delete(root);
         return http_send_status_json(req, HTTP_STATUS_400, HTTP_JSON_RESULT_FAILED);
     }
     bool enabled = cJSON_IsTrue(enabled_item);
-    const char *ssid = ssid_item->valuestring;
+    char ssid[33] = {0};
+    strlcpy(ssid, ssid_item->valuestring, sizeof(ssid));
     heap_caps_free(body);
     cJSON_Delete(root);
     esp_err_t ret = esp_wifi_service_profile_mgr_set_enabled(prov->cfg.profile_manager, ssid, enabled);
