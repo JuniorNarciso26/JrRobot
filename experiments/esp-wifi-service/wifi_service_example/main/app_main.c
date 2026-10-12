@@ -417,6 +417,14 @@ static void wifi_event_handler(const adf_event_t *event, void *ctx)
             }
             const esp_wifi_service_prov_event_t *info = (const esp_wifi_service_prov_event_t *)event->payload;
             ESP_LOGI(TAG, "Payload: name=%s", info->name ? info->name : "null");
+            /* A phone can drop the SoftAP while credentials are being tested.
+             * An older saved profile is not proof that this attempt succeeded.
+             * Keep HTTP provisioning available until explicitly ended on the page.
+             */
+            if (info->name && strcmp(info->name, "http") == 0) {
+                ESP_LOGI(TAG, "HTTP provisioning remains open for retry or explicit completion");
+                break;
+            }
             esp_wifi_service_profile_mgr_t profile_manager = NULL;
             uint8_t profile_count = 0;
             if (esp_wifi_service_get_profile_manager((esp_wifi_service_t *)service, &profile_manager) == ESP_OK &&

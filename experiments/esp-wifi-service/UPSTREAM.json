@@ -647,6 +647,9 @@
   "adaptedFiles": [
     "experiments/esp-wifi-service/wifi_service_example/main/idf_component.yml",
     "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults",
-    "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults.esp32s3"
+    "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults.esp32s3",
+    "experiments/esp-wifi-service/wifi_service_example/main/app_main.c",
+    "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_http.c",
+    "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_default_webui.html"
   ]
 }

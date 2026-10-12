@@ -902,6 +902,11 @@ static void http_on_wifi_event(void *arg, esp_event_base_t base, int32_t id, voi
             if (prev == 0) {
                 prov->peer_connected = true;
                 esp_wifi_service_prov_dispatch_event(&prov->base, ESP_WIFI_SERVICE_PROV_EVT_PEER_CONNECTED, NULL);
+                /* Resume network discovery if the phone reconnects after a failed attempt. */
+                esp_err_t scan_ret = wifi_prov_http_start_periodic_scan(prov);
+                if (scan_ret != ESP_OK) {
+                    ESP_LOGW(TAG, "Resume scan after peer reconnect failed: %s", esp_err_to_name(scan_ret));
+                }
             }
             return;
         }

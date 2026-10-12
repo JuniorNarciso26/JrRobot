@@ -9,7 +9,7 @@ Status: source copied; build and physical validation pending.
 Official source: [espressif/esp-adf](https://github.com/espressif/esp-adf/tree/4cdbcd2a1bfd5823220de5b76921df26d95c8a7d/components/esp_wifi_service/examples/wifi_service_example).  
 Pinned upstream commit: `4cdbcd2a1bfd5823220de5b76921df26d95c8a7d`. The copied Wi-Fi service manifest identifies version **0.5.3**.
 
-This directory contains the official standalone example and its five local ADF dependencies: esp_wifi_service, esp_config_manager, esp_cli_service, esp_service and adf_event_hub. Component C/HTML code is unchanged. The ESP-IDF component manager still downloads cJSON; an Internet connection is required for the first build.
+This directory contains the official standalone example and its five local ADF dependencies: esp_wifi_service, esp_config_manager, esp_cli_service, esp_service and adf_event_hub. The initial copy preserved component C/HTML code; the HTTP retry adaptations below now change three source files. The ESP-IDF component manager still downloads cJSON; an Internet connection is required for the first build.
 
 Adaptations:
 - Example dependency override paths point to the copied sibling `components/` directory.
@@ -84,3 +84,12 @@ A successful build is not a physical pass. After the standalone pass, update Iss
 ## License
 
 All copied third-party files retain their original notices. See the LICENSE in each component directory. The example uses Espressif's modified MIT license, whose text is also available in `components/esp_wifi_service/LICENSE`. The repository's original MIT license does not replace those terms.
+
+
+## Retry behavior (12 October 2026)
+
+The HTTP portal now remains active when the phone disconnects, even if an older profile is saved. Failed credential submissions show a Portuguese retry message and an enabled **Tentar novamente** button; successful submissions invite the user to **Finalizar configuração**. The portal closes through the explicit end action. Reconnecting the phone resumes nearby-network scans. Failed connection attempts still do not replace saved profiles: storage follows successful connection in the original handler.
+
+If iOS drops the SoftAP connection, reconnect to the device Wi-Fi and open http://192.168.4.1; the firmware cannot force a phone to stay connected or keep its captive window open. No console command should be necessary while this provisioning session remains active. After a device reboot the example still connects to a saved profile; BOOT recovery is not implemented yet.
+
+Adapted source files are listed in UPSTREAM.json. JavaScript behavior tested in a mocked DOM for failure/retry/success and transport interruption/retry/success. C changes inspected statically. Compilation and physical validation of these changes remain pending.

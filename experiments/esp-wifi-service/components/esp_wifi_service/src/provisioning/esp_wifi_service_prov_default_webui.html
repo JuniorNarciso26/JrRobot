@@ -60,7 +60,7 @@
       <input type="range" name="priority" id="priority" min="0" max="20" value="10" oninput="var e=document.getElementById('pri_val');if(e){e.textContent=this.value;}">
     </label>
     <button type="submit" id="prov_submit">Connect</button>
-    <p id="msg"></p>
+    <p id="msg" role="status" aria-live="polite"></p>
   </form>
 
   <div class="status-wrap"><h3>Status</h3><pre id="status_box"></pre></div>
@@ -83,7 +83,7 @@
   <p>
     <button type="button" onclick="refreshAll()">Refresh</button>
     <button type="button" onclick="clearProfiles()">Clear all</button>
-    <button type="button" onclick="stopProvisioning()">End provisioning</button>
+    <button type="button" onclick="stopProvisioning()">Finalizar configuração</button>
   </p>
 
   <script>
@@ -110,7 +110,8 @@
       }
 
       b.disabled = false;
-      b.textContent = (state === 'ok') ? 'Connected' : 'Connect';
+      b.textContent = (state === 'ok') ? 'Conectado' :
+        (state === 'retry') ? 'Tentar novamente' : 'Conectar';
     }
 
     async function req(url, opt) {
@@ -358,7 +359,7 @@
         }
 
         if (x.ok && x.json && x.json.result === 'ok') {
-          setMsg((x.json && x.json.message) || 'Connected and profile saved.', '#0a0');
+          setMsg('Conectado e configuração salva. Toque em Finalizar configuração quando terminar.', '#0a0');
           setConnectBtn('ok');
           refreshProfiles().catch(function() {});
 
@@ -371,16 +372,20 @@
             (x.json && x.json.result) ||
             ('HTTP ' + x.status);
 
-          setMsg(m || 'Connect failed.', '#c00');
-          setConnectBtn('idle');
+          setMsg('Não foi possível conectar. Confira a rede e a senha e toque em Tentar novamente. A configuração continua aberta.', '#c00');
+          setConnectBtn('retry');
+          var passwordInput = document.getElementById('prov_password');
+          if (passwordInput) {
+            passwordInput.focus();
+          }
 
           if (!(x.json && x.json.status)) {
             refreshStatus().catch(function() {});
           }
         }
       } catch (e) {
-        setConnectBtn('idle');
-        throw e;
+        setConnectBtn('retry');
+        setMsg('A comunicação foi interrompida. Reconecte ao Wi-Fi do robô e abra http://192.168.4.1 para tentar novamente.', '#c00');
       }
     }
 
