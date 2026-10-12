@@ -52,6 +52,7 @@ typedef struct {
     httpd_handle_t                       server;
     bool                                 started;
     bool                                 peer_connected;
+    bool                                 stop_scheduled;
     esp_event_handler_instance_t         wifi_event_inst;
     esp_event_handler_instance_t         ip_event_inst;
     uint32_t                             ap_sta_count;
@@ -70,6 +71,7 @@ typedef struct {
 } http_stop_task_ctx_t;
 
 static const char *TAG = "WIFI_SERVICE_HTTP";
+static esp_err_t http_schedule_stop(wifi_prov_http_t *prov);
 #if CONFIG_WIFI_SERVICE_PROV_HTTP_DEFAULT_WEBUI_ENABLE
 extern const uint8_t esp_wifi_service_prov_default_webui_start[] asm("_binary_esp_wifi_service_prov_default_webui_html_start");
 extern const uint8_t esp_wifi_service_prov_default_webui_end[] asm("_binary_esp_wifi_service_prov_default_webui_html_end");
@@ -615,7 +617,15 @@ post_response:
                      ssid, esp_err_to_name(dispatch_ret));
         }
     }
-    if (resume_scan && prov->started && prov->peer_connected) {
+    if (ret == ESP_OK && send_ret == ESP_OK && prov->cfg.profile_manager) {
+        /* The response has been sent and the profile saved. Delay shutdown so
+         * the phone can display confirmation before the setup AP disappears.
+         */
+        esp_err_t stop_ret = http_schedule_stop(prov);
+        if (stop_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Automatic provisioning stop failed: %s", esp_err_to_name(stop_ret));
+        }
+    } else if (resume_scan && prov->started && prov->peer_connected) {
         wifi_prov_http_start_periodic_scan(prov);
     }
     return send_ret;
@@ -818,32 +828,44 @@ static esp_err_t http_scan_result_get(httpd_req_t *req)
 static void http_stop_task(void *arg)
 {
     http_stop_task_ctx_t *ctx = (http_stop_task_ctx_t *)arg;
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     if (ctx && ctx->prov) {
         esp_wifi_service_prov_stop(&ctx->prov->base);
+        ctx->prov->stop_scheduled = false;
     }
     heap_caps_free(ctx);
     ESP_LOGI(TAG, "HTTPD server stopped");
     vTaskDeleteWithCaps(NULL);
 }
 
-static esp_err_t http_stop_post(httpd_req_t *req)
+static esp_err_t http_schedule_stop(wifi_prov_http_t *prov)
 {
-    wifi_prov_http_t *prov = (wifi_prov_http_t *)req->user_ctx;
+    if (prov->stop_scheduled) {
+        return ESP_OK;
+    }
     http_stop_task_ctx_t *ctx = heap_caps_calloc_prefer(1, sizeof(*ctx), 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT, MALLOC_CAP_DEFAULT);
     if (!ctx) {
         ESP_LOGE(TAG, "HTTP stop failed: no memory for stop task ctx");
-        return http_send_json(req, HTTP_JSON_RESULT_FAILED);
+        return ESP_ERR_NO_MEM;
     }
     ctx->prov = prov;
+    prov->stop_scheduled = true;
     if (xTaskCreateWithCaps(http_stop_task, "esp_wifi_service_prov_base_stop", 5120, ctx, tskIDLE_PRIORITY + 1, NULL,
                             ESP_WIFI_SERVICE_TASK_STACK_CAPS) != pdPASS) {
         ESP_LOGE(TAG, "HTTP stop failed: create stop task failed");
+        prov->stop_scheduled = false;
         heap_caps_free(ctx);
-        return http_send_json(req, HTTP_JSON_RESULT_FAILED);
+        return ESP_ERR_NO_MEM;
     }
     ESP_LOGI(TAG, "HTTP stop accepted: async stop task created");
-    return http_send_json(req, HTTP_JSON_RESULT_OK);
+    return ESP_OK;
+}
+
+static esp_err_t http_stop_post(httpd_req_t *req)
+{
+    wifi_prov_http_t *prov = (wifi_prov_http_t *)req->user_ctx;
+    esp_err_t ret = http_schedule_stop(prov);
+    return http_send_json(req, ret == ESP_OK ? HTTP_JSON_RESULT_OK : HTTP_JSON_RESULT_FAILED);
 }
 
 static esp_err_t http_web_ui_get(httpd_req_t *req)

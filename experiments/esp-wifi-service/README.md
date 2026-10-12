@@ -88,8 +88,13 @@ All copied third-party files retain their original notices. See the LICENSE in e
 
 ## Retry behavior (12 October 2026)
 
-The HTTP portal now remains active when the phone disconnects, even if an older profile is saved. Failed credential submissions show a Portuguese retry message and an enabled **Tentar novamente** button; successful submissions invite the user to **Finalizar configuração**. The portal closes through the explicit end action. Reconnecting the phone resumes nearby-network scans. Failed connection attempts still do not replace saved profiles: storage follows successful connection in the original handler.
+The HTTP portal now remains active when the phone disconnects, even if an older profile is saved. Failed credential submissions show a Portuguese retry message and an enabled **Tentar novamente** button; successful submissions display confirmation and automatically end provisioning after about two seconds, once connection and profile storage succeed and the HTTP response has been sent. No completion tap is needed. The manual end action remains available as a fallback. Reconnecting the phone resumes nearby-network scans. Failed connection attempts still do not replace saved profiles: storage follows successful connection in the original handler.
 
-If iOS drops the SoftAP connection, reconnect to the device Wi-Fi and open http://192.168.4.1; the firmware cannot force a phone to stay connected or keep its captive window open. No console command should be necessary while this provisioning session remains active. After a device reboot the example still connects to a saved profile; BOOT recovery is not implemented yet.
+If iOS drops the SoftAP connection, reconnect to the device Wi-Fi and open http://192.168.4.1; the firmware cannot force a phone to stay connected or keep its captive window open. No console command should be necessary while a failed provisioning session remains active. After a device reboot the example still connects to a saved profile; BOOT recovery is not implemented yet.
 
 Adapted source files are listed in UPSTREAM.json. JavaScript behavior tested in a mocked DOM for failure/retry/success and transport interruption/retry/success. C changes inspected statically. Compilation and physical validation of these changes remain pending.
+
+
+## Automatic completion (12 October 2026)
+
+After a successful credential submission and profile save, the server schedules shutdown of the provisioning service/SoftAP two seconds after sending the response. Failed submissions keep provisioning active for retries. The web page no longer requests confirmation and disables duplicate submissions after success. iOS controls its captive-window behavior: the firmware closes the setup service, but cannot guarantee that every browser window closes itself. Build and physical validation of automatic completion are pending.

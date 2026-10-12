@@ -37,7 +37,7 @@
 </head>
 <body>
   <h2>Wi-Fi setup</h2>
-  <p class="hint">Connect keeps you on this page (needs JavaScript). Nearby network choices refresh automatically every 10 seconds; you can still type SSID manually.</p>
+  <p class="hint">Selecione uma rede abaixo ou informe o nome. Se a conexão funcionar, a configuração será encerrada automaticamente. Se falhar, você poderá tentar novamente.</p>
 
   <form id="prov_form" method="post" action="/prov/profiles">
     <label class="ssid-block" for="ssid_input">Network name (SSID)
@@ -359,12 +359,11 @@
         }
 
         if (x.ok && x.json && x.json.result === 'ok') {
-          setMsg('Conectado e configuração salva. Toque em Finalizar configuração quando terminar.', '#0a0');
+          setMsg('Conectado e configuração salva. Encerrando a configuração automaticamente...', '#0a0');
           setConnectBtn('ok');
-          refreshProfiles().catch(function() {});
-
-          if (!(x.json && x.json.status)) {
-            refreshStatus().catch(function() {});
+          var connectButton = document.getElementById('prov_submit');
+          if (connectButton) {
+            connectButton.disabled = true;
           }
         } else {
           var m = (x.json && x.json.message) ||
