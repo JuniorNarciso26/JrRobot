@@ -1,0 +1,40 @@
+{
+  "cluster": "devnet",
+  "commitment": "finalized",
+  "checks": [
+    {
+      "cluster": "devnet",
+      "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "buyer": "8zQwpe3qVBzoPMasLQSbeagtmKzqL1JLG4iEApznUySo",
+      "program": "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454",
+      "skill": "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux",
+      "offer": "A2n5s6TYEH9oFZNFE1owxN5nEh18WGDHnEvrc5QvBgLR",
+      "license": "FSmHntJybFcGbhZWLBv4Us4AjSEuG92RYEQAenM1jEMT",
+      "owned": false,
+      "commitment": "finalized",
+      "price_lamports": "1000000000",
+      "creator": "3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij",
+      "creator_lamports": "500000000",
+      "treasury": "Ex9pYvpA96dkZF5efdooEU2pQvWr5owpAZPiqXtLYxnh",
+      "treasury_lamports": "500000000",
+      "model_version": 0
+    },
+    {
+      "cluster": "devnet",
+      "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "buyer": "6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R",
+      "program": "Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454",
+      "skill": "8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux",
+      "offer": "A2n5s6TYEH9oFZNFE1owxN5nEh18WGDHnEvrc5QvBgLR",
+      "license": "7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45",
+      "owned": true,
+      "commitment": "finalized",
+      "price_lamports": "1000000000",
+      "creator": "3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij",
+      "creator_lamports": "500000000",
+      "treasury": "Ex9pYvpA96dkZF5efdooEU2pQvWr5owpAZPiqXtLYxnh",
+      "treasury_lamports": "500000000",
+      "model_version": 0
+    }
+  ]
+}

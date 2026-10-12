@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "run": [
+    ["face", "surprised"],
+    ["wait", 500],
+    ["face", "thinking"],
+    ["wait", 500],
+    ["face", "happy"],
+    ["wait", 500]
+  ]
+}

@@ -1,0 +1,92 @@
+[15:06:59] JR_SKILL_SOLANA fetch=started
+[15:06:59] JR_SKILL_V1 result=error source=solana-devnet detail=Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] ERRO: Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:06:59] JR_SKILL_SOLANA result=error detail=<urlopen error [Errno 11001] getaddrinfo failed>
+[15:09:43] JR_SKILL_SOLANA fetch=started
+[15:09:44] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=506359801 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[15:09:45] JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:09:45] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[15:09:45] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[15:09:45] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:09:45] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[15:09:45] JR_REPLY id=f5e06f15f497489e ok=1 JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:09:45] JR_REPLY id=83d4a3d153954826 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:09:45] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[15:09:45] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[15:09:45] JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:09:46] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[15:09:45] JR_REPLY id=9d0b652d70ab429f ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:09:46] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[15:09:46] JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:09:46] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[15:09:47] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[15:09:46] JR_REPLY id=da4d8a7b01b64ceb ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:09:47] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:09:47] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[15:09:47] JR_REPLY id=21de8396b9f54153 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:09:47] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[15:09:47] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[15:09:48] JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[15:09:48] JR_SKILL_V1 result=ok source=solana-devnet
+[15:09:48] JR_REPLY id=e8f95933b87d496a ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[15:10:00] JR_OK expression=playful
+[15:10:00] JR_REPLY id=e9a3d860606e4b2d ok=1 JR_OK expression=playful
+[15:10:02] JR_OK expression=worried
+[15:10:02] JR_REPLY id=d04194b112e44d75 ok=1 JR_OK expression=worried
+[15:10:04] JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:10:04] JR_SKILL_V1 start=v1 source=local-file top_calls=4
+[15:10:04] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[15:10:04] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:04] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[15:10:04] JR_REPLY id=1505e8c97ba04570 ok=1 JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:10:04] JR_REPLY id=689fe313c7c946f6 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:05] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[15:10:05] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[15:10:05] JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:10:05] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[15:10:05] JR_REPLY id=e66d3121f2eb44a3 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:10:05] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[15:10:06] JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:10:06] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[15:10:06] JR_REPLY id=29658b692f0c4b5c ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:10:06] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[15:10:06] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:06] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[15:10:07] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[15:10:07] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[15:10:06] JR_REPLY id=5360eafecebb491b ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:07] JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[15:10:07] JR_SKILL_V1 result=ok source=local-file
+[15:10:07] JR_REPLY id=6a4d544f5dbf4a0c ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[15:10:09] JR_SKILL_SOLANA fetch=started
+[15:10:09] JR_SKILL_V1 result=error source=solana-devnet detail=Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:09] ERRO: Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:09] JR_SKILL_SOLANA result=error detail=<urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:18] JR_SKILL_SOLANA fetch=started
+[15:10:18] JR_SKILL_V1 result=error source=solana-devnet detail=Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:18] ERRO: Leitura Devnet recusada: <urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:18] JR_SKILL_SOLANA result=error detail=<urlopen error [Errno 11001] getaddrinfo failed>
+[15:10:23] JR_SKILL_SOLANA fetch=started
+[15:10:25] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=506359973 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[15:10:25] JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:10:25] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[15:10:25] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[15:10:25] JR_REPLY id=8df8f45eac2a4433 ok=1 JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[15:10:25] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:25] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[15:10:25] JR_REPLY id=4a63605fa5ce4c56 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:26] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[15:10:26] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[15:10:26] JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:10:26] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[15:10:26] JR_REPLY id=3129427b8bc044fe ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[15:10:26] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[15:10:27] JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:10:27] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[15:10:27] JR_REPLY id=7d2fbf786e7044fc ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[15:10:27] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[15:10:27] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:27] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[15:10:27] JR_REPLY id=9d6567b5989b4bb2 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[15:10:28] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[15:10:28] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0

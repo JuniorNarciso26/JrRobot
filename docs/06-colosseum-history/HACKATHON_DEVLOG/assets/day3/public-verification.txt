@@ -1,0 +1,14 @@
+Captured at: 2026-09-30T17:46:41.500Z
+Command: node solana/jrskill-solana/scripts/verify-public.mjs
+Exit code: 0
+
+{"result":"ok","source":"solana-devnet-rpc","commitment":"finalized","rpc_slot":505985139,"program":"Ax11PmTRcz3NLBSxtLm38Aush3MY5GJoBjyjggjtS454","authority":"3Sce1sfA6q2m2mNr2VhyGfoTePa3vA9WjYYq2JYA5mij","pda":"8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux","payload_bytes":128,"payload_hash":"416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f","hash_verified":true,"matches_checkpoint":true}
+{
+  "v": 1,
+  "run": [
+    ["face", "happy"],
+    ["wait", 500],
+    ["recipe", "face_sequence"],
+    ["face", "neutral"]
+  ]
+}

@@ -1,0 +1,7 @@
+[13:34:16] JR_WALLET state=connected address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R scope=connection
+[13:34:44] JR_WALLET_AUTH state=authenticated address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R expires_at=1790959484.744842
+[13:34:44] JR_WALLET_AUTH state=authenticated address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[13:34:45] JR_WALLET_NETWORK rpc=devnet genesis_verified=true address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R balance_lamports=0 rpc_slot=506697543 extension_network=unknown
+[13:34:49] JR_WALLET_NETWORK rpc=devnet genesis_verified=true address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R balance_lamports=0 rpc_slot=506697560 extension_network=unknown
+[13:35:13] JR_WALLET_NETWORK rpc=devnet genesis_verified=true address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R balance_lamports=0 rpc_slot=506697659 extension_network=unknown
+[13:35:54] JR_WALLET_NETWORK rpc=devnet genesis_verified=true address=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R balance_lamports=0 rpc_slot=506697824 extension_network=unknown

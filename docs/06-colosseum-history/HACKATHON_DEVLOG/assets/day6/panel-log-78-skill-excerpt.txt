@@ -1,0 +1,39 @@
+JrBot-painel-log (78).txt — selected JR_SKILL evidence; other lines omitted.
+[11:44:34] JR_SKILL_LICENSE buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R owned=false license=7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45
+[11:44:37] JR_SKILL_PURCHASE buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R state=quote signature=none
+[11:44:40] JR_SKILL_PURCHASE stage=wallet_signature state=requested buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R chain=solana:devnet
+[11:44:44] JR_SKILL_PURCHASE stage=wallet_signature state=returned buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[11:44:44] JR_SKILL_PURCHASE stage=submit_http state=requested buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R
+[11:44:47] JR_SKILL_PURCHASE buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R signature=3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9 state=submitted
+[11:44:47] JR_SKILL_PURCHASE stage=fee_check fee_lamports=80000 fee_limit_lamports=105000
+[11:44:47] JR_SKILL_PURCHASE buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R state=submitted signature=3SSmCuBpQY2qh2EiwY94D3vn1nntxs97pC5kF4qSXpvKmcpKzsVyGfY1bTPN4qBrCJGprzH5CS6Nq8V1wXNRfFP9
+[11:44:47] JR_SKILL_PURCHASE_BUDGET {"compute_units":200000,"unit_price_micro_lamports":375000,"priority_fee_lamports":"75000","fee_lamports":"80000","fee_limit_lamports":"105000"}
+[11:45:18] JR_SKILL_LICENSE buyer=6rinyiBQyS4RxLeuX62yJqxgwiJqWXiyAbxXSS5LX85R owned=true license=7tPf4YSd7P6PzBkmseW5FrwnG8P238gZTVG8Rj2v9v45
+[11:45:43] JR_SKILL_V1 start=v1 source=local-file top_calls=4
+[11:45:43] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[11:45:43] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[11:45:44] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[11:45:44] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[11:45:44] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[11:45:44] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[11:45:44] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[11:45:45] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[11:45:45] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[11:45:46] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[11:45:46] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[11:45:46] JR_SKILL_V1 result=ok source=local-file
+[11:45:47] JR_SKILL_SOLANA fetch=started
+[11:45:48] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=507766081 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[11:45:49] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[11:45:49] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[11:45:49] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[11:45:49] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[11:45:49] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[11:45:50] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[11:45:50] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[11:45:50] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[11:45:51] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[11:45:51] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[11:45:52] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[11:45:52] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[11:45:52] JR_SKILL_V1 result=ok source=solana-devnet

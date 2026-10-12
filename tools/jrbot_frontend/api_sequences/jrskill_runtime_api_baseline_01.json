@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "id": "jrskill-runtime-api-baseline-01",
+  "name": "JrSkill Runtime API baseline",
+  "source": "local-file",
+  "transport": "serial",
+  "firmware": "JrBot_V1S_00",
+  "description": "Primeira sequencia JrSkill executada pelo painel de teste usando somente funcoes ja existentes da Runtime API.",
+  "steps": [
+    {
+      "name": "discover-capabilities",
+      "request": {"v": 1, "id": "v1s_cap_01", "fn": "capabilities", "args": {}},
+      "expect": {"ok": true, "api": "1.1", "actions_contains": "face"},
+      "delay_ms": 250
+    },
+    {
+      "name": "read-system-version",
+      "request": {"v": 1, "id": "v1s_ver_01", "fn": "get", "args": {"path": "system.version"}},
+      "expect": {"ok": true, "path": "system.version", "value": "JrBot_V1S_00"},
+      "delay_ms": 250
+    },
+    {
+      "name": "read-audio-volume",
+      "request": {"v": 1, "id": "v1s_vol_01", "fn": "get", "args": {"path": "audio.volume"}},
+      "expect": {"ok": true, "path": "audio.volume"},
+      "delay_ms": 250
+    },
+    {
+      "name": "face-neutral-start",
+      "request": {"v": 1, "id": "v1s_face_01", "fn": "face", "args": {"expression": "neutral"}},
+      "expect": {"ok": true, "expression": "neutral"},
+      "delay_ms": 500
+    },
+    {
+      "name": "face-surprised",
+      "request": {"v": 1, "id": "v1s_face_02", "fn": "face", "args": {"expression": "surprised"}},
+      "expect": {"ok": true, "expression": "surprised"},
+      "delay_ms": 900
+    },
+    {
+      "name": "confirm-surprised",
+      "request": {"v": 1, "id": "v1s_get_01", "fn": "get", "args": {"path": "face.current"}},
+      "expect": {"ok": true, "path": "face.current", "value": "surprised"},
+      "delay_ms": 250
+    },
+    {
+      "name": "face-thinking",
+      "request": {"v": 1, "id": "v1s_face_03", "fn": "face", "args": {"expression": "thinking"}},
+      "expect": {"ok": true, "expression": "thinking"},
+      "delay_ms": 900
+    },
+    {
+      "name": "confirm-thinking",
+      "request": {"v": 1, "id": "v1s_get_02", "fn": "get", "args": {"path": "face.current"}},
+      "expect": {"ok": true, "path": "face.current", "value": "thinking"},
+      "delay_ms": 250
+    },
+    {
+      "name": "face-happy",
+      "request": {"v": 1, "id": "v1s_face_04", "fn": "face", "args": {"expression": "happy"}},
+      "expect": {"ok": true, "expression": "happy"},
+      "delay_ms": 900
+    },
+    {
+      "name": "confirm-happy",
+      "request": {"v": 1, "id": "v1s_get_03", "fn": "get", "args": {"path": "face.current"}},
+      "expect": {"ok": true, "path": "face.current", "value": "happy"},
+      "delay_ms": 250
+    },
+    {
+      "name": "face-neutral-end",
+      "request": {"v": 1, "id": "v1s_face_05", "fn": "face", "args": {"expression": "neutral"}},
+      "expect": {"ok": true, "expression": "neutral"},
+      "delay_ms": 500
+    },
+    {
+      "name": "confirm-neutral",
+      "request": {"v": 1, "id": "v1s_get_04", "fn": "get", "args": {"path": "face.current"}},
+      "expect": {"ok": true, "path": "face.current", "value": "neutral"}
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+[14:39:02] JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[14:39:02] JR_SKILL_V1 start=v1 source=local-file top_calls=4
+[14:39:02] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[14:39:02] JR_REPLY id=1473b9972a22467e ok=1 JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[14:39:02] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:39:02] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[14:39:02] JR_REPLY id=147546f43d2d489a ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:39:03] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[14:39:03] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[14:39:03] JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[14:39:03] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[14:39:03] JR_REPLY id=df03b9638a9c414f ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[14:39:04] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[14:39:04] JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[14:39:04] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[14:39:04] JR_REPLY id=1bcc1686213a45fe ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[14:39:04] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[14:39:04] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:39:04] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[14:39:04] JR_REPLY id=42559a97096c4c6b ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:39:05] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[14:39:05] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[14:39:05] JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[14:39:05] JR_SKILL_V1 result=ok
+[14:39:05] JR_REPLY id=d1f1c4ba54c3437d ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}

@@ -237,7 +237,7 @@ bool jr_face_set_expression(const char *c){
     else if(!strcmp(c,"brincalhao")||!strcmp(c,"playful")) next=FACE_PLAYFUL;
     else if(!strcmp(c,"preocupado")||!strcmp(c,"worried")) next=FACE_WORRIED;
     else if(!strcmp(c,"cool")||!strcmp(c,"tranquilo")) next=FACE_COOL;
-    else if(!strcmp(c,"bateria")||!strcmp(c,"battery")) next=FACE_BATTERY_LOW;
+    else if(!strcmp(c,"bateria")||!strcmp(c,"battery")||!strcmp(c,"battery_low")) next=FACE_BATTERY_LOW;
     else return false;
     portENTER_CRITICAL(&state_lock);
     current_expression=next; demo_mode=false;

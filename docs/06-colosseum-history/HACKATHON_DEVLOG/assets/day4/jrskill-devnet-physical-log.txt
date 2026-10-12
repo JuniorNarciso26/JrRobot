@@ -1,0 +1,27 @@
+[14:42:04] JR_SKILL_SOLANA fetch=started
+[14:42:05] JR_SKILL_SOLANA source=solana-devnet pda=8LRRfZVnyjSYPLezJBCdGriwVcbzsopogZBDTAFSFJux rpc_slot=506352693 payload_bytes=128 payload_hash=416d6af34eada998a5f46595e0355a5bdfd7dba86faefe312dbc2afcd26d907f hash_verified=true matches_checkpoint=true
+[14:42:05] JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[14:42:05] JR_SKILL_V1 start=v1 source=solana-devnet top_calls=4
+[14:42:05] JR_SKILL_V1 call=1/4 fn=face value=happy depth=0
+[14:42:05] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:42:05] JR_SKILL_V1 call=2/4 fn=wait ms=500 depth=0
+[14:42:05] JR_REPLY id=f3857e4d5c5c46ef ok=1 JR_API {"v":1,"ok":true,"result":{"api":"1.1","protocol":1,"firmware":"JrBot_V1S_00","hardware":"JRBOT-HW-04","profile":"full_hardware_test","persistent_config":false,"flow_engine":false,"playground":false,"functions":[{"name":"capabilities","kind":"query"},{"name":"get","kind":"query"},{"name":"face","kind":"action"}],"get_paths":["api.version","system.version","system.hardware","system.profile","brain.status","voice.status","audio.volume","face.current","wifi.status","wifi.diagnostics"],"actions":["face"],"triggers":[],"events":[],"transports":["serial.command","http.post./cmd"]}}
+[14:42:05] JR_REPLY id=47b5f0145c984233 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:42:06] JR_SKILL_V1 recipe_enter=face_sequence depth=1
+[14:42:06] JR_SKILL_V1 call=1/6 fn=face value=surprised depth=1
+[14:42:06] JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[14:42:06] JR_SKILL_V1 call=2/6 fn=wait ms=500 depth=1
+[14:42:06] JR_SKILL_V1 call=3/6 fn=face value=thinking depth=1
+[14:42:06] JR_REPLY id=1d58d7358555461c ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"surprised"}}
+[14:42:07] JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[14:42:07] JR_SKILL_V1 call=4/6 fn=wait ms=500 depth=1
+[14:42:07] JR_REPLY id=53bddb8e4b9a4b74 ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"thinking"}}
+[14:42:07] JR_SKILL_V1 call=5/6 fn=face value=happy depth=1
+[14:42:07] JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:42:07] JR_SKILL_V1 call=6/6 fn=wait ms=500 depth=1
+[14:42:07] JR_REPLY id=17e9418fe1e1435f ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"happy"}}
+[14:42:08] JR_SKILL_V1 recipe_exit=face_sequence depth=1
+[14:42:08] JR_SKILL_V1 call=4/4 fn=face value=neutral depth=0
+[14:42:08] JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}
+[14:42:08] JR_SKILL_V1 result=ok source=solana-devnet
+[14:42:08] JR_REPLY id=8eb8b1e38386479a ok=1 JR_API {"v":1,"ok":true,"result":{"expression":"neutral"}}

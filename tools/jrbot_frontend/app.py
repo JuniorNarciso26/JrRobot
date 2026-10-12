@@ -7,6 +7,12 @@ import re
 import threading
 import time
 import uuid
+import solana_skill
+import wallet_auth
+import wallet_network
+import wallet_purchase
+import wallet_skills
+import wallet_execution
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V2-02"
+APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-15"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -248,7 +254,7 @@ class Handler(BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(10)
 
-    def _send(self, code=200, body="", ctype="text/plain; charset=utf-8"):
+    def _send(self, code=200, body="", ctype="text/plain; charset=utf-8", cookie=None):
         if isinstance(body, str):
             body = body.encode("utf-8")
         self.send_response(code)
@@ -256,6 +262,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         try:
             self.wfile.write(body)
@@ -286,6 +294,93 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (ROOT / "index.html").read_text(encoding="utf-8").replace("{APP_VERSION}", APP_VERSION), "text/html; charset=utf-8")
         elif path.path == "/panel.js":
             self._send(200, (ROOT / "panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/wallet_panel.js":
+            self._send(200, (ROOT / "wallet_panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/jrskill/wallet/status":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            status = wallet_auth.STORE.status(token, "http://" + self.headers["Host"])
+            self._send(200, json.dumps(status), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/skills":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira para buscar suas Skills")
+                return
+            try:
+                result = wallet_skills.discover(status["address"])
+                after = wallet_auth.STORE.status(token, origin)
+                if not after.get("authenticated") or after.get("address") != status["address"]:
+                    self._send(401, "Sessao alterada ou expirada durante a busca")
+                    return
+            except (ValueError, TimeoutError, OSError) as exc:
+                detail = solana_skill.rpc_error_detail(exc)
+                add_log("JR_SKILL_DISCOVERY result=error buyer=" + status["address"] + " detail=" + detail)
+                self._send(502, "Busca de Skills nao confirmada: " + detail)
+                return
+            add_log("JR_SKILL_DISCOVERY result=ok buyer=" + status["address"] + " count=" + str(len(result["skills"])) + " rpc_slot=" + str(result["rpc_slot"]))
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/purchase/status":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira para consultar sua licenca")
+                return
+            try:
+                result = wallet_purchase.inspect(status["address"])
+                wallet_purchase.STORE.authorized(token, origin, status["address"])
+            except (ValueError, TimeoutError, OSError) as exc:
+                self._send(502, "Licenca nao confirmada: " + str(exc))
+                return
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/wallet/devnet":
+            token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+            origin = "http://" + self.headers["Host"]
+            status = wallet_auth.STORE.status(token, origin)
+            if not status.get("authenticated"):
+                self._send(401, "Autentique a carteira antes de consultar Devnet e saldo")
+                return
+            try:
+                result = wallet_network.inspect(status["address"])
+                after = wallet_auth.STORE.status(token, origin)
+                if not after.get("authenticated") or after.get("address") != status["address"]:
+                    self._send(401, "Sessao alterada ou expirada durante a consulta")
+                    return
+            except (ValueError, TimeoutError, OSError) as exc:
+                self._send(502, "Consulta Devnet nao confirmada: " + str(exc))
+                return
+            self._send(200, json.dumps(result), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/api-sequence":
+            sequence = ROOT / "api_sequences" / "jrskill_runtime_api_baseline_01.json"
+            self._send(200, sequence.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/devnet-status":
+            try:
+                status = solana_skill.check_connection()
+            except Exception:
+                status = {"available": False, "cluster": "devnet"}
+            self._send(200, json.dumps(status), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/skill-devnet":
+            try:
+                proof = solana_skill.load_skill()
+            except Exception as exc:
+                add_log("JR_SKILL_SOLANA result=error detail=" + str(exc))
+                self._send(502, "Leitura Devnet recusada: " + str(exc))
+                return
+            self._send(200, json.dumps(proof), "application/json; charset=utf-8")
+        elif path.path == "/jrskill/skill":
+            skill = ROOT / "jrskill" / "skills" / "minimal_recipe_01.json"
+            self._send(200, skill.read_text(encoding="utf-8"), "application/json; charset=utf-8")
+        elif path.path.startswith("/jrskill/recipe/"):
+            name = path.path[len("/jrskill/recipe/"):]
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name):
+                self._send(400, "Nome de recipe invalido")
+                return
+            recipe = ROOT / "jrskill" / "recipes" / (name + ".json")
+            if not recipe.is_file():
+                self._send(404, "Recipe nao encontrada")
+                return
+            self._send(200, recipe.read_text(encoding="utf-8"), "application/json; charset=utf-8")
         elif path.path == "/ports":
             try:
                 ports = [] if list_ports is None else [p.device for p in list_ports.comports()]
@@ -323,7 +418,78 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Corpo incompleto")
             data = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True, max_num_fields=12, errors="strict")
             get = lambda key, default="": data.get(key, [default])[0]
-            if self.path == "/connect":
+            if self.path.startswith("/jrskill/wallet/"):
+                origin = "http://" + self.headers["Host"]
+                if self.headers.get("Origin") != origin:
+                    self._send(403, "Origem local obrigatoria para autenticacao")
+                    return
+                token = wallet_auth.cookie_token(self.headers.get("Cookie"))
+                cookie = None
+                if self.path == "/jrskill/wallet/challenge":
+                    token, result = wallet_auth.STORE.challenge(token, origin, get("address"))
+                    cookie = f"{wallet_auth.COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age={wallet_auth.SESSION_TTL}"
+                elif self.path == "/jrskill/wallet/verify":
+                    result = wallet_auth.STORE.verify(token, origin, get("id"), get("signature"))
+                    cookie = f"{wallet_auth.COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age={wallet_auth.SESSION_TTL}"
+                    add_log("JR_WALLET_AUTH state=authenticated address=" + result["address"])
+                elif self.path == "/jrskill/wallet/logout":
+                    wallet_auth.STORE.logout(token)
+                    result = {"authenticated": False}
+                    cookie = f"{wallet_auth.COOKIE}=; HttpOnly; SameSite=Strict; Path=/jrskill/wallet; Max-Age=0"
+                elif self.path in ('/jrskill/wallet/execution/start', '/jrskill/wallet/execution/send'):
+                    status = wallet_auth.STORE.status(token, origin)
+                    if not status.get('authenticated'):
+                        add_log('JR_SKILL_AUTHORIZATION result=blocked reason=authentication_required')
+                        self._send(401, 'Autentique a carteira para executar a Skill da Devnet')
+                        return
+                    try:
+                        if self.path.endswith('/start'):
+                            result = wallet_execution.STORE.start(token, origin, get("skill") or solana_skill.PDA)
+                            add_log('JR_SKILL_AUTHORIZATION result=allowed buyer=' + result['buyer'] + ' license=' + result['license'])
+                        else:
+                            command = validate_command(get('command'))
+                            result = {'reply': wallet_execution.STORE.send(token, origin, get('permit'), command, serial_request)}
+                            add_log('JR_SKILL_AUTHORIZATION result=command_sent buyer=' + status['address'])
+                    except (ValueError, RuntimeError, TimeoutError, OSError) as exc:
+                        add_log('JR_SKILL_AUTHORIZATION result=blocked buyer=' + status['address'] + ' detail=' + solana_skill.rpc_error_detail(str(exc)))
+                        raise
+                elif self.path in ("/jrskill/wallet/purchase/quote", "/jrskill/wallet/purchase/submit"):
+                    status = wallet_auth.STORE.status(token, origin)
+                    if not status.get("authenticated"):
+                        self._send(401, "Autentique a carteira antes da compra")
+                        return
+                    if self.path.endswith("/quote"):
+                        result = wallet_purchase.STORE.quote(token, origin, status["address"])
+                    else:
+                        try:
+                            result = wallet_purchase.STORE.submit(token, origin, status["address"], get("quote_id"), get("signed_transaction"))
+                        except (ValueError, TimeoutError, OSError) as exc:
+                            if isinstance(exc, wallet_purchase.PurchaseRejected):
+                                diagnostic = dict(exc.diagnostics)
+                                comparisons = {key: diagnostic.pop(key) for key in ('expected', 'actual') if key in diagnostic}
+                                add_log('JR_SKILL_PURCHASE_DIAG code=' + exc.code + ' metadata=' + json.dumps(diagnostic, separators=(',', ':')))
+                                for side, summary in comparisons.items():
+                                    summary = dict(summary)
+                                    instructions = summary.pop('instructions')
+                                    add_log('JR_SKILL_PURCHASE_DIAG side=' + side + ' message=' + json.dumps(summary, separators=(',', ':')))
+                                    for index, item in enumerate(instructions):
+                                        add_log('JR_SKILL_PURCHASE_DIAG side=' + side + ' instruction=' + str(index) + ' detail=' + json.dumps(item, separators=(',', ':')))
+                            add_log("JR_SKILL_PURCHASE stage=server_validation state=rejected buyer=" + status["address"]
+                                    + " relay_not_completed=true detail=" + solana_skill.rpc_error_detail(type(exc).__name__ + ': ' + str(exc)))
+                            raise
+                    add_log("JR_SKILL_PURCHASE buyer=" + status["address"] + " state=" + result.get("state", "quote")
+                             + " signature=" + result.get("signature", "none"))
+                    if result.get("error_detail"):
+                        add_log("JR_SKILL_PURCHASE stage=rpc_relay state=unknown buyer=" + status["address"]
+                                + " signature=" + result.get("signature", "none") + " detail=" + result["error_detail"])
+                    if 'compute_units' in result:
+                        add_log('JR_SKILL_PURCHASE_BUDGET ' + json.dumps({key: result[key] for key in
+                            ('compute_units', 'unit_price_micro_lamports', 'priority_fee_lamports', 'fee_lamports', 'fee_limit_lamports')}, separators=(',', ':')))
+                else:
+                    self._send(404, "Rota nao encontrada")
+                    return
+                self._send(200, json.dumps(result), "application/json; charset=utf-8", cookie=cookie)
+            elif self.path == "/connect":
                 if serial is None:
                     raise RuntimeError("pyserial nao instalado; instale requirements.txt")
                 port = get("port").strip()

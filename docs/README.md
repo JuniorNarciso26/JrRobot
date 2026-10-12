@@ -1,65 +1,18 @@
-# Documentação do JrBot
+# JrBot Documentation
 
-Este diretório contém a documentação **ativa** do projeto. O estado vigente deve ser lido a partir destes documentos e do `README.md` da raiz.
+This documentation is organized by **primary topic**, so readers can understand the robot, assemble its hardware, develop its firmware, and explore the JrSkill ecosystem without navigating the hackathon records first.
 
-## Estado atual
+## Documentation sections
 
-- release oficial: **`JrBot_V1.7.04`** em `main`;
-- integração: `develop`, atualmente na mesma baseline da release;
-- linha oficial paralela JrSkill/Solana: **`V1s-00`** / `JrBot_V1S_00`;
-- linha de voz local: `v2`;
-- referência histórica da V1: `v1`.
+1. **[History and Roadmap](01-history-roadmap/README.md)** — project introduction, documented versions, current status, and future plans.
+2. **[Hardware Assembly](02-assembly/README.md)** — components, pin mapping, electrical connections, and reference hardware.
+3. **[3D Printing and Body](03-3d-printing/README.md)** — mechanical design and body assembly; complete printable models and instructions still need to be gathered.
+4. **[Firmware and Development](04-firmware-development/README.md)** — architecture, setup, Runtime API, and testing.
+5. **[JrSkill Network](05-jrskill-network/README.md)** — Skills, licensing, Solana Devnet, and controlled physical execution.
+6. **[Colosseum 2026 History](06-colosseum-history/README.md)** — preserved Kickoff and Day 1–9 development logs and evidence.
 
-A documentação da `main` descreve apenas o **objetivo e o papel** da V1S. Andamento, etapas, provas e decisões internas da JrSkill Network permanecem documentados na própria branch `V1s-00`.
+## Version status
 
-## Documentos principais
+**JrBot V1.8S** is the planned next product version integrating JrSkill Network with JrBot's existing capabilities. The latest version promoted to `main` remains `JrBot_V1.7.04`. See [Project Status](01-history-roadmap/PROJECT_STATUS.md).
 
-### Produto e projeto
-
-- [Roadmap oficial](ROADMAP.md)
-- [Estado atual](PROJECT_STATUS.md)
-- [Arquitetura](ARCHITECTURE.md)
-- [Guia de desenvolvimento](DEVELOPMENT.md)
-- [Changelog](CHANGELOG.md)
-- [Testes e validação](TESTING.md)
-- [Padrão da documentação](DOCUMENTATION.md)
-
-### Interfaces e comportamento
-
-- [Runtime API v1](API_RUNTIME.md)
-- [Flow Engine](FLOWS.md)
-- [Playground](PLAYGROUND.md)
-
-### Hardware
-
-- [Pinagem HW04](PINAGEM.md)
-- [Esquema de ligação](ESQUEMA_LIGACAO.md)
-- [Materiais](MATERIAIS.md)
-- [Revisão HW04](REVISAO_HW04.md)
-
-### Publicação
-
-- [Apresentação pública](PUBLICACAO.md)
-
-## Documentação antiga
-
-Arquivos que descrevem branches, firmwares ou experimentos antigos foram movidos para `../trash/`.
-
-Esse conteúdo foi preservado apenas para revisão histórica e **não deve ser usado como referência do estado atual**. O diretório será revisado manualmente antes de qualquer exclusão definitiva.
-
-## Níveis de evidência
-
-Cada documento deve distinguir:
-
-- **Planejado** — arquitetura ou trabalho aprovado, ainda não implementado;
-- **Implementado** — código existe;
-- **Build verificado** — compilação concluída;
-- **Bancada/simulado** — comportamento exercitado sem comprovar o efeito físico final;
-- **Validado fisicamente** — comportamento confirmado no hardware real.
-
-## Regra de versões
-
-- `JrBot V1 / V2 / V3` = linhas de produto;
-- `JrBot V1S` = linha oficial paralela JrSkill / Solana;
-- `Runtime API 1.x` = versão técnica do protocolo;
-- identificadores de build/revisão não substituem a versão de produto.
+This documentation follows the [MIT-licensed repository](../LICENSE). Historical material remains preserved in [trash/](../trash/README.md) for review; archived records are not necessarily up to date.

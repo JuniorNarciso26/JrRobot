@@ -1,121 +1,112 @@
-# Contribuindo com o JrBot
+# Contributing to JrBot
 
-Obrigado pelo interesse no JrBot.
+Thank you for your interest in JrBot.
 
-O projeto combina firmware embarcado, hardware, áudio, visão, WebRTC, interfaces, inteligência artificial e uma linha paralela de pesquisa em Skills distribuíveis.
+The project combines embedded firmware, electronic hardware, audio, computer vision, WebRTC, web interfaces, AI, and the **JrSkill Network** ecosystem for distributable robot Skills.
 
-## Antes de começar
+## Before you start
 
-Leia:
+Read these documents:
 
-1. [Documentação](docs/README.md)
-2. [Estado do projeto](docs/PROJECT_STATUS.md)
-3. [Roadmap](docs/ROADMAP.md)
-4. [Arquitetura](docs/ARCHITECTURE.md)
-5. [Desenvolvimento](docs/DEVELOPMENT.md)
-6. [Testes](docs/TESTING.md)
+1. [Documentation Index](docs/README.md)
+2. [Current Project Status](docs/01-history-roadmap/PROJECT_STATUS.md)
+3. [Roadmap](docs/01-history-roadmap/ROADMAP.md)
+4. [Architecture](docs/04-firmware-development/ARCHITECTURE.md)
+5. [Development Guide](docs/04-firmware-development/DEVELOPMENT.md)
+6. [Testing and Validation](docs/04-firmware-development/TESTING.md)
 
-## Branches oficiais
+## Project branches
 
-- `main` — release oficial estável;
-- `develop` — integração;
-- `V1s-00` — linha oficial paralela JrSkill Network / Solana;
-- `v2` — voz local;
-- `v1` — referência histórica da V1.
+- `main`: latest officially promoted stable release.
+- `develop`: integration work.
+- `V1s-00`: JrSkill Network/Solana integration and Colosseum history; preparing JrBot V1.8S.
+- `v2`: local voice-control development.
+- `v1`: historical V1 reference.
 
-Não desenvolver diretamente em `main`.
+Do **not** develop directly on `main`.
 
-### Contribuições para a baseline do produto
+### Contributing to the stable baseline
 
-Parta de `develop` e use uma branch dedicada:
+Start from `develop` and use a dedicated branch:
 
 ```text
-feature/<nome>
-fix/<nome>
-hotfix/<nome>
-test/<experimento>
+feature/<name>
+fix/<name>
+hotfix/<name>
+test/<experiment>
 ```
 
-### Contribuições para JrSkill Network
+### Contributing to JrSkill Network
 
-A linha oficial é `V1s-00`.
+The integration line is `V1s-00`. It contains portable declarative Skills, Solana-backed distribution and licensing, and safe execution through local capabilities. Do not treat Devnet tests as evidence of production Mainnet availability.
 
-Ela estuda Skills portáveis e declarativas, uma camada de distribuição/licenciamento baseada em Solana e execução segura por capabilities locais.
+### Contributing to local voice
 
-O andamento, as etapas e a arquitetura experimental detalhada dessa linha devem ser documentados **na própria V1s-00**, não duplicados na documentação da `main`.
+Use `v2` for work specific to offline speech recognition or local voice commands.
 
-### Contribuições para voz local
-
-Use a linha `v2` quando o trabalho for específico de reconhecimento/comandos por voz local.
-
-## Processo
+## Contribution workflow
 
 ```text
 Issue
-→ pesquisa / arquitetura
+→ research / architecture
 → branch
-→ implementação
+→ implementation
 → build
-→ teste
-→ validação física
-→ documentação
+→ testing
+→ physical validation
+→ documentation
 → Pull Request
-→ decisão
+→ decision
 ```
 
-Experimentos de laboratório não devem ser promovidos diretamente para `develop`.
+Laboratory experiments should not be promoted directly to `develop`.
 
 ## Pull Requests
 
-Todo PR deve informar:
+Describe:
 
-- objetivo;
-- Issue relacionada;
-- base/branch;
-- arquivos e módulos afetados;
-- impacto em hardware ou recursos compartilhados;
-- status de compilação;
-- testes executados;
-- validação física realizada ou pendente;
-- limitações;
-- documentação atualizada.
+- Purpose and related Issue.
+- Source/base branch.
+- Affected files and modules.
+- Impact on hardware or shared resources.
+- Build status.
+- Tests performed.
+- Physical validation completed or pending.
+- Known limitations.
+- Documentation updates.
 
 ## Hardware
 
-Mudanças de pinagem devem atualizar `hardware/pinmap.json` e os documentos relacionados.
-
-Antes de enviar alterações:
+Pin changes must update `hardware/pinmap.json` and the relevant documents. Before submitting:
 
 ```text
 python tools/generate_pinmap.py --check
 python tests/hardware/test_pin_policy.py
 ```
 
-GPIOs compartilhados, alimentação e conflitos de periféricos precisam ser documentados explicitamente.
+Document shared GPIO signals, power requirements, and peripheral conflicts explicitly.
 
-## Níveis de evidência
+## Evidence levels
 
-Use os níveis definidos em [docs/TESTING.md](docs/TESTING.md):
+Use the levels defined in [Testing and Validation](docs/04-firmware-development/TESTING.md):
 
-- planejado;
-- implementado;
-- build verificado;
-- bancada/simulado;
-- validado fisicamente.
+- Planned.
+- Implemented.
+- Build verified.
+- Bench/simulated.
+- Physically validated.
 
-Não confunda sucesso de software com validação física.
+Do not confuse successful software execution with physical confirmation.
 
-## Segurança
+## Security
 
-- IA/Skill não controla GPIO diretamente;
-- funções externas precisam estar allowlisted;
-- argumentos precisam ser validados;
-- não aceite código arbitrário;
-- não exponha o portal local diretamente à Internet;
-- não publique credenciais ou dados pessoais.
+- AI and external Skills cannot control GPIO directly.
+- External actions must be allowlisted.
+- Arguments must be validated.
+- Never accept arbitrary executable code.
+- Do not expose the local portal directly to the Internet.
+- Do not publish credentials or personal information.
 
-## Licença
+## License
 
-O JrBot é distribuído sob a [MIT License](LICENSE).
-
-Contribuições aceitas são disponibilizadas sob a mesma licença, respeitadas licenças de terceiros.
+JrBot is distributed under the [MIT License](LICENSE), subject to third-party license obligations. Accepted contributions use the same licensing terms.

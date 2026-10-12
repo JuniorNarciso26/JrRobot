@@ -1,17 +1,17 @@
-JrBot - montagem HW04
+JrBot — HW04 Assembly Confirmation
 
-Confirmado pelo proprietario:
-- Placa: ESP32-S3-N16R8, duas USB-C.
-- Camera: OV5640 no conector da placa.
-- OLED: SSD1306 I2C 128x64; SDA=GPIO1, SCL=GPIO2; atualmente pode ficar desconectado.
-- Microfone: MS3625 I2S.
-- Amplificador: MAX98357A I2S mono.
-- Falante: 4 ohms / 3 W.
+Confirmed by the project owner:
+- Controller board: ESP32-S3-N16R8, two USB-C connectors.
+- Camera: OV5640 on the board's camera connector.
+- OLED: SSD1306 I2C 128x64; SDA=GPIO1, SCL=GPIO2; it may be disconnected in the current assembly.
+- Microphone: MS3625 I2S.
+- Amplifier: MAX98357A mono I2S.
+- Speaker: 4 ohms / 3 W.
 
-Pinagem de audio definida:
-- GPIO21 -> SCK/BCLK do microfone e BCLK do amplificador.
-- GPIO47 -> WS do microfone e LRC/WS do amplificador.
-- GPIO41 <- SD do microfone.
-- GPIO42 -> DIN do amplificador.
+Defined audio pin mapping:
+- GPIO21 -> microphone SCK/BCLK and amplifier BCLK.
+- GPIO47 -> microphone WS and amplifier LRC/WS.
+- GPIO41 <- microphone SD.
+- GPIO42 -> amplifier DIN.
 
-Antes de energizar: conferir continuidade, VDD/VIN/GND e ausencia de curto com a placa desligada.
+Before applying power, check continuity, VDD/VIN/GND and absence of shorts with the board powered off.

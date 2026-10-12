@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "run": [
+    ["face", "happy"],
+    ["wait", 500],
+    ["recipe", "face_sequence"],
+    ["face", "neutral"]
+  ]
+}

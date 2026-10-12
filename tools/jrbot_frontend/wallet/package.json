@@ -1,0 +1,14 @@
+{
+  "name": "jrbot-wallet-panel",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@11.25.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/panel.mjs --bundle --format=iife --platform=browser --target=chrome100 --outfile=../wallet_panel.js --legal-comments=eof",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": { "@wallet-standard/app": "1.1.1" },
+  "devDependencies": { "esbuild": "0.28.2" }
+}
