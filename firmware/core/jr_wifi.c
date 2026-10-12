@@ -13,6 +13,12 @@
 #include "freertos/FreeRTOS.h"
 #include "jr_config.h"
 #include "jr_wifi.h"
+#include "jr_mdns.h"
+#include "esp_log.h"
+#include "esp_config_storage.h"
+#include "esp_wifi_service.h"
+#include "esp_wifi_service_prov_http.h"
+#include "aes/esp_aes.h"
 
 #define CFG_SCHEMA 0x4a520201U
 /* One versioned NVS value avoids mixed old/new fields after a failed write. */
@@ -22,10 +28,10 @@ typedef struct {
     char ssid[33], pass[65], host[33], ip[16], gateway[16], mask[16], dns1[16], dns2[16];
 } wifi_settings_t;
 static wifi_settings_t active;
-static bool prepared, start_attempted, wifi_started, driver_initialized;
-static esp_netif_t *station;
-static esp_event_handler_instance_t wifi_handler, ip_handler;
-static bool wifi_handler_set, ip_handler_set;
+static bool prepared, start_attempted;
+static esp_wifi_service_t *wifi_service;
+static esp_wifi_service_profile_mgr_t profile_manager;
+static esp_wifi_service_prov_t provisioning_agents[1];
 static portMUX_TYPE state_lock=portMUX_INITIALIZER_UNLOCKED;
 static jr_wifi_status_t state={.ip="sem wifi"};
 
@@ -145,65 +151,289 @@ bool jr_wifi_network_ready(void) { jr_wifi_status_t s; jr_wifi_get_status(&s); r
 const char *jr_wifi_ip(void) { return state.ip; }
 const char *jr_wifi_ssid(void) { return active.ssid; }
 
-static void wifi_event_handler(void *arg,esp_event_base_t base,int32_t id,void *data) {
-    (void)arg;
-    if (base==WIFI_EVENT && id==WIFI_EVENT_STA_START) {
-        esp_err_t err=esp_wifi_connect(); if (err!=ESP_OK) set_error(err);
-    } else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {
-        portENTER_CRITICAL(&state_lock); state.connected=false; memcpy(state.ip,"sem wifi",9); portEXIT_CRITICAL(&state_lock);
-        esp_err_t err=esp_wifi_connect(); if (err!=ESP_OK) set_error(err);
-    } else if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {
-        const ip_event_got_ip_t *event=data; char ip[16];
-        snprintf(ip,sizeof(ip),IPSTR,IP2STR(&event->ip_info.ip));
-        portENTER_CRITICAL(&state_lock); memcpy(state.ip,ip,sizeof(ip)); state.connected=true; state.last_error=ESP_OK; portEXIT_CRITICAL(&state_lock);
-        printf("JR_WIFI conectado ip=%s\n",ip);
+
+/* Keep the proven experiment's store/format so flashing the candidate retains
+ * profiles configured by phone. This is demo application-layer encryption,
+ * not hardware-backed NVS protection; do not treat the published key as a secret.
+ */
+static esp_config_storage_nvs_t profile_store = {
+    .nvs_namespace = "wifi_svc_ex",
+    .key_primary = "prof_p",
+    .key_backup = "prof_b",
+};
+static esp_config_storage_t profile_storage;
+#define WIFI_SVC_EX_AES_KEY_LEN_BYTES    (16u)
+#define WIFI_SVC_EX_AES_BLOCK_SIZE       (16u)
+#define WIFI_SVC_EX_AES_BLOB_OVERHEAD    (WIFI_SVC_EX_AES_BLOCK_SIZE * 2u)  // IV + worst-case PKCS7 padding
+#define WIFI_SVC_EX_PROFILE_MAX_NUM      (8u)
+#define WIFI_SVC_EX_STA_LISTEN_INTERVAL  (3u)
+
+static esp_err_t wifi_svc_ex_profile_encrypt(void *ctx, const uint8_t *in, size_t in_len, uint8_t *out, size_t out_size, size_t *out_len)
+{
+    const uint8_t *key = ctx;
+    if (!in || !out || !out_len || !key) {
+        return ESP_ERR_INVALID_ARG;
     }
+
+    size_t padded_len = ((in_len / WIFI_SVC_EX_AES_BLOCK_SIZE) + 1u) * WIFI_SVC_EX_AES_BLOCK_SIZE;
+    size_t total_len = WIFI_SVC_EX_AES_BLOCK_SIZE + padded_len;  // [IV(16B) | CIPHERTEXT]
+    if (out_size < total_len) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    esp_fill_random(out, WIFI_SVC_EX_AES_BLOCK_SIZE);
+    uint8_t iv[WIFI_SVC_EX_AES_BLOCK_SIZE];
+    memcpy(iv, out, sizeof(iv));
+
+    memcpy(out + WIFI_SVC_EX_AES_BLOCK_SIZE, in, in_len);
+    uint8_t pad = (uint8_t)(padded_len - in_len);
+    memset(out + WIFI_SVC_EX_AES_BLOCK_SIZE + in_len, (int)pad, pad);
+
+    esp_aes_context aes;
+    esp_aes_init(&aes);
+    int aes_ret = esp_aes_setkey(&aes, key, (unsigned int)(WIFI_SVC_EX_AES_KEY_LEN_BYTES * 8u));
+    if (aes_ret == 0) {
+        aes_ret = esp_aes_crypt_cbc(&aes, ESP_AES_ENCRYPT, padded_len, iv, out + WIFI_SVC_EX_AES_BLOCK_SIZE,
+                                    out + WIFI_SVC_EX_AES_BLOCK_SIZE);
+    }
+    esp_aes_free(&aes);
+    if (aes_ret != 0) {
+        return ESP_FAIL;
+    }
+
+    *out_len = total_len;
+    return ESP_OK;
 }
+
+static esp_err_t wifi_svc_ex_profile_decrypt(void *ctx, const uint8_t *in, size_t in_len, uint8_t *out, size_t out_size, size_t *out_len)
+{
+    const uint8_t *key = ctx;
+    if (!in || !out || !out_len || !key) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (in_len < (WIFI_SVC_EX_AES_BLOCK_SIZE * 2u)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    size_t cipher_len = in_len - WIFI_SVC_EX_AES_BLOCK_SIZE;
+    if ((cipher_len % WIFI_SVC_EX_AES_BLOCK_SIZE) != 0u) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    if (out_size < (cipher_len - WIFI_SVC_EX_AES_BLOCK_SIZE)) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    const uint8_t *cipher = in + WIFI_SVC_EX_AES_BLOCK_SIZE;
+    uint8_t prev[WIFI_SVC_EX_AES_BLOCK_SIZE];
+    memcpy(prev, in, sizeof(prev));
+
+    esp_aes_context aes;
+    esp_aes_init(&aes);
+    int aes_ret = esp_aes_setkey(&aes, key, (unsigned int)(WIFI_SVC_EX_AES_KEY_LEN_BYTES * 8u));
+    size_t out_pos = 0;
+    uint8_t plain_block[WIFI_SVC_EX_AES_BLOCK_SIZE];
+    uint8_t last_block[WIFI_SVC_EX_AES_BLOCK_SIZE];
+
+    if (aes_ret == 0) {
+        for (size_t off = 0; off < cipher_len; off += WIFI_SVC_EX_AES_BLOCK_SIZE) {
+            uint8_t dec_block[WIFI_SVC_EX_AES_BLOCK_SIZE];
+            aes_ret = esp_aes_crypt_ecb(&aes, ESP_AES_DECRYPT, cipher + off, dec_block);
+            if (aes_ret != 0) {
+                break;
+            }
+
+            for (size_t i = 0; i < WIFI_SVC_EX_AES_BLOCK_SIZE; ++i) {
+                plain_block[i] = dec_block[i] ^ prev[i];
+            }
+            memcpy(prev, cipher + off, WIFI_SVC_EX_AES_BLOCK_SIZE);
+
+            if (off + WIFI_SVC_EX_AES_BLOCK_SIZE < cipher_len) {
+                if (out_pos + WIFI_SVC_EX_AES_BLOCK_SIZE > out_size) {
+                    aes_ret = -1;
+                    break;
+                }
+                memcpy(out + out_pos, plain_block, WIFI_SVC_EX_AES_BLOCK_SIZE);
+                out_pos += WIFI_SVC_EX_AES_BLOCK_SIZE;
+            } else {
+                memcpy(last_block, plain_block, WIFI_SVC_EX_AES_BLOCK_SIZE);
+            }
+        }
+    }
+    esp_aes_free(&aes);
+    if (aes_ret != 0) {
+        return ESP_FAIL;
+    }
+
+    uint8_t pad = last_block[WIFI_SVC_EX_AES_BLOCK_SIZE - 1u];
+    if ((pad == 0u) || (pad > WIFI_SVC_EX_AES_BLOCK_SIZE)) {
+        return ESP_ERR_INVALID_CRC;
+    }
+    for (size_t i = 0; i < pad; ++i) {
+        if (last_block[WIFI_SVC_EX_AES_BLOCK_SIZE - 1u - i] != pad) {
+            return ESP_ERR_INVALID_CRC;
+        }
+    }
+
+    size_t last_data = WIFI_SVC_EX_AES_BLOCK_SIZE - pad;
+    if (out_pos + last_data > out_size) {
+        return ESP_ERR_NO_MEM;
+    }
+    memcpy(out + out_pos, last_block, last_data);
+    out_pos += last_data;
+    *out_len = out_pos;
+    return ESP_OK;
+}
+
+static uint8_t s_profile_crypto_key[WIFI_SVC_EX_AES_KEY_LEN_BYTES] = {
+    0x42, 0x10, 0x7A, 0xE3, 0x09, 0x5D, 0xBC, 0x21,
+    0x6F, 0x80, 0x11, 0xCA, 0x34, 0x9B, 0xDE, 0x57,
+};
+
+static const esp_config_crypto_ops_t s_profile_crypto_ops = {
+    .encrypt = wifi_svc_ex_profile_encrypt,
+    .decrypt = wifi_svc_ex_profile_decrypt,
+    .ctx     = s_profile_crypto_key,
+};
+
+
+bool jr_wifi_is_provisioning(void) {
+    bool running=false;
+    if (wifi_service) (void)esp_wifi_service_is_provisioning_running(wifi_service,&running);
+    return running;
+}
+esp_err_t jr_wifi_begin_provisioning(void) {
+    if (!wifi_service) return ESP_ERR_INVALID_STATE;
+    return esp_wifi_service_start_provisioning(wifi_service);
+}
+
+static void wifi_service_event(const adf_event_t *event,void *ctx) {
+    (void)ctx;
+    if (event->event_id==ESP_WIFI_SERVICE_EVENT_DISCONNECTED ||
+        event->event_id==ESP_WIFI_SERVICE_EVENT_STA_LOST_IP) {
+        portENTER_CRITICAL(&state_lock);
+        state.connected=false;
+        memcpy(state.ip,"sem wifi",9);
+        portEXIT_CRITICAL(&state_lock);
+    } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_STA_GOT_IP &&
+               event->payload && event->payload_len>=sizeof(ip_event_got_ip_t)) {
+        const ip_event_got_ip_t *info=event->payload;
+        char ip[16]={0};
+        snprintf(ip,sizeof(ip),IPSTR,IP2STR(&info->ip_info.ip));
+        wifi_config_t cfg={0};
+        if (esp_wifi_get_config(WIFI_IF_STA,&cfg)==ESP_OK) {
+            snprintf(active.ssid,sizeof(active.ssid),"%.*s",32,(const char *)cfg.sta.ssid);
+        }
+        portENTER_CRITICAL(&state_lock);
+        memcpy(state.ip,ip,sizeof(ip)); state.connected=true;
+        state.configured=true; state.last_error=ESP_OK;
+        portEXIT_CRITICAL(&state_lock);
+        (void)jr_mdns_start();
+        printf("JR_WIFI conectado ip=%s nome=jrbot.local\n",ip);
+    } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_PROV_CREDENTIAL_RECEIVED) {
+        portENTER_CRITICAL(&state_lock);
+        state.configured=true; state.pending_restart=false;
+        portEXIT_CRITICAL(&state_lock);
+        puts("JR_WIFI configuracao_salva portal_encerramento_automatico");
+    } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_PROV_STARTED) {
+        puts("JR_WIFI_SETUP rede=JrBot-Config url=http://192.168.4.1");
+    } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_PROV_STOPPED) {
+        puts("JR_WIFI_SETUP encerrado portal=http://jrbot.local");
+    } else if (event->event_id==ESP_WIFI_SERVICE_EVENT_PROV_ERROR &&
+               event->payload && event->payload_len>=sizeof(esp_wifi_service_prov_event_t)) {
+        const esp_wifi_service_prov_event_t *info=event->payload;
+        set_error(info->data.error.err_code);
+        printf("JR_WIFI_SETUP erro=%s tente_novamente\n",esp_err_to_name(info->data.error.err_code));
+    }
+    /* Do not stop HTTP provisioning on phone disconnect: an old saved profile
+     * does not establish success of the current credential attempt.
+     */
+}
+
 void jr_wifi_start(void) {
     if (start_attempted) return;
     start_attempted=true;
     jr_wifi_prepare();
-    if (!active.ssid[0]) { puts("JR_WIFI sem_configuracao use_serial e reinicie_apos_salvar"); return; }
-    esp_err_t err=esp_netif_init(); if (err!=ESP_OK) goto fail;
-    err=esp_event_loop_create_default(); if (err!=ESP_OK && err!=ESP_ERR_INVALID_STATE) goto fail;
-    /* The convenience helper asserts internally; use checked creation instead. */
-    esp_netif_config_t netif_config=ESP_NETIF_DEFAULT_WIFI_STA();
-    station=esp_netif_new(&netif_config);
-    if (!station) { err=ESP_ERR_NO_MEM; goto fail; }
-    err=esp_netif_attach_wifi_station(station); if (err!=ESP_OK) goto fail;
-    err=esp_wifi_set_default_wifi_sta_handlers(); if (err!=ESP_OK) goto fail;
-    err=esp_netif_set_hostname(station,active.host); if (err!=ESP_OK) goto fail;
-    if (active.use_static) {
-        esp_netif_ip_info_t info={0};
-        info.ip.addr=ipaddr_addr(active.ip); info.gw.addr=ipaddr_addr(active.gateway); info.netmask.addr=ipaddr_addr(active.mask);
-        err=esp_netif_dhcpc_stop(station); if (err!=ESP_OK && err!=ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) goto fail;
-        err=esp_netif_set_ip_info(station,&info); if (err!=ESP_OK) goto fail;
-        esp_netif_dns_info_t dns={0}; dns.ip.type=ESP_IPADDR_TYPE_V4;
-        dns.ip.u_addr.ip4.addr=ipaddr_addr(active.dns1); err=esp_netif_set_dns_info(station,ESP_NETIF_DNS_MAIN,&dns); if (err!=ESP_OK) goto fail;
-        dns.ip.u_addr.ip4.addr=ipaddr_addr(active.dns2); err=esp_netif_set_dns_info(station,ESP_NETIF_DNS_BACKUP,&dns); if (err!=ESP_OK) goto fail;
+    esp_err_t err=ensure_nvs();
+    if (err!=ESP_OK) goto fail;
+    err=esp_config_storage_init_nvs(&profile_store,&profile_storage);
+    if (err!=ESP_OK) goto fail;
+    esp_wifi_service_profile_mgr_cfg_t profile_cfg={
+        .max_profiles=WIFI_SVC_EX_PROFILE_MAX_NUM,
+        .storage=profile_storage,
+        .crypto=&s_profile_crypto_ops,
+        .crypto_extra_size=WIFI_SVC_EX_AES_BLOB_OVERHEAD,
+    };
+    err=esp_wifi_service_profile_mgr_init(&profile_cfg,&profile_manager);
+    if (err!=ESP_OK) goto fail;
+    uint8_t count=0,import_pending=0,migration_done=0;
+    nvs_handle_t h;
+    if (nvs_open("jr_wifi",NVS_READONLY,&h)==ESP_OK) {
+        (void)nvs_get_u8(h,"import_pending",&import_pending);
+        (void)nvs_get_u8(h,"migration_done",&migration_done);
+        nvs_close(h);
     }
-    wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT();
-    err=esp_wifi_init(&init); if (err!=ESP_OK) goto fail; driver_initialized=true;
-    /* Our versioned record is authoritative; do not keep a second driver copy. */
-    err=esp_wifi_set_storage(WIFI_STORAGE_RAM); if (err!=ESP_OK) goto fail;
-    err=esp_event_handler_instance_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_event_handler,NULL,&wifi_handler); if (err!=ESP_OK) goto fail; wifi_handler_set=true;
-    err=esp_event_handler_instance_register(IP_EVENT,IP_EVENT_STA_GOT_IP,wifi_event_handler,NULL,&ip_handler); if (err!=ESP_OK) goto fail; ip_handler_set=true;
-    wifi_config_t config={0};
-    memcpy(config.sta.ssid,active.ssid,strlen(active.ssid));
-    memcpy(config.sta.password,active.pass,strlen(active.pass));
-    config.sta.threshold.authmode=active.pass[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
-    err=esp_wifi_set_mode(WIFI_MODE_STA); if (err!=ESP_OK) goto fail;
-    err=esp_wifi_set_config(WIFI_IF_STA,&config); if (err!=ESP_OK) goto fail;
-    err=esp_wifi_start(); if (err!=ESP_OK) goto fail;
-    wifi_started=true;
-    portENTER_CRITICAL(&state_lock); state.network_ready=true; portEXIT_CRITICAL(&state_lock);
-    puts("JR_WIFI conectando"); return;
+    err=esp_wifi_service_profile_mgr_count(profile_manager,&count);
+    if (err!=ESP_OK) goto fail;
+    if (import_pending || (!migration_done && !count && active.ssid[0])) {
+        if (active.ssid[0]) {
+            esp_wifi_service_profile_t profile={
+                .flags=ESP_WIFI_SERVICE_PROFILE_FLAG_ENABLED,.priority=10,
+            };
+            copy_checked(profile.ssid,sizeof(profile.ssid),active.ssid);
+            copy_checked(profile.password,sizeof(profile.password),active.pass);
+            err=esp_wifi_service_profile_mgr_add(profile_manager,&profile);
+        } else {
+            err=esp_wifi_service_profile_mgr_clear_all(profile_manager);
+        }
+        if (err!=ESP_OK) goto fail;
+        if (import_pending) {
+            err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+            if (err!=ESP_OK) goto fail;
+            err=nvs_set_u8(h,"import_pending",0);
+            if (err==ESP_OK) err=nvs_commit(h);
+            nvs_close(h);
+            if (err!=ESP_OK) goto fail;
+        }
+        err=esp_wifi_service_profile_mgr_count(profile_manager,&count);
+        if (err!=ESP_OK) goto fail;
+    }
+    if (!migration_done) {
+        err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+        if (err!=ESP_OK) goto fail;
+        err=nvs_set_u8(h,"migration_done",1);
+        if (err==ESP_OK) err=nvs_commit(h);
+        nvs_close(h);
+        if (err!=ESP_OK) goto fail;
+    }
+    if (active.use_static) puts("JR_WIFI migracao usa_DHCP nome=jrbot.local");
+    esp_wifi_service_prov_http_config_t http_cfg={
+        .name="http",.profile_manager=profile_manager,.port=8080,
+        .softap={.ssid="JrBot-Config",.channel=1,.max_connection=2},
+    };
+    err=esp_wifi_service_prov_http_create(&http_cfg,&provisioning_agents[0]);
+    if (err!=ESP_OK) goto fail;
+    esp_wifi_service_config_t cfg={
+        .name="jrbot_wifi",.profile_manager=profile_manager,
+        .prov_list=provisioning_agents,.prov_num=1,.selector_policy=NULL,
+    };
+    err=esp_wifi_service_create(&cfg,&wifi_service);
+    if (err!=ESP_OK) goto fail;
+    err=jr_mdns_start();
+    if (err!=ESP_OK) printf("JR_MDNS_ERROR %s WiFi_acessivel_por_IP\n",esp_err_to_name(err));
+    adf_event_subscribe_info_t sub=ADF_EVENT_SUBSCRIBE_INFO_DEFAULT();
+    sub.event_id=ADF_EVENT_ANY_ID;
+    sub.handler=wifi_service_event;
+    err=esp_service_event_subscribe((esp_service_t *)wifi_service,&sub);
+    if (err!=ESP_OK) goto fail;
+    err=esp_service_start((esp_service_t *)wifi_service);
+    if (err!=ESP_OK) goto fail;
+    portENTER_CRITICAL(&state_lock);
+    state.network_ready=true; state.configured=count!=0; state.pending_restart=false; state.last_error=ESP_OK;
+    portEXIT_CRITICAL(&state_lock);
+    puts("JR_WIFI servico_iniciado DHCP nome=jrbot.local");
+    return;
 fail:
-    if (wifi_handler_set) { esp_event_handler_instance_unregister(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_handler); wifi_handler_set=false; }
-    if (ip_handler_set) { esp_event_handler_instance_unregister(IP_EVENT,IP_EVENT_STA_GOT_IP,ip_handler); ip_handler_set=false; }
-    if (driver_initialized) { if (wifi_started) esp_wifi_stop(); esp_wifi_deinit(); driver_initialized=false; wifi_started=false; }
-    if (station) { esp_netif_destroy_default_wifi(station); station=NULL; }
-    portENTER_CRITICAL(&state_lock); state.network_ready=false; state.connected=false; state.last_error=err; portEXIT_CRITICAL(&state_lock);
+    set_error(err);
     printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
 }
 static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
@@ -212,6 +442,7 @@ static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
         err=nvs_open("jr_wifi",NVS_READWRITE,&h);
         if (err==ESP_OK) {
             err=nvs_set_blob(h,"cfg_v2",c,sizeof(*c));
+            if (err==ESP_OK) err=nvs_set_u8(h,"import_pending",1);
             if (err==ESP_OK) err=nvs_commit(h);
             nvs_close(h);
         }
@@ -226,6 +457,7 @@ static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
 }
 bool jr_wifi_configure(const char *ssid,const char *password,const char *hostname,bool use_static_ip,
     const char *ip,const char *gw,const char *mask,const char *dns1,const char *dns2,char *response,unsigned cap) {
+    if (use_static_ip) { snprintf(response,cap,"JR_WIFI_ERROR use_DHCP_com_jrbot.local"); return false; }
     wifi_settings_t candidate; defaults(&candidate); candidate.use_static=use_static_ip?1:0;
     bool valid=copy_checked(candidate.ssid,sizeof(candidate.ssid),ssid) &&
         copy_checked(candidate.pass,sizeof(candidate.pass),password) &&

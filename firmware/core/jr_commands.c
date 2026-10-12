@@ -242,9 +242,14 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear wifi_prov_start"); return true;
     }
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
+    if (!strcmp(verb,"wifi_prov_start")) {
+        esp_err_t err=jr_wifi_begin_provisioning();
+        snprintf(response,cap,err==ESP_OK?"JR_WIFI_SETUP rede=JrBot-Config url=http://192.168.4.1":"JR_WIFI_ERROR provisioning=%s",esp_err_to_name(err));
+        return err==ESP_OK;
+    }
     if (!strcmp(verb,"demo")) {
         jr_face_set_demo(!jr_face_demo_enabled());
         snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;

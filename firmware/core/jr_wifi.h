@@ -14,3 +14,6 @@ bool jr_wifi_configure(const char *ssid, const char *password, const char *hostn
                        const char *static_ip, const char *gateway, const char *subnet,
                        const char *dns1, const char *dns2, char *response, unsigned response_len);
 bool jr_wifi_clear(char *response, unsigned response_len);
+
+bool jr_wifi_is_provisioning(void);
+esp_err_t jr_wifi_begin_provisioning(void);

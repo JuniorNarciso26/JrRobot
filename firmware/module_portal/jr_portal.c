@@ -15,6 +15,8 @@
 #include "jr_webrtc_audio.h"
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #if __has_include("jr_https_material_local.h")
 #include "jr_https_material_local.h"
@@ -36,12 +38,67 @@ static esp_err_t reply(httpd_req_t *req,const char *status,const char *text) {
     return httpd_resp_send(req,text,HTTPD_RESP_USE_STRLEN);
 }
 
+
+static esp_err_t wifi_setup_redirect(httpd_req_t *req) {
+    httpd_resp_set_status(req,"302 Found");
+    httpd_resp_set_hdr(req,"Location","http://192.168.4.1:8080/");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_sendstr(req,"Abra a configuracao Wi-Fi do JrBot.");
+}
+static portMUX_TYPE setup_lock=portMUX_INITIALIZER_UNLOCKED;
+static bool setup_requested;
+static void wifi_setup_task(void *arg) {
+    (void)arg;
+    vTaskDelay(pdMS_TO_TICKS(700)); /* Let the existing network deliver the reply. */
+    esp_err_t err=jr_wifi_begin_provisioning();
+    if (err!=ESP_OK) ESP_LOGE("jrbot_wifi","start provisioning=%s",esp_err_to_name(err));
+    portENTER_CRITICAL(&setup_lock); setup_requested=false; portEXIT_CRITICAL(&setup_lock);
+    vTaskDelete(NULL);
+}
+static esp_err_t wifi_setup_start_handler(httpd_req_t *req) {
+    char flag[4]={0};
+    if (httpd_req_get_hdr_value_str(req,"X-JrBot-Command",flag,sizeof(flag))!=ESP_OK || strcmp(flag,"1"))
+        return reply(req,"403 Forbidden","JR_ERROR cabecalho_obrigatorio");
+    portENTER_CRITICAL(&setup_lock);
+    bool busy=setup_requested;
+    if (!busy) setup_requested=true;
+    portEXIT_CRITICAL(&setup_lock);
+    if (busy) return reply(req,"409 Conflict","Configuracao ja solicitada.");
+    if (xTaskCreate(wifi_setup_task,"jr_wifi_setup",6144,NULL,5,NULL)!=pdPASS) {
+        portENTER_CRITICAL(&setup_lock); setup_requested=false; portEXIT_CRITICAL(&setup_lock);
+        return reply(req,"503 Service Unavailable","Memoria insuficiente para iniciar configuracao.");
+    }
+    return reply(req,"200 OK","Conecte o celular ao Wi-Fi JrBot-Config e abra http://192.168.4.1.");
+}
+static esp_err_t wifi_setup_page_handler(httpd_req_t *req) {
+    if (jr_wifi_is_provisioning()) return wifi_setup_redirect(req);
+    static const char page[]=
+        "<!doctype html><html lang='pt-BR'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Wi-Fi do JrBot</title><body style='font-family:system-ui;padding:24px'>"
+        "<h1>Wi-Fi do JrBot</h1><p>Para trocar de rede, abra o modo de configuracao.</p>"
+        "<button id='start'>Configurar Wi-Fi</button><p id='msg' role='status'></p>"
+        "<p><a href='/'>Voltar ao JrBot</a></p>"
+        "<script>document.getElementById('start').onclick=async function(){this.disabled=true;"
+        "try{const r=await fetch('/wifi/start',{method:'POST',headers:{'X-JrBot-Command':'1'}});"
+        "document.getElementById('msg').textContent=await r.text();if(!r.ok)this.disabled=false;}"
+        "catch(e){document.getElementById('msg').textContent='Confira se o Wi-Fi JrBot-Config apareceu no celular.';this.disabled=false;}};</script>"
+        "</body></html>";
+    httpd_resp_set_type(req,"text/html; charset=utf-8");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_send(req,page,HTTPD_RESP_USE_STRLEN);
+}
+static esp_err_t wifi_captive_handler(httpd_req_t *req) {
+    if (jr_wifi_is_provisioning()) return wifi_setup_redirect(req);
+    return reply(req,"200 OK","Success");
+}
+
 static esp_err_t web_root_handler(httpd_req_t *req) {
+    if (jr_wifi_is_provisioning()) return wifi_setup_redirect(req);
     httpd_resp_set_type(req,"text/html; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     const char *marker=strstr(JRBOT_WEB_V1_HTML,"</body>");
     if (!marker) return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
-    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script>";
+    static const char inject[]="<p><a href=\"/wifi\">Configurar Wi-Fi</a></p><script src='/v16.js'></script><script src='/jrskill-app.js'></script>";
     esp_err_t err=httpd_resp_send_chunk(req,JRBOT_WEB_V1_HTML,(ssize_t)(marker-JRBOT_WEB_V1_HTML));
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,inject,HTTPD_RESP_USE_STRLEN);
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,marker,HTTPD_RESP_USE_STRLEN);
@@ -195,6 +252,14 @@ static esp_err_t disabled_camera_handler(httpd_req_t *req) {
 static esp_err_t register_routes(httpd_handle_t server) {
     const httpd_uri_t routes[]={
         {.uri="/",.method=HTTP_GET,.handler=web_root_handler},
+        {.uri="/wifi",.method=HTTP_GET,.handler=wifi_setup_page_handler},
+        {.uri="/wifi/start",.method=HTTP_POST,.handler=wifi_setup_start_handler},
+        {.uri="/hotspot-detect.html",.method=HTTP_GET,.handler=wifi_captive_handler},
+        {.uri="/library/test/success.html",.method=HTTP_GET,.handler=wifi_captive_handler},
+        {.uri="/generate_204",.method=HTTP_GET,.handler=wifi_captive_handler},
+        {.uri="/connecttest.txt",.method=HTTP_GET,.handler=wifi_captive_handler},
+        {.uri="/ncsi.txt",.method=HTTP_GET,.handler=wifi_captive_handler},
+
         {.uri="/v16.js",.method=HTTP_GET,.handler=web_v16_js_handler},
         {.uri="/jrskill-app.js",.method=HTTP_GET,.handler=web_jrskill_app_js_handler},
         {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
@@ -221,7 +286,7 @@ static void start_http(void) {
     httpd_config_t config=HTTPD_DEFAULT_CONFIG();
     config.server_port=80;
     config.stack_size=12288;
-    config.max_uri_handlers=16;
+    config.max_uri_handlers=32;
     config.lru_purge_enable=true;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
@@ -236,7 +301,7 @@ static void start_https(void) {
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
-    config.httpd.max_uri_handlers=20;
+    config.httpd.max_uri_handlers=40;
     config.httpd.max_open_sockets=7;
     config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
