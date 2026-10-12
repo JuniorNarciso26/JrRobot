@@ -303,7 +303,7 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
         if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_APP_03" (
             set "BUILD_DIR=build-v1s-app-03-main"
         )
-        if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_WIFI_01" (
+        if /i "!JRBOT_MAIN_VERSION:~0,15!"=="JrBot_V1S_WIFI_" (
             set "BUILD_DIR=build-v1s-wifi-main"
             set "SDKCONFIG_FILE=sdkconfig.v1s-wifi-main"
         )
@@ -419,7 +419,7 @@ call :check
 if errorlevel 1 goto failure
 pushd firmware
 if exist "%SDKCONFIG_FILE%" (
-    echo [INFO] Garantindo WebSocket e DTLS-SRTP no sdkconfig existente...
+    echo [INFO] Garantindo WebSocket, DTLS-SRTP e pilha de eventos no sdkconfig existente...
     python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HTTPD_WS_SUPPORT" "y"
     if errorlevel 1 (
         popd
@@ -431,6 +431,11 @@ if exist "%SDKCONFIG_FILE%" (
         goto failure
     )
     python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MBEDTLS_SSL_DTLS_SRTP" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE" "4096"
     if errorlevel 1 (
         popd
         goto failure

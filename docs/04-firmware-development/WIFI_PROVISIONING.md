@@ -2,7 +2,7 @@
 
 Issue: [#55](https://github.com/JuniorNarciso26/JrRobot/issues/55)  
 Candidate branch: **develop**  
-Build ID: **JrBot_V1S_WIFI_01**  
+Build ID: **JrBot_V1S_WIFI_02**  
 Evidence: integrated implementation and host/static checks; **ESP-IDF build and full-robot physical validation pending**.
 
 ## User flow
@@ -40,7 +40,7 @@ INSTALAR.bat build
 
 Select **develop**. It uses **build-v1s-wifi-develop** and **sdkconfig.v1s-wifi-develop**, separated from older builds. Installer enforces WebSocket and DTLS-SRTP options in existing configs. Then run **INSTALAR.bat flash** selecting develop. Do not run erase-flash.
 
-1. Confirm BOOT/build ID JrBot_V1S_WIFI_01, no unexpected reboot.
+1. Confirm BOOT/build ID JrBot_V1S_WIFI_02, no unexpected reboot.
 2. Existing experiment or legacy profile reconnects; ping jrbot.local resolves to current STA_GOT_IP.
 3. Open http://jrbot.local and confirm the normal robot interface.
 4. Open /wifi and start setup; join JrBot-Config and confirm automatic/manual page on 192.168.4.1.
@@ -63,3 +63,10 @@ Known deferred checks from the experiment: intermittent captive-portal recovery 
 - Run `python tests/wifi_integration/run.py` to reproduce these mocked checks.
 - Static review checked dependency paths, single driver ownership, migration markers, ports/routes, installer labels and version metadata.
 - No full ESP-IDF build, Windows installer execution or physical test of this integrated candidate has been performed here.
+
+
+## Bench failure and system-event stack correction
+
+The first integrated candidate compiled/flashed on ESP-IDF 5.5.5 and booted with HTTP/HTTPS and a saved profile. User log at 12:28 on 12 October shows **stack overflow in sys_evt** during selection/connection, followed by reboot. This invalidates physical acceptance of WIFI_01; the exact overflowing call cannot be decoded from this log alone without the matching ELF.
+
+The standalone working example specified CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096; the integration omitted that requirement. WIFI_02 sets 4096 in defaults and the installer updates existing sdkconfig files with the same value before build. The build directory remains isolated from older releases. Confirm WIFI_02 in the next boot log, successful STA_GOT_IP, stable uptime and access to jrbot.local before continuing regression tests. No NVS erase is required. Compilation/physical validation of WIFI_02 pending.
