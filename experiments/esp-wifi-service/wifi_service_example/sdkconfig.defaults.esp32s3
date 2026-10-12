@@ -1,0 +1,2 @@
+# JrBot laboratory: Wi-Fi SoftAP only, no Bluetooth
+CONFIG_BT_ENABLED=n

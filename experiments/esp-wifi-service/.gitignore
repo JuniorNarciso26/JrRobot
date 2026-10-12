@@ -1,0 +1,6 @@
+wifi_service_example/build*/
+wifi_service_example/sdkconfig
+wifi_service_example/sdkconfig.old
+wifi_service_example/managed_components/
+wifi_service_example/dependencies.lock
+__pycache__/

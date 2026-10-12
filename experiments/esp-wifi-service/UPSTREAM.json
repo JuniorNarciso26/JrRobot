@@ -1,0 +1,652 @@
+{
+  "repository": "https://github.com/espressif/esp-adf",
+  "commit": "4cdbcd2a1bfd5823220de5b76921df26d95c8a7d",
+  "componentVersion": "0.5.3",
+  "files": [
+    {
+      "upstreamPath": "components/adf_event_hub/CHANGELOG.md",
+      "upstreamBlobSha": "2b36482921689197fc3aaf77d4a89f4a4560b624",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/CHANGELOG.md"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/CMakeLists.txt",
+      "upstreamBlobSha": "91721e8a572af9787460fd70aaf52f34738ed3fb",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/LICENSE",
+      "upstreamBlobSha": "20e468d2105f771d7e09141be6705b27ef0cf17b",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/LICENSE"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/README.md",
+      "upstreamBlobSha": "807118cac4bf948a30aca191cae91da38d70eadd",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/README.md"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/README_CN.md",
+      "upstreamBlobSha": "80b4e1121bdc7d6d3e7154ca283db36010ef85ed",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/adf_event_hub.c",
+      "upstreamBlobSha": "1f2a280a92f20cc7220138e1a1d229e378865d97",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/adf_event_hub.c"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/adf_mem.c",
+      "upstreamBlobSha": "3a0b816bc1d23f259ee0580a8f3a7c833781a25f",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/adf_mem.c"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/adf_vec.c",
+      "upstreamBlobSha": "bc9a7f47bdaa17c10f8622e53c6abc5fed27f67b",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/adf_vec.c"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/idf_component.yml",
+      "upstreamBlobSha": "0a9be72fbec7ad657dbf321196bac7420bcc5f5f",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/include/adf_event_hub.h",
+      "upstreamBlobSha": "ec635f9230163cb39c0d21a8265c65b4caab3bad",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/include/adf_event_hub.h"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/include/adf_event_hub_port.h",
+      "upstreamBlobSha": "db5b6adf3ed718df34cd06459fbdfd77322c7df8",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/include/adf_event_hub_port.h"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/include/adf_mem.h",
+      "upstreamBlobSha": "a9491993033302c89becdba2d7d70ef1572747e5",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/include/adf_mem.h"
+    },
+    {
+      "upstreamPath": "components/adf_event_hub/include/adf_vec.h",
+      "upstreamBlobSha": "7cfe2fbaa936a574fa728cb1e81ed1ed154be0ed",
+      "localPath": "experiments/esp-wifi-service/components/adf_event_hub/include/adf_vec.h"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/CHANGELOG.md",
+      "upstreamBlobSha": "658080e1b527c6f1d642c6bc6a4f98d194695518",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/CHANGELOG.md"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/CMakeLists.txt",
+      "upstreamBlobSha": "dc60770474eb8244d1b5ee8f51d2ffe158a19e0b",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/LICENSE",
+      "upstreamBlobSha": "20e468d2105f771d7e09141be6705b27ef0cf17b",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/LICENSE"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/README.md",
+      "upstreamBlobSha": "15622a7c93e4eedc6d90293c06bc4624440c24b8",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/README_CN.md",
+      "upstreamBlobSha": "4761f969437bac120fe45031e739c389bb3b918d",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/esp_cli_service.c",
+      "upstreamBlobSha": "5b8872853a2cb030ab519ab02ba835556ba0d32a",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/esp_cli_service.c"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/esp_cli_service_cmd_dynamic.c",
+      "upstreamBlobSha": "7ff28382e7c9ac1794796aaba6abb3e3a62416ec",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/esp_cli_service_cmd_dynamic.c"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/esp_cli_service_cmd_static.c",
+      "upstreamBlobSha": "c0de86b75ccb49dc673888d9b2f092e043556e71",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/esp_cli_service_cmd_static.c"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/esp_cli_service_internal.h",
+      "upstreamBlobSha": "940b5f41a8cbc93bf7675f75e0a3caaea21e4a2b",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/esp_cli_service_internal.h"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/esp_cli_service_parse.c",
+      "upstreamBlobSha": "3b3acc390f32bbbeb641934c803ec6c3ba30c745",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/esp_cli_service_parse.c"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/idf_component.yml",
+      "upstreamBlobSha": "7874d34cc86e5c18bab7b694d3094001e50ca30c",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/esp_cli_service/include/esp_cli_service.h",
+      "upstreamBlobSha": "ed529d90f75e9b51bae0d5bf8f7a9ca8851f2821",
+      "localPath": "experiments/esp-wifi-service/components/esp_cli_service/include/esp_cli_service.h"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/CHANGELOG.md",
+      "upstreamBlobSha": "1ac4dc74b4747a1146f430be96fa8f5675efc5a3",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/CHANGELOG.md"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/CMakeLists.txt",
+      "upstreamBlobSha": "7ed9564ea98d440e38e84ef4862b9fb2d63d0c07",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/LICENSE",
+      "upstreamBlobSha": "95aa4346df85841cc8a30949a0ecb6e6539c78d0",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/LICENSE"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/README.md",
+      "upstreamBlobSha": "2e4f8a2cac1dad9d0e17b822cfbc9420481b3309",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/README_CN.md",
+      "upstreamBlobSha": "ece63c262bc97907577a293f4060a913c2089a96",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/idf_component.yml",
+      "upstreamBlobSha": "d5a8037de726bf0dad38e3e84271519c3b4873c8",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/include/esp_config_manager.h",
+      "upstreamBlobSha": "6e7f5cda1b8f15aed8cc71448f3ba9a5c4a6c353",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/include/esp_config_manager.h"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/include/esp_config_storage.h",
+      "upstreamBlobSha": "b8ae61e9267da5281c3edd254616c33e03266aa6",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/include/esp_config_storage.h"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/src/esp_config_manager.c",
+      "upstreamBlobSha": "80c09ead9cfc17910b73eb4d072ced76412373d3",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/src/esp_config_manager.c"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/src/esp_config_storage.c",
+      "upstreamBlobSha": "9c545853019656ae7107d61b3d09dabbda9b8523",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/src/esp_config_storage.c"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/src/esp_config_storage_flash.c",
+      "upstreamBlobSha": "6d66dec1631807c6afe9bfbdf32d5fea4b570096",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/src/esp_config_storage_flash.c"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/src/esp_config_storage_fs.c",
+      "upstreamBlobSha": "286c009550e59e3de0f60ea4864eae04c4aef219",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/src/esp_config_storage_fs.c"
+    },
+    {
+      "upstreamPath": "components/esp_config_manager/src/esp_config_storage_nvs.c",
+      "upstreamBlobSha": "0d632a26f5061eb7ae567670a8bc1a311f439392",
+      "localPath": "experiments/esp-wifi-service/components/esp_config_manager/src/esp_config_storage_nvs.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/CHANGELOG.md",
+      "upstreamBlobSha": "1b2cc85d38daf2a59f1bc30b9351d74d80526351",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/CHANGELOG.md"
+    },
+    {
+      "upstreamPath": "components/esp_service/CMakeLists.txt",
+      "upstreamBlobSha": "6f4aac8203ea2715946a2c8a959be67395afdd52",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_service/Kconfig",
+      "upstreamBlobSha": "67604beaf2ac736812ca88019d3c433d1adbb855",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/Kconfig"
+    },
+    {
+      "upstreamPath": "components/esp_service/LICENSE",
+      "upstreamBlobSha": "20e468d2105f771d7e09141be6705b27ef0cf17b",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/LICENSE"
+    },
+    {
+      "upstreamPath": "components/esp_service/README.md",
+      "upstreamBlobSha": "2439ad147af53a725540d3c2867b6fc9ae0f5db9",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_service/README_CN.md",
+      "upstreamBlobSha": "1dfb8bf7cb952e4a33bd154b220052c7a05e0dc6",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/esp_service/idf_component.yml",
+      "upstreamBlobSha": "f5b3c32eae6785d6bfb73325c2f98511fc350ea5",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service.h",
+      "upstreamBlobSha": "ae3b042c405c8a92d69ce66eff94d1ff54d63bca",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_manager.h",
+      "upstreamBlobSha": "25dd2effed0e56f904fcd7c49fa30bf2559d2283",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_manager.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_server.h",
+      "upstreamBlobSha": "9345dab4d63fdda781ddcaba820c2836680a887c",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_server.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans.h",
+      "upstreamBlobSha": "72c807671019fd989a96ff01f6071f2a50ff10ea",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_http.h",
+      "upstreamBlobSha": "4a78a18c5e15cccc6176c66b2d2e95e58cbb35d8",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_http.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_sdio.h",
+      "upstreamBlobSha": "cb0aae88943664902c14e819a3299f221a8f6718",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_sdio.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_sse.h",
+      "upstreamBlobSha": "4fd58511293999defd508688e2bd81fbd490eceb",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_sse.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_stdio.h",
+      "upstreamBlobSha": "f3c10fb5155fa8c24160f4d761337d9cb6c1c16b",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_stdio.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_uart.h",
+      "upstreamBlobSha": "0d469684efe8df7dd20d1e160cd720260f474ba4",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_uart.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_mcp_trans_ws.h",
+      "upstreamBlobSha": "16b26fe02095f9e01b63da4f475260a1464b8d04",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_mcp_trans_ws.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/include/esp_service_scheduler.h",
+      "upstreamBlobSha": "3e3075d082c9ead3e22a59f610088cd629481e34",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/include/esp_service_scheduler.h"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/esp_service_mcp_server.c",
+      "upstreamBlobSha": "e8d6cde1d10d383bca8eea1f3016d2f44b2f3192",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/esp_service_mcp_server.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/esp_service_mcp_trans.c",
+      "upstreamBlobSha": "efbe3cf4f5b0d883ea177a7f82515cddf3bd6665",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/esp_service_mcp_trans.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_http.c",
+      "upstreamBlobSha": "d643ab9a6c32f26391926e8e354f401d81bacec6",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_http.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_sdio.c",
+      "upstreamBlobSha": "56e5334184ff6c284f65169bbc23c1c2d9fe2b8c",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_sdio.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_sse.c",
+      "upstreamBlobSha": "24ef0bfb20e9e2143baa8f4bf36abf8df762e9ac",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_sse.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_stdio.c",
+      "upstreamBlobSha": "03307072ca69f4d3faac47818f20c674a69fec92",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_stdio.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_uart.c",
+      "upstreamBlobSha": "2cef42ad6a68a0bad0738fb3e12b55c8b7474e50",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_uart.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/mcp/transport/esp_service_mcp_trans_ws.c",
+      "upstreamBlobSha": "697802ad1054858ae456208e63a5b01ef5516c28",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/mcp/transport/esp_service_mcp_trans_ws.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/service/esp_service.c",
+      "upstreamBlobSha": "deda1e2093c48cde092d6d379e5fff3a4309ebfa",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/service/esp_service.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/service/esp_service_manager.c",
+      "upstreamBlobSha": "70c6b48c4d9772d381b5732b1b095c4f303eec2c",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/service/esp_service_manager.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/service/esp_service_scheduler.c",
+      "upstreamBlobSha": "e8fdad9074c236db6a79cf3dd14ebac3bf17a2d4",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/service/esp_service_scheduler.c"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/.gitignore",
+      "upstreamBlobSha": "60f778d4c8ca83236a465d9ce660260a7cc506a5",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/.gitignore"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/README.md",
+      "upstreamBlobSha": "375deecaad9c5eb4354bda52135e7e5246efe54d",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/bridge.py",
+      "upstreamBlobSha": "3d30468ee1c9403333c6e5571bd8ba95d87f50d6",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/bridge.py"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/configs/deepseek.json",
+      "upstreamBlobSha": "0ac93c40824b970737207118f5d769a08ac84dd5",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/configs/deepseek.json"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/configs/doubao.json",
+      "upstreamBlobSha": "9c1b3da393c3ca176ae00df06644358c35076eca",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/configs/doubao.json"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/configs/example.json",
+      "upstreamBlobSha": "3035ad6ef7124a8d6639ffddc9fd2f404fe0c148",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/configs/example.json"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/configs/pc_integration.json",
+      "upstreamBlobSha": "15b9b28ab8525c0cd86e45907d4964253968a016",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/configs/pc_integration.json"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/configs/sse_test.json",
+      "upstreamBlobSha": "d4de7cbd3a0470cac1bef9859af6555e806ac8d3",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/configs/sse_test.json"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/llm_adapter.py",
+      "upstreamBlobSha": "853b091b84ce23af1008e9aeef78030253b25fb5",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/llm_adapter.py"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/mcp_bridge.py",
+      "upstreamBlobSha": "9a9a7b22723da884fe3e9aa385310b85d6db6614",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/mcp_bridge.py"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/mcp_client.py",
+      "upstreamBlobSha": "d221225f3ee67d8183d85e998309cc79c7e8a516",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/mcp_client.py"
+    },
+    {
+      "upstreamPath": "components/esp_service/tools/mcp_llm_bridge/requirements.txt",
+      "upstreamBlobSha": "aa8a9dc3728c88e88089f1135d58d371709f379e",
+      "localPath": "experiments/esp-wifi-service/components/esp_service/tools/mcp_llm_bridge/requirements.txt"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/CHANGELOG.md",
+      "upstreamBlobSha": "373863db3dffb2403eff76f83840e634dcd36456",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/CHANGELOG.md"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/CMakeLists.txt",
+      "upstreamBlobSha": "b726cafac5055486503a40cb7bf95f30f6d753d2",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/Kconfig",
+      "upstreamBlobSha": "d42c2d426c4443bf3751050177d9682334ca7eb3",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/Kconfig"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/LICENSE",
+      "upstreamBlobSha": "20e468d2105f771d7e09141be6705b27ef0cf17b",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/LICENSE"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/README.md",
+      "upstreamBlobSha": "1ac1de7460c112c1bca2e8dbfabc39cb31d3a3a3",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/README_CN.md",
+      "upstreamBlobSha": "7d44a38fd61c09f01feba0efe801d2346205604d",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/CMakeLists.txt",
+      "upstreamBlobSha": "e7053fb7598c61b48ffc0ac7351d740505d3a044",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/README.md",
+      "upstreamBlobSha": "fa3c2668ce34327a50e9da8e8cd163d5f406418f",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/README.md"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/README_CN.md",
+      "upstreamBlobSha": "78075fc04ba23fc3bffa624b70db3869558d2344",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/README_CN.md"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/main/CMakeLists.txt",
+      "upstreamBlobSha": "671839d0f81ecc522479fdd59a533470d13ab628",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/main/CMakeLists.txt"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/main/app_main.c",
+      "upstreamBlobSha": "354a307fd5c42486796206fdaa61fd2781d223a4",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/main/app_main.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/main/idf_component.yml",
+      "upstreamBlobSha": "e1a8d87f2395573a9d087c6b25a975d9e98d4e43",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/main/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/main/wifi_service_console.c",
+      "upstreamBlobSha": "01426111099ceb453181ee809b8315148013a358",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/main/wifi_service_console.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/main/wifi_service_console.h",
+      "upstreamBlobSha": "488ca237c7d10711eda442ddbd5a9bfc1fc88667",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/main/wifi_service_console.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/partitions.csv",
+      "upstreamBlobSha": "466e1959f361a9a02325b2659e77f4d50cd07391",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/partitions.csv"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/pytest_esp_wifi_service_example.py",
+      "upstreamBlobSha": "8717a020e9412c717387c725b2ef28bd30fa4071",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/pytest_esp_wifi_service_example.py"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/scripts/test_wifi_service_mcp_uart.py",
+      "upstreamBlobSha": "c60da55d5be232fe24dcebdd3c589ec21198fb03",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/scripts/test_wifi_service_mcp_uart.py"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/sdkconfig.defaults",
+      "upstreamBlobSha": "48b1fd998d3d07f9afb32bab6cb144ddb04d6be2",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/sdkconfig.defaults.esp32",
+      "upstreamBlobSha": "f1f2c2cd8eb91ba27a5c65ae87d2e90c8d383daf",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults.esp32"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/examples/wifi_service_example/sdkconfig.defaults.esp32s3",
+      "upstreamBlobSha": "a844ebb9c98264898f8aa70a368bbbca2c335580",
+      "localPath": "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults.esp32s3"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/idf_component.yml",
+      "upstreamBlobSha": "e4d3a36e60fad8b89e489c023e2d1ea87513e4da",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/idf_component.yml"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service.h",
+      "upstreamBlobSha": "d8d8b0662331cc1914873c3ec738f9f38578cb6a",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_mcp.h",
+      "upstreamBlobSha": "55406975b18172ab0c22e174a5baef6e5d7f7ee2",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_mcp.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_profile_mgr.h",
+      "upstreamBlobSha": "c1a2c157ba858d6f4031e4e8dd2c3439a46d3da6",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_profile_mgr.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_prov.h",
+      "upstreamBlobSha": "5112237d0bcb92e5bdb2da266790007d7ee85cae",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_prov.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_prov_blufi.h",
+      "upstreamBlobSha": "ac64e07cf6e059ec2b8478809f06bc400b5d1689",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_prov_blufi.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_prov_http.h",
+      "upstreamBlobSha": "d8d64561e18e671412b7a0d7474417c35853b2ca",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_prov_http.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_scan.h",
+      "upstreamBlobSha": "7720de72b5c2997d4966203d7fdb7c4a2f6807df",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_scan.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/include/esp_wifi_service_selector.h",
+      "upstreamBlobSha": "7f3caab8220c8db86b058d457369b741b0f96f2a",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/include/esp_wifi_service_selector.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_comm.h",
+      "upstreamBlobSha": "56f269634f1cad2ba33fdc5edbfbf3884667ef2a",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_comm.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_prov_softap.h",
+      "upstreamBlobSha": "c44e243667f4985caf47656cd3f6efa6225182a7",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_prov_softap.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_sel.h",
+      "upstreamBlobSha": "41f95472602e73463f940c6c53a4479f47669cd0",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_sel.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_sel_blacklist.h",
+      "upstreamBlobSha": "30ea8b56a82a624228dc82dcce5a0a426d22877c",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_sel_blacklist.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_sel_probe.h",
+      "upstreamBlobSha": "78ba94f411cd24c6108d3ca2885aed708a4bfbc4",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_sel_probe.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/private_inc/esp_wifi_service_sel_throughput.h",
+      "upstreamBlobSha": "4c0c8c44e8669a33eab3d6040301657465290c5d",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/private_inc/esp_wifi_service_sel_throughput.h"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/esp_wifi_service.c",
+      "upstreamBlobSha": "1c531417207c04ca4d962362373e58ff0882c55b",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/esp_wifi_service.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/mcp/esp_wifi_service_mcp.c",
+      "upstreamBlobSha": "e9977a4abcb4e79d17ee1638f7d0de5640a0b166",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/mcp/esp_wifi_service_mcp.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/mcp/esp_wifi_service_mcp.json",
+      "upstreamBlobSha": "ab39d3675b3af7d7cda7683c3b6e1c0171f5fb08",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/mcp/esp_wifi_service_mcp.json"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/profile/esp_wifi_service_profile_mgr.c",
+      "upstreamBlobSha": "a2578588f4c705e376f7e8e77dc75eb06aad8d20",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/profile/esp_wifi_service_profile_mgr.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/provisioning/esp_wifi_service_prov.c",
+      "upstreamBlobSha": "826cd6153192287d2dd184a241609944af1136a4",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_blufi.c",
+      "upstreamBlobSha": "98767e11635d68da6c3491721d8db6a1aabe1cfa",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_blufi.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_default_webui.html",
+      "upstreamBlobSha": "f72958f9029606f881bb844369a46989532920ee",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_default_webui.html"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_http.c",
+      "upstreamBlobSha": "746e81e72c72a24f16cac8c314d726ed8cb2a3ac",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_http.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_softap.c",
+      "upstreamBlobSha": "4862d560120c04c3478472423a84754e33df6457",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/provisioning/esp_wifi_service_prov_softap.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/scan/esp_wifi_service_scan.c",
+      "upstreamBlobSha": "da4a85d74ec9a031cc11cf054cc76f0369839c5b",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/scan/esp_wifi_service_scan.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/selector/esp_wifi_service_sel_blacklist.c",
+      "upstreamBlobSha": "e58d456a9899b850b0bc03d4656f5276a460714f",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/selector/esp_wifi_service_sel_blacklist.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/selector/esp_wifi_service_sel_probe.c",
+      "upstreamBlobSha": "d5571d3e59ffeddf8ad9880ed08a057b63f15856",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/selector/esp_wifi_service_sel_probe.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/selector/esp_wifi_service_sel_throughput.c",
+      "upstreamBlobSha": "c9a7f9f6412fa83d5d22fd7d6c9423f6a70e2042",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/selector/esp_wifi_service_sel_throughput.c"
+    },
+    {
+      "upstreamPath": "components/esp_wifi_service/src/selector/esp_wifi_service_selector.c",
+      "upstreamBlobSha": "243a2c5277de743069746d9b170ad8fdbaaa1350",
+      "localPath": "experiments/esp-wifi-service/components/esp_wifi_service/src/selector/esp_wifi_service_selector.c"
+    }
+  ],
+  "adaptedFiles": [
+    "experiments/esp-wifi-service/wifi_service_example/main/idf_component.yml",
+    "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults",
+    "experiments/esp-wifi-service/wifi_service_example/sdkconfig.defaults.esp32s3"
+  ]
+}

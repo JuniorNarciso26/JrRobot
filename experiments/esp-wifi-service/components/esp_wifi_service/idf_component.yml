@@ -1,0 +1,31 @@
+version: "0.5.3"
+description: Wi-Fi service with profile management, provisioning agents, and automatic AP selection
+url: https://github.com/espressif/esp-adf/tree/master/components/esp_wifi_service
+issues: https://github.com/espressif/esp-adf/issues
+
+tags:
+  - wifi
+  - wifi_manager
+  - provisioning
+  - wifi_selector
+  - adf
+
+dependencies:
+  espressif/cjson:
+    require: private
+    version: "*"
+  espressif/esp_config_manager:
+    require: public
+    version: "^0.5"
+    override_path: "../esp_config_manager"
+  espressif/esp_service:
+    require: public
+    version: "^0.5"
+    override_path: "../esp_service"
+  espressif/adf_event_hub:
+    require: public
+    version: "^0.5"
+    override_path: "../adf_event_hub"
+
+examples:
+  - path: "./examples/wifi_service_example"
