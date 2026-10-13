@@ -15,6 +15,7 @@
 #include "jr_wifi.h"
 #include "jr_mdns.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "esp_config_storage.h"
 #include "esp_wifi_service.h"
 #include "esp_wifi_service_prov_http.h"
@@ -34,6 +35,17 @@ static esp_wifi_service_profile_mgr_t profile_manager;
 static esp_wifi_service_prov_t provisioning_agents[1];
 static portMUX_TYPE state_lock=portMUX_INITIALIZER_UNLOCKED;
 static jr_wifi_status_t state={.ip="sem wifi"};
+
+
+static void wifi_memory_report(const char *stage) {
+    ESP_LOGI("JR_WIFI_MEMORY", "stage=%s internal_free=%u internal_largest=%u dma_free=%u dma_largest=%u psram_free=%u",
+        stage,
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+}
 
 static void set_error(esp_err_t err) {
     portENTER_CRITICAL(&state_lock); state.last_error=err; portEXIT_CRITICAL(&state_lock);
@@ -366,6 +378,7 @@ static void wifi_service_event(const adf_event_t *event,void *ctx) {
 void jr_wifi_start(void) {
     if (start_attempted) return;
     start_attempted=true;
+    wifi_memory_report("before_wifi_backend");
     jr_wifi_prepare();
     esp_err_t err=ensure_nvs();
     if (err!=ESP_OK) goto fail;
@@ -379,6 +392,7 @@ void jr_wifi_start(void) {
     };
     err=esp_wifi_service_profile_mgr_init(&profile_cfg,&profile_manager);
     if (err!=ESP_OK) goto fail;
+    wifi_memory_report("after_profile_manager");
     uint8_t count=0,import_pending=0,migration_done=0;
     nvs_handle_t h;
     if (nvs_open("jr_wifi",NVS_READONLY,&h)==ESP_OK) {
@@ -425,6 +439,7 @@ void jr_wifi_start(void) {
     };
     err=esp_wifi_service_prov_http_create(&http_cfg,&provisioning_agents[0]);
     if (err!=ESP_OK) goto fail;
+    wifi_memory_report("after_provisioning_create");
     esp_wifi_service_config_t cfg={
         .name="jrbot_wifi",.profile_manager=profile_manager,
         .prov_list=provisioning_agents,.prov_num=1,.selector_policy=NULL,
@@ -438,12 +453,14 @@ void jr_wifi_start(void) {
     if (err!=ESP_OK) goto fail;
     err=esp_service_start((esp_service_t *)wifi_service);
     if (err!=ESP_OK) goto fail;
+    wifi_memory_report("after_wifi_service_start");
     /* Start after the service has created its station interface. */
     esp_err_t mdns_err=jr_mdns_start();
     if (mdns_err!=ESP_OK) printf("JR_MDNS_ERROR %s WiFi_acessivel_por_IP\n",esp_err_to_name(mdns_err));
     portENTER_CRITICAL(&state_lock);
     state.network_ready=true; state.configured=count!=0; state.pending_restart=false; state.last_error=ESP_OK;
     portEXIT_CRITICAL(&state_lock);
+    wifi_memory_report("after_mdns_start");
     puts("JR_WIFI servico_iniciado DHCP nome=jrbot.local");
     return;
 fail:

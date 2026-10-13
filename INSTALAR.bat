@@ -441,6 +441,21 @@ if exist "%SDKCONFIG_FILE%" (
         goto failure
     )
 )
+rem Cached sdkconfig values override defaults. Apply this trial to Wi-Fi builds only.
+if /i "%BUILD_DIR:~0,15%"=="build-v1s-wifi-" (
+    if exist "%SDKCONFIG_FILE%" (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MDNS_MEMORY_ALLOC_INTERNAL" "n"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MDNS_MEMORY_ALLOC_SPIRAM" "y"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+    )
+)
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd

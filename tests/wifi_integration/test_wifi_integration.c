@@ -98,3 +98,6 @@ int main(int argc,char **argv){
 
 esp_err_t esp_wifi_service_stop_provisioning(esp_wifi_service_t *s){(void)s;setup=false;return ESP_OK;}
 esp_err_t esp_wifi_service_prov_http_apply_credentials(esp_wifi_service_prov_t p,const char *s,const char *password,uint8_t prio){(void)p;(void)s;(void)password;(void)prio;return ESP_OK;}
+
+size_t heap_caps_get_free_size(unsigned c){(void)c;return 1024;}
+size_t heap_caps_get_largest_free_block(unsigned c){(void)c;return 512;}

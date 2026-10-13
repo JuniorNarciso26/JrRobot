@@ -70,3 +70,48 @@ Known deferred checks from the experiment: intermittent captive-portal recovery 
 The first integrated candidate compiled/flashed on ESP-IDF 5.5.5 and booted with HTTP/HTTPS and a saved profile. User log at 12:28 on 12 October shows **stack overflow in sys_evt** during selection/connection, followed by reboot. This invalidates physical acceptance of WIFI_01; the exact overflowing call cannot be decoded from this log alone without the matching ELF.
 
 The standalone working example specified CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096; the integration omitted that requirement. WIFI_02 sets 4096 in defaults and the installer updates existing sdkconfig files with the same value before build. The build directory remains isolated from older releases. Confirm WIFI_02 in the next boot log, successful STA_GOT_IP, stable uptime and access to jrbot.local before continuing regression tests. No NVS erase is required. Compilation/physical validation of WIFI_02 pending.
+
+
+## WIFI_06 — isolated mDNS memory trial (13/10/2026)
+
+Compared main `6638a4c` with develop `4896652` after the owner reported working
+Live on main. The camera implementation and main initialization are byte-identical.
+The Live peer/mic/play stacks are unchanged (25/8/12 KiB); the Live diff only adds
+memory snapshots and failure stages. The integration adds Wi-Fi service/profile
+storage and mDNS, changes the socket limit from 16 to 32, expands HTTP/HTTPS route
+capacity from 16/20 to 32/40, and explicitly sets the system-event stack to 4096.
+The installer also selects a separate local sdkconfig for Wi-Fi builds; untracked
+settings in the owner's old sdkconfig have not been inspected.
+
+Physical logs show two failures: after successful WebRTC and DataChannel setup,
+the camera cannot allocate 16384 bytes of DMA memory (largest block 13312);
+after an earlier photo, the play task cannot allocate its 12288-byte stack
+(largest internal block 7680). Both are consistent with pressure/fragmentation in
+internal RAM, not exhaustion of the 8 MiB PSRAM or the application Flash partition.
+
+A concrete additional allocation source is mDNS 1.14.0, whose default heap
+allocator explicitly requests INTERNAL|8BIT capabilities, independent of the
+application's generic malloc-to-PSRAM setting. Source:
+https://github.com/espressif/esp-protocols/blob/mdns-v1.14.0/components/mdns/mdns_mem_caps.c
+Configuration:
+https://github.com/espressif/esp-protocols/blob/mdns-v1.14.0/components/mdns/Kconfig
+
+This trial changes only mDNS heap allocation to SPIRAM. Its task stack, the Live
+stacks, camera initialization order, socket limit, and route capacities stay as in
+WIFI_05. The installer patches the existing Wi-Fi sdkconfig choice too, because
+sdkconfig.defaults alone does not override an already generated config.
+
+New startup logs: JR_WIFI_MEMORY before/after profile/provisioning/service/mDNS;
+MEMORY_CONFIG reports effective mDNS allocation, event/mDNS stack sizes, socket
+limit; MDNS_MEMORY reports before/after initialization. Live logs include
+internal DMA free bytes and largest block, also forwarded to the browser log.
+These measurements include concurrent task activity and are not exclusive
+per-component allocation accounting.
+
+Test: install develop WIFI_06, connect Serial before resetting the board to
+capture startup, open one HTTPS tab, start VGA Live without taking a photo first,
+stop Live, capture a photo, start Live again. Collect both Serial and Live logs.
+Check allocations=PSRAM, successful audio/video, and absence of DMA/task errors.
+No hardware result is claimed yet. A failed trial will justify isolating the next
+integration difference (e.g. socket limit), then the Wi-Fi service backend if needed.
+Do not roll back sys_evt to its old default: it overflowed during this integration.
