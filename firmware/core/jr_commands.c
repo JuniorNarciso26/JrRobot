@@ -16,6 +16,7 @@
 #include "jr_mode_manager.h"
 #include "jr_resource_manager.h"
 #include "jr_wifi.h"
+#include "jr_wifi_serial.h"
 #include "jr_face.h"
 #include "jr_camera_diag.h"
 #include "jr_brain.h"
@@ -53,7 +54,7 @@ bool jr_decode_component(const char *src, size_t len, char *dst, size_t cap, boo
     return true;
 }
 
-static bool parse_wifi_config(const char *args, bool encoded, char *response, size_t cap) {
+static bool parse_wifi_config(const char *args, bool encoded, bool join, char *response, size_t cap) {
     char ssid[33] = "", pass[65] = "", host[33] = "jrbot";
     char ip[16] = "192.168.0.50", gw[16] = "192.168.0.1", mask[16] = "255.255.255.0";
     char dns1[16] = "8.8.8.8", dns2[16] = "8.8.4.4", stat[6] = "0";
@@ -87,7 +88,7 @@ static bool parse_wifi_config(const char *args, bool encoded, char *response, si
     }
     if (!(seen & 1) || (strcmp(stat,"0") && strcmp(stat,"1"))) goto invalid;
     {
-        bool ok = jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
+        bool ok = join ? jr_wifi_serial_join(ssid,pass,response,cap) : jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
         memset(pass, 0, sizeof(pass));
         return ok;
     }
@@ -161,7 +162,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     verb[verb_len] = '\0';
     const char *args = space ? space+1 : "";
     if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
-        return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),response,cap);
+        return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),false,response,cap);
+    if (!strcmp(verb,"wifi_join_pct")) return parse_wifi_config(args,true,true,response,cap);
+    if (!strcmp(verb,"wifi_delete_pct")) {
+        char ssid[33];
+        if (!jr_decode_component(args,strlen(args),ssid,sizeof(ssid),false) || !ssid[0]) goto invalid;
+        return jr_wifi_serial_delete(ssid,response,cap);
+    }
     if (!strcmp(verb,"api")) {
         while (*args==' ') args++;
         return jr_runtime_api_handle(args,response,cap);
@@ -244,10 +251,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
         snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear wifi_prov_start"); return true;
     }
+    if (!strcmp(verb,"wifi_scan")) return jr_wifi_serial_scan(true,response,cap);
+    if (!strcmp(verb,"wifi_scan_result")) return jr_wifi_serial_scan(false,response,cap);
+    if (!strcmp(verb,"wifi_profiles")) return jr_wifi_serial_profiles(response,cap);
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"wifi_prov_start")) {
         esp_err_t err=jr_wifi_begin_provisioning();
-        snprintf(response,cap,err==ESP_OK?"JR_WIFI_SETUP rede=JrBot-Config url=http://192.168.4.1":"JR_WIFI_ERROR provisioning=%s",esp_err_to_name(err));
+        snprintf(response,cap,err==ESP_OK?"JR_WIFI_SETUP rede=JrBot-Config url=http://192.168.4.1:8080":"JR_WIFI_ERROR provisioning=%s",esp_err_to_name(err));
         return err==ESP_OK;
     }
     if (!strcmp(verb,"demo")) {

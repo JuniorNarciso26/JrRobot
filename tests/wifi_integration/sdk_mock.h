@@ -74,3 +74,6 @@ void esp_aes_free(esp_aes_context *);
 int esp_aes_setkey(esp_aes_context *,const uint8_t *,unsigned);
 int esp_aes_crypt_cbc(esp_aes_context *,int,size_t,uint8_t *,const uint8_t *,uint8_t *);
 int esp_aes_crypt_ecb(esp_aes_context *,int,const uint8_t *,uint8_t *);
+
+esp_err_t esp_wifi_service_stop_provisioning(esp_wifi_service_t *);
+esp_err_t esp_wifi_service_prov_http_apply_credentials(esp_wifi_service_prov_t,const char *,const char *,uint8_t);

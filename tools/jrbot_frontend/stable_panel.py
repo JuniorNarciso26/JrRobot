@@ -38,7 +38,7 @@ def stable_serial_request(command: str, timeout: float | None = None) -> str:
     app.validate_command(command)
     verb = command.strip().lower().split(" ", 1)[0]
     if timeout is None:
-        if verb == "camera_test":
+        if verb in {"camera_test", "wifi_join_pct"}:
             timeout = 30.0
         elif verb in {"audio_play_recording", "play_recording", "tocar_gravacao"}:
             timeout = 15.0

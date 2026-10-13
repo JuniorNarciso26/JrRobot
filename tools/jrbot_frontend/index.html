@@ -166,20 +166,11 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     </div>
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
-      <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
-      <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
-      <label>Nome do JrBot<input id="wifi_host" value="jrbot"></label>
-      <label>IP fixo<select id="wifi_static"><option value="0">desativado/DHCP</option><option value="1">ativado</option></select></label>
-      <label>IP do ESP32<input id="wifi_ip" value="192.168.0.83"></label>
-      <label>Gateway<input id="wifi_gw" value="192.168.0.1"></label>
-      <label>Máscara<input id="wifi_mask" value="255.255.255.0"></label>
-      <label>DNS1<input id="wifi_dns1" value="8.8.8.8"></label>
-      <label>DNS2<input id="wifi_dns2" value="8.8.4.4"></label>
-      <div class="full">
-        <button data-action onclick="configureWifi()" class="green">Configurar Wi-Fi no ESP32</button>
-        <button data-action onclick="clearWifi()" class="red">Limpar Wi-Fi salvo</button><br>
-        <small>Este bloco envia pela Serial. Depois de reiniciar, use "Consultar Wi-Fi da placa" para conferir conexao e IP atual.</small>
-      </div>
+      <div class="full"><button data-action onclick="scanWifiNetworks()">Buscar redes disponíveis</button><button data-action onclick="refreshSavedWifi()">Atualizar redes salvas</button></div>
+      <label>Rede disponível<select id="wifi_ssid"><option value="">Clique em Buscar redes disponíveis</option></select></label>
+      <label>Senha<input id="wifi_pass" placeholder="senha da rede" type="password" autocomplete="new-password"></label>
+      <div class="full"><button data-action onclick="configureWifi()" class="green">Conectar e salvar</button><small>IP automático (DHCP). Acesse o robô por https://jrbot.local. A conexão pode levar até 15 segundos.</small></div>
+      <div class="full"><h3>Redes salvas no robô</h3><div id="wifi_saved">Clique em Atualizar redes salvas.</div><small>Apagar remove somente a rede escolhida da memória. A conexão atual pode continuar até a próxima reconexão.</small></div>
     </div>
   </section>
 </main>

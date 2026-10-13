@@ -1239,3 +1239,26 @@ void esp_wifi_service_prov_http_destroy(esp_wifi_service_prov_t prov)
     heap_caps_free(http);
     ESP_LOGI(TAG, "HTTP agent destroyed");
 }
+
+/* Reuse the phone portal's connection validation for the USB Serial panel. */
+esp_err_t esp_wifi_service_prov_http_apply_credentials(esp_wifi_service_prov_t handle,
+    const char *ssid, const char *password, uint8_t priority)
+{
+    wifi_prov_http_t *prov = (wifi_prov_http_t *)handle;
+    if (!prov || !prov->started || !ssid || !password || !prov->cfg.profile_manager ||
+        !ssid[0] || strlen(ssid)>32 || strlen(password)>64 ||
+        priority>ESP_WIFI_SERVICE_PROFILE_PRIORITY_MAX) return ESP_ERR_INVALID_ARG;
+    bool resume_scan=prov->scan_started;
+    if (resume_scan) wifp_prov_http_stop_periodic_scan(prov);
+    esp_err_t ret=http_connect_sta_and_wait(prov,ssid,password,HTTP_STA_CONNECT_TIMEOUT_MS);
+    if (ret==ESP_OK) {
+        esp_wifi_service_profile_t profile={.flags=ESP_WIFI_SERVICE_PROFILE_FLAG_ENABLED,.priority=priority};
+        strlcpy(profile.ssid,ssid,sizeof(profile.ssid));
+        strlcpy(profile.password,password,sizeof(profile.password));
+        ret=esp_wifi_service_profile_mgr_add(prov->cfg.profile_manager,&profile);
+        memset(profile.password,0,sizeof(profile.password));
+        if (ret==ESP_OK) http_mark_saved_profile_working(prov,ssid);
+    }
+    if (resume_scan && ret!=ESP_OK) wifi_prov_http_start_periodic_scan(prov);
+    return ret;
+}

@@ -95,3 +95,6 @@ int main(int argc,char **argv){
  printf("PASS %s migration/status (mock backend only)\n",argv[1]);
  return 0;
 }
+
+esp_err_t esp_wifi_service_stop_provisioning(esp_wifi_service_t *s){(void)s;setup=false;return ESP_OK;}
+esp_err_t esp_wifi_service_prov_http_apply_credentials(esp_wifi_service_prov_t p,const char *s,const char *password,uint8_t prio){(void)p;(void)s;(void)password;(void)prio;return ESP_OK;}

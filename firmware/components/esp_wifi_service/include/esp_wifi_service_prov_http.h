@@ -80,6 +80,11 @@ esp_err_t esp_wifi_service_prov_http_create(const esp_wifi_service_prov_http_con
  */
 void esp_wifi_service_prov_http_destroy(esp_wifi_service_prov_t prov);
 
+/* Shared Serial provisioning: validate by connecting before saving. Agent must be running. */
+esp_err_t esp_wifi_service_prov_http_apply_credentials(esp_wifi_service_prov_t handle,
+    const char *ssid, const char *password, uint8_t priority);
+
 #ifdef __cplusplus
 }
 #endif  /* __cplusplus */
+

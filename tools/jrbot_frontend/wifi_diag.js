@@ -24,25 +24,6 @@
   function yes(v){return v?'sim':'nao';}
   function text(v,fallback='?'){return v===undefined||v===null||v===''?fallback:String(v);}
 
-  function formSnapshot(){
-    const fixed=val('wifi_static')==='1';
-    return {
-      ssid:el('wifi_ssid').value,
-      hostname:val('wifi_host')||'jrbot',
-      mode:fixed?'IP_FIXO':'DHCP',
-      static_active:fixed,
-      configured_ip:val('wifi_ip'),
-      gateway:val('wifi_gw'),
-      mask:val('wifi_mask'),
-      dns1:val('wifi_dns1'),
-      dns2:val('wifi_dns2')
-    };
-  }
-
-  function logForm(f){
-    localLine('JR_WIFI_ENVIANDO ssid="'+f.ssid+'" host='+f.hostname+' mode='+f.mode+' static_active='+(f.static_active?1:0)+' cfg_ip='+text(f.configured_ip,'')+' gateway='+text(f.gateway,'')+' mask='+text(f.mask,'')+' dns1='+text(f.dns1,'')+' dns2='+text(f.dns2,''));
-  }
-
   function renderDiag(w){
     ensureBox().textContent=[
       'CONFIGURACAO GRAVADA NA PLACA',
@@ -90,29 +71,11 @@
     const w=parseApi(reply);
     renderDiag(w);
     logDiag(w);
-    if(w.ssid)el('wifi_ssid').value=w.ssid;
     if(w.connected&&/^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(w.runtime_ip||''))){
       el('esp_ip').value=w.runtime_ip;
       localStorage.setItem('jr_esp_ip',w.runtime_ip);
     }
     return w;
-  }
-
-  function compareSaved(expected,w){
-    const differences=[];
-    if(String(w.ssid||'')!==expected.ssid)differences.push('SSID');
-    if(String(w.hostname||'')!==expected.hostname)differences.push('hostname');
-    if(String(w.mode||'')!==expected.mode)differences.push('modo');
-    if(expected.static_active){
-      if(String(w.configured_ip||'')!==expected.configured_ip)differences.push('IP');
-      if(String(w.gateway||'')!==expected.gateway)differences.push('gateway');
-      if(String(w.mask||'')!==expected.mask)differences.push('mascara');
-      if(String(w.dns1||'')!==expected.dns1)differences.push('DNS1');
-      if(String(w.dns2||'')!==expected.dns2)differences.push('DNS2');
-    }
-    const match=!!w.saved_record_found&&!!w.saved_record_valid&&!differences.length;
-    localLine('JR_WIFI_VERIFY save_match='+(match?1:0)+' checked_from=NVS'+(differences.length?' differences='+differences.join(','):'')+(expected.static_active?' static_fields_checked=1':' static_fields_checked=0_dhcp'));
-    return {match,differences};
   }
 
   function install(){
@@ -125,29 +88,6 @@
         el('device_msg').textContent='Diagnostico lido da placa: SSID='+(w.ssid||'(vazio)')+', modo='+(w.mode||'?')+', IP configurado='+(w.configured_ip||'?')+', conectado='+(w.connected?'sim':'nao')+', IP atual='+(w.runtime_ip||'sem wifi')+'.';
       });
     };
-
-    const previousConfigure=window.configureWifi;
-    if(typeof previousConfigure==='function'){
-      window.configureWifi=async function(){
-        const expected=formSnapshot();
-        logForm(expected);
-        const result=await previousConfigure();
-        if(mode==='serial'&&serialConnected){
-          try{
-            const w=await readBoard();
-            const checked=compareSaved(expected,w);
-            if(!checked.match){
-              el('device_msg').textContent='ATENCAO: os dados lidos da NVS diferem do que o painel enviou: '+checked.differences.join(', ')+'.';
-            }else{
-              el('device_msg').textContent='Wi-Fi gravado e relido da NVS com sucesso. Reinicie a placa para aplicar a configuracao.';
-            }
-          }catch(e){
-            localLine('JR_WIFI_VERIFY save_match=unknown error="'+String(e.message||e)+'"');
-          }
-        }
-        return result;
-      };
-    }
 
     const previousConnect=window.connect;
     if(typeof previousConnect==='function'){

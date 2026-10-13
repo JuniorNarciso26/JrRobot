@@ -490,3 +490,13 @@ bool jr_wifi_clear(char *response,unsigned cap) {
     wifi_settings_t empty; defaults(&empty); empty.ssid[0]=0; memset(empty.pass,0,sizeof(empty.pass)); empty.use_static=0;
     return save_record(&empty,response,cap);
 }
+
+struct esp_wifi_service *jr_wifi_service_handle(void) { return wifi_service; }
+
+esp_err_t jr_wifi_serial_apply_credentials(const char *ssid,const char *password) {
+    esp_err_t err=jr_wifi_begin_provisioning();
+    if (err!=ESP_OK) return err;
+    err=esp_wifi_service_prov_http_apply_credentials(provisioning_agents[0],ssid,password,10);
+    if (err==ESP_OK) err=esp_wifi_service_stop_provisioning(wifi_service);
+    return err;
+}

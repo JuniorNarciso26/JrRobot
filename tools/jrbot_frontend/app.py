@@ -27,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-15"
+APP_VERSION = "JRBOT-PANEL-V1S-WIFI-01"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -47,7 +47,7 @@ REPLY_RE = re.compile(r"^JR_REPLY id=([A-Za-z0-9_-]{1,32}) ok=([01]) (.*)$")
 def sanitize_log_line(line: str) -> str:
     text = str(line)
     # Redact the whole message, including passwords containing spaces/delimiters.
-    if re.search(r"\bwifi_config(?:_pct)?(?:\s|$|%20)|(?:pass(?:word)?|senha)\s*(?:=|%3d)", text, re.I):
+    if re.search(r"\bwifi_(?:config(?:_pct)?|join_pct)(?:\s|$|%20)|(?:pass(?:word)?|senha)\s*(?:=|%3d)", text, re.I):
         return "JR_REDACTED conteudo de provisionamento omitido"
     return text
 

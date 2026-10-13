@@ -17,3 +17,7 @@ bool jr_wifi_clear(char *response, unsigned response_len);
 
 bool jr_wifi_is_provisioning(void);
 esp_err_t jr_wifi_begin_provisioning(void);
+
+struct esp_wifi_service;
+struct esp_wifi_service *jr_wifi_service_handle(void);
+esp_err_t jr_wifi_serial_apply_credentials(const char *ssid,const char *password);
