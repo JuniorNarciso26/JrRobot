@@ -304,6 +304,17 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
             set "BUILD_DIR=build-v1s-app-03-main"
         )
     )
+) else if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+    rem Baseline da main: build isolado e copia dos ajustes locais ja usados na main.
+    set "BUILD_DIR=build-develop-wifi-baseline"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi"
+    if not exist "firmware\sdkconfig.develop_wifi" (
+        if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi" >nul
+            if errorlevel 1 goto failure
+            echo [INFO] Ajustes locais da main copiados para develop_wifi.
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="develop" (
     rem Integracao baseada na release oficial JrBot_V1.7.04.
     set "BUILD_DIR=build-v1.7.04-develop"
