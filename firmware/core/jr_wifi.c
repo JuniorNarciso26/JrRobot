@@ -206,11 +206,28 @@ fail:
     portENTER_CRITICAL(&state_lock); state.network_ready=false; state.connected=false; state.last_error=err; portEXIT_CRITICAL(&state_lock);
     printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
 }
+static bool settings_equal(const wifi_settings_t *a,const wifi_settings_t *b) {
+    return a->schema==b->schema && a->use_static==b->use_static &&
+        !strcmp(a->ssid,b->ssid) && !strcmp(a->pass,b->pass) && !strcmp(a->host,b->host) &&
+        !strcmp(a->ip,b->ip) && !strcmp(a->gateway,b->gateway) && !strcmp(a->mask,b->mask) &&
+        !strcmp(a->dns1,b->dns1) && !strcmp(a->dns2,b->dns2);
+}
 static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
     esp_err_t err=ensure_nvs(); nvs_handle_t h;
     if (err==ESP_OK) {
         err=nvs_open("jr_wifi",NVS_READWRITE,&h);
         if (err==ESP_OK) {
+            wifi_settings_t saved; size_t size=sizeof(saved);
+            esp_err_t read=nvs_get_blob(h,"cfg_v2",&saved,&size);
+            bool unchanged=read==ESP_OK && size==sizeof(saved) && valid_settings(&saved,true) &&
+                settings_equal(c,&saved) && settings_equal(c,&active);
+            memset(saved.pass,0,sizeof(saved.pass));
+            if (unchanged) {
+                nvs_close(h);
+                portENTER_CRITICAL(&state_lock); state.pending_restart=false; portEXIT_CRITICAL(&state_lock);
+                snprintf(response,cap,c->ssid[0]?"JR_WIFI_SALVO pending_restart=0 configuracao_ja_ativa":"JR_WIFI_LIMPO pending_restart=0 configuracao_ja_ativa");
+                return true;
+            }
             err=nvs_set_blob(h,"cfg_v2",c,sizeof(*c));
             if (err==ESP_OK) err=nvs_commit(h);
             nvs_close(h);

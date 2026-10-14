@@ -18,7 +18,7 @@ function setup(){
     return elements.get(id);
   };
   el('wifi_static').value='0';el('wifi_host').value='jrbot';
-  let reply='',commands=[],profiles=[];
+  let reply='',commands=[],profiles=[],useReply='JR_WIFI_SALVO pending_restart=1';
   const context={el,TextEncoder,mode:'serial',serialConnected:true,window:{},
     val:id=>el(id).value.trim(),action:fn=>fn(),saveWifiLocal(){},
     document:{createElement:()=>({}),querySelector:()=>null},
@@ -28,11 +28,12 @@ function setup(){
       if(command==='wifi_profiles')return 'JR_WIFI_PROFILES '+JSON.stringify({profiles});
       if(command.startsWith('wifi_profile_delete ')){profiles=profiles.filter(p=>p.id!==Number(command.split(' ')[1]));return 'JR_WIFI_PROFILE_DELETED';}
       if(command.startsWith('wifi_profile_save_pct '))return 'JR_WIFI_PROFILE_SAVED';
+      if(command.startsWith('wifi_profile_use '))return useReply;
       return command==='wifi_scan'?reply:'JR_WIFI_SALVO pending_restart=1';
     },
   };
   vm.runInNewContext(script,context);
-  return {context,el,commands,reply(value){reply=value;},profiles(value){profiles=value;}};
+  return {context,el,commands,reply(value){reply=value;},profiles(value){profiles=value;},useReply(value){useReply=value;}};
 }
 const entry=(ssid,rssi=-45,authmode=4)=>({ssid_pct:[...new TextEncoder().encode(ssid)].map(b=>'%'+b.toString(16).padStart(2,'0')).join(''),rssi,authmode});
 const reply=networks=>'JR_WIFI_SCAN '+JSON.stringify({networks,total:networks.length,limited:false});
@@ -98,4 +99,19 @@ test('saving another profile does not select it, and deleting uses its id',async
   await s.context.window.deleteWifiProfile();
   assert.ok(s.commands.includes('wifi_profile_delete 2'));
   assert.equal(s.el('wifi_profiles').disabled,true);
+});
+
+test('using the current configuration does not ask for restart',async()=>{
+  const s=setup();s.profiles([{id:0,...entry('Current'),mode:'DHCP',selected:true,protected:true}]);
+  s.useReply('JR_WIFI_SALVO pending_restart=0 configuracao_ja_ativa');
+  await s.context.window.refreshWifiProfiles();s.el('wifi_profiles').value='0';
+  await s.context.window.useWifiProfile();
+  assert.match(s.el('wifi_profiles_msg').textContent,/Nao precisa reiniciar/);
+});
+
+test('scan distinguishes no initialized Wi-Fi from waiting for connection/IP',async()=>{
+  const s=setup();s.reply(new Error('JR_WIFI_ERROR scan=not_started'));
+  await assert.rejects(s.context.window.scanWifiNetworks(),/ainda nao foi iniciado/);
+  s.reply(new Error('JR_WIFI_ERROR scan=not_connected'));
+  await assert.rejects(s.context.window.scanWifiNetworks(),/ainda nao recebeu um IP/);
 });

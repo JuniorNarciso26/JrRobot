@@ -27,6 +27,8 @@ _WIFI_SCRIPT = r"""
       catch(error){
         const detail=String(error&&error.message||error);
         if(detail.includes('scan=busy'))throw new Error('Pare a Live e desligue o autonomo antes de buscar redes.');
+        if(detail.includes('scan=not_started'))throw new Error('O Wi-Fi ainda nao foi iniciado. Configure a rede pelo formulario e reinicie a placa.');
+        if(detail.includes('scan=not_connected'))throw new Error('A placa ainda nao recebeu um IP. Aguarde a conexao ou confira a rede e a senha; consulte o Wi-Fi da placa.');
         if(detail.includes('scan=not_ready'))throw new Error('Nesta etapa, conecte o Wi-Fi e reinicie a placa se houver configuracao pendente. Voce tambem pode digitar o nome da rede manualmente.');
         throw error;
       }
@@ -112,7 +114,7 @@ _WIFI_SCRIPT = r"""
     const reply=await send('wifi_profile_use '+profile.id);
     if(!reply.startsWith('JR_WIFI_SALVO'))throw new Error('Selecao da rede nao confirmada.');
     await reloadProfiles();
-    profileMsg.textContent='Rede '+profile.ssid+' selecionada com a senha salva. Reinicie a placa e consulte o IP recebido.';
+    profileMsg.textContent=/\bpending_restart=0\b/.test(reply)?'Rede '+profile.ssid+' ja esta configurada. Nao precisa reiniciar; voce pode buscar redes novamente.':'Rede '+profile.ssid+' selecionada com a senha salva. Reinicie a placa e consulte o IP recebido. A busca continua disponivel pela conexao atual.';
   },'wifi_profiles_msg');};
   window.deleteWifiProfile=function(){return action(async()=>{
     requireSerial();const profile=chosenProfile();
@@ -126,7 +128,7 @@ _WIFI_SCRIPT = r"""
     if(!confirm('Desativar o Wi-Fi apos reiniciar? As redes salvas serao mantidas.'))return;
     const reply=await send('wifi_clear');
     if(!reply.startsWith('JR_WIFI_LIMPO'))throw new Error('Desativacao do Wi-Fi nao confirmada.');
-    el('device_msg').textContent='Wi-Fi desativado para a proxima inicializacao. As redes salvas foram mantidas. Reinicie a placa.';
+    el('device_msg').textContent=/\bpending_restart=0\b/.test(reply)?'Wi-Fi ja estava desativado. As redes salvas foram mantidas.':'Wi-Fi desativado para a proxima inicializacao. As redes salvas foram mantidas. Reinicie a placa.';
   });};
   const bytes=s=>new TextEncoder().encode(s).length;
   function raw(id){return el(id).value;}
@@ -200,7 +202,7 @@ _WIFI_SCRIPT = r"""
       if(!reply.startsWith(profileOnly?'JR_WIFI_PROFILE_SAVED':'JR_WIFI_SALVO'))throw new Error('Salvamento do Wi-Fi nao foi confirmado.');
       saveWifiLocal();
       el('wifi_pass').value='';
-      const message=profileOnly?'Rede guardada. A conexao atual foi mantida. Use a lista de redes salvas quando quiser trocar.':'Wi-Fi salvo'+(fixed?' com IP fixo':' em DHCP')+'. Reinicie a placa e consulte o Wi-Fi da placa.';
+      const message=profileOnly?'Rede guardada. A conexao atual foi mantida. Use a lista de redes salvas quando quiser trocar.':/\bpending_restart=0\b/.test(reply)?'Esta configuracao ja esta ativa. Nao precisa reiniciar; voce pode buscar redes novamente.':'Wi-Fi salvo'+(fixed?' com IP fixo':' em DHCP')+'. Reinicie a placa para aplicar. A busca continua disponivel pela conexao atual.';
       el(profileOnly?'wifi_profiles_msg':'device_msg').textContent=message;
       try{await reloadProfiles();}catch(error){profileMsg.textContent='Rede salva, mas a lista nao atualizou: '+error.message;}
     },profileOnly?'wifi_profiles_msg':'device_msg');

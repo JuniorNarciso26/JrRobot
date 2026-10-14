@@ -17,10 +17,15 @@ bool jr_wifi_scan(char *response,unsigned cap) {
     if (!response || !cap) return false;
     jr_wifi_status_t status;
     jr_wifi_get_status(&status);
-    if (!status.network_ready || !status.connected || status.pending_restart) {
-        snprintf(response,cap,"JR_WIFI_ERROR scan=not_ready conecte_o_wifi_e_reinicie_se_pendente");
+    if (!status.network_ready) {
+        snprintf(response,cap,"JR_WIFI_ERROR scan=not_started configure_o_wifi_e_reinicie");
         return false;
     }
+    if (!status.connected) {
+        snprintf(response,cap,"JR_WIFI_ERROR scan=not_connected aguarde_o_ip_ou_revise_a_rede");
+        return false;
+    }
+    /* A saved boot change does not invalidate the station that is still connected. */
     if (jr_mode_get()!=JR_MODE_IDLE) {
         snprintf(response,cap,"JR_WIFI_ERROR scan=busy pare_live_e_autonomo_antes_da_busca");
         return false;

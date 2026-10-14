@@ -1,6 +1,6 @@
 # develop_wifi: etapa 02 — quatro redes salvas e selecao manual
 
-Versao: `JrBot_V1S_WIFI_STEP02`. Base: STEP01, commit
+Versao atual: `JrBot_V1S_WIFI_STEP02A`. Base da etapa: STEP01, commit
 `f03b561d92544759c54daa177eeaaa23f8aec61e`.
 
 O log 17 mostrou busca de seis pontos de acesso e Live com 400 quadros JPEG.
@@ -35,7 +35,7 @@ o estado gravado, como no protocolo anterior.
 
 ## Teste na placa
 
-1. Instalar `develop_wifi` e confirmar `JrBot_V1S_WIFI_STEP02`.
+1. Instalar `develop_wifi` e confirmar `JrBot_V1S_WIFI_STEP02A`.
 2. Conectar Serial e consultar redes salvas: CPGAS_5G deve aparecer.
 3. Informar outra rede real, senha e DHCP; clicar **Guardar rede sem trocar**.
 4. Consultar a lista: ambas devem aparecer. Confirmar que CPGAS_5G continua
@@ -58,3 +58,23 @@ o estado gravado, como no protocolo anterior.
   selecao por id sem enviar senha novamente, salvar sem trocar e exclusao.
 - Python: compilacao sintatica do painel. Compilacao ESP-IDF completa e testes
   no hardware dependem do instalador/placa do usuario.
+
+## Correcao STEP02A — busca depois de selecionar/salvar
+
+O log 21 mostra busca bem-sucedida com sete redes as 18:58:24, RAM livre e maior
+bloco iguais antes/depois. As 18:58:30 uma selecao/gravacao marcou reinicio
+pendente; a busca seguinte foi recusada apesar de a estacao continuar conectada.
+
+- Busca passa a usar a conexao atual mesmo quando outra configuracao aguarda
+  reinicio. Continua bloqueada durante Live/autonomo ou sem conexao/IP.
+- Selecionar/salvar exatamente os mesmos dados da configuracao em RAM e da
+  selecao persistida devolve `pending_restart=0`, sem regravar `cfg_v2`.
+  Alteracao de senha, nome, modo ou dados de rede ainda exige reinicio.
+- Mensagens distinguem Wi-Fi nao iniciado, aguardando conexao/IP e modo ocupado.
+  Os timeouts Serial no comeco do log sao ocorrencias separadas desta correcao.
+
+Teste: depois de instalar, selecionar a rede atual e buscar novamente sem
+reiniciar; repetir depois de selecionar uma rede diferente (a busca deve usar
+a conexao anterior, e a troca so ocorre ao reiniciar). Conferir foto/Live/audio
+e baixar o log. Testes locais cobrem os dois estados de reinicio pendente,
+selecao identica sem reinicio, senha alterada com reinicio e mensagens do painel.

@@ -109,6 +109,7 @@ int main(void) {
     /* Simulate the approved single-network record before the upgrade. */
     wifi_settings_t original;defaults(&original);strcpy(original.ssid,"Original");strcpy(original.pass,"password123");
     assert(nvs_set_blob(1,"cfg_v2",&original,sizeof(original))==ESP_OK);reboot();
+    assert(jr_wifi_profile_use(0,reply,sizeof(reply)));assert(!state.pending_restart);assert(strstr(reply,"pending_restart=0"));
     assert(jr_wifi_profiles_list(reply,sizeof(reply)));assert(strstr(reply,"\"id\":0"));assert(!strstr(reply,"password123"));puts(reply);
     assert(save("Second","password456"));check_selected("Original","password123");assert(!state.pending_restart);
     assert(jr_wifi_profiles_list(reply,sizeof(reply)));assert(strstr(reply,"\"id\":1"));puts(reply);
@@ -118,6 +119,9 @@ int main(void) {
     assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(state.pending_restart);check_selected("Second","newpassword");
     assert(!jr_wifi_profile_delete(0,reply,sizeof(reply)));assert(!jr_wifi_profile_delete(1,reply,sizeof(reply)));
     reboot();assert(!strcmp(active.ssid,"Second"));assert(!strcmp(active.pass,"newpassword"));
+    assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(!state.pending_restart);assert(strstr(reply,"pending_restart=0"));
+    state.pending_restart=true;
+    assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(!state.pending_restart);
     assert(jr_wifi_profile_delete(0,reply,sizeof(reply)));check_selected("Second","newpassword");
     assert(save("Fifth","password123"));assert(jr_wifi_profiles_list(reply,sizeof(reply)));puts(reply);
     assert(!jr_wifi_profile_use(4,reply,sizeof(reply)));
@@ -132,6 +136,7 @@ int main(void) {
     assert(jr_wifi_profile_use(1,reply,sizeof(reply)));check_selected("Second","newpassword");
     assert(jr_wifi_configure("Second","anotherpassword","jrbot",false,"","","","","",reply,sizeof(reply)));
     check_selected("Second","anotherpassword");assert(opens==0);
+    assert(state.pending_restart); /* Same SSID with a changed password still needs restart. */
     return 0;
 }
 '''

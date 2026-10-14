@@ -72,7 +72,8 @@ static void reset(void) {
 int main(void) {
     char reply[2048];
     reset();status.connected=false;assert(!jr_wifi_scan(reply,sizeof(reply)));assert(!starts);
-    reset();status.pending_restart=true;assert(!jr_wifi_scan(reply,sizeof(reply)));assert(!starts);
+    reset();status.pending_restart=true;assert(jr_wifi_scan(reply,sizeof(reply)));assert(starts==1 && clears==1 && !remaining);
+    reset();status.pending_restart=true;status.connected=false;assert(!jr_wifi_scan(reply,sizeof(reply)));assert(!starts);
     reset();mode=JR_MODE_LIVE;assert(!jr_wifi_scan(reply,sizeof(reply)));assert(!starts);
     reset();mode=JR_MODE_AUTONOMOUS;assert(!jr_wifi_scan(reply,sizeof(reply)));assert(!starts);
     reset();assert(jr_wifi_scan(reply,sizeof(reply)));assert(clears==1 && !remaining && reads==2);puts(reply);
