@@ -12,6 +12,59 @@ _PREVIOUS_DO_GET = app.Handler.do_GET
 _WIFI_SCRIPT = r"""
 <script>
 (function(){
+  let scannedNetworks=[];
+  const networkSelect=el('wifi_networks');
+  const scanMsg=el('wifi_scan_msg');
+  window.scanWifiNetworks=function(){
+    return action(async()=>{
+      if(mode!=='serial'||!serialConnected)throw new Error('Conecte a Serial USB antes de buscar redes.');
+      scannedNetworks=[];
+      networkSelect.replaceChildren();
+      networkSelect.disabled=true;
+      scanMsg.textContent='Buscando redes Wi-Fi...';
+      let reply;
+      try{reply=await send('wifi_scan');}
+      catch(error){
+        const detail=String(error&&error.message||error);
+        if(detail.includes('scan=busy'))throw new Error('Pare a Live e desligue o autonomo antes de buscar redes.');
+        if(detail.includes('scan=not_ready'))throw new Error('Nesta etapa, conecte o Wi-Fi e reinicie a placa se houver configuracao pendente. Voce tambem pode digitar o nome da rede manualmente.');
+        throw error;
+      }
+      const prefix='JR_WIFI_SCAN ';
+      if(!reply.startsWith(prefix))throw new Error('Busca nao confirmada. Atualize o firmware develop_wifi.');
+      const body=JSON.parse(reply.slice(prefix.length));
+      if(!Array.isArray(body.networks)||body.networks.length>8)throw new Error('Lista de redes invalida.');
+      const unique=new Map();
+      for(const network of body.networks){
+        if(typeof network.ssid_pct!=='string'||!Number.isInteger(network.rssi)||!Number.isInteger(network.authmode))throw new Error('Rede invalida na resposta.');
+        let ssid;
+        try{ssid=decodeURIComponent(network.ssid_pct);}catch(_){continue;}
+        if(!ssid||/[\x00-\x1f\x7f]/.test(ssid)||new TextEncoder().encode(ssid).length>32)continue;
+        const previous=unique.get(ssid);
+        if(!previous||network.rssi>previous.rssi)unique.set(ssid,{...network,ssid});
+      }
+      scannedNetworks=[...unique.values()].sort((a,b)=>b.rssi-a.rssi);
+      const prompt=document.createElement('option');
+      prompt.value='';prompt.textContent=scannedNetworks.length?'Selecione uma rede':'Nenhuma rede encontrada';
+      networkSelect.appendChild(prompt);
+      scannedNetworks.forEach((network,index)=>{
+        const option=document.createElement('option');option.value=String(index);
+        option.textContent=network.ssid+' | '+network.rssi+' dBm | '+(network.authmode===0?'aberta':'protegida');
+        networkSelect.appendChild(option);
+      });
+      networkSelect.disabled=!scannedNetworks.length;
+      scanMsg.textContent=scannedNetworks.length+' rede(s) encontrada(s).'+(body.limited?' Mostrando ate 8 pontos de acesso.':'')+' Selecione uma rede e informe a senha antes de salvar.';
+    },'wifi_scan_msg');
+  };
+  networkSelect.addEventListener('change',()=>{
+    if(networkSelect.value==='')return;
+    const network=scannedNetworks[Number(networkSelect.value)];
+    if(!network)return;
+    if(el('wifi_ssid').value!==network.ssid)el('wifi_pass').value='';
+    el('wifi_ssid').value=network.ssid;
+    scanMsg.textContent=network.authmode===0?'Rede aberta selecionada. Deixe a senha vazia.':'Rede protegida selecionada. Informe a senha para salvar.';
+    el('wifi_pass').focus();
+  });
   const wifiIds=['wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2'];
   const bytes=s=>new TextEncoder().encode(s).length;
   function raw(id){return el(id).value;}
@@ -44,6 +97,8 @@ _WIFI_SCRIPT = r"""
     if(!ssid.length)throw new Error('Informe o nome do Wi-Fi (SSID).');
     if(/[\x00-\x1f\x7f]/.test(ssid)||bytes(ssid)>32)throw new Error('Nome do Wi-Fi invalido: use no maximo 32 bytes e sem caracteres de controle.');
     const passLen=bytes(pass);
+    const selected=networkSelect.value===''?null:scannedNetworks[Number(networkSelect.value)];
+    if(selected&&selected.ssid===ssid&&selected.authmode!==0&&!passLen)throw new Error('Informe a senha da rede protegida selecionada.');
     if(/[\x00-\x1f\x7f]/.test(pass))throw new Error('Senha do Wi-Fi contem caractere de controle invalido.');
     if(passLen>0&&passLen<8)throw new Error('Senha do Wi-Fi invalida: redes protegidas precisam de pelo menos 8 caracteres. Para rede aberta, deixe a senha vazia.');
     if(passLen>64)throw new Error('Senha do Wi-Fi invalida: limite de 64 bytes.');

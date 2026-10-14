@@ -166,6 +166,11 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     </div>
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
+      <div class="full">
+        <button data-action onclick="scanWifiNetworks()">Buscar redes Wi-Fi</button>
+        <p id="wifi_scan_msg" role="status" aria-live="polite">Pare a Live antes de buscar redes.</p>
+      </div>
+      <label class="full">Redes encontradas<select id="wifi_networks" disabled><option value="">Clique em Buscar redes Wi-Fi</option></select></label>
       <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
       <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
       <label>Nome do JrBot<input id="wifi_host" value="jrbot"></label>
