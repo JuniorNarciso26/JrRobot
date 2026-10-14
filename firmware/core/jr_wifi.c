@@ -224,7 +224,152 @@ static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
     snprintf(response,cap,c->ssid[0]?"JR_WIFI_SALVO pending_restart=1 reinicie_a_placa":"JR_WIFI_LIMPO pending_restart=1 reinicie_a_placa");
     return true;
 }
-bool jr_wifi_configure(const char *ssid,const char *password,const char *hostname,bool use_static_ip,
+#define PROFILE_LIMIT 4
+static esp_err_t profile_read(nvs_handle_t h,unsigned id,wifi_settings_t *out) {
+    char key[16]; snprintf(key,sizeof(key),"p%u",id);
+    size_t size=sizeof(*out);
+    esp_err_t err=nvs_get_blob(h,key,out,&size);
+    if (err==ESP_OK && (size!=sizeof(*out) || !valid_settings(out,false))) return ESP_ERR_INVALID_ARG;
+    return err;
+}
+static esp_err_t selected_read(nvs_handle_t h,wifi_settings_t *out) {
+    size_t size=sizeof(*out);
+    esp_err_t err=nvs_get_blob(h,"cfg_v2",out,&size);
+    if (err==ESP_ERR_NVS_NOT_FOUND) { *out=active; return ESP_OK; }
+    if (err==ESP_OK && (size!=sizeof(*out) || !valid_settings(out,true))) return ESP_ERR_INVALID_ARG;
+    return err;
+}
+static esp_err_t profile_get(nvs_handle_t h,unsigned id,wifi_settings_t *out) {
+    esp_err_t err=profile_read(h,id,out);
+    if (err!=ESP_ERR_NVS_NOT_FOUND || id!=0) return err;
+    /* Before the first save, expose the existing approved configuration as slot 0. */
+    for (unsigned i=1;i<PROFILE_LIMIT;i++) {
+        err=profile_read(h,i,out);
+        if (err==ESP_OK) return ESP_ERR_NVS_NOT_FOUND;
+        if (err!=ESP_ERR_NVS_NOT_FOUND) return err;
+    }
+    err=selected_read(h,out);
+    return err==ESP_OK && !out->ssid[0]?ESP_ERR_NVS_NOT_FOUND:err;
+}
+static bool profile_error(esp_err_t err,char *response,unsigned cap) {
+    snprintf(response,cap,"JR_WIFI_ERROR profiles=%s",esp_err_to_name(err));
+    return false;
+}
+static bool profile_store(const wifi_settings_t *candidate,char *response,unsigned cap) {
+    nvs_handle_t h;
+    esp_err_t err=ensure_nvs();
+    if (err==ESP_OK) err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    int found=-1,empty=-1; bool any=false;
+    wifi_settings_t entry;
+    for (unsigned i=0;i<PROFILE_LIMIT;i++) {
+        err=profile_read(h,i,&entry);
+        if (err==ESP_OK) {
+            any=true;
+            if (!strcmp(entry.ssid,candidate->ssid)) found=(int)i;
+        } else if (err==ESP_ERR_NVS_NOT_FOUND) { if (empty<0) empty=(int)i; }
+        else goto done;
+    }
+    if (!any) {
+        err=selected_read(h,&entry);
+        if (err!=ESP_OK) goto done;
+        if (entry.ssid[0] && strcmp(entry.ssid,candidate->ssid)) {
+            err=nvs_set_blob(h,"p0",&entry,sizeof(entry));
+            if (err!=ESP_OK) goto done;
+            empty=1;
+        }
+    }
+    int slot=found>=0?found:empty;
+    if (slot<0) {
+        nvs_close(h); memset(entry.pass,0,sizeof(entry.pass));
+        snprintf(response,cap,"JR_WIFI_ERROR profiles=full exclua_uma_rede_inativa_limite_4");
+        return false;
+    }
+    char key[16]; snprintf(key,sizeof(key),"p%u",(unsigned)slot);
+    err=nvs_set_blob(h,key,candidate,sizeof(*candidate));
+    if (err==ESP_OK) err=nvs_commit(h);
+done:
+    nvs_close(h); memset(entry.pass,0,sizeof(entry.pass));
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    snprintf(response,cap,"JR_WIFI_PROFILE_SAVED conexao_atual_preservada=1");
+    return true;
+}
+static void profile_ssid_encode(const char *ssid,char *out) {
+    static const char hex[]="0123456789ABCDEF";
+    unsigned n=0;
+    for (unsigned i=0;i<32 && ssid[i];i++) {
+        unsigned byte=(unsigned char)ssid[i];
+        out[n++]='%'; out[n++]=hex[byte>>4]; out[n++]=hex[byte&15];
+    }
+    out[n]=0;
+}
+bool jr_wifi_profiles_list(char *response,unsigned cap) {
+    nvs_handle_t h;
+    esp_err_t err=ensure_nvs();
+    if (err==ESP_OK) err=nvs_open("jr_wifi",NVS_READONLY,&h);
+    if (err==ESP_ERR_NVS_NOT_FOUND) { snprintf(response,cap,"JR_WIFI_PROFILES {\"profiles\":[]}"); return true; }
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    wifi_settings_t selected,entry;
+    err=selected_read(h,&selected);
+    unsigned shown=0; size_t used=0;
+    if (err==ESP_OK) {
+        int n=snprintf(response,cap,"JR_WIFI_PROFILES {\"profiles\":[");
+        if (n<0 || (unsigned)n>=cap) err=ESP_ERR_INVALID_SIZE; else used=(size_t)n;
+    }
+    for (unsigned i=0;err==ESP_OK && i<PROFILE_LIMIT;i++) {
+        err=profile_get(h,i,&entry);
+        if (err==ESP_ERR_NVS_NOT_FOUND) { err=ESP_OK; continue; }
+        if (err!=ESP_OK) break;
+        char encoded[97]; profile_ssid_encode(entry.ssid,encoded);
+        int n=snprintf(response+used,cap-used,
+            "%s{\"id\":%u,\"ssid_pct\":\"%s\",\"mode\":\"%s\",\"selected\":%s,\"protected\":%s}",
+            shown?",":"",i,encoded,entry.use_static?"IP_FIXO":"DHCP",
+            !strcmp(entry.ssid,selected.ssid)?"true":"false",entry.pass[0]?"true":"false");
+        if (n<0 || (size_t)n>=cap-used) { err=ESP_ERR_INVALID_SIZE; break; }
+        used+=(size_t)n; shown++;
+    }
+    if (err==ESP_OK) {
+        int n=snprintf(response+used,cap-used,"]}");
+        if (n<0 || (size_t)n>=cap-used) err=ESP_ERR_INVALID_SIZE;
+    }
+    nvs_close(h); memset(selected.pass,0,sizeof(selected.pass)); memset(entry.pass,0,sizeof(entry.pass));
+    return err==ESP_OK?true:profile_error(err,response,cap);
+}
+bool jr_wifi_profile_use(unsigned id,char *response,unsigned cap) {
+    if (id>=PROFILE_LIMIT) return profile_error(ESP_ERR_INVALID_ARG,response,cap);
+    nvs_handle_t h; wifi_settings_t entry;
+    esp_err_t err=ensure_nvs();
+    if (err==ESP_OK) err=nvs_open("jr_wifi",NVS_READONLY,&h);
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    err=profile_get(h,id,&entry); nvs_close(h);
+    bool ok=err==ESP_OK?save_record(&entry,response,cap):profile_error(err,response,cap);
+    memset(entry.pass,0,sizeof(entry.pass));
+    return ok;
+}
+bool jr_wifi_profile_delete(unsigned id,char *response,unsigned cap) {
+    if (id>=PROFILE_LIMIT) return profile_error(ESP_ERR_INVALID_ARG,response,cap);
+    nvs_handle_t h; wifi_settings_t entry,selected;
+    esp_err_t err=ensure_nvs();
+    if (err==ESP_OK) err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    err=profile_get(h,id,&entry);
+    if (err==ESP_OK) err=selected_read(h,&selected);
+    if (err==ESP_OK && (!strcmp(entry.ssid,selected.ssid) || !strcmp(entry.ssid,active.ssid))) {
+        nvs_close(h); memset(entry.pass,0,sizeof(entry.pass)); memset(selected.pass,0,sizeof(selected.pass));
+        snprintf(response,cap,"JR_WIFI_ERROR profiles=active selecione_outra_rede_e_reinicie_antes_de_excluir");
+        return false;
+    }
+    if (err==ESP_OK) {
+        char key[16]; snprintf(key,sizeof(key),"p%u",id);
+        err=nvs_erase_key(h,key);
+        if (err==ESP_OK) err=nvs_commit(h);
+    }
+    nvs_close(h); memset(entry.pass,0,sizeof(entry.pass)); memset(selected.pass,0,sizeof(selected.pass));
+    if (err!=ESP_OK) return profile_error(err,response,cap);
+    snprintf(response,cap,"JR_WIFI_PROFILE_DELETED id=%u conexao_atual_preservada=1",id);
+    return true;
+}
+static bool configure_record(bool profile_only,const char *ssid,const char *password,const char *hostname,bool use_static_ip,
     const char *ip,const char *gw,const char *mask,const char *dns1,const char *dns2,char *response,unsigned cap) {
     wifi_settings_t candidate; defaults(&candidate); candidate.use_static=use_static_ip?1:0;
     bool valid=copy_checked(candidate.ssid,sizeof(candidate.ssid),ssid) &&
@@ -236,7 +381,17 @@ bool jr_wifi_configure(const char *ssid,const char *password,const char *hostnam
         copy_checked(candidate.dns1,sizeof(candidate.dns1),dns1&&*dns1?dns1:JR_WIFI_DNS1) &&
         copy_checked(candidate.dns2,sizeof(candidate.dns2),dns2&&*dns2?dns2:JR_WIFI_DNS2) && valid_settings(&candidate,false);
     if (!valid) { memset(candidate.pass,0,sizeof(candidate.pass)); snprintf(response,cap,"JR_WIFI_ERROR valores_invalidos_nao_salvos"); return false; }
-    bool ok=save_record(&candidate,response,cap); memset(candidate.pass,0,sizeof(candidate.pass)); return ok;
+    bool ok=profile_store(&candidate,response,cap);
+    if (ok && !profile_only) ok=save_record(&candidate,response,cap);
+    memset(candidate.pass,0,sizeof(candidate.pass)); return ok;
+}
+bool jr_wifi_configure(const char *ssid,const char *password,const char *hostname,bool use_static_ip,
+    const char *ip,const char *gw,const char *mask,const char *dns1,const char *dns2,char *response,unsigned cap) {
+    return configure_record(false,ssid,password,hostname,use_static_ip,ip,gw,mask,dns1,dns2,response,cap);
+}
+bool jr_wifi_profile_save(const char *ssid,const char *password,const char *hostname,bool use_static_ip,
+    const char *ip,const char *gw,const char *mask,const char *dns1,const char *dns2,char *response,unsigned cap) {
+    return configure_record(true,ssid,password,hostname,use_static_ip,ip,gw,mask,dns1,dns2,response,cap);
 }
 bool jr_wifi_clear(char *response,unsigned cap) {
     /* A persistent tombstone also overrides compile-time credentials on reboot. */

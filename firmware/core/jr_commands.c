@@ -53,7 +53,7 @@ bool jr_decode_component(const char *src, size_t len, char *dst, size_t cap, boo
     return true;
 }
 
-static bool parse_wifi_config(const char *args, bool encoded, char *response, size_t cap) {
+static bool parse_wifi_config(const char *args, bool encoded, bool profile_only, char *response, size_t cap) {
     char ssid[33] = "", pass[65] = "", host[33] = "jrbot";
     char ip[16] = "192.168.0.50", gw[16] = "192.168.0.1", mask[16] = "255.255.255.0";
     char dns1[16] = "8.8.8.8", dns2[16] = "8.8.4.4", stat[6] = "0";
@@ -87,7 +87,9 @@ static bool parse_wifi_config(const char *args, bool encoded, char *response, si
     }
     if (!(seen & 1) || (strcmp(stat,"0") && strcmp(stat,"1"))) goto invalid;
     {
-        bool ok = jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
+        bool ok = profile_only
+            ? jr_wifi_profile_save(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap)
+            : jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
         memset(pass, 0, sizeof(pass));
         return ok;
     }
@@ -161,7 +163,15 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     verb[verb_len] = '\0';
     const char *args = space ? space+1 : "";
     if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
-        return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),response,cap);
+        return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),false,response,cap);
+    if (!strcmp(verb,"wifi_profile_save_pct")) return parse_wifi_config(args,true,true,response,cap);
+    if (!strcmp(verb,"wifi_profile_use") || !strcmp(verb,"wifi_profile_delete")) {
+        char *end; errno=0; unsigned long id=strtoul(args,&end,10);
+        if (!*args || end==args || errno || id>3) goto invalid;
+        while (*end==' ') end++;
+        if (*end) goto invalid;
+        return !strcmp(verb,"wifi_profile_use")?jr_wifi_profile_use((unsigned)id,response,(unsigned)cap):jr_wifi_profile_delete((unsigned)id,response,(unsigned)cap);
+    }
     if (!strcmp(verb,"api")) {
         while (*args==' ') args++;
         return jr_runtime_api_handle(args,response,cap);
@@ -242,9 +252,10 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_scan wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_scan wifi_profiles wifi_profile_save_pct wifi_profile_use[0-3] wifi_profile_delete[0-3] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_scan")) return jr_wifi_scan(response,(unsigned)cap);
+    if (!strcmp(verb,"wifi_profiles")) return jr_wifi_profiles_list(response,(unsigned)cap);
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
     if (!strcmp(verb,"demo")) {
         jr_face_set_demo(!jr_face_demo_enabled());

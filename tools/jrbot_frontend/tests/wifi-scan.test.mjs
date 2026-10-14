@@ -18,14 +18,21 @@ function setup(){
     return elements.get(id);
   };
   el('wifi_static').value='0';el('wifi_host').value='jrbot';
-  let reply='',commands=[];
+  let reply='',commands=[],profiles=[];
   const context={el,TextEncoder,mode:'serial',serialConnected:true,window:{},
     val:id=>el(id).value.trim(),action:fn=>fn(),saveWifiLocal(){},
     document:{createElement:()=>({}),querySelector:()=>null},
-    send:async command=>{commands.push(command);if(reply instanceof Error)throw reply;return command==='wifi_scan'?reply:'JR_WIFI_SALVO pending_restart=1';},
+    confirm:()=>true,
+    send:async command=>{
+      commands.push(command);if(reply instanceof Error)throw reply;
+      if(command==='wifi_profiles')return 'JR_WIFI_PROFILES '+JSON.stringify({profiles});
+      if(command.startsWith('wifi_profile_delete ')){profiles=profiles.filter(p=>p.id!==Number(command.split(' ')[1]));return 'JR_WIFI_PROFILE_DELETED';}
+      if(command.startsWith('wifi_profile_save_pct '))return 'JR_WIFI_PROFILE_SAVED';
+      return command==='wifi_scan'?reply:'JR_WIFI_SALVO pending_restart=1';
+    },
   };
   vm.runInNewContext(script,context);
-  return {context,el,commands,reply(value){reply=value;}};
+  return {context,el,commands,reply(value){reply=value;},profiles(value){profiles=value;}};
 }
 const entry=(ssid,rssi=-45,authmode=4)=>({ssid_pct:[...new TextEncoder().encode(ssid)].map(b=>'%'+b.toString(16).padStart(2,'0')).join(''),rssi,authmode});
 const reply=networks=>'JR_WIFI_SCAN '+JSON.stringify({networks,total:networks.length,limited:false});
@@ -66,4 +73,29 @@ test('open networks can be saved without a password',async()=>{
   s.el('wifi_networks').value='0';s.el('wifi_networks').listeners.change();
   await s.context.window.configureWifi();
   assert.match(s.commands[1],/ssid=Aberta\|pass=\|/);
+});
+
+test('using a saved network sends only its id and reuses the stored password',async()=>{
+  const s=setup();s.profiles([{id:1,...entry('Saved'),mode:'DHCP',selected:false,protected:true}]);
+  await s.context.window.refreshWifiProfiles();s.el('wifi_profiles').value='1';
+  await s.context.window.useWifiProfile();
+  assert.ok(s.commands.includes('wifi_profile_use 1'));
+  assert.ok(!s.commands.some(c=>c.includes('pass=')));
+  assert.match(s.el('wifi_profiles_msg').textContent,/senha salva.*Reinicie/);
+  s.el('wifi_ssid').value='Saved';
+  await assert.rejects(s.context.window.configureWifi(),/Use Usar rede salva/);
+});
+
+test('saving another profile does not select it, and deleting uses its id',async()=>{
+  const s=setup();s.el('wifi_ssid').value='Other';s.el('wifi_pass').value='password123';
+  await s.context.window.saveWifiProfile();
+  assert.ok(s.commands[0].startsWith('wifi_profile_save_pct '));
+  assert.ok(!s.commands.some(c=>c.startsWith('wifi_profile_use ')));
+  assert.equal(s.el('wifi_pass').value,'');
+  assert.match(s.el('wifi_profiles_msg').textContent,/conexao atual foi mantida/);
+  s.profiles([{id:2,...entry('Other'),mode:'DHCP',selected:false,protected:true}]);
+  await s.context.window.refreshWifiProfiles();s.el('wifi_profiles').value='2';
+  await s.context.window.deleteWifiProfile();
+  assert.ok(s.commands.includes('wifi_profile_delete 2'));
+  assert.equal(s.el('wifi_profiles').disabled,true);
 });

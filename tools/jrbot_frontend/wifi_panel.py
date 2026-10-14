@@ -66,6 +66,68 @@ _WIFI_SCRIPT = r"""
     el('wifi_pass').focus();
   });
   const wifiIds=['wifi_ip','wifi_gw','wifi_mask','wifi_dns1','wifi_dns2'];
+  let savedProfiles=[];
+  const profileSelect=el('wifi_profiles');
+  const profileMsg=el('wifi_profiles_msg');
+  function requireSerial(){if(mode!=='serial'||!serialConnected)throw new Error('Conecte a Serial USB para gerenciar redes salvas.');}
+  async function reloadProfiles(){
+    savedProfiles=[];profileSelect.replaceChildren();profileSelect.disabled=true;
+    const reply=await send('wifi_profiles');
+    const prefix='JR_WIFI_PROFILES ';
+    if(!reply.startsWith(prefix))throw new Error('Atualize o firmware develop_wifi para gerenciar redes salvas.');
+    const body=JSON.parse(reply.slice(prefix.length));
+    if(!Array.isArray(body.profiles)||body.profiles.length>4)throw new Error('Lista de redes salvas invalida.');
+    const ids=new Set();
+    savedProfiles=body.profiles.map(profile=>{
+      if(!Number.isInteger(profile.id)||profile.id<0||profile.id>3||ids.has(profile.id)||typeof profile.ssid_pct!=='string')throw new Error('Rede salva invalida.');
+      ids.add(profile.id);
+      return {...profile,ssid:decodeURIComponent(profile.ssid_pct)};
+    });
+    const prompt=document.createElement('option');prompt.value='';
+    prompt.textContent=savedProfiles.length?'Selecione uma rede salva':'Nenhuma rede salva';profileSelect.appendChild(prompt);
+    for(const profile of savedProfiles){
+      const option=document.createElement('option');option.value=String(profile.id);
+      option.textContent=profile.ssid+' | '+profile.mode+(profile.selected?' | selecionada':'');
+      profileSelect.appendChild(option);
+    }
+    profileSelect.disabled=!savedProfiles.length;
+  }
+  function chosenProfile(){
+    if(profileSelect.value==='')throw new Error('Selecione uma rede salva.');
+    const profile=savedProfiles.find(p=>p.id===Number(profileSelect.value));
+    if(!profile)throw new Error('Atualize a lista e selecione uma rede salva.');
+    return profile;
+  }
+  function friendlyProfileError(error){
+    const detail=String(error&&error.message||error);
+    if(detail.includes('profiles=full'))return new Error('Limite de 4 redes. Exclua uma rede que nao esta em uso antes de adicionar outra.');
+    if(detail.includes('profiles=active'))return new Error('Esta rede esta em uso ou selecionada. Use outra rede, reinicie e depois exclua.');
+    return error;
+  }
+  window.refreshWifiProfiles=function(){return action(async()=>{
+    requireSerial();await reloadProfiles();profileMsg.textContent=savedProfiles.length+' rede(s) salva(s).';
+  },'wifi_profiles_msg');};
+  window.useWifiProfile=function(){return action(async()=>{
+    requireSerial();const profile=chosenProfile();
+    const reply=await send('wifi_profile_use '+profile.id);
+    if(!reply.startsWith('JR_WIFI_SALVO'))throw new Error('Selecao da rede nao confirmada.');
+    await reloadProfiles();
+    profileMsg.textContent='Rede '+profile.ssid+' selecionada com a senha salva. Reinicie a placa e consulte o IP recebido.';
+  },'wifi_profiles_msg');};
+  window.deleteWifiProfile=function(){return action(async()=>{
+    requireSerial();const profile=chosenProfile();
+    if(!confirm('Excluir a rede salva '+profile.ssid+'?'))return;
+    let reply;try{reply=await send('wifi_profile_delete '+profile.id);}catch(error){throw friendlyProfileError(error);}
+    if(!reply.startsWith('JR_WIFI_PROFILE_DELETED'))throw new Error('Exclusao da rede nao confirmada.');
+    await reloadProfiles();profileMsg.textContent='Rede '+profile.ssid+' excluida. A conexao atual foi mantida.';
+  },'wifi_profiles_msg');};
+  window.clearWifi=function(){return action(async()=>{
+    requireSerial();
+    if(!confirm('Desativar o Wi-Fi apos reiniciar? As redes salvas serao mantidas.'))return;
+    const reply=await send('wifi_clear');
+    if(!reply.startsWith('JR_WIFI_LIMPO'))throw new Error('Desativacao do Wi-Fi nao confirmada.');
+    el('device_msg').textContent='Wi-Fi desativado para a proxima inicializacao. As redes salvas foram mantidas. Reinicie a placa.';
+  });};
   const bytes=s=>new TextEncoder().encode(s).length;
   function raw(id){return el(id).value;}
   function ipv4Number(text){
@@ -97,6 +159,7 @@ _WIFI_SCRIPT = r"""
     if(!ssid.length)throw new Error('Informe o nome do Wi-Fi (SSID).');
     if(/[\x00-\x1f\x7f]/.test(ssid)||bytes(ssid)>32)throw new Error('Nome do Wi-Fi invalido: use no maximo 32 bytes e sem caracteres de controle.');
     const passLen=bytes(pass);
+    if(!passLen&&savedProfiles.some(profile=>profile.ssid===ssid&&profile.protected))throw new Error('Esta rede salva e protegida. Use Usar rede salva para reaproveitar a senha, ou informe a senha para alterar a configuracao.');
     const selected=networkSelect.value===''?null:scannedNetworks[Number(networkSelect.value)];
     if(selected&&selected.ssid===ssid&&selected.authmode!==0&&!passLen)throw new Error('Informe a senha da rede protegida selecionada.');
     if(/[\x00-\x1f\x7f]/.test(pass))throw new Error('Senha do Wi-Fi contem caractere de controle invalido.');
@@ -114,7 +177,7 @@ _WIFI_SCRIPT = r"""
     const note=document.querySelector('#wificfg .full small');
     if(note)note.textContent=fixed?'IP fixo ativo: revise IP, gateway, mascara e DNS antes de salvar.':'DHCP ativo: IP, gateway, mascara e DNS abaixo sao ignorados. Depois de reiniciar, consulte o IP recebido pela placa.';
   }
-  window.configureWifi=function(){
+  function saveWifi(profileOnly){
     return action(async()=>{
       if(mode!=='serial')throw new Error('Use Serial USB antes de salvar Wi-Fi.');
       const cfg=validateWifiForm();
@@ -127,19 +190,23 @@ _WIFI_SCRIPT = r"""
       ];
       let reply;
       try{
-        reply=await send('wifi_config_pct '+pairs.map(([k,v])=>k+'='+v).join('|'));
+        reply=await send((profileOnly?'wifi_profile_save_pct ':'wifi_config_pct ')+pairs.map(([k,v])=>k+'='+v).join('|'));
       }catch(error){
         if(String(error&&error.message||error).includes('valores_invalidos_nao_salvos')){
           throw new Error('O firmware recusou a configuracao. Revise SSID, senha, nome do JrBot e, se estiver usando IP fixo, os dados de rede. Nenhum valor foi salvo.');
         }
-        throw error;
+        throw friendlyProfileError(error);
       }
-      if(!reply.startsWith('JR_WIFI_SALVO'))throw new Error('Salvamento do Wi-Fi nao foi confirmado.');
+      if(!reply.startsWith(profileOnly?'JR_WIFI_PROFILE_SAVED':'JR_WIFI_SALVO'))throw new Error('Salvamento do Wi-Fi nao foi confirmado.');
       saveWifiLocal();
       el('wifi_pass').value='';
-      el('device_msg').textContent='Wi-Fi salvo'+(fixed?' com IP fixo':' em DHCP')+'. Reinicie a placa e consulte o Wi-Fi da placa.';
-    });
-  };
+      const message=profileOnly?'Rede guardada. A conexao atual foi mantida. Use a lista de redes salvas quando quiser trocar.':'Wi-Fi salvo'+(fixed?' com IP fixo':' em DHCP')+'. Reinicie a placa e consulte o Wi-Fi da placa.';
+      el(profileOnly?'wifi_profiles_msg':'device_msg').textContent=message;
+      try{await reloadProfiles();}catch(error){profileMsg.textContent='Rede salva, mas a lista nao atualizou: '+error.message;}
+    },profileOnly?'wifi_profiles_msg':'device_msg');
+  }
+  window.configureWifi=function(){return saveWifi(false);};
+  window.saveWifiProfile=function(){return saveWifi(true);};
   el('wifi_static').addEventListener('change',setWifiStaticUi);
   setWifiStaticUi();
 })();

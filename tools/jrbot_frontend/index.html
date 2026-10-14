@@ -167,12 +167,19 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
     <h2 id="wifi_config_title">Configurar Wi-Fi pelo Serial</h2>
     <div class="wifi" id="wificfg">
       <div class="full">
+        <button data-action onclick="refreshWifiProfiles()">Consultar redes salvas</button>
+        <label>Redes salvas (ate 4)<select id="wifi_profiles" disabled><option value="">Clique em Consultar redes salvas</option></select></label>
+        <button data-action class="green" onclick="useWifiProfile()">Usar rede salva</button>
+        <button data-action class="red" onclick="deleteWifiProfile()">Excluir rede salva</button>
+        <p id="wifi_profiles_msg" role="status" aria-live="polite">Usar rede salva reaproveita a senha e exige reiniciar. A troca nesta etapa e manual.</p>
+      </div>
+      <div class="full">
         <button data-action onclick="scanWifiNetworks()">Buscar redes Wi-Fi</button>
         <p id="wifi_scan_msg" role="status" aria-live="polite">Pare a Live antes de buscar redes.</p>
       </div>
       <label class="full">Redes encontradas<select id="wifi_networks" disabled><option value="">Clique em Buscar redes Wi-Fi</option></select></label>
       <label>Nome do Wi-Fi<input id="wifi_ssid" placeholder="nome da rede"></label>
-      <label>Senha<input id="wifi_pass" placeholder="senha" type="password"></label>
+      <label>Senha<input id="wifi_pass" placeholder="informe para adicionar ou alterar" type="password"></label>
       <label>Nome do JrBot<input id="wifi_host" value="jrbot"></label>
       <label>IP fixo<select id="wifi_static"><option value="0">desativado/DHCP</option><option value="1">ativado</option></select></label>
       <label>IP do ESP32<input id="wifi_ip" value="192.168.0.83"></label>
@@ -182,7 +189,8 @@ summary{padding:14px 16px;cursor:pointer;font-weight:bold;font-size:15px;border-
       <label>DNS2<input id="wifi_dns2" value="8.8.4.4"></label>
       <div class="full">
         <button data-action onclick="configureWifi()" class="green">Configurar Wi-Fi no ESP32</button>
-        <button data-action onclick="clearWifi()" class="red">Limpar Wi-Fi salvo</button><br>
+        <button data-action onclick="saveWifiProfile()">Guardar rede sem trocar</button>
+        <button data-action onclick="clearWifi()" class="red">Desativar Wi-Fi (mantem redes salvas)</button><br>
         <small>Este bloco envia pela Serial. Depois de reiniciar, use "Consultar Wi-Fi da placa" para conferir conexao e IP atual.</small>
       </div>
     </div>
