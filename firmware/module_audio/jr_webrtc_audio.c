@@ -54,7 +54,6 @@
 typedef enum {
     JR_WA_VIDEO_PROFILE_FAST = 0,
     JR_WA_VIDEO_PROFILE_BALANCED,
-    JR_WA_VIDEO_PROFILE_QUALITY,
 } jr_wa_video_profile_t;
 
 static const char *TAG = "jrbot_webrtc_audio";
@@ -146,12 +145,6 @@ static void video_profile_params(jr_wa_video_profile_t profile,
             if (quality) *quality = 16;
             if (fps) *fps = 15;
             if (name) *name = "fast";
-            break;
-        case JR_WA_VIDEO_PROFILE_QUALITY:
-            if (size) *size = JR_CAMERA_SIZE_SVGA;
-            if (quality) *quality = 16;
-            if (fps) *fps = 7;
-            if (name) *name = "quality";
             break;
         case JR_WA_VIDEO_PROFILE_BALANCED:
         default:
@@ -1414,8 +1407,6 @@ static esp_err_t signal_post_handler(httpd_req_t *req)
             next_profile = JR_WA_VIDEO_PROFILE_FAST;
         } else if (strcmp(profile->valuestring, "balanced") == 0) {
             next_profile = JR_WA_VIDEO_PROFILE_BALANCED;
-        } else if (strcmp(profile->valuestring, "quality") == 0) {
-            next_profile = JR_WA_VIDEO_PROFILE_QUALITY;
         } else {
             cJSON_Delete(root);
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid video profile");
