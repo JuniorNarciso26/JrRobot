@@ -42,7 +42,9 @@
 #define JR_WA_PEER_TASK_PRIORITY        18
 #define JR_WA_STOP_WAIT_MS              2500
 #define JR_WA_SIGNAL_POST_MAX           (16 * 1024)
-#define JR_WA_VIDEO_DC_CHUNK_SIZE        10000
+/* Bound each DataChannel write's peak TLS/SCTP memory use with mDNS active.
+ * 128 sequence numbers still cover the configured 262144-byte camera buffer. */
+#define JR_WA_VIDEO_DC_CHUNK_SIZE        2048
 #define JR_WA_VIDEO_DC_HEADER_SIZE       5
 #define JR_WA_VIDEO_DC_END               0x80
 #define JR_WA_VIDEO_DC_SEQ_MASK          0x7F
@@ -60,12 +62,14 @@ static const char *TAG = "jrbot_webrtc_audio";
 static void log_heap_state(const char *stage)
 {
     ESP_LOGI(TAG,
-             "HEAP stage=%s internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u",
+             "HEAP stage=%s internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u dma_free=%u dma_largest=%u",
              stage,
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
 }
 
 typedef struct {
@@ -759,6 +763,8 @@ static int send_jpeg_data_channel(const uint8_t *jpeg, size_t jpeg_size, uint8_t
 
         offset += payload;
         seq++;
+        /* Give the transport time to drain the larger number of small writes. */
+        if (offset < jpeg_size) vTaskDelay(pdMS_TO_TICKS(1));
     }
     return ESP_PEER_ERR_NONE;
 }
@@ -787,6 +793,7 @@ static void video_send_task(void *arg)
     ESP_LOGI(TAG, "VIDEO_DC_TASK_READY profile=%s size=%s quality=%d fps=%d chunk=%d",
              initial_name, jr_camera_size_name(initial_size), initial_quality,
              initial_fps, JR_WA_VIDEO_DC_CHUNK_SIZE);
+    log_heap_state("video_task_ready");
 
     while (session_running) {
         if (!get_peer_connected() || !video_dc_open || !peer) {
@@ -828,7 +835,12 @@ static void video_send_task(void *arg)
             status_state.video_send_errors++;
         }
         uint32_t sent_frames = status_state.video_frames;
+        uint32_t send_errors = status_state.video_send_errors;
         portEXIT_CRITICAL(&state_lock);
+
+        if (ret != ESP_PEER_ERR_NONE && (send_errors == 1U || send_errors % 50U == 0U)) {
+            log_heap_state("video_send_error");
+        }
 
         if (ret == ESP_PEER_ERR_WOULD_BLOCK) {
             ESP_LOGW(TAG, "VIDEO_DC_DROP buffer_full bytes=%u", (unsigned)frame.len);
