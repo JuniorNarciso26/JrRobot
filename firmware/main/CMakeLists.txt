@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "main.c"
         "../core/jr_wifi.c"
+        "../core/jr_mdns.c"
         "../core/jr_wifi_scan.c"
         "../core/jr_net_diag.c"
         "../core/jr_commands.c"
@@ -28,7 +29,7 @@ idf_component_register(
         "../module_audio"
         "../module_brain"
         "../module_runtime"
-    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap json
+    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap json mdns
     EMBED_TXTFILES
         "jrskill_app.js"
 )

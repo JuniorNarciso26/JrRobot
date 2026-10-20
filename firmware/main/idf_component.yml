@@ -3,3 +3,4 @@ dependencies:
   espressif/esp32-camera: "2.1.6"
   espressif/esp-sr: "2.5.1"
   espressif/esp_peer: "1.5.5"
+  espressif/mdns: "1.14.0"

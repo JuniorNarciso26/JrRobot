@@ -433,6 +433,13 @@ if exist "%SDKCONFIG_FILE%" (
         goto failure
     )
 )
+if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+    python "..\tools\ensure_mdns_sdkconfig.py" "%SDKCONFIG_FILE%"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd

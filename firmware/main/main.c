@@ -9,6 +9,7 @@
 #include "jr_face.h"
 #include "jr_portal.h"
 #include "jr_wifi.h"
+#include "jr_mdns.h"
 
 #define JR_OLED_RETRY_MS 30000U
 
@@ -38,6 +39,7 @@ void app_main(void) {
     ESP_LOGI("jrbot_main", "JrBot ready: camera/mic/status e audio sob demanda; OLED isolado quando offline");
 
     for (;;) {
+        jr_mdns_poll();
         uint32_t ms = now_ms();
         jr_face_status_t face;
         jr_face_get_status(&face);
