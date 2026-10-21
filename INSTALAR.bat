@@ -439,6 +439,11 @@ if /i "%CURRENT_BRANCH%"=="develop_wifi" (
         popd
         goto failure
     )
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_FREERTOS_USE_TRACE_FACILITY" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
 )
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
@@ -659,3 +664,4 @@ echo O menu consulta todas as branches remotas ativas no GitHub.
 echo Branches archive/* nao aparecem no menu.
 echo.
 exit /b 0
+

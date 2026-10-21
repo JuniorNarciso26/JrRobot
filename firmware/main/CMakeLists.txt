@@ -6,6 +6,7 @@ idf_component_register(
         "../core/jr_wifi_scan.c"
         "../core/jr_net_diag.c"
         "../core/jr_commands.c"
+        "../core/jr_memory_tasks.c"
         "../core/jr_mode_manager.c"
         "../core/jr_resource_manager.c"
         "../core/jr_usb_terminal.c"

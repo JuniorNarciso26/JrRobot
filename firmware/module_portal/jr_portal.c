@@ -14,6 +14,7 @@
 #include "jr_audio_receive.h"
 #include "jr_webrtc_audio.h"
 #include "jr_memory.h"
+#include "jr_memory_tasks.h"
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
@@ -70,6 +71,14 @@ static esp_err_t web_status_handler(httpd_req_t *req) {
 }
 
 static esp_err_t web_memory_handler(httpd_req_t *req) {
+    char query[24], value[4];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "tasks", value, sizeof(value)) == ESP_OK &&
+        !strcmp(value, "1")) {
+        char tasks[JR_RESPONSE_MAX_BYTES];
+        bool ok = jr_memory_tasks_format(tasks, sizeof(tasks));
+        return reply(req, ok ? "200 OK" : "503 Service Unavailable", tasks);
+    }
     char response[640];
     bool ok = jr_memory_format(response, sizeof(response));
     return reply(req, ok ? "200 OK" : "500 Internal Server Error",

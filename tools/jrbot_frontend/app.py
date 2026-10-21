@@ -27,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WIFI-MEMORY-01"
+APP_VERSION = "JRBOT-PANEL-V1S-WIFI-MEMORY-02"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -236,6 +236,8 @@ def wifi_request(ip: str, command: str) -> str:
             expected = ("JR_STATUS protocol=2 " if verb == "status" else
                         "JR_HELP protocol=2 " if verb in ("help", "ajuda") else
                         "JR_MEMORY protocol=1 " if verb == "memoria" else "JR_OK ")
+            if verb == "tarefas":
+                expected = "JR_TASKS "
             if not text.startswith(expected):
                 raise RuntimeError("Resposta Wi-Fi fora do protocolo; execucao nao confirmada")
             if verb in ("audio_volume", "volume"):

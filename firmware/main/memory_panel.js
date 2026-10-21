@@ -20,15 +20,37 @@
     '<div id="jr-memory-message" role="status">Aguardando consulta.</div>' +
     '<div class="memory-scroll"><table><thead><tr><th>Memória</th><th>Livre agora</th><th>Alocada no heap</th><th>Maior bloco livre</th><th>Mínimo livre desde o boot</th></tr></thead><tbody id="jr-memory-values"></tbody></table></div>' +
     '<p>Valores em KiB (1 KiB = 1.024 bytes). Alocada no heap não representa todo o uso físico dos 512 KB. O mínimo é histórico e pode continuar baixo depois de parar a live. Estas leituras não detalham o consumo por tarefa.</p>' +
+    '<p id="jr-memory-accounting"></p><p id="jr-memory-blocks"></p>' +
+    '<h3>Comparação das etapas</h3><p id="jr-memory-comparison">Salve uma leitura Antes da live e outra Durante ou Depois para comparar.</p>' +
     '<div class="memory-tools"><label>Marcar leitura <select id="jr-memory-stage"><option value="antes">Antes da live</option><option value="durante">Durante a live</option><option value="depois">Depois da live</option></select></label><button type="button" id="jr-memory-save">Salvar leitura</button><button type="button" id="jr-memory-download">Baixar relatório</button></div>' +
     '<p>As últimas 60 leituras ficam neste navegador até recarregar a página. Baixe o relatório para enviar à análise.</p>' +
-    '<div class="memory-scroll"><table><thead><tr><th>Horário</th><th>Etapa</th><th>RAM livre</th><th>DMA livre</th><th>PSRAM livre</th></tr></thead><tbody id="jr-memory-history"></tbody></table></div>';
+    '<div class="memory-scroll"><table><thead><tr><th>Horário</th><th>Etapa</th><th>RAM livre</th><th>DMA livre</th><th>PSRAM livre</th></tr></thead><tbody id="jr-memory-history"></tbody></table></div>' +
+    '<h3>Tarefas em execução</h3><div class="memory-tools"><button type="button" id="jr-memory-tasks-refresh">Consultar tarefas</button></div>' +
+    '<p id="jr-memory-tasks-message" role="status">Consulta manual: a varredura das pilhas pode causar uma pequena pausa.</p>' +
+    '<div class="memory-scroll"><table><thead><tr><th>Tarefa / ID</th><th>Função</th><th>Estado</th><th>Prioridade</th><th>Pilha configurada*</th><th>Menor sobra de pilha</th><th>Memória da pilha</th></tr></thead><tbody id="jr-memory-tasks"></tbody></table></div>' +
+    '<p>* Tamanho configurado no código, quando conhecido. A menor sobra é medida desde a criação da tarefa. Pilhas não incluem filas, buffers, conexões ou outras alocações da tarefa. Uma tarefa bloqueada está aguardando trabalho, mas mantém sua pilha reservada.</p>' +
+    '<p>O RTOS identifica tarefas conhecidas pelo nome. Nomes repetidos, tarefas criadas durante a coleta e tarefas de bibliotecas sem identificação aparecem como Tarefa #ID. Não é uma lista de programas independentes nem de todo o consumo de RAM.</p>';
   main.setAttribute('data-jr-memory-main', '');
   main.before(nav, panel);
   const get = id => document.getElementById('jr-memory-' + id);
   const controls = nav.querySelectorAll('button');
   const history = [];
   let active = false, reading = false, timer = null, generation = 0;
+  let tasksReading = false, taskSnapshot = null;
+  // IDs correspond to the immutable catalog in jr_memory_tasks.c.
+  const taskCatalog = [null,
+    ['main', 'Laço principal'], ['terminal', 'Comandos Serial'],
+    ['usb_terminal', 'Comandos USB nativo'], ['httpd', 'Servidor HTTP ou HTTPS'],
+    ['mdns', 'Nome jrbot.local'], ['mdns_task', 'Nome jrbot.local'],
+    ['jr_wa_peer', 'Conexão WebRTC'], ['jr_wa_mic', 'Microfone da live'],
+    ['jr_wa_play', 'Alto-falante da live'], ['jr_wa_video', 'Envio de vídeo'],
+    ['jr_wa_signal', 'Sinalização WebRTC'], ['jr_mic_stream', 'Transmissão do microfone'],
+    ['jr_mic_ws', 'Microfone por WebSocket'], ['wifi', 'Wi-Fi'],
+    ['tiT', 'Rede TCP/IP'], ['sys_evt', 'Eventos do sistema'],
+    ['esp_timer', 'Temporizadores ESP-IDF'], ['Tmr Svc', 'Temporizadores RTOS'],
+    ['IDLE0', 'Tarefa ociosa núcleo 0'], ['IDLE1', 'Tarefa ociosa núcleo 1'],
+    ['ipc0', 'Comunicação entre núcleos'], ['ipc1', 'Comunicação entre núcleos'],
+    ['cam_task', 'Captura da câmera']];
   const kib = bytes => (bytes / 1024).toFixed(1) + ' KiB';
 
   function parse(text) {
@@ -68,18 +90,92 @@
     }
     get('message').textContent = 'Atualizado às ' + new Date().toLocaleTimeString() +
       ' · placa ligada há ' + Math.floor(data.uptime_ms / 1000) + ' s · ' + (data.version || 'versão não informada') + '.';
+    const heap = data.internal_free + data.internal_allocated;
+    get('accounting').textContent = 'RAM interna contabilizada nestes heaps: ' + kib(heap) +
+      ' (livre + alocada). Isso não equivale aos 512 KiB físicos: código em RAM, dados fixos, reservas do sistema e metadados precisam do relatório de compilação para serem detalhados.';
+    get('blocks').textContent = 'Maior bloco DMA disponível: ' + kib(data.dma_largest) +
+      '. Uma reserva contínua maior pode falhar mesmo com ' + kib(data.dma_free) + ' livres no total. DMA compartilha memória com a RAM interna.';
+  }
+
+  function compare() {
+    const latest = stage => [...history].reverse().find(item => item.stage === stage);
+    const before = latest('antes');
+    const lines = [];
+    for (const [stage, label] of [['durante', 'Durante'], ['depois', 'Depois']]) {
+      const sample = latest(stage);
+      if (!before || !sample || sample.time < before.time || sample.uptime_ms < before.uptime_ms) continue;
+      const changes = [['internal', 'RAM'], ['dma', 'DMA'], ['psram', 'PSRAM']].map(([key, name]) => {
+        const difference = sample[key + '_free'] - before[key + '_free'];
+        return name + ': ' + (difference < 0 ? 'reduziu ' : 'aumentou ') + kib(Math.abs(difference)) + ' livres';
+      });
+      lines.push(label + ' em relação a Antes — ' + changes.join('; ') + '.');
+    }
+    get('comparison').textContent = lines.join(' ') || 'Salve Antes da live e depois Durante ou Depois, nesta ordem e sem reiniciar a placa.';
+  }
+
+  async function readTasks() {
+    if (reading || tasksReading || !active || document.hidden) return;
+    if (desktop && typeof busy !== 'undefined' && busy) {
+      get('tasks-message').textContent = 'Aguarde o comando em andamento e consulte novamente.';
+      return;
+    }
+    tasksReading = true;
+    get('tasks-refresh').disabled = true;
+    syncTimer();
+    const requestGeneration = generation;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      get('tasks-message').textContent = 'Coletando tarefas e menor sobra das pilhas...';
+      let text;
+      if (desktop) text = await send('tarefas');
+      else {
+        const response = await fetch('/memory?tasks=1', {cache: 'no-store', signal: controller.signal});
+        text = await response.text();
+        if (!response.ok) throw Error(text);
+      }
+      if (requestGeneration !== generation || !active) return;
+      if (!text.startsWith('JR_TASKS ')) throw Error('Instale STEP03D para consultar tarefas. ' + text);
+      const data = JSON.parse(text.slice(9));
+      if (data.v !== 1 || !Array.isArray(data.rows) || data.rows.length > 48 || data.total !== data.rows.length ||
+          !Number.isSafeInteger(data.scan_us) || data.scan_us < 0 || !Number.isSafeInteger(data.workspace_bytes) || data.workspace_bytes < 0 ||
+          data.rows.some(r => !Array.isArray(r) || r.length !== 7 || r.some(n => !Number.isSafeInteger(n) || n < 0) || r[1] >= taskCatalog.length || r[2] > 5 || r[6] > 2)) {
+        throw Error('Resposta de tarefas inválida.');
+      }
+      const states = ['Executando', 'Pronta', 'Aguardando', 'Suspensa', 'Encerrando', 'Indefinida'];
+      const rows = data.rows.map(([id, code, state, priority, minFree, configured, memory]) => ({
+        id, name: taskCatalog[code]?.[0] || 'Tarefa', purpose: taskCatalog[code]?.[1] || 'Não identificada',
+        state, priority, minFree, configured, memory}));
+      rows.sort((a, b) => b.configured - a.configured || b.minFree - a.minFree);
+      get('tasks').replaceChildren();
+      for (const task of rows) {
+        row(get('tasks'), [task.name + ' #' + task.id, task.purpose, states[task.state], String(task.priority),
+          task.configured ? kib(task.configured) : 'Não informado', kib(task.minFree),
+          ['Não identificada', 'Interna', 'PSRAM'][task.memory]]);
+      }
+      taskSnapshot = {time: new Date().toISOString(), ...data, tasks: rows};
+      get('tasks-message').textContent = rows.length + ' tarefas · atualizado às ' + new Date().toLocaleTimeString() +
+        ' · varredura ' + (data.scan_us / 1000).toFixed(2) + ' ms · espaço temporário PSRAM ' + kib(data.workspace_bytes) + ' já liberado.';
+    } catch (error) {
+      if (requestGeneration === generation && active) get('tasks-message').textContent = 'Erro: ' + error.message + ' A lista anterior pode estar desatualizada.';
+    } finally {
+      clearTimeout(timeout);
+      tasksReading = false;
+      get('tasks-refresh').disabled = false;
+      syncTimer();
+    }
   }
 
   function syncTimer() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
-    if (active && !document.hidden && get('auto').checked && !reading) {
+    if (active && !document.hidden && get('auto').checked && !reading && !tasksReading) {
       timer = setTimeout(() => { timer = null; read(); }, 5000);
     }
   }
 
   async function read(stage) {
-    if (reading || !active || document.hidden) return;
+    if (reading || tasksReading || !active || document.hidden) return;
     if (desktop && typeof busy !== 'undefined' && busy) {
       get('message').textContent = 'Aguarde o comando em andamento e consulte novamente.';
       syncTimer();
@@ -107,6 +203,7 @@
       const sample = {time: new Date().toISOString(), stage: stage || 'consulta', ...data};
       history.push(sample);
       if (history.length > 60) history.shift();
+      compare();
       get('history').replaceChildren();
       for (const item of history) {
         row(get('history'), [new Date(item.time).toLocaleTimeString(), item.stage,
@@ -140,14 +237,15 @@
   controls[1].onclick = () => select(true);
   get('refresh').onclick = () => read();
   get('save').onclick = () => read(get('stage').value);
+  get('tasks-refresh').onclick = readTasks;
   get('auto').onchange = syncTimer;
   get('download').onclick = () => {
-    if (!history.length) {
+    if (!history.length && !taskSnapshot) {
       get('message').textContent = 'Faça uma consulta antes de baixar o relatório.';
       return;
     }
     const report = {format: 'jrbot-memory-v1', generated: new Date().toISOString(),
-      units: 'bytes', note: 'DMA is a subset of internal RAM. Heap allocations exclude other physical RAM uses.', samples: history};
+      units: 'bytes', note: 'DMA is a subset of internal RAM. Heap allocations exclude other physical RAM uses. Task configured stack budgets are source settings, not measured allocations.', samples: history, task_snapshot: taskSnapshot};
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
     const link = document.createElement('a');
     link.href = url;
