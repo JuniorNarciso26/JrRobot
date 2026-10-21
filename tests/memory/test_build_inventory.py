@@ -86,7 +86,10 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(report['map_attributed_bytes'], 352)
         self.assertEqual(report['iram_reserved'], 256)
         self.assertEqual(report['dram_reserved'], 96)
-        self.assertEqual(report['components'][0], {'name': 'libheap.a', 'size': 256})
+        self.assertEqual(report['components'][0], {'name': 'libheap.a', 'size': 256, 'code': 256, 'data': 0, 'bss': 0})
+        self.assertEqual(sum(o['size'] for o in report['objects']), report['map_attributed_bytes'])
+        for item in report['components'] + report['objects']:
+            self.assertEqual(item['size'], item['code'] + item['data'] + item['bss'])
         self.assertNotIn('flash_function', [s['name'] for s in report['symbols']])
         self.assertNotIn('.dram0.dummy', [s['name'] for s in report['sections']])
         self.assertEqual(next(s for s in report['symbols'] if s['name'] == 'big_buffer')['owner'],

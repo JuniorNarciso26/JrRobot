@@ -1,11 +1,52 @@
-# Diagnóstico de memória — develop_wifi STEP03E_DIAG
+# Diagnóstico de memória — develop_wifi STEP03F_DIAG
 
 No painel do computador e em `https://jrbot.local`, abra **Memória**.
 No computador, conecte primeiro pela aba Controle (Serial ou Wi-Fi).
 É necessário instalar o firmware STEP03D para obter a lista de tarefas.
 Leituras básicas de heap continuam compatíveis com STEP03C.
 
-## Inventário dos 512 KiB — STEP03E_DIAG
+## Inventário dos 512 KiB — STEP03F_DIAG
+
+### Detalhes adicionais nesta etapa
+
+- Componentes e arquivos do map separados em código, dados e BSS, com totais
+  sem somar aliases de símbolos. A tela lista os 100 maiores arquivos; o JSON
+  contém todos os arquivos atribuídos. Valores não atribuídos continuam explícitos.
+- Regiões dos heaps com endereços, ocupação original, memória livre, maior
+  bloco e parte usada como suporte para outro heap.
+- Grupos por solicitante, memória e tamanho registrado, com contagem e total,
+  para localizar conjuntos de buffers. Mesmos tamanhos não identificam função.
+- Parâmetros compilados de reserva interna, buffers Wi-Fi, sockets e TLS.
+  São limites/quantidades de configuração, não uma medição de consumo. Opções
+  ausentes da compilação não recebem valores inventados.
+- Até seis inventários completos por navegador, marcados como consulta,
+  antes, durante ou depois. A comparação mostra blocos novos/desaparecidos e
+  variação por solicitante. Endereços podem ser reutilizados entre coletas;
+  isto não é rastreamento de chamadas nem prova de vazamento. Coletar sem reboot.
+- Correção da dupla contagem de heaps contidos em reservas de outros heaps,
+  como o pool interno/DMA criado por `esp_psram_extram_reserve_dma_pool`.
+  Uma primeira passagem descobre as regiões; outra mede blocos e interseções
+  dos blocos ocupados com heaps filhos. A conta física desconta a união das
+  extensões filhas e a parte correspondente dos blocos ocupados dos pais.
+  Registros por solicitante e regiões originais permanecem disponíveis.
+  Se uma sobreposição aparecer em bloco livre ou a área removida da ocupação
+  não corresponder à sobreposição das extensões, `accounting_consistent=false`
+  sinaliza que a conta física não deve ser considerada fechada. As passagens
+  são sequenciais; não suspendem o robô nem congelam todas as alocações.
+
+O campo `heap_registered_extent` é a soma original das extensões registradas;
+`heap_extent` desconta as regiões filhas. `heap_nested_bytes` registra o
+desconto aplicado aos blocos ocupados e `regions[].nested_used` o detalha.
+Isso corrige a apresentação; não libera RAM. A finalidade funcional dos outros
+blocos permanece **não instrumentada**, sem inferi-la pelo tamanho ou solicitante.
+
+Para coletar: selecione **Antes da live** junto ao botão do inventário completo
+e colete; inicie a live; selecione **Durante a live** e colete; pare a live;
+selecione **Depois da live** e colete. Baixe o relatório antes de recarregar.
+`full_snapshot` mantém a última coleta por compatibilidade e `full_snapshots`
+exporta até seis coletas. Redução do uptime ou mudança de versão limpa essa
+comparação no navegador. Reboot com uptime posterior ao anterior não é detectável
+com certeza: o operador deve manter a mesma sessão da placa.
 
 Esta é uma versão temporária de diagnóstico para ESP-IDF 5.5.5/ESP32-S3.
 Ela habilita `CONFIG_HEAP_TASK_TRACKING` e `CONFIG_HEAP_TRACK_DELETED_TASKS`

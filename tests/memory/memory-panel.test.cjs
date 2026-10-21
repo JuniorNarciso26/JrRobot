@@ -38,7 +38,8 @@ function setup(desktop = false) {
   state.fullReply = JSON.parse(fs.readFileSync('tests/memory/runtime_fixture.json', 'utf8'));
   state.buildReply = {v: 1, ready: true, version: state.fullReply.version,
     iram_reserved: state.fullReply.layout.iram_image, dram_reserved: state.fullReply.layout.dram_image,
-    components: [{name: 'libwifi.a', size: 1024}], map_attributed_bytes: 1024, static_section_bytes: 1024,
+    components: [{name: 'libwifi.a', size: 1024, code: 256, data: 256, bss: 512}], map_attributed_bytes: 1024, static_section_bytes: 1024,
+    objects: [{name: 'libwifi.a(wifi.o)', size: 1024, code: 256, data: 256, bss: 512}],
     symbols: [{name: 'wifi_buffer', size: 1024, section: '.dram0.bss', kind: 'sram', owner: 'libwifi.a(wifi.o)'},
               {name: 'psram_buffer', size: 65536, section: '.ext_ram.bss', kind: 'psram_or_mapping', owner: 'libmain.a(main.o)'}]};
   state.taskReply = 'JR_TASKS ' + JSON.stringify({v: 1, total: 3, scan_us: 2500, workspace_bytes: 2400,
@@ -90,8 +91,27 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(s.get('owners').children[0].children[0].textContent, 'httpd"\\\n 0x3fc9c010');
     assert.equal(s.get('block-list').children.length, 2);
     assert.equal(s.get('components').children[0].children[0].textContent, 'libwifi.a');
+    assert.equal(s.get('components').children[0].children[2].textContent, '0.3 KiB');
+    assert.equal(s.get('objects').children[0].children[0].textContent, 'libwifi.a(wifi.o)');
     assert.equal(s.get('symbols').children.length, 1, 'PSRAM symbols excluded from main SRAM table');
     assert.match(s.get('layout-note').textContent, /fecham os 512 KiB/);
+    s.get('full-stage').value = 'antes';
+    await s.get('full-refresh').onclick();
+    // Simulate a new live allocation belonging to the existing SRAM owner.
+    s.fullReply = structuredClone(s.fullReply);
+    s.fullReply.uptime_ms += 1000;
+    s.fullReply.tasks[0].heaps[0].blocks.push([0x3fcb0000, 1024]);
+    s.fullReply.tasks[0].heaps[0].alloc_count++;
+    s.fullReply.tasks[0].heaps[0].current += 1024;
+    s.fullReply.tasks[0].current_requested += 1024;
+    s.fullReply.layout.heap_allocated_blocks += 1024;
+    s.fullReply.layout.heap_free_blocks -= 1024;
+    s.get('full-stage').value = 'durante';
+    await s.get('full-refresh').onclick();
+    assert.equal(s.get('deltas').children.length, 1);
+    assert.equal(s.get('deltas').children[0].children[1].textContent, '1 / 1.0 KiB');
+    assert.equal(s.get('deltas').children[0].children[3].textContent, '1.0 KiB');
+    assert.match(s.get('full-comparison').textContent, /não é histórico/);
     s.get('auto').checked = true; s.get('auto').onchange();
     assert.ok([...s.timers.values()].some(t => t.delay === 5000));
     s.tabs[0].onclick();
@@ -106,6 +126,9 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(report.task_snapshot.tasks[0].configured, 25600);
     assert.equal(report.full_snapshot.layout.unclassified, 0);
     assert.equal(report.build_inventory.symbols.length, 2);
+    assert.equal(report.full_snapshots.length, 3);
+    assert.equal(report.full_snapshots[1].stage, 'antes');
+    assert.equal(report.full_snapshots[2].stage, 'durante');
     s.buildReply.version = 'stale';
     await s.get('full-refresh').onclick();
     assert.equal(s.get('components').children.length, 0, 'stale build attribution not displayed');

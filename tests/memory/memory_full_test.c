@@ -25,6 +25,11 @@ void heap_caps_walk(uint32_t caps, heap_caps_walker_cb_t callback, void *arg) {
     walker_heap_into_t rtc = {0x600fe000, 0x60100000};
     callback(main_heap, (walker_block_info_t){(void *)0x3fc9c010, 65536, true}, arg);
     callback(main_heap, (walker_block_info_t){(void *)0x3fcac010, 278400, false}, arg);
+    if (getenv("JR_TEST_NESTED")) {
+        walker_heap_into_t child = {0x3fc9c100, 0x3fca4100};
+        if (getenv("JR_TEST_BAD_NESTED")) child = (walker_heap_into_t){0x3fcad000, 0x3fcb5000};
+        callback(child, (walker_block_info_t){(void *)(child.start + 16), 32024, false}, arg);
+    }
     callback(rtc, (walker_block_info_t){(void *)0x600fe010, 1024, true}, arg);
     callback(rtc, (walker_block_info_t){(void *)0x600fe410, 7040, false}, arg);
 }

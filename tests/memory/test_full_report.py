@@ -22,6 +22,7 @@ class FullReportTests(unittest.TestCase):
         for tracing in (1, 0):
             executable = Path(cls.temp.name) / ('memory_full_' + str(tracing))
             command = ['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-no-pie', '-fsanitize=address,undefined',
+                       '-DCONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768', '-DCONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16',
                        '-DCONFIG_HEAP_TASK_TRACKING=' + str(tracing), '-Itests/memory', '-Ifirmware/core',
                        'tests/memory/memory_full_test.c', 'firmware/core/jr_memory_full.c']
             command += ['-Wl,--defsym,' + name + '=' + hex(value) for name, value in symbols.items()]
@@ -33,8 +34,12 @@ class FullReportTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.temp.cleanup()
 
-    def report(self, index):
+    def report(self, index, nested=False, bad_nested=False):
         env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0')
+        if nested:
+            env['JR_TEST_NESTED'] = '1'
+        if bad_nested:
+            env['JR_TEST_BAD_NESTED'] = '1'
         output = subprocess.check_output([str(self.executables[index])], env=env, text=True)
         return json.loads(output)
 
@@ -47,6 +52,28 @@ class FullReportTests(unittest.TestCase):
         self.assertEqual(layout['rtc_heap_extent'], 8192)
         self.assertEqual(layout['unclassified'], 0)
         self.assertEqual(layout['heap_admin'], 128)
+
+    def test_nested_dma_pool_is_not_counted_twice(self):
+        report = self.report(0, nested=True)
+        layout = report['layout']
+        self.assertTrue(layout['accounting_consistent'])
+        self.assertEqual(layout['heap_nested_bytes'], 32768)
+        self.assertEqual(layout['heap_registered_extent'] - layout['heap_extent'], 32768)
+        self.assertEqual(layout['heap_allocated_blocks'], 32768)
+        self.assertEqual(layout['heap_free_blocks'], 278400 + 32024)
+        self.assertEqual(layout['heap_admin'], 128 + 744)
+        self.assertEqual(layout['unclassified'], 0)
+        self.assertEqual(report['regions'][0]['nested_used'], 32768)
+
+    def test_inconsistent_overlap_stays_explicit(self):
+        report = self.report(0, nested=True, bad_nested=True)
+        self.assertFalse(report['layout']['accounting_consistent'])
+
+    def test_compiled_limits_are_not_invented(self):
+        config = self.report(0)['allocation_config']
+        self.assertEqual(config['reserve_internal_bytes'], 32768)
+        self.assertEqual(config['wifi_static_rx_count'], 16)
+        self.assertNotIn('tls_out_limit_bytes', config)
 
     def test_names_blocks_and_caps(self):
         report = self.report(0)

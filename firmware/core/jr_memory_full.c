@@ -21,7 +21,7 @@
 
 typedef struct {
     uintptr_t start, end;
-    size_t used, free, used_blocks, free_blocks, largest;
+    size_t used, free, used_blocks, free_blocks, largest, nested_used;
     unsigned kind;
 } region_t;
 
@@ -29,6 +29,7 @@ typedef struct {
     region_t regions[FULL_REGIONS];
     size_t region_count;
     bool region_overflow;
+    bool recount, overlap_free;
 #if CONFIG_HEAP_TASK_TRACKING
     task_stat_t tasks[FULL_TASKS];
     heap_stat_t heaps[FULL_HEAPS];
@@ -72,6 +73,39 @@ static unsigned region_kind(uintptr_t start) {
     return 0;
 }
 
+/* Union of contained child heaps clipped to a block. No allocations or RTOS
+ * calls: also used inside the allocator walk callback. */
+static size_t child_union(const workspace_t *work, const region_t *parent,
+                          uintptr_t start, uintptr_t end) {
+    size_t total = 0;
+    uintptr_t cursor = start;
+    while (cursor < end) {
+        uintptr_t first = end, stop = end;
+        for (size_t i = 0; i < work->region_count; ++i) {
+            const region_t *r = &work->regions[i];
+            if (r == parent || r->kind != parent->kind || r->start < parent->start || r->end > parent->end) continue;
+            uintptr_t a = r->start > cursor ? r->start : cursor;
+            uintptr_t b = r->end < end ? r->end : end;
+            if (a < b && a < first) { first = a; stop = b; }
+        }
+        if (first == end) break;
+        /* Extend across any touching child intervals before counting once. */
+        bool extended;
+        do {
+            extended = false;
+            for (size_t i = 0; i < work->region_count; ++i) {
+                const region_t *r = &work->regions[i];
+                if (r == parent || r->kind != parent->kind || r->start < parent->start || r->end > parent->end) continue;
+                uintptr_t b = r->end < end ? r->end : end;
+                if (r->start <= stop && b > stop) { stop = b; extended = true; }
+            }
+        } while (extended);
+        total += stop - first;
+        cursor = stop;
+    }
+    return total;
+}
+
 /* Called under the allocator's heap lock: arithmetic only, no allocation,
  * output, RTOS calls, or reading application-owned payloads. */
 static bool collect_region(walker_heap_into_t heap, walker_block_info_t block, void *arg) {
@@ -81,6 +115,7 @@ static bool collect_region(walker_heap_into_t heap, walker_block_info_t block, v
         if (work->regions[i].start == (uintptr_t)heap.start) break;
     }
     if (i == work->region_count) {
+        if (work->recount) { work->region_overflow = true; return false; }
         if (i == FULL_REGIONS) { work->region_overflow = true; return false; }
         work->region_count++;
         work->regions[i].start = (uintptr_t)heap.start;
@@ -88,6 +123,11 @@ static bool collect_region(walker_heap_into_t heap, walker_block_info_t block, v
         work->regions[i].kind = region_kind((uintptr_t)heap.start);
     }
     region_t *region = &work->regions[i];
+    if (work->recount) {
+        size_t overlap = child_union(work, region, (uintptr_t)block.ptr, (uintptr_t)block.ptr + block.size);
+        if (block.used) region->nested_used += overlap;
+        else if (overlap) work->overlap_free = true;
+    }
     if (block.used) { region->used += block.size; region->used_blocks++; }
     else {
         region->free += block.size;
@@ -123,12 +163,27 @@ esp_err_t jr_memory_full_json(char **out, size_t *length) {
     }
 #endif
     heap_caps_walk(MALLOC_CAP_INTERNAL, collect_region, work);
-    size_t extent = 0, used = 0, free_bytes = 0, rtc_extent = 0;
     for (size_t i = 0; i < work->region_count; ++i) {
         region_t *r = &work->regions[i];
-        if (r->kind == 1) { extent += r->end - r->start; used += r->used; free_bytes += r->free; }
+        r->used = r->free = r->used_blocks = r->free_blocks = r->largest = 0;
+    }
+    work->recount = true;
+    heap_caps_walk(MALLOC_CAP_INTERNAL, collect_region, work);
+    size_t extent = 0, used = 0, free_bytes = 0, rtc_extent = 0, registered = 0, nested = 0;
+    for (size_t i = 0; i < work->region_count; ++i) {
+        region_t *r = &work->regions[i];
+        if (r->kind == 1) {
+            size_t bytes = r->end - r->start;
+            registered += bytes;
+            extent += bytes - child_union(work, r, r->start, r->end);
+            used += r->used;
+            nested += r->nested_used;
+            free_bytes += r->free;
+        }
         if (r->kind == 2) rtc_extent += r->end - r->start;
     }
+    bool consistent = !work->region_overflow && !work->overlap_free && nested <= used && registered - extent == nested;
+    if (nested <= used) used -= nested;
     size_t iram = (uintptr_t)_iram_end - (uintptr_t)_iram_start;
     size_t dram = (uintptr_t)_heap_start - (uintptr_t)_data_start;
     size_t icache = CONFIG_ESP32S3_INSTRUCTION_CACHE_SIZE;
@@ -140,19 +195,20 @@ esp_err_t jr_memory_full_json(char **out, size_t *length) {
         JR_APP_VERSION, (unsigned long long)(esp_timer_get_time() / 1000), (unsigned)(sizeof(*work) + FULL_JSON_CAP));
     add(&json, "\"layout\":{\"physical_sram\":524288,\"icache\":%u,\"dcache\":%u,\"iram_image\":%u,\"dram_image\":%u,"
         "\"data\":%u,\"bss\":%u,\"noinit\":%u,\"heap_extent\":%u,\"heap_allocated_blocks\":%u,\"heap_free_blocks\":%u,"
-        "\"heap_admin\":%lld,\"unclassified\":%lld,\"rtc_heap_extent\":%u,\"region_overflow\":%s},\"regions\":[",
+        "\"heap_admin\":%lld,\"unclassified\":%lld,\"rtc_heap_extent\":%u,\"region_overflow\":%s,"
+        "\"heap_registered_extent\":%u,\"heap_nested_bytes\":%u,\"accounting_consistent\":%s},\"regions\":[",
         (unsigned)icache, (unsigned)dcache, (unsigned)iram, (unsigned)dram,
         (unsigned)((uintptr_t)_data_end - (uintptr_t)_data_start),
         (unsigned)((uintptr_t)_bss_end - (uintptr_t)_bss_start),
         (unsigned)((uintptr_t)_noinit_end - (uintptr_t)_noinit_start),
         (unsigned)extent, (unsigned)used, (unsigned)free_bytes,
         (long long)admin, (long long)residual, (unsigned)rtc_extent,
-        work->region_overflow ? "true" : "false");
+        work->region_overflow ? "true" : "false", (unsigned)registered, (unsigned)nested, consistent ? "true" : "false");
     for (size_t i = 0; i < work->region_count; ++i) {
         const region_t *r = &work->regions[i];
-        add(&json, "%s{\"start\":%u,\"end\":%u,\"kind\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"used_blocks\":%u,\"free_blocks\":%u}",
+        add(&json, "%s{\"start\":%u,\"end\":%u,\"kind\":%u,\"used\":%u,\"free\":%u,\"largest\":%u,\"used_blocks\":%u,\"free_blocks\":%u,\"nested_used\":%u}",
             i ? "," : "", (unsigned)r->start, (unsigned)r->end, r->kind,
-            (unsigned)r->used, (unsigned)r->free, (unsigned)r->largest, (unsigned)r->used_blocks, (unsigned)r->free_blocks);
+            (unsigned)r->used, (unsigned)r->free, (unsigned)r->largest, (unsigned)r->used_blocks, (unsigned)r->free_blocks, (unsigned)r->nested_used);
     }
     add(&json, "],\"tracking_enabled\":%s,\"tasks\":[", CONFIG_HEAP_TASK_TRACKING ? "true" : "false");
     bool complete = !work->region_overflow;
@@ -189,7 +245,40 @@ esp_err_t jr_memory_full_json(char **out, size_t *length) {
 #else
     complete = false;
 #endif
-    add(&json, "],\"complete\":%s,\"scan_us\":%llu,\"caps\":{\"internal\":%u,\"dma\":%u,\"psram\":%u,\"rtc\":%u}}",
+    add(&json, "],\"allocation_config\":{\"heap_task_tracking\":%u", (unsigned)CONFIG_HEAP_TASK_TRACKING);
+    /* Report compiled values only. Counts and limits are not measured RAM
+     * usage; missing options stay absent rather than inventing defaults. */
+#ifdef CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL
+    add(&json, ",\"reserve_internal_bytes\":%u", (unsigned)CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL);
+#endif
+#ifdef CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL
+    add(&json, ",\"malloc_internal_threshold_bytes\":%u", (unsigned)CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL);
+#endif
+#ifdef CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM
+    add(&json, ",\"wifi_static_rx_count\":%u", (unsigned)CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM);
+#endif
+#ifdef CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM
+    add(&json, ",\"wifi_dynamic_rx_limit\":%u", (unsigned)CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM);
+#endif
+#ifdef CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM
+    add(&json, ",\"wifi_static_tx_count\":%u", (unsigned)CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM);
+#endif
+#ifdef CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM
+    add(&json, ",\"wifi_dynamic_tx_limit\":%u", (unsigned)CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM);
+#endif
+#ifdef CONFIG_ESP_WIFI_RX_BA_WIN
+    add(&json, ",\"wifi_rx_ba_window\":%u", (unsigned)CONFIG_ESP_WIFI_RX_BA_WIN);
+#endif
+#ifdef CONFIG_LWIP_MAX_SOCKETS
+    add(&json, ",\"socket_limit\":%u", (unsigned)CONFIG_LWIP_MAX_SOCKETS);
+#endif
+#ifdef CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN
+    add(&json, ",\"tls_in_limit_bytes\":%u", (unsigned)CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN);
+#endif
+#ifdef CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN
+    add(&json, ",\"tls_out_limit_bytes\":%u", (unsigned)CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN);
+#endif
+    add(&json, "},\"complete\":%s,\"scan_us\":%llu,\"caps\":{\"internal\":%u,\"dma\":%u,\"psram\":%u,\"rtc\":%u}}",
         complete ? "true" : "false", (unsigned long long)(esp_timer_get_time() - start),
         (unsigned)MALLOC_CAP_INTERNAL, (unsigned)MALLOC_CAP_DMA, (unsigned)MALLOC_CAP_SPIRAM, (unsigned)MALLOC_CAP_RTCRAM);
     heap_caps_free(work);

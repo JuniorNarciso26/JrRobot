@@ -137,6 +137,8 @@ def inventory(elf: bytes, map_text: str, version: str) -> dict:
         if owner:
             symbol["owner"] = owner
     components = defaultdict(int)
+    component_categories = defaultdict(lambda: defaultdict(int))
+    objects = defaultdict(lambda: defaultdict(int))
     covered, overlap = 0, 0
     for section in sections:
         if section["kind"] != "sram":
@@ -151,6 +153,9 @@ def inventory(elf: bytes, map_text: str, version: str) -> dict:
                 archive = re.search(r"([^/]+\.a)\(", owner)
                 component = archive.group(1) if archive else owner.rsplit("/", 1)[-1]
                 components[component] += stop - start
+                category = section['category']
+                component_categories[component][category] += stop - start
+                objects[(component, owner)][category] += stop - start
                 covered += stop - start
             end = max(end, stop)
     signature = [{k: s[k] for k in ("name", "address", "size")} for s in sections if s["kind"] == "sram"]
@@ -165,7 +170,12 @@ def inventory(elf: bytes, map_text: str, version: str) -> dict:
             "dram_reserved": values["_heap_start"] - values["_data_start"],
             "static_section_bytes": sum(s["size"] for s in sections if s["kind"] == "sram"),
             "map_attributed_bytes": covered, "map_overlap_bytes": overlap,
-            "components": [{"name": name, "size": size} for name, size in sorted(components.items(), key=lambda item: -item[1])],
+            "components": [{"name": name, "size": size,
+                            **{key: component_categories[name][key] for key in ('code', 'data', 'bss')}}
+                           for name, size in sorted(components.items(), key=lambda item: -item[1])],
+            "objects": sorted([{"component": component, "name": owner, "size": sum(categories.values()),
+                                **{key: categories[key] for key in ('code', 'data', 'bss')}}
+                               for (component, owner), categories in objects.items()], key=lambda item: (-item['size'], item['name'])),
             "sections": sections, "symbols": sorted(symbols, key=lambda s: (-s["size"], s["name"])),
             "note": "Symbols can alias or overlap. Do not sum symbol sizes. Section gaps and alignment remain unattributed. Flash code/data are excluded."}
 
