@@ -27,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-SKILLS-15"
+APP_VERSION = "JRBOT-PANEL-V1S-WIFI-MEMORY-01"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -233,7 +233,9 @@ def wifi_request(ip: str, command: str) -> str:
             if text.startswith(("JR_ERROR", "JR_WIFI_ERROR")):
                 raise RuntimeError(sanitize_log_line(text))
             verb = command.strip().split(" ", 1)[0].lower()
-            expected = "JR_STATUS protocol=2 " if verb == "status" else "JR_HELP protocol=2 " if verb in ("help", "ajuda") else "JR_OK "
+            expected = ("JR_STATUS protocol=2 " if verb == "status" else
+                        "JR_HELP protocol=2 " if verb in ("help", "ajuda") else
+                        "JR_MEMORY protocol=1 " if verb == "memoria" else "JR_OK ")
             if not text.startswith(expected):
                 raise RuntimeError("Resposta Wi-Fi fora do protocolo; execucao nao confirmada")
             if verb in ("audio_volume", "volume"):
@@ -294,6 +296,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (ROOT / "index.html").read_text(encoding="utf-8").replace("{APP_VERSION}", APP_VERSION), "text/html; charset=utf-8")
         elif path.path == "/panel.js":
             self._send(200, (ROOT / "panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/memory-panel.js":
+            source = ROOT.parent.parent / "firmware" / "main" / "memory_panel.js"
+            self._send(200, source.read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
         elif path.path == "/wallet_panel.js":
             self._send(200, (ROOT / "wallet_panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
         elif path.path == "/jrskill/wallet/status":
@@ -564,3 +569,4 @@ if __name__ == "__main__":
         READER_STOP.set()
         close_serial()
         server.server_close()
+

@@ -20,6 +20,7 @@
 #include "jr_camera_diag.h"
 #include "jr_brain.h"
 #include "jr_runtime_api.h"
+#include "jr_memory.h"
 
 static SemaphoreHandle_t command_lock;
 static bool terminal_started;
@@ -219,6 +220,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return false;
     }
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
+    if (!strcmp(verb,"memoria")) return jr_memory_format(response,cap);
     if (!strcmp(verb,"version")) {
         snprintf(response,cap,"JR_OK version=%s build_sp=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
         return true;
@@ -252,7 +254,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_scan wifi_profiles wifi_profile_save_pct wifi_profile_use[0-3] wifi_profile_delete[0-3] wifi_config_pct wifi_clear"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status memoria api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_scan wifi_profiles wifi_profile_save_pct wifi_profile_use[0-3] wifi_profile_delete[0-3] wifi_config_pct wifi_clear"); return true;
     }
     if (!strcmp(verb,"wifi_scan")) return jr_wifi_scan(response,(unsigned)cap);
     if (!strcmp(verb,"wifi_profiles")) return jr_wifi_profiles_list(response,(unsigned)cap);
@@ -370,3 +372,4 @@ void jr_terminal_start(void) {
     if (xTaskCreate(terminal_task,"terminal",8192,NULL,5,NULL)!=pdPASS) { puts("JR_ERROR terminal_task_create"); return; }
     terminal_started=true;
 }
+
