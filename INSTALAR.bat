@@ -304,10 +304,25 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
             set "BUILD_DIR=build-v1s-app-03-main"
         )
     )
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
+    rem Variante isolada para medir cortes reais de RAM na develop_wifi.
+    set "BUILD_DIR=build-develop-wifi-ram-light"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light" (
+        if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light" >nul
+            if errorlevel 1 goto failure
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="develop_wifi" (
     rem Baseline da main: build isolado e copia dos ajustes locais ja usados na main.
     set "BUILD_DIR=build-develop-wifi-baseline"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
     if not exist "firmware\sdkconfig.develop_wifi" (
         if exist "firmware\sdkconfig.develop-v1.6.3" (
             copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi" >nul
@@ -455,12 +470,33 @@ if /i "%CURRENT_BRANCH%"=="develop_wifi" (
         goto failure
     )
 )
+if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
+    python "..\tools\ensure_mdns_sdkconfig.py" "%SDKCONFIG_FILE%"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    for %%K in (CONFIG_HEAP_TASK_TRACKING CONFIG_HEAP_TRACK_DELETED_TASKS CONFIG_HM1055_SUPPORT CONFIG_HM0360_SUPPORT CONFIG_NT99141_SUPPORT CONFIG_OV3660_SUPPORT CONFIG_OV2640_SUPPORT CONFIG_OV7670_SUPPORT) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "n"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+    )
+    for %%K in (CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "8"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+    )
+)
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd
     goto failure
 )
-if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+if defined JRBOT_WIFI_MEMORY_BUILD (
     echo [INFO] Incorporando inventario completo da RAM do ELF/map...
     python "..\tools\build_memory_report.py" --build-dir "%BUILD_DIR%" --sdkconfig "%SDKCONFIG_FILE%" --rebuild
     if errorlevel 1 (
