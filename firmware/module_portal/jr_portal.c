@@ -15,6 +15,8 @@
 #include "jr_webrtc_audio.h"
 #include "jr_memory.h"
 #include "jr_memory_tasks.h"
+#include "jr_memory_full.h"
+#include "esp_heap_caps.h"
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
@@ -27,6 +29,7 @@
 extern const char jrskill_app_js_start[] asm("_binary_jrskill_app_js_start");
 extern const char jrskill_app_js_end[] asm("_binary_jrskill_app_js_end");
 extern const char memory_panel_js_start[] asm("_binary_memory_panel_js_start");
+extern const char memory_build_json_start[] asm("_binary_jr_memory_build_json_start");
 
 static httpd_handle_t web_server;
 static httpd_handle_t https_server;
@@ -72,6 +75,26 @@ static esp_err_t web_status_handler(httpd_req_t *req) {
 
 static esp_err_t web_memory_handler(httpd_req_t *req) {
     char query[24], value[4];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "build", value, sizeof(value)) == ESP_OK &&
+        !strcmp(value, "1")) {
+        httpd_resp_set_type(req, "application/json; charset=utf-8");
+        httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+        return httpd_resp_send(req, memory_build_json_start, HTTPD_RESP_USE_STRLEN);
+    }
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "full", value, sizeof(value)) == ESP_OK &&
+        !strcmp(value, "1")) {
+        char *report = NULL;
+        size_t length = 0;
+        esp_err_t result = jr_memory_full_json(&report, &length);
+        if (result != ESP_OK) return reply(req, "503 Service Unavailable", esp_err_to_name(result));
+        httpd_resp_set_type(req, "application/json; charset=utf-8");
+        httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+        result = httpd_resp_send(req, report, (ssize_t)length);
+        heap_caps_free(report);
+        return result;
+    }
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
         httpd_query_key_value(query, "tasks", value, sizeof(value)) == ESP_OK &&
         !strcmp(value, "1")) {

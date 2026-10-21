@@ -444,11 +444,29 @@ if /i "%CURRENT_BRANCH%"=="develop_wifi" (
         popd
         goto failure
     )
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HEAP_TASK_TRACKING" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HEAP_TRACK_DELETED_TASKS" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
 )
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
 if errorlevel 1 (
     popd
     goto failure
+)
+if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+    echo [INFO] Incorporando inventario completo da RAM do ELF/map...
+    python "..\tools\build_memory_report.py" --build-dir "%BUILD_DIR%" --sdkconfig "%SDKCONFIG_FILE%" --rebuild
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
 )
 if /i "%ACTION%"=="build" (
     popd

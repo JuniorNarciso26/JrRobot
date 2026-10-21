@@ -7,6 +7,7 @@ idf_component_register(
         "../core/jr_net_diag.c"
         "../core/jr_commands.c"
         "../core/jr_memory_tasks.c"
+        "../core/jr_memory_full.c"
         "../core/jr_mode_manager.c"
         "../core/jr_resource_manager.c"
         "../core/jr_usb_terminal.c"
@@ -35,4 +36,11 @@ idf_component_register(
         "jrskill_app.js"
         "memory_panel.js"
 )
+
+# Generated inventory stays in the ignored build directory, never the source tree.
+set(jr_memory_inventory "${CMAKE_BINARY_DIR}/jr_memory_build.json")
+if(NOT EXISTS "${jr_memory_inventory}")
+    file(WRITE "${jr_memory_inventory}" "{\"v\":1,\"ready\":false}\n")
+endif()
+target_add_binary_data(${COMPONENT_LIB} "${jr_memory_inventory}" TEXT RENAME_TO jr_memory_build_json)
 

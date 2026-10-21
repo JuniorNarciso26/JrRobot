@@ -29,7 +29,23 @@
     '<p id="jr-memory-tasks-message" role="status">Consulta manual: a varredura das pilhas pode causar uma pequena pausa.</p>' +
     '<div class="memory-scroll"><table><thead><tr><th>Tarefa / ID</th><th>Função</th><th>Estado</th><th>Prioridade</th><th>Pilha configurada*</th><th>Menor sobra de pilha</th><th>Memória da pilha</th></tr></thead><tbody id="jr-memory-tasks"></tbody></table></div>' +
     '<p>* Tamanho configurado no código, quando conhecido. A menor sobra é medida desde a criação da tarefa. Pilhas não incluem filas, buffers, conexões ou outras alocações da tarefa. Uma tarefa bloqueada está aguardando trabalho, mas mantém sua pilha reservada.</p>' +
-    '<p>O RTOS identifica tarefas conhecidas pelo nome. Nomes repetidos, tarefas criadas durante a coleta e tarefas de bibliotecas sem identificação aparecem como Tarefa #ID. Não é uma lista de programas independentes nem de todo o consumo de RAM.</p>';
+    '<p>O RTOS identifica tarefas conhecidas pelo nome. Nomes repetidos, tarefas criadas durante a coleta e tarefas de bibliotecas sem identificação aparecem como Tarefa #ID. Não é uma lista de programas independentes nem de todo o consumo de RAM.</p>' +
+    '<h3>Inventário dos 512 KiB e responsáveis pelas reservas</h3>' +
+    '<div class="memory-tools"><button type="button" id="jr-memory-full-refresh">Coletar inventário completo</button></div>' +
+    '<p>Esta versão é de diagnóstico: rastreia alocações desde o boot e tem custo de RAM e processamento. A coleta é manual e usa Wi-Fi mesmo quando o painel está conectado pela Serial.</p>' +
+    '<p id="jr-memory-full-message" role="status">Instale STEP03E_DIAG pelo instalador para incorporar também o inventário do arquivo compilado.</p>' +
+    '<h4>Distribuição dos 512 KiB principais</h4><div class="memory-scroll"><table><thead><tr><th>Área</th><th>Tamanho</th><th>Origem da informação</th></tr></thead><tbody id="jr-memory-layout"></tbody></table></div>' +
+    '<p id="jr-memory-layout-note"></p>' +
+    '<h4>Quem solicitou as reservas do heap</h4><p>Inclui buffers, filas, conexões, pilhas e outras alocações. Uma tarefa pode reservar a pilha de outra: o solicitante não é necessariamente quem usa o bloco. Não some esta tabela à de pilhas ou à distribuição dos 512 KiB.</p>' +
+    '<div class="memory-scroll"><table><thead><tr><th>Solicitante / handle</th><th>Situação</th><th>SRAM principal</th><th>Parte em heap DMA</th><th>RAM RTC</th><th>PSRAM</th><th>Blocos atuais</th></tr></thead><tbody id="jr-memory-owners"></tbody></table></div>' +
+    '<p id="jr-memory-owner-note"></p>' +
+    '<h4>Blocos individuais atualmente reservados</h4><div class="memory-tools"><label>Exibir <select id="jr-memory-block-limit"><option value="100">100 maiores</option><option value="all">Todos os coletados</option></select></label></div>' +
+    '<div class="memory-scroll"><table><thead><tr><th>Solicitante</th><th>Memória</th><th>Endereço</th><th>Bytes solicitados</th></tr></thead><tbody id="jr-memory-block-list"></tbody></table></div>' +
+    '<h4>Código e variáveis fixas carregados na RAM</h4><p id="jr-memory-build-message"></p>' +
+    '<div class="memory-scroll"><table><thead><tr><th>Biblioteca / componente</th><th>RAM atribuída pelo linker</th></tr></thead><tbody id="jr-memory-components"></tbody></table></div>' +
+    '<div class="memory-tools"><label>Símbolos <select id="jr-memory-symbol-limit"><option value="100">100 maiores</option><option value="all">Todos os coletados</option></select></label></div>' +
+    '<div class="memory-scroll"><table><thead><tr><th>Função ou variável</th><th>RAM</th><th>Seção</th><th>Origem</th></tr></thead><tbody id="jr-memory-symbols"></tbody></table></div>' +
+    '<p>O relatório para baixar inclui todos os blocos e símbolos coletados, mesmo quando a tela mostra apenas os 100 maiores. Parcela sem classificação, lacunas ou limites de coleta não são tratados como consumo identificado.</p>';
   main.setAttribute('data-jr-memory-main', '');
   main.before(nav, panel);
   const get = id => document.getElementById('jr-memory-' + id);
@@ -37,6 +53,7 @@
   const history = [];
   let active = false, reading = false, timer = null, generation = 0;
   let tasksReading = false, taskSnapshot = null;
+  let fullReading = false, fullSnapshot = null, buildInventory = null;
   // IDs correspond to the immutable catalog in jr_memory_tasks.c.
   const taskCatalog = [null,
     ['main', 'Laço principal'], ['terminal', 'Comandos Serial'],
@@ -85,7 +102,7 @@
 
   function render(data) {
     get('values').replaceChildren();
-    for (const [prefix, label] of [['internal', 'RAM interna'], ['dma', 'DMA interna'], ['psram', 'PSRAM']]) {
+    for (const [prefix, label] of [['internal', 'RAM interna (pode incluir RTC)'], ['dma', 'DMA interna'], ['psram', 'PSRAM']]) {
       row(get('values'), [label, ...['free', 'allocated', 'largest', 'min'].map(k => kib(data[prefix + '_' + k]))]);
     }
     get('message').textContent = 'Atualizado às ' + new Date().toLocaleTimeString() +
@@ -114,7 +131,7 @@
   }
 
   async function readTasks() {
-    if (reading || tasksReading || !active || document.hidden) return;
+    if (reading || tasksReading || fullReading || !active || document.hidden) return;
     if (desktop && typeof busy !== 'undefined' && busy) {
       get('tasks-message').textContent = 'Aguarde o comando em andamento e consulte novamente.';
       return;
@@ -169,13 +186,13 @@
   function syncTimer() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
-    if (active && !document.hidden && get('auto').checked && !reading && !tasksReading) {
+    if (active && !document.hidden && get('auto').checked && !reading && !tasksReading && !fullReading) {
       timer = setTimeout(() => { timer = null; read(); }, 5000);
     }
   }
 
   async function read(stage) {
-    if (reading || tasksReading || !active || document.hidden) return;
+    if (reading || tasksReading || fullReading || !active || document.hidden) return;
     if (desktop && typeof busy !== 'undefined' && busy) {
       get('message').textContent = 'Aguarde o comando em andamento e consulte novamente.';
       syncTimer();
@@ -223,6 +240,164 @@
     }
   }
 
+  const hex = address => '0x' + Number(address).toString(16).padStart(8, '0');
+
+  function heapKind(heap, caps) {
+    if (heap.caps & caps.psram) return 'PSRAM';
+    if (heap.caps & caps.rtc) return 'RTC';
+    return heap.caps & caps.internal ? 'SRAM principal' : 'Outra';
+  }
+
+  function renderFull(data) {
+    const layout = data.layout;
+    get('layout').replaceChildren();
+    for (const [key, label, source] of [
+      ['icache', 'Cache de instruções', 'Configuração compilada'],
+      ['dcache', 'Cache de dados', 'Configuração compilada'],
+      ['iram_image', 'Código, vetores e dados fixos em IRAM', 'Limites do linker'],
+      ['dram_image', 'Variáveis fixas e reserva estática em DRAM', 'Limites do linker'],
+      ['heap_allocated_blocks', 'Blocos atualmente ocupados no heap principal', 'Varredura do alocador'],
+      ['heap_free_blocks', 'Blocos livres no heap principal', 'Varredura do alocador'],
+      ['heap_admin', 'Administração e intervalos internos dos heaps', 'Extensão dos heaps menos seus blocos'],
+      ['unclassified', 'Parcela sem classificação detalhada', 'Diferença para os 512 KiB físicos']
+    ]) row(get('layout'), [label, kib(layout[key]), source]);
+    row(get('layout'), ['Total físico principal', kib(layout.physical_sram), 'ESP32-S3']);
+    get('layout-note').textContent = 'Fora dessa soma: heap da RAM RTC ' + kib(layout.rtc_heap_extent) +
+      ' e PSRAM externa. Dentro da reserva DRAM: dados ' + kib(layout.data) + ', BSS ' + kib(layout.bss) + ', noinit ' + kib(layout.noinit) +
+      '. Esses subtotais não devem ser somados novamente. ' +
+      ((layout.unclassified < 0 || layout.heap_admin < 0 || layout.region_overflow) ? 'ATENÇÃO: coleta de regiões incompleta ou balanço inconsistente; não considerar a conta fechada.' :
+      layout.unclassified > 0 ? 'A parcela sem classificação não foi atribuída a uma aplicação nem declarada livre.' : 'As áreas contabilizadas fecham os 512 KiB nesta coleta.');
+    const owners = data.tasks.map(task => {
+      const totals = {main: 0, dma: 0, rtc: 0, psram: 0, blocks: 0};
+      for (const heap of task.heaps) {
+        const kind = heapKind(heap, data.caps);
+        if (kind === 'PSRAM') totals.psram += heap.current;
+        if (kind === 'RTC') totals.rtc += heap.current;
+        if (kind === 'SRAM principal') {
+          totals.main += heap.current;
+          if (heap.caps & data.caps.dma) totals.dma += heap.current;
+        }
+        totals.blocks += heap.alloc_count;
+      }
+      const collected = task.heaps.reduce((sum, h) => sum + h.current, 0);
+      return {...task, ...totals, totalsComplete: collected === task.current_requested};
+    }).filter(task => task.current_requested > 0).sort((a, b) => b.main - a.main || b.psram - a.psram);
+    get('owners').replaceChildren();
+    for (const task of owners) {
+      row(get('owners'), [task.name + ' ' + hex(task.handle), task.handle === 0 ? 'Inicialização antes do RTOS' : task.alive ? 'Ativa' : 'Encerrada com reservas',
+        ...['main', 'dma', 'rtc', 'psram'].map(key => task.totalsComplete ? kib(task[key]) : 'Coleta incompleta'), String(task.blocks)]);
+    }
+    const attributed = owners.reduce((sum, t) => sum + t.main, 0);
+    get('owner-note').textContent = 'Solicitações atribuídas na SRAM principal: ' + kib(attributed) +
+      '. Blocos ocupados medidos pelo alocador: ' + kib(layout.heap_allocated_blocks) +
+      '. Diferenças incluem arredondamento, metadados, rastreamento e mudanças entre as coletas; não são automaticamente vazamentos. ' +
+      'Parte em heap DMA indica compatibilidade da região, não que a reserva tenha exigido DMA. ' +
+      (data.complete && data.tracking_enabled ? 'Coleta dentro dos limites configurados.' : 'COLETA INCOMPLETA: rastreamento ausente ou limite de tarefas, heaps, blocos ou regiões atingido.');
+    renderBlocks();
+  }
+
+  function renderBlocks() {
+    if (!fullSnapshot) return;
+    const blocks = [];
+    for (const task of fullSnapshot.tasks) for (const heap of task.heaps) for (const [address, size] of heap.blocks) {
+      blocks.push({owner: task.name + ' ' + hex(task.handle), memory: heapKind(heap, fullSnapshot.caps), address, size});
+    }
+    blocks.sort((a, b) => b.size - a.size);
+    get('block-list').replaceChildren();
+    for (const block of blocks.slice(0, get('block-limit').value === 'all' ? blocks.length : 100)) {
+      row(get('block-list'), [block.owner, block.memory, hex(block.address), block.size + ' (' + kib(block.size) + ')']);
+    }
+  }
+
+  function renderSymbols() {
+    get('symbols').replaceChildren();
+    if (!buildInventory?.verified) return;
+    const symbols = buildInventory.symbols.filter(symbol => symbol.kind === 'sram');
+    for (const symbol of symbols.slice(0, get('symbol-limit').value === 'all' ? symbols.length : 100)) {
+      row(get('symbols'), [symbol.name, kib(symbol.size), symbol.section, symbol.owner]);
+    }
+  }
+
+  async function fullFetch(kind, signal) {
+    let url = kind === 'runtime' ? '/memory?full=1' : '/memory?build=1';
+    if (desktop) {
+      const ip = (typeof device !== 'undefined' && device?.ip) || document.getElementById('esp_ip')?.value || '';
+      url = '/memory/detail?kind=' + kind + '&ip=' + encodeURIComponent(ip.trim());
+    }
+    const response = await fetch(url, {cache: 'no-store', signal});
+    if (!response.ok) throw Error('Falha na coleta (' + response.status + '). Verifique o Wi-Fi e instale STEP03E_DIAG.');
+    return response.json();
+  }
+
+  async function readFull() {
+    if (reading || tasksReading || fullReading || !active || document.hidden) return;
+    if (desktop && typeof busy !== 'undefined' && busy) {
+      get('full-message').textContent = 'Aguarde o comando em andamento.';
+      return;
+    }
+    fullReading = true;
+    get('full-refresh').disabled = true;
+    syncTimer();
+    const requestGeneration = generation;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      get('full-message').textContent = 'Coletando regiões de RAM, solicitantes, blocos e inventário do firmware...';
+      const data = await fullFetch('runtime', controller.signal);
+      if (requestGeneration !== generation || !active) return;
+      const layoutKeys = ['physical_sram', 'icache', 'dcache', 'iram_image', 'dram_image', 'data', 'bss', 'noinit',
+        'heap_extent', 'heap_allocated_blocks', 'heap_free_blocks', 'heap_admin', 'unclassified', 'rtc_heap_extent'];
+      const uint = value => Number.isSafeInteger(value) && value >= 0 && value <= 0xffffffff;
+      let heapCount = 0, blockCount = 0;
+      if (data.v !== 1 || !data.layout || !data.caps || !Array.isArray(data.tasks) || data.tasks.length > 64 ||
+          layoutKeys.some(key => !Number.isSafeInteger(data.layout[key])) || data.layout.physical_sram !== 524288 ||
+          layoutKeys.filter(key => !['heap_admin', 'unclassified'].includes(key)).some(key => data.layout[key] < 0) ||
+          ['internal', 'dma', 'rtc', 'psram'].some(key => !uint(data.caps[key]) || data.caps[key] === 0) ||
+          !uint(data.diagnostic_psram_bytes) || !uint(data.scan_us) || typeof data.complete !== 'boolean' || typeof data.tracking_enabled !== 'boolean' ||
+          data.tasks.some(t => typeof t.name !== 'string' || !uint(t.handle) || !uint(t.current_requested) ||
+            !Array.isArray(t.heaps) || (heapCount += t.heaps.length) > 256 || t.heaps.some(h =>
+              !uint(h.caps) || !uint(h.current) || !uint(h.alloc_count) || !Array.isArray(h.blocks) ||
+              (blockCount += h.blocks.length) > 4096 || h.blocks.some(b => !Array.isArray(b) || b.length !== 2 || !uint(b[0]) || !uint(b[1]) || b[0] === 0 || b[1] === 0)))) {
+        throw Error('Inventário inválido ou não disponível nesta versão.');
+      }
+      fullSnapshot = {time: new Date().toISOString(), ...data};
+      buildInventory = null;
+      get('components').replaceChildren(); get('symbols').replaceChildren();
+      renderFull(data);
+      try {
+        const build = await fullFetch('build', controller.signal);
+        if (requestGeneration !== generation || !active) return;
+        const verified = build.v === 1 && build.ready === true && build.version === data.version &&
+          build.iram_reserved === data.layout.iram_image && build.dram_reserved === data.layout.dram_image &&
+          uint(build.map_attributed_bytes) && uint(build.static_section_bytes) &&
+          Array.isArray(build.components) && Array.isArray(build.symbols) &&
+          !build.components.some(c => typeof c.name !== 'string' || !uint(c.size)) &&
+          !build.symbols.some(s => typeof s.name !== 'string' || !uint(s.size) || typeof s.section !== 'string' || typeof s.owner !== 'string');
+        buildInventory = {...build, verified};
+        if (verified) {
+          for (const component of build.components) row(get('components'), [component.name, kib(component.size)]);
+          renderSymbols();
+          get('build-message').textContent = 'Inventário incorporado do ELF/map: ' + build.symbols.length + ' símbolos de RAM, ' +
+            kib(build.map_attributed_bytes) + ' atribuídos a componentes, de ' + kib(build.static_section_bytes) +
+            ' em seções da SRAM principal. Símbolos podem se sobrepor: não some seus tamanhos. Código e constantes que ficam na flash não entram nessa lista.';
+        } else get('build-message').textContent = 'Inventário do ELF/map ausente ou incompatível. Use o instalador para gerar, incorporar e validar o relatório desta versão.';
+      } catch (error) {
+        get('build-message').textContent = 'Não foi possível obter o inventário do ELF/map: ' + error.message;
+      }
+      get('full-message').textContent = 'Inventário coletado às ' + new Date().toLocaleTimeString() +
+        ' · espaço temporário de diagnóstico PSRAM ' + kib(data.diagnostic_psram_bytes) +
+        ' · varredura e formatação ' + (data.scan_us / 1000).toFixed(1) +
+        ' ms. Coleta sequencial: tarefas e alocações continuam mudando. Baixe o relatório para análise.';
+    } catch (error) {
+      if (requestGeneration === generation && active) get('full-message').textContent = 'Erro: ' + error.message + ' O inventário anterior pode estar desatualizado.';
+    } finally {
+      clearTimeout(timeout);
+      fullReading = false;
+      get('full-refresh').disabled = false;
+      syncTimer();
+    }
+  }
+
   function select(showMemory) {
     generation++;
     active = showMemory;
@@ -238,14 +413,17 @@
   get('refresh').onclick = () => read();
   get('save').onclick = () => read(get('stage').value);
   get('tasks-refresh').onclick = readTasks;
+  get('full-refresh').onclick = readFull;
+  get('block-limit').onchange = renderBlocks;
+  get('symbol-limit').onchange = renderSymbols;
   get('auto').onchange = syncTimer;
   get('download').onclick = () => {
-    if (!history.length && !taskSnapshot) {
+    if (!history.length && !taskSnapshot && !fullSnapshot && !buildInventory) {
       get('message').textContent = 'Faça uma consulta antes de baixar o relatório.';
       return;
     }
     const report = {format: 'jrbot-memory-v1', generated: new Date().toISOString(),
-      units: 'bytes', note: 'DMA is a subset of internal RAM. Heap allocations exclude other physical RAM uses. Task configured stack budgets are source settings, not measured allocations.', samples: history, task_snapshot: taskSnapshot};
+      units: 'bytes', note: 'DMA overlaps SRAM. RTC is separate from the main 512 KiB. Task attribution identifies the allocating task, not necessarily the consumer. Collection is sequential and tracing itself has overhead.', samples: history, task_snapshot: taskSnapshot, full_snapshot: fullSnapshot, build_inventory: buildInventory};
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
     const link = document.createElement('a');
     link.href = url;

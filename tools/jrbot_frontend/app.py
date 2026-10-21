@@ -27,7 +27,7 @@ except ImportError:
     list_ports = None
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = "JRBOT-PANEL-V1S-WIFI-MEMORY-02"
+APP_VERSION = "JRBOT-PANEL-V1S-WIFI-MEMORY-03"
 MAX_COMMAND_BYTES = 768
 BAUD = 115200
 SERIAL = None
@@ -253,6 +253,28 @@ def wifi_request(ip: str, command: str) -> str:
         raise RuntimeError("Falha de comunicacao Wi-Fi; execucao nao confirmada") from exc
 
 
+def wifi_memory_detail(ip: str, kind: str = "runtime") -> str:
+    safe = safe_ip(ip)
+    if kind not in {"runtime", "build"}:
+        raise ValueError("Tipo de inventario de memoria invalido")
+    query = "full=1" if kind == "runtime" else "build=1"
+    request = urllib.request.Request("http://" + safe + "/memory?" + query,
+                                     headers={"Accept": "application/json", "Cache-Control": "no-cache"})
+    try:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        with opener.open(request, timeout=30) as response:
+            body = response.read(2 * 1024 * 1024 + 1)
+        if len(body) > 2 * 1024 * 1024:
+            raise RuntimeError("Inventario de memoria excedeu o limite")
+        text = body.decode("utf-8")
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict) or parsed.get("v") != 1:
+            raise RuntimeError("Inventario indisponivel: atualize o firmware STEP03E_DIAG")
+        return text
+    except (urllib.error.URLError, TimeoutError, OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Falha no inventario por Wi-Fi. Confira o IP atual e instale STEP03E_DIAG.") from error
+
+
 class Handler(BaseHTTPRequestHandler):
     def setup(self):
         super().setup()
@@ -301,6 +323,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path.path == "/memory-panel.js":
             source = ROOT.parent.parent / "firmware" / "main" / "memory_panel.js"
             self._send(200, source.read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
+        elif path.path == "/memory/detail":
+            try:
+                report = wifi_memory_detail(params.get("ip", [""])[0], params.get("kind", ["runtime"])[0])
+                self._send(200, report, "application/json; charset=utf-8")
+            except (ValueError, RuntimeError) as error:
+                self._send(502, str(error))
         elif path.path == "/wallet_panel.js":
             self._send(200, (ROOT / "wallet_panel.js").read_text(encoding="utf-8"), "text/javascript; charset=utf-8")
         elif path.path == "/jrskill/wallet/status":
