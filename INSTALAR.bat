@@ -305,6 +305,30 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
             set "BUILD_DIR=build-v1s-app-03-main"
         )
     )
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_04" (
+    rem Teste isolado da ordem dos fragmentos JPEG no DataChannel.
+    set "BUILD_DIR=build-develop-wifi-ram-light-04"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light_04"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light_04" (
+        if exist "firmware\sdkconfig.develop_wifi_ram_light_03" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light_03" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi_ram_light_02" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light_02" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_03" (
     rem Identificacao do firmware exibida pelo status no portal e nos logs.
     set "BUILD_DIR=build-develop-wifi-ram-light-03"
