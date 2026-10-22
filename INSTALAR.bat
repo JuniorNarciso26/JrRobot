@@ -286,6 +286,7 @@ set "PORT_FILE=%TEMP%\jrbot_port_%RANDOM%_%RANDOM%.txt"
 cd /d "%~dp0"
 
 set "CURRENT_BRANCH="
+set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 
 if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
@@ -304,11 +305,30 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
             set "BUILD_DIR=build-v1s-app-03-main"
         )
     )
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_02" (
+    rem Segunda rodada isolada: fila de audio WebRTC na PSRAM.
+    set "BUILD_DIR=build-develop-wifi-ram-light-02"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light_02"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light_02" (
+        if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        )
+    )
 ) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
     rem Variante isolada para medir cortes reais de RAM na develop_wifi.
     set "BUILD_DIR=build-develop-wifi-ram-light"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
     if not exist "firmware\sdkconfig.develop_wifi_ram_light" (
         if exist "firmware\sdkconfig.develop_wifi" (
             copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light" >nul
@@ -470,7 +490,7 @@ if /i "%CURRENT_BRANCH%"=="develop_wifi" (
         goto failure
     )
 )
-if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
+if defined JRBOT_WIFI_RAM_LIGHT_BUILD (
     python "..\tools\ensure_mdns_sdkconfig.py" "%SDKCONFIG_FILE%"
     if errorlevel 1 (
         popd
