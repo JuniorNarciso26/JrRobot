@@ -228,6 +228,24 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem Clones criados com --single-branch nao baixam refs de outras versoes.
+rem O menu consulta todas as branches, entao busque a escolhida explicitamente.
+git config --get-all remote.origin.fetch | findstr /l /c:"+refs/heads/!TARGET_BRANCH!:refs/remotes/origin/!TARGET_BRANCH!" >nul
+if errorlevel 1 (
+    git remote set-branches --add origin "!TARGET_BRANCH!"
+    if errorlevel 1 (
+        echo [ERRO] Nao foi possivel configurar a versao !TARGET_BRANCH! no Git.
+        popd
+        exit /b 1
+    )
+)
+git fetch --no-tags origin "+refs/heads/!TARGET_BRANCH!:refs/remotes/origin/!TARGET_BRANCH!"
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel baixar a versao !TARGET_BRANCH! do GitHub.
+    popd
+    exit /b 1
+)
+
 git show-ref --verify --quiet "refs/remotes/origin/!TARGET_BRANCH!"
 if errorlevel 1 (
     echo [ERRO] Versao remota nao encontrada: !TARGET_BRANCH!
@@ -581,6 +599,11 @@ if errorlevel 1 (
     goto failure
 )
 popd
+if exist firmware\version.txt (
+    set /p "FW_VERSION=" < "firmware\version.txt"
+    echo [OK] Versao enviada para ESP32: !FW_VERSION!
+)
+echo [INFO] Confirme a versao instalada no campo Firmware do painel ou em /status.
 if /i "%ACTION%"=="flash" goto success
 goto panel
 
@@ -605,8 +628,8 @@ echo [SUCESSO] JRBOT PREPARADO
 echo ============================================================
 if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
 if exist firmware\version.txt (
-    set /p FW_VERSION=<firmware\version.txt
-    echo Firmware: !FW_VERSION!
+    set /p "FW_VERSION=" < "firmware\version.txt"
+    echo Versao do codigo: !FW_VERSION!
 )
 if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
 exit /b 0
@@ -635,152 +658,3 @@ echo O menu consulta todas as branches remotas ativas no GitHub.
 echo Branches archive/* nao aparecem no menu.
 echo.
 exit /b 0
-, 'CONFIG_HTTPD_WS_SUPPORT=y', s); s=re.sub(r'(?m)^CONFIG_HTTPD_WS_SUPPORT=.*
-if errorlevel 1 (
-    popd
-    goto failure
-)
-if /i "%ACTION%"=="build" (
-    popd
-    goto success
-)
-echo.
-echo Gravando JrBot em %JR_FLASH_PORT%...
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
-if errorlevel 1 (
-    popd
-    goto failure
-)
-popd
-if /i "%ACTION%"=="flash" goto success
-goto panel
-
-:menuconfig
-call :check
-if errorlevel 1 goto failure
-pushd firmware
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
-set "RC=%errorlevel%"
-popd
-if not "%RC%"=="0" goto failure
-goto success
-
-:panel
-call "%~dp0PAINEL.bat"
-exit /b %errorlevel%
-
-:success
-echo.
-echo ============================================================
-echo [SUCESSO] JRBOT PREPARADO
-echo ============================================================
-if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
-if exist firmware\version.txt (
-    set /p FW_VERSION=<firmware\version.txt
-    echo Firmware: !FW_VERSION!
-)
-if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
-exit /b 0
-
-:failure
-if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
-echo.
-echo ============================================================
-echo [FALHA] Processo interrompido.
-echo ============================================================
-echo Nenhum reset automatico do repositorio foi executado.
-pause
-exit /b 1
-
-:help
-echo.
-echo JrBot - instalador/atualizador
-echo.
-echo   INSTALAR.bat              escolhe versao, atualiza, compila, grava e abre painel
-echo   INSTALAR.bat build        escolhe versao, atualiza e compila
-echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
-echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
-echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
-echo.
-echo O menu consulta todas as branches remotas ativas no GitHub.
-echo Branches archive/* nao aparecem no menu.
-echo.
-exit /b 0
-, 'CONFIG_HTTPD_WS_SUPPORT=y', s); p.write_text(s if 'CONFIG_HTTPD_WS_SUPPORT=y' in s else s.rstrip()+'\nCONFIG_HTTPD_WS_SUPPORT=y\n',encoding='utf-8')"
-    if errorlevel 1 (
-        popd
-        goto failure
-    )
-)
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
-if errorlevel 1 (
-    popd
-    goto failure
-)
-if /i "%ACTION%"=="build" (
-    popd
-    goto success
-)
-echo.
-echo Gravando JrBot em %JR_FLASH_PORT%...
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
-if errorlevel 1 (
-    popd
-    goto failure
-)
-popd
-if /i "%ACTION%"=="flash" goto success
-goto panel
-
-:menuconfig
-call :check
-if errorlevel 1 goto failure
-pushd firmware
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
-set "RC=%errorlevel%"
-popd
-if not "%RC%"=="0" goto failure
-goto success
-
-:panel
-call "%~dp0PAINEL.bat"
-exit /b %errorlevel%
-
-:success
-echo.
-echo ============================================================
-echo [SUCESSO] JRBOT PREPARADO
-echo ============================================================
-if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
-if exist firmware\version.txt (
-    set /p FW_VERSION=<firmware\version.txt
-    echo Firmware: !FW_VERSION!
-)
-if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
-exit /b 0
-
-:failure
-if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
-echo.
-echo ============================================================
-echo [FALHA] Processo interrompido.
-echo ============================================================
-echo Nenhum reset automatico do repositorio foi executado.
-pause
-exit /b 1
-
-:help
-echo.
-echo JrBot - instalador/atualizador
-echo.
-echo   INSTALAR.bat              escolhe versao, atualiza, compila, grava e abre painel
-echo   INSTALAR.bat build        escolhe versao, atualiza e compila
-echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
-echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
-echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
-echo.
-echo O menu consulta todas as branches remotas ativas no GitHub.
-echo Branches archive/* nao aparecem no menu.
-echo.
-exit /b 0
-
