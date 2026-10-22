@@ -113,6 +113,12 @@ static jr_wa_status_t status_state;
 static SemaphoreHandle_t session_mutex;
 static QueueHandle_t signal_queue;
 static QueueHandle_t audio_queue;
+#if configSUPPORT_STATIC_ALLOCATION == 1
+/* FreeRTOS allocates dynamic queues in internal RAM. Keep its control block
+ * internal, but put the 12 audio packets in PSRAM. */
+static StaticQueue_t audio_queue_control;
+static uint8_t *audio_queue_storage;
+#endif
 
 static i2s_chan_handle_t tx_chan;
 static i2s_chan_handle_t rx_chan;
@@ -1507,7 +1513,28 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
 
     if (!session_mutex) session_mutex = xSemaphoreCreateMutex();
     if (!signal_queue) signal_queue = xQueueCreate(JR_WA_SIGNAL_QUEUE_DEPTH, sizeof(char *));
-    if (!audio_queue) audio_queue = xQueueCreate(JR_WA_AUDIO_QUEUE_DEPTH, sizeof(jr_wa_audio_packet_t));
+    if (!audio_queue) {
+#if configSUPPORT_STATIC_ALLOCATION == 1
+        const size_t storage_bytes = JR_WA_AUDIO_QUEUE_DEPTH * sizeof(jr_wa_audio_packet_t);
+        audio_queue_storage = heap_caps_malloc(storage_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (audio_queue_storage) {
+            audio_queue = xQueueCreateStatic(JR_WA_AUDIO_QUEUE_DEPTH,
+                                             sizeof(jr_wa_audio_packet_t),
+                                             audio_queue_storage, &audio_queue_control);
+            if (!audio_queue) {
+                heap_caps_free(audio_queue_storage);
+                audio_queue_storage = NULL;
+            } else {
+                ESP_LOGI(TAG, "AUDIO_QUEUE storage=psram bytes=%u depth=%u",
+                         (unsigned)storage_bytes, JR_WA_AUDIO_QUEUE_DEPTH);
+            }
+        }
+#endif
+        if (!audio_queue) {
+            ESP_LOGW(TAG, "AUDIO_QUEUE PSRAM unavailable; using internal RAM");
+            audio_queue = xQueueCreate(JR_WA_AUDIO_QUEUE_DEPTH, sizeof(jr_wa_audio_packet_t));
+        }
+    }
     if (!session_mutex || !signal_queue || !audio_queue) return ESP_ERR_NO_MEM;
 
     const httpd_uri_t routes[] = {
