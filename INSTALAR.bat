@@ -387,8 +387,18 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
         )
     )
 ) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
-    rem Variante isolada para medir cortes reais de RAM na develop_wifi.
-    set "BUILD_DIR=build-develop-wifi-ram-light"
+    rem Branch fixa de testes: isola o build pela versao real do firmware.
+    set "JRBOT_RAM_LIGHT_VERSION="
+    if not exist "firmware\version.txt" (
+        echo [ERRO] firmware\version.txt nao encontrado.
+        goto failure
+    )
+    set /p "JRBOT_RAM_LIGHT_VERSION=" < "firmware\version.txt"
+    if not defined JRBOT_RAM_LIGHT_VERSION (
+        echo [ERRO] Versao do firmware vazia.
+        goto failure
+    )
+    set "BUILD_DIR=build-develop-wifi-ram-light-!JRBOT_RAM_LIGHT_VERSION!"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
