@@ -373,25 +373,36 @@ bool jr_wifi_profile_use(unsigned id,char *response,unsigned cap) {
 }
 bool jr_wifi_profile_delete(unsigned id,char *response,unsigned cap) {
     if (id>=PROFILE_LIMIT) return profile_error(ESP_ERR_INVALID_ARG,response,cap);
-    nvs_handle_t h; wifi_settings_t entry,selected;
+    nvs_handle_t h; wifi_settings_t entry={0},selected={0};
     esp_err_t err=ensure_nvs();
     if (err==ESP_OK) err=nvs_open("jr_wifi",NVS_READWRITE,&h);
     if (err!=ESP_OK) return profile_error(err,response,cap);
-    err=profile_get(h,id,&entry);
+    err=profile_read(h,id,&entry);
+    bool stored=err==ESP_OK;
+    if (err==ESP_ERR_NVS_NOT_FOUND) err=profile_get(h,id,&entry);
     if (err==ESP_OK) err=selected_read(h,&selected);
-    if (err==ESP_OK && (!strcmp(entry.ssid,selected.ssid) || !strcmp(entry.ssid,active.ssid))) {
-        nvs_close(h); memset(entry.pass,0,sizeof(entry.pass)); memset(selected.pass,0,sizeof(selected.pass));
-        snprintf(response,cap,"JR_WIFI_ERROR profiles=active selecione_outra_rede_e_reinicie_antes_de_excluir");
-        return false;
+    bool clear_selection=err==ESP_OK && !strcmp(entry.ssid,selected.ssid);
+    if (clear_selection) {
+        /* Keep a tombstone so compile-time defaults cannot restore this SSID. */
+        selected.ssid[0]=0;
+        memset(selected.pass,0,sizeof(selected.pass));
+        selected.use_static=0;
+        err=nvs_set_blob(h,"cfg_v2",&selected,sizeof(selected));
     }
-    if (err==ESP_OK) {
+    if (err==ESP_OK && stored) {
         char key[16]; snprintf(key,sizeof(key),"p%u",id);
         err=nvs_erase_key(h,key);
-        if (err==ESP_OK) err=nvs_commit(h);
     }
+    if (err==ESP_OK) err=nvs_commit(h);
     nvs_close(h); memset(entry.pass,0,sizeof(entry.pass)); memset(selected.pass,0,sizeof(selected.pass));
     if (err!=ESP_OK) return profile_error(err,response,cap);
-    snprintf(response,cap,"JR_WIFI_PROFILE_DELETED id=%u conexao_atual_preservada=1",id);
+    bool pending_restart;
+    portENTER_CRITICAL(&state_lock);
+    if (clear_selection) { state.configured=false; state.pending_restart=true; }
+    pending_restart=state.pending_restart;
+    portEXIT_CRITICAL(&state_lock);
+    snprintf(response,cap,"JR_WIFI_PROFILE_DELETED id=%u pending_restart=%d setup_on_restart=%d conexao_atual_preservada=1",
+             id,pending_restart?1:0,clear_selection?1:0);
     return true;
 }
 static bool configure_record(bool profile_only,const char *ssid,const char *password,const char *hostname,bool use_static_ip,

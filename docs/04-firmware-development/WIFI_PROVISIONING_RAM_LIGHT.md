@@ -3,7 +3,7 @@
 Branch: `test/develop_wifi_ram_light_provisioning`. A base é
 `test/develop_wifi_ram_light` com firmware `_04`. O fluxo SoftAP/HTTP foi
 adaptado do experimento `test/esp-wifi-provisioning` (commit `2593892`).
-Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_02`.
+Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_03`.
 Os componentes ADF do exemplo isolado não são ligados ao firmware do robô:
 o JrBot mantém seu gerenciador de Wi-Fi, seus perfis NVS e sua configuração
 de memória.
@@ -23,6 +23,12 @@ de memória.
    IP em cerca de 30 segundos, volta a oferecer a rede de configuração
    para corrigir as credenciais.
 
+No painel USB, **Consultar redes salvas** seleciona automaticamente a única
+rede da lista. **Excluir rede salva** também aceita a rede selecionada: o
+firmware apaga seu perfil e limpa a seleção de boot, mantendo a conexão atual
+até reiniciar. No próximo boot, `JrBot-Setup-XXXXXX` fica disponível para
+configurar outra rede. As demais redes salvas permanecem no catálogo.
+
 O formulário usa o registro e os perfis Wi-Fi já existentes no JrBot.
 O modo de configuração usa AP e um servidor HTTP pequeno. O portal normal,
 HTTPS e a Live não são iniciados nesse modo. Depois do reinício com Wi-Fi
@@ -37,15 +43,17 @@ ainda não faz parte deste teste integrado.
 Com ESP-IDF 5.5.5 e o mesmo `sdkconfig.develop_wifi_ram_light`, os builds
 locais com o inventário de RAM incorporado produziram:
 
-| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` |
-| --- | ---: | ---: | ---: |
-| DRAM | 61.376 B | 61.496 B | 61.520 B |
-| IRAM | 119.808 B | 120.064 B | 120.064 B |
-| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B |
+| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` | `_PROV_03` |
+| --- | ---: | ---: | ---: | ---: |
+| DRAM | 61.376 B | 61.496 B | 61.520 B | 61.520 B |
+| IRAM | 119.808 B | 120.064 B | 120.064 B | 120.064 B |
+| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B | 2.550.960 B |
 
 O portal cativo acrescentou 24 B de DRAM estática, 0 B de IRAM e 1.456 B
 de flash em relação a `_PROV_01`. O socket DNS usa RAM dinâmica somente
 enquanto o AP de configuração está ativo.
+O ajuste para excluir a rede selecionada em `_PROV_03` não alterou DRAM ou
+IRAM estática e acrescentou 64 B ao binário.
 
 Esse inventário mede memória estática. Não mede a alocação dinâmica do
 driver Wi-Fi e do servidor HTTP enquanto o AP está aberto. O AP não roda

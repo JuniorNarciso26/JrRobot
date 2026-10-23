@@ -18,22 +18,26 @@ function setup(){
     return elements.get(id);
   };
   el('wifi_static').value='0';el('wifi_host').value='jrbot';
-  let reply='',commands=[],profiles=[],useReply='JR_WIFI_SALVO pending_restart=1';
+  let reply='',commands=[],profiles=[],confirmations=[],useReply='JR_WIFI_SALVO pending_restart=1';
   const context={el,TextEncoder,mode:'serial',serialConnected:true,window:{},
     val:id=>el(id).value.trim(),action:fn=>fn(),saveWifiLocal(){},
     document:{createElement:()=>({}),querySelector:()=>null},
-    confirm:()=>true,
+    confirm:message=>{confirmations.push(message);return true;},
     send:async command=>{
       commands.push(command);if(reply instanceof Error)throw reply;
       if(command==='wifi_profiles')return 'JR_WIFI_PROFILES '+JSON.stringify({profiles});
-      if(command.startsWith('wifi_profile_delete ')){profiles=profiles.filter(p=>p.id!==Number(command.split(' ')[1]));return 'JR_WIFI_PROFILE_DELETED';}
+      if(command.startsWith('wifi_profile_delete ')){
+        const removed=profiles.find(p=>p.id===Number(command.split(' ')[1]));
+        profiles=profiles.filter(p=>p!==removed);
+        return 'JR_WIFI_PROFILE_DELETED setup_on_restart='+(removed?.selected?'1':'0');
+      }
       if(command.startsWith('wifi_profile_save_pct '))return 'JR_WIFI_PROFILE_SAVED';
       if(command.startsWith('wifi_profile_use '))return useReply;
       return command==='wifi_scan'?reply:'JR_WIFI_SALVO pending_restart=1';
     },
   };
   vm.runInNewContext(script,context);
-  return {context,el,commands,reply(value){reply=value;},profiles(value){profiles=value;},useReply(value){useReply=value;}};
+  return {context,el,commands,confirmations,reply(value){reply=value;},profiles(value){profiles=value;},useReply(value){useReply=value;}};
 }
 const entry=(ssid,rssi=-45,authmode=4)=>({ssid_pct:[...new TextEncoder().encode(ssid)].map(b=>'%'+b.toString(16).padStart(2,'0')).join(''),rssi,authmode});
 const reply=networks=>'JR_WIFI_SCAN '+JSON.stringify({networks,total:networks.length,limited:false});
@@ -99,6 +103,16 @@ test('saving another profile does not select it, and deleting uses its id',async
   await s.context.window.deleteWifiProfile();
   assert.ok(s.commands.includes('wifi_profile_delete 2'));
   assert.equal(s.el('wifi_profiles').disabled,true);
+});
+
+test('the only saved network is selected and can be deleted for setup on reboot',async()=>{
+  const s=setup();s.profiles([{id:0,...entry('Current'),mode:'DHCP',selected:true,protected:true}]);
+  await s.context.window.refreshWifiProfiles();
+  assert.equal(s.el('wifi_profiles').value,'0');
+  await s.context.window.deleteWifiProfile();
+  assert.ok(s.commands.includes('wifi_profile_delete 0'));
+  assert.match(s.confirmations[0],/JrBot-Setup/);
+  assert.match(s.el('wifi_profiles_msg').textContent,/Reinicie.*JrBot-Setup/);
 });
 
 test('using the current configuration does not ask for restart',async()=>{

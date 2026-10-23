@@ -117,12 +117,13 @@ int main(void) {
     assert(!save("Fifth","password123"));assert(strstr(reply,"profiles=full"));check_selected("Original","password123");
     assert(save("Second","newpassword"));
     assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(state.pending_restart);check_selected("Second","newpassword");
-    assert(!jr_wifi_profile_delete(0,reply,sizeof(reply)));assert(!jr_wifi_profile_delete(1,reply,sizeof(reply)));
+    assert(jr_wifi_profile_delete(0,reply,sizeof(reply)));assert(strstr(reply,"setup_on_restart=0"));
+    check_selected("Second","newpassword");
     reboot();assert(!strcmp(active.ssid,"Second"));assert(!strcmp(active.pass,"newpassword"));
     assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(!state.pending_restart);assert(strstr(reply,"pending_restart=0"));
     state.pending_restart=true;
     assert(jr_wifi_profile_use(1,reply,sizeof(reply)));assert(!state.pending_restart);
-    assert(jr_wifi_profile_delete(0,reply,sizeof(reply)));check_selected("Second","newpassword");
+    assert(!jr_wifi_profile_delete(0,reply,sizeof(reply)));check_selected("Second","newpassword");
     assert(save("Fifth","password123"));assert(jr_wifi_profiles_list(reply,sizeof(reply)));puts(reply);
     assert(!jr_wifi_profile_use(4,reply,sizeof(reply)));
     assert(!save("Invalid","short"));check_selected("Second","newpassword");
@@ -137,6 +138,20 @@ int main(void) {
     assert(jr_wifi_configure("Second","anotherpassword","jrbot",false,"","","","","",reply,sizeof(reply)));
     check_selected("Second","anotherpassword");assert(opens==0);
     assert(state.pending_restart); /* Same SSID with a changed password still needs restart. */
+    reboot();assert(!strcmp(active.ssid,"Second"));
+    fail_write=true;assert(!jr_wifi_profile_delete(1,reply,sizeof(reply)));fail_write=false;
+    check_selected("Second","anotherpassword");
+    assert(jr_wifi_profile_delete(1,reply,sizeof(reply)));assert(strstr(reply,"setup_on_restart=1"));
+    check_selected("","");assert(state.pending_restart && !state.configured);
+    assert(!strcmp(active.ssid,"Second")); /* Current connection lasts until reboot. */
+    reboot();assert(!jr_wifi_is_configured());
+    assert(jr_wifi_profiles_list(reply,sizeof(reply)));assert(!strstr(reply,"\"id\":1"));
+    /* Slot 0 can be a virtual profile sourced from the old selected record. */
+    memset(blobs,0,sizeof(blobs));
+    assert(nvs_set_blob(1,"cfg_v2",&original,sizeof(original))==ESP_OK);reboot();
+    assert(jr_wifi_profile_delete(0,reply,sizeof(reply)));assert(strstr(reply,"setup_on_restart=1"));
+    check_selected("","");reboot();assert(!jr_wifi_is_configured());
+    assert(jr_wifi_profiles_list(reply,sizeof(reply)));assert(strstr(reply,"\"profiles\":[]"));
     return 0;
 }
 '''

@@ -93,6 +93,7 @@ _WIFI_SCRIPT = r"""
       profileSelect.appendChild(option);
     }
     profileSelect.disabled=!savedProfiles.length;
+    if(savedProfiles.length===1)profileSelect.value=String(savedProfiles[0].id);
   }
   function chosenProfile(){
     if(profileSelect.value==='')throw new Error('Selecione uma rede salva.');
@@ -118,10 +119,12 @@ _WIFI_SCRIPT = r"""
   },'wifi_profiles_msg');};
   window.deleteWifiProfile=function(){return action(async()=>{
     requireSerial();const profile=chosenProfile();
-    if(!confirm('Excluir a rede salva '+profile.ssid+'?'))return;
+    const warning=profile.selected?' Esta rede esta selecionada. Ao reiniciar, o JrBot abrira a rede JrBot-Setup para configurar outra.':'';
+    if(!confirm('Excluir a rede salva '+profile.ssid+'?'+warning))return;
     let reply;try{reply=await send('wifi_profile_delete '+profile.id);}catch(error){throw friendlyProfileError(error);}
     if(!reply.startsWith('JR_WIFI_PROFILE_DELETED'))throw new Error('Exclusao da rede nao confirmada.');
-    await reloadProfiles();profileMsg.textContent='Rede '+profile.ssid+' excluida. A conexao atual foi mantida.';
+    await reloadProfiles();
+    profileMsg.textContent=/\bsetup_on_restart=1\b/.test(reply)?'Rede '+profile.ssid+' excluida. A conexao atual foi mantida. Reinicie o JrBot; ele abrira a rede JrBot-Setup para configurar outro Wi-Fi.':'Rede '+profile.ssid+' excluida. A conexao atual foi mantida.';
   },'wifi_profiles_msg');};
   window.clearWifi=function(){return action(async()=>{
     requireSerial();
