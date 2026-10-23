@@ -1,96 +1,346 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Configurar Wi-Fi | JrBot</title>
+  <title>Configurar Wi-Fi do JrBot</title>
   <style>
-    :root{color-scheme:light;font-family:system-ui,sans-serif;background:#f2f5fa;color:#17253d}
-    *{box-sizing:border-box}
-    body{max-width:520px;margin:0 auto;padding:28px 16px 48px;line-height:1.45}
-    .card{background:#fff;border:1px solid #dce3ef;border-radius:18px;padding:22px;box-shadow:0 10px 28px #20345612}
-    .mark{display:inline-block;background:#eaf2ff;color:#1556ac;border-radius:999px;padding:5px 12px;font-size:.82rem;font-weight:700}
-    h1{font-size:1.7rem;margin:14px 0 6px}h2{font-size:1.1rem;margin:26px 0 8px}
-    p{margin:7px 0 18px;color:#4e5c70}.hint{font-size:.88rem;color:#607086}
-    label{display:block;font-weight:650;margin:18px 0 7px}
-    input{width:100%;border:1px solid #b9c6d7;border-radius:10px;padding:13px;font:inherit;color:inherit;background:#fff}
-    input:focus-visible,button:focus-visible{outline:3px solid #78aef5;outline-offset:2px}
-    .password{display:flex;gap:8px}.password input{flex:1;min-width:0}
-    button{font:inherit;cursor:pointer;border-radius:10px;padding:11px 14px;border:1px solid #b9c6d7;background:#fff;color:#173d77}
-    button.primary{width:100%;background:#1765c0;border-color:#1765c0;color:#fff;font-weight:700;margin-top:22px}
-    button:disabled{opacity:.65;cursor:wait}.scan{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    #networks{display:grid;gap:8px}.network{text-align:left;width:100%;display:flex;justify-content:space-between;gap:10px}
-    .network.selected{border-color:#1765c0;background:#eaf2ff}.network small{color:#607086;white-space:nowrap}
-    #message{min-height:1.4em;margin-top:14px}#message.error{color:#a32121}#message.ok{color:#117145}
+    body{font-family:system-ui,sans-serif;margin:0 auto;max-width:36rem;padding:.75rem 1rem;line-height:1.4;}
+    h2{font-size:1.25rem;margin:.5rem 0 1rem;}
+    label{display:block;margin:.6rem 0;font-weight:600;}
+    input,button,select{font-size:1rem;padding:.55rem .65rem;max-width:100%;box-sizing:border-box;}
+    input[type=text],input[type=password],select,input[type=range]{width:100%;}
+    button{margin:.35rem .5rem .35rem 0;min-height:2.75rem;}
+    .pwd-lbl{display:block;margin:.6rem 0 .25rem;font-weight:600;}
+    .pwd-field{position:relative;width:100%;margin:0 0 .35rem;}
+    .pwd-field input[type=password],.pwd-field input[type=text]{width:100%;padding-right:2.75rem;}
+    button.pwd-toggle{position:absolute;right:.2rem;top:50%;transform:translateY(-50%);width:2.5rem;height:2.5rem;min-height:unset;margin:0;padding:0;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:.25rem;color:#333;}
+    button.pwd-toggle:hover{background:#e8e8e8;}
+    button.pwd-toggle:focus-visible{outline:2px solid #06c;outline-offset:1px;}
+    table{border-collapse:collapse;width:100%;font-size:.9rem;}
+    th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
+    #msg{min-height:1.2rem;color:#c00;font-size:.9rem;}
+    .hint{font-size:.85rem;color:#444;margin:.5rem 0;}
+    label.ssid-block{font-weight:600;}
+    .ssid-block .hint{display:block;font-weight:400;font-size:.85rem;color:#444;margin:.2rem 0 .35rem;}
+    .scan-choice-wrap{margin:.75rem 0 1rem;}
+    .scan-choice-wrap h3{margin:.5rem 0;font-size:1.05rem;}
+    .scan-choice-list{display:flex;flex-direction:column;gap:.35rem;}
+    .scan-choice-btn{display:block;width:100%;text-align:left;padding:.65rem .75rem;border:1px solid #ccc;border-radius:.35rem;background:#f8f8f8;font-size:1rem;cursor:pointer;}
+    .scan-choice-btn:active{background:#e8e8e8;}
+    .scan-choice-btn.is-selected{border-color:#06c;background:#eaf3ff;}
+    #scan_choices_status{font-size:.85rem;color:#333;margin:.35rem 0 .25rem;min-height:1.2rem;}
+    .actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+    .actions button{margin:.2rem 0;}
   </style>
 </head>
 <body>
-  <main class="card">
-    <span class="mark">JR BOT · CONFIGURAÇÃO</span>
-    <h1>Conectar ao Wi-Fi</h1>
-    <p>Escolha uma rede de 2,4 GHz ou digite o nome. Depois de salvar, o JrBot reinicia automaticamente.</p>
-    <div class="scan"><h2>Redes próximas</h2><button id="refresh" type="button">Atualizar</button></div>
-    <p id="scan-status" class="hint" role="status">Procurando redes…</p>
-    <div id="networks"></div>
-    <form method="post" action="/save" id="wifi-form">
-      <label for="ssid">Nome da rede (SSID)</label>
-      <input id="ssid" name="ssid" maxlength="32" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Selecione acima ou digite aqui">
-      <label for="pass">Senha da rede</label>
-      <div class="password"><input id="pass" name="pass" type="password" maxlength="64" autocomplete="new-password" placeholder="Deixe vazia se a rede for aberta"><button id="toggle" type="button" aria-label="Mostrar senha">Mostrar</button></div>
-      <button class="primary" id="save" type="submit">Salvar e conectar</button>
-    </form>
-    <p id="message" role="status" aria-live="polite"></p>
-    <p class="hint">Se a lista estiver vazia, digite o nome da rede manualmente.</p>
-  </main>
+  <h2>Configurar Wi-Fi do JrBot</h2>
+  <p class="hint">Selecione uma rede de 2,4 GHz abaixo ou digite o nome. Após salvar, o JrBot reinicia e tenta se conectar.</p>
+
+  <form id="prov_form" method="post" action="/save">
+    <label class="ssid-block" for="ssid_input">Nome da rede (SSID)
+      <span class="hint">Escolha uma rede da lista ou digite o nome manualmente.</span>
+      <input name="ssid" id="ssid_input" type="text" maxlength="32" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Selecione abaixo ou digite aqui">
+    </label>
+
+    <label class="pwd-lbl" for="prov_password">Senha da rede (vazia para rede aberta)</label>
+    <div class="pwd-field">
+      <input id="prov_password" name="pass" type="password" maxlength="64" autocomplete="new-password">
+      <button type="button" class="pwd-toggle" id="pwd_toggle" aria-label="Mostrar senha" title="Mostrar senha">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+
+    <button type="submit" id="prov_submit">Salvar e conectar</button>
+    <p id="msg" role="status" aria-live="polite"></p>
+  </form>
+
+  <div class="scan-choice-wrap">
+    <h3>Redes próximas</h3>
+    <p class="hint">Toque numa rede para preencher o nome. Use Atualizar para procurar novamente.</p>
+    <button type="button" id="scan_refresh" onclick="refreshScanChoices()">Atualizar redes</button>
+    <div id="scan_choices_status"></div>
+    <div id="scan_choices" class="scan-choice-list"></div>
+  </div>
+
+  <h3>Redes salvas</h3>
+  <p class="hint">Até 4 redes. Excluir uma rede selecionada limpa a seleção de inicialização.</p>
+  <table>
+    <thead>
+      <tr><th>#</th><th>SSID</th><th>Modo</th><th>Selecionada</th><th></th></tr>
+    </thead>
+    <tbody id="profiles"></tbody>
+  </table>
+
+  <p class="actions"><button type="button" onclick="refreshProfiles()">Atualizar redes salvas</button></p>
+
   <script>
-    const ssid=document.getElementById('ssid');
-    const pass=document.getElementById('pass');
-    const list=document.getElementById('networks');
-    const scanStatus=document.getElementById('scan-status');
-    const message=document.getElementById('message');
-    const refresh=document.getElementById('refresh');
-    const save=document.getElementById('save');
-    document.getElementById('toggle').onclick=function(){
-      const visible=pass.type==='password';
-      pass.type=visible?'text':'password';
-      this.textContent=visible?'Ocultar':'Mostrar';
-      this.setAttribute('aria-label',visible?'Ocultar senha':'Mostrar senha');
-    };
-    async function scan(){
-      refresh.disabled=true;
-      scanStatus.textContent='Procurando redes próximas…';
-      try{
-        const response=await fetch('/scan',{cache:'no-store'});
-        if(!response.ok)throw new Error('scan');
-        const data=await response.json();
-        list.replaceChildren();
-        const seen=new Set();
-        for(const network of data.aps||[]){
-          if(!network.ssid||seen.has(network.ssid))continue;
-          seen.add(network.ssid);
-          const button=document.createElement('button');
-          button.type='button';button.className='network';
-          const name=document.createElement('span');name.textContent=network.ssid;
-          const detail=document.createElement('small');
-          detail.textContent=(network.open?'Aberta':'Protegida')+' · '+network.rssi+' dBm';
-          button.append(name,detail);
-          button.onclick=()=>{ssid.value=network.ssid;list.querySelectorAll('button').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');ssid.focus()};
-          list.append(button);
-        }
-        scanStatus.textContent=seen.size?seen.size+' rede(s) encontrada(s)':'Nenhuma rede encontrada.';
-      }catch(error){scanStatus.textContent='Não foi possível buscar redes. Digite o nome manualmente.'}
-      finally{refresh.disabled=false}
+    function setMsg(t, c) {
+      var e = document.getElementById('msg');
+
+      if (e) {
+        e.textContent = t || '';
+        e.style.color = c || '#c00';
+      }
     }
-    refresh.onclick=scan;
-    document.getElementById('wifi-form').onsubmit=async function(event){
-      event.preventDefault();save.disabled=true;message.className='';message.textContent='Salvando Wi-Fi…';
-      try{
-        const response=await fetch('/save',{method:'POST',body:new URLSearchParams(new FormData(this)),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-        if(!response.ok)throw new Error('save');
-        message.className='ok';message.textContent='Rede salva. O JrBot vai reiniciar e tentar conectar.';
-      }catch(error){message.className='error';message.textContent='Não foi possível salvar. Confira o nome e a senha e tente novamente.';save.disabled=false}
-    };
-    scan();
+
+    function setConnectBtn(state) {
+      var b = document.getElementById('prov_submit');
+
+      if (!b) {
+        return;
+      }
+
+      if (state === 'busy') {
+        b.disabled = true;
+        b.textContent = 'Salvando...';
+        return;
+      }
+
+      b.disabled = false;
+      b.textContent = (state === 'ok') ? 'Rede salva' :
+        (state === 'retry') ? 'Tentar novamente' : 'Salvar e conectar';
+    }
+
+    async function req(url, opt) {
+      var r = await fetch(url, opt);
+      var j = null;
+
+      try {
+        j = await r.json();
+      } catch (x) {
+      }
+
+      return {
+        ok: r.ok,
+        status: r.status,
+        json: j
+      };
+    }
+
+    function selectSsid(v) {
+      var si = document.getElementById('ssid_input');
+      var list = document.getElementById('scan_choices');
+      var selected = v || '';
+
+      if (si) {
+        si.value = selected;
+      }
+
+      if (!list) {
+        return;
+      }
+
+      Array.prototype.forEach.call(list.querySelectorAll('button[data-ssid]'), function(btn) {
+        btn.classList.toggle('is-selected', btn.getAttribute('data-ssid') === selected);
+      });
+    }
+
+    function renderScanChoices(aps) {
+      var list = document.getElementById('scan_choices');
+      var n = 0;
+
+      if (!list) {
+        return;
+      }
+
+      list.innerHTML = '';
+
+      (aps || []).forEach(function(a) {
+        var v = a.ssid || '';
+        var lock;
+        var btn;
+
+        if (!v) {
+          return;
+        }
+
+        n++;
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'scan-choice-btn';
+        btn.setAttribute('data-ssid', v);
+
+        lock = a.open ? '\uD83D\uDD13' : '\uD83D\uDD12';
+        btn.textContent = lock + ' ' + v + ' (' + a.rssi + ' dBm)';
+        btn.onclick = function() {
+          selectSsid(v);
+        };
+
+        list.appendChild(btn);
+      });
+
+      if (n === 0) {
+        var p = document.createElement('p');
+        p.className = 'hint';
+        p.textContent = 'Nenhuma rede encontrada. Digite o SSID manualmente.';
+        list.appendChild(p);
+      }
+
+      var si = document.getElementById('ssid_input');
+      if (si) {
+        selectSsid(si.value || '');
+      }
+
+      var s = document.getElementById('scan_choices_status');
+      if (s) {
+        s.textContent = n > 0
+          ? 'Atualizado: ' + new Date().toLocaleTimeString() + ' (' + n + ' rede(s))'
+          : 'Nenhuma rede encontrada.';
+      }
+    }
+
+    async function refreshScanChoices() {
+      var s = document.getElementById('scan_choices_status');
+      var button = document.getElementById('scan_refresh');
+      if (button) button.disabled = true;
+      if (s) s.textContent = 'Procurando redes...';
+      var x;
+      try {
+        x = await req('/scan');
+      } catch (e) {
+        if (s) s.textContent = 'Busca indisponível. Digite o SSID manualmente.';
+        if (button) button.disabled = false;
+        return;
+      }
+      if (button) button.disabled = false;
+
+      if (!x.ok || !x.json) {
+        if (s) {
+          s.textContent = 'Busca indisponível. Digite o SSID manualmente.';
+        }
+        return;
+      }
+
+      if (x.json.error) {
+        if (s) {
+          s.textContent = String(x.json.error) + (x.json.detail ? ' ' + x.json.detail : '');
+        }
+        renderScanChoices([]);
+        return;
+      }
+
+      renderScanChoices(x.json.aps || []);
+    }
+
+    async function refreshProfiles() {
+      var b = document.getElementById('profiles');
+      try {
+        var x = await req('/profiles');
+        if (!x.ok || !x.json || !Array.isArray(x.json.profiles)) throw new Error('profiles');
+        b.replaceChildren();
+        x.json.profiles.forEach(function(profile) {
+          var tr = document.createElement('tr');
+          var name = '';
+          try { name = decodeURIComponent(profile.ssid_pct || ''); } catch (e) { name = profile.ssid_pct || ''; }
+          [profile.id + 1, name, profile.mode, profile.selected ? 'Sim' : 'Não'].forEach(function(value) {
+            var cell = document.createElement('td');
+            cell.textContent = value;
+            tr.appendChild(cell);
+          });
+          var action = document.createElement('td');
+          var del = document.createElement('button');
+          del.type = 'button';
+          del.textContent = 'Apagar';
+          del.onclick = function() { deleteProfile(profile.id, name); };
+          action.appendChild(del);
+          tr.appendChild(action);
+          b.appendChild(tr);
+        });
+      } catch (e) { setMsg('Não foi possível consultar as redes salvas.'); }
+    }
+
+    async function deleteProfile(id, ssid) {
+      if (!confirm('Apagar a rede ' + ssid + ' da memória do JrBot?')) return;
+      try {
+        var x = await req('/profiles?id=' + encodeURIComponent(id), { method: 'DELETE' });
+        if (!x.ok || !x.json || x.json.result !== 'ok') {
+          setMsg('Não foi possível apagar a rede. Tente novamente.');
+          return;
+        }
+        await refreshProfiles();
+        setMsg('Rede removida da memória.', '#0a0');
+      } catch (e) {
+        setMsg('Não foi possível apagar a rede. Verifique a conexão com o robô.');
+      }
+    }
+
+    async function provSave(form) {
+      setConnectBtn('busy');
+      try {
+        var response = await fetch('/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form))
+        });
+        if (response.ok) {
+          setMsg('Rede salva. O JrBot vai reiniciar e tentar conectar.', '#0a0');
+          setConnectBtn('ok');
+          document.getElementById('prov_submit').disabled = true;
+        } else {
+          setMsg('Não foi possível salvar. Confira a rede e a senha e tente novamente.', '#c00');
+          setConnectBtn('retry');
+          document.getElementById('prov_password').focus();
+        }
+      } catch (e) {
+        setConnectBtn('retry');
+        setMsg('A comunicação foi interrompida. Reconecte ao Wi-Fi do robô e abra http://192.168.4.1 para tentar novamente.', '#c00');
+      }
+    }
+
+    var pf = document.getElementById('prov_form');
+    if (pf) {
+      pf.addEventListener('submit', function(e) {
+        e.preventDefault();
+        setMsg('');
+        provSave(pf).catch(function() {
+          setMsg('Não foi possível salvar.', '#c00');
+        });
+      });
+    }
+
+    var si = document.getElementById('ssid_input');
+    if (si) {
+      si.addEventListener('input', function() {
+        selectSsid(si.value || '');
+      });
+    }
+
+    (function() {
+      var inp = document.getElementById('prov_password');
+      var btn = document.getElementById('pwd_toggle');
+      var eye;
+      var eyeOff;
+
+      if (!inp || !btn) {
+        return;
+      }
+
+      eye = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+      eyeOff = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1 4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+      btn.innerHTML = eye;
+      btn.addEventListener('click', function() {
+        if (inp.type === 'password') {
+          inp.type = 'text';
+          btn.innerHTML = eyeOff;
+          btn.setAttribute('aria-label', 'Ocultar senha');
+          btn.title = 'Ocultar senha';
+        } else {
+          inp.type = 'password';
+          btn.innerHTML = eye;
+          btn.setAttribute('aria-label', 'Mostrar senha');
+          btn.title = 'Mostrar senha';
+        }
+      });
+    })();
+
+    refreshScanChoices();
+    refreshProfiles();
   </script>
 </body>
 </html>

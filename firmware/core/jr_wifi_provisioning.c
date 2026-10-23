@@ -185,6 +185,47 @@ static esp_err_t setup_scan(httpd_req_t *req) {
     return err == ESP_OK ? httpd_resp_send_chunk(req, NULL, 0) : err;
 }
 
+static esp_err_t setup_profiles(httpd_req_t *req) {
+    char *response = heap_caps_malloc(1024, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!response) return setup_scan_error(req, "Memoria insuficiente");
+    bool ok = jr_wifi_profiles_list(response, 1024);
+    if (!ok) {
+        ESP_LOGW(TAG, "JR_WIFI_SETUP_PROFILES result=%s", response);
+        free(response);
+        return setup_scan_error(req, "Consulta indisponivel");
+    }
+    const char prefix[] = "JR_WIFI_PROFILES ";
+    if (strncmp(response, prefix, sizeof(prefix) - 1)) {
+        free(response);
+        return setup_scan_error(req, "Resposta invalida");
+    }
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    esp_err_t err = httpd_resp_sendstr(req, response + sizeof(prefix) - 1);
+    free(response);
+    return err;
+}
+
+static esp_err_t setup_profile_delete(httpd_req_t *req) {
+    char query[24], id_text[8], *end;
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
+        httpd_query_key_value(query, "id", id_text, sizeof(id_text)) != ESP_OK ||
+        !id_text[0])
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ID invalido");
+    unsigned long id = strtoul(id_text, &end, 10);
+    if (*end || id > 3)
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ID invalido");
+    char response[160];
+    if (!jr_wifi_profile_delete((unsigned)id, response, sizeof(response))) {
+        ESP_LOGW(TAG, "JR_WIFI_SETUP_DELETE result=%s", response);
+        return setup_scan_error(req, "Nao foi possivel apagar a rede");
+    }
+    ESP_LOGI(TAG, "JR_WIFI_SETUP_DELETE id=%lu", id);
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, "{\"result\":\"ok\"}");
+}
+
 static esp_err_t setup_not_found(httpd_req_t *req, httpd_err_code_t error) {
     (void)error;
     /* Phone connectivity probes need an HTTP response with content. */
@@ -357,16 +398,20 @@ esp_err_t jr_wifi_provisioning_start(void) {
     if (err != ESP_OK) goto fail_driver;
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 3;
+    http_config.max_uri_handlers = 5;
     http_config.lru_purge_enable = true;
     err = httpd_start(&setup_http, &http_config);
     if (err != ESP_OK) goto fail_started;
     httpd_uri_t index = {.uri = "/", .method = HTTP_GET, .handler = setup_index};
     httpd_uri_t save = {.uri = "/save", .method = HTTP_POST, .handler = setup_save};
     httpd_uri_t scan_route = {.uri = "/scan", .method = HTTP_GET, .handler = setup_scan};
+    httpd_uri_t profiles = {.uri = "/profiles", .method = HTTP_GET, .handler = setup_profiles};
+    httpd_uri_t profile_delete = {.uri = "/profiles", .method = HTTP_DELETE, .handler = setup_profile_delete};
     err = httpd_register_uri_handler(setup_http, &index);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &save);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &scan_route);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &profiles);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &profile_delete);
     if (err == ESP_OK)
         err = httpd_register_err_handler(setup_http, HTTPD_404_NOT_FOUND, setup_not_found);
     if (err != ESP_OK) {
