@@ -39,13 +39,14 @@ void app_main(void) {
     jr_wifi_provisioning_button_init();
     bool setup_mode = jr_wifi_provisioning_boot_requested();
     if (setup_mode && jr_wifi_provisioning_start() != ESP_OK) setup_mode = false;
-    else jr_wifi_start();
+    if (!setup_mode) jr_wifi_start();
     bool portal_started = false;
     uint32_t wifi_start_ms = now_ms();
     ESP_LOGI("jrbot_main", "JrBot ready: camera/mic/status e audio sob demanda; OLED isolado quando offline");
 
     for (;;) {
         uint32_t ms = now_ms();
+        if (setup_mode) jr_wifi_provisioning_poll();
         if (!setup_mode) {
             jr_wifi_provisioning_button_poll(ms);
             if (!portal_started && jr_wifi_is_connected()) {

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include "driver/gpio.h"
 #include "esp_attr.h"
 #include "esp_heap_caps.h"
@@ -14,6 +15,7 @@
 #include "esp_wifi_default.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lwip/sockets.h"
 #include "jr_mode_manager.h"
 #include "jr_wifi.h"
 #include "jr_wifi_provisioning.h"
@@ -28,6 +30,8 @@ static RTC_NOINIT_ATTR uint32_t setup_request;
 static RTC_NOINIT_ATTR uint32_t setup_request_inverse;
 static esp_netif_t *setup_ap;
 static httpd_handle_t setup_http;
+static int setup_dns_socket = -1;
+static uint32_t setup_dns_ip;
 static bool setup_running;
 static bool button_ready;
 static bool button_armed;
@@ -125,6 +129,85 @@ static esp_err_t setup_index(httpd_req_t *req) {
     return httpd_resp_sendstr(req, setup_page);
 }
 
+static esp_err_t setup_not_found(httpd_req_t *req, httpd_err_code_t error) {
+    (void)error;
+    /* Phone connectivity probes need an HTTP response with content. */
+    httpd_resp_set_status(req, "303 See Other");
+    httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, "<a href='http://192.168.4.1/'>Configurar Wi-Fi do JrBot</a>");
+}
+
+/* Answer every IPv4 DNS query with the AP address while setup is active.
+ * Polling on app_main avoids a dedicated DNS task and its 4 KB stack. */
+static size_t setup_dns_reply(uint8_t *packet, size_t length) {
+    if (length < 17 || (packet[2] & 0xf8) || packet[4] != 0 || packet[5] != 1)
+        return 0;
+    size_t offset = 12;
+    bool end_of_name = false;
+    while (offset < length) {
+        uint8_t label = packet[offset++];
+        if (!label) { end_of_name = true; break; }
+        if (label > 63 || offset + label > length || offset + label > 255) return 0;
+        offset += label;
+    }
+    if (!end_of_name || offset + 4 > length) return 0;
+    bool address_query = packet[offset] == 0 && packet[offset + 1] == 1 &&
+                         packet[offset + 2] == 0 && packet[offset + 3] == 1;
+    size_t reply_length = offset + 4;
+    if (address_query && reply_length + 16 > 512) return 0;
+    packet[2] = 0x81; /* response, recursion desired/available */
+    packet[3] = 0x80;
+    packet[6] = 0;
+    packet[7] = address_query ? 1 : 0;
+    packet[8] = packet[9] = packet[10] = packet[11] = 0;
+    if (address_query) {
+        static const uint8_t answer[] = {
+            0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+        };
+        memcpy(packet + reply_length, answer, sizeof(answer));
+        memcpy(packet + reply_length + sizeof(answer), &setup_dns_ip, 4);
+        reply_length += 16;
+    }
+    return reply_length;
+}
+
+void jr_wifi_provisioning_poll(void) {
+    if (setup_dns_socket < 0) return;
+    for (int i = 0; i < 4; i++) {
+        uint8_t packet[512];
+        struct sockaddr_in peer = {0};
+        socklen_t peer_length = sizeof(peer);
+        int count = recvfrom(setup_dns_socket, packet, sizeof(packet), MSG_DONTWAIT,
+                             (struct sockaddr *)&peer, &peer_length);
+        if (count < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK)
+                ESP_LOGW(TAG, "JR_WIFI_SETUP_DNS recv_errno=%d", errno);
+            return;
+        }
+        size_t reply_length = setup_dns_reply(packet, (size_t)count);
+        if (reply_length)
+            (void)sendto(setup_dns_socket, packet, reply_length, 0,
+                         (struct sockaddr *)&peer, peer_length);
+    }
+}
+
+static void setup_dns_start(void) {
+    struct sockaddr_in address = {
+        .sin_family = AF_INET,
+        .sin_port = htons(53),
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+    };
+    setup_dns_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (setup_dns_socket >= 0 &&
+        bind(setup_dns_socket, (struct sockaddr *)&address, sizeof(address)) == 0)
+        return;
+    ESP_LOGW(TAG, "JR_WIFI_SETUP_DNS unavailable errno=%d; use 192.168.4.1", errno);
+    if (setup_dns_socket >= 0) close(setup_dns_socket);
+    setup_dns_socket = -1;
+}
+
 static void restart_after_save(void *arg) {
     (void)arg;
     vTaskDelay(pdMS_TO_TICKS(1800));
@@ -185,6 +268,14 @@ esp_err_t jr_wifi_provisioning_start(void) {
     if (err != ESP_OK) goto fail;
     err = esp_wifi_set_default_wifi_ap_handlers();
     if (err != ESP_OK) goto fail;
+    esp_netif_ip_info_t ap_ip = {0};
+    err = esp_netif_get_ip_info(setup_ap, &ap_ip);
+    if (err != ESP_OK) goto fail;
+    setup_dns_ip = ap_ip.ip.addr;
+    esp_netif_dns_info_t dns = {.ip.type = ESP_IPADDR_TYPE_V4};
+    dns.ip.u_addr.ip4.addr = setup_dns_ip;
+    err = esp_netif_set_dns_info(setup_ap, ESP_NETIF_DNS_MAIN, &dns);
+    if (err != ESP_OK) goto fail;
 
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&init);
@@ -218,14 +309,17 @@ esp_err_t jr_wifi_provisioning_start(void) {
     httpd_uri_t save = {.uri = "/save", .method = HTTP_POST, .handler = setup_save};
     err = httpd_register_uri_handler(setup_http, &index);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &save);
+    if (err == ESP_OK)
+        err = httpd_register_err_handler(setup_http, HTTPD_404_NOT_FOUND, setup_not_found);
     if (err != ESP_OK) {
         httpd_stop(setup_http);
         setup_http = NULL;
         goto fail_started;
     }
+    setup_dns_start();
     setup_running = true;
-    ESP_LOGI(TAG, "JR_WIFI_SETUP_READY ssid=%s password=%s url=http://192.168.4.1",
-             config.ap.ssid, JR_SETUP_AP_PASSWORD);
+    ESP_LOGI(TAG, "JR_WIFI_SETUP_READY ssid=%s password=%s url=http://192.168.4.1 captive_dns=%s",
+             config.ap.ssid, JR_SETUP_AP_PASSWORD, setup_dns_socket >= 0 ? "on" : "off");
     setup_memory("ready");
     return ESP_OK;
 
