@@ -199,12 +199,20 @@ void jr_wifi_start(void) {
     portENTER_CRITICAL(&state_lock); state.network_ready=true; portEXIT_CRITICAL(&state_lock);
     puts("JR_WIFI conectando"); return;
 fail:
+    jr_wifi_stop();
+    set_error(err);
+    printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
+}
+void jr_wifi_stop(void) {
     if (wifi_handler_set) { esp_event_handler_instance_unregister(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_handler); wifi_handler_set=false; }
     if (ip_handler_set) { esp_event_handler_instance_unregister(IP_EVENT,IP_EVENT_STA_GOT_IP,ip_handler); ip_handler_set=false; }
     if (driver_initialized) { if (wifi_started) esp_wifi_stop(); esp_wifi_deinit(); driver_initialized=false; wifi_started=false; }
     if (station) { esp_netif_destroy_default_wifi(station); station=NULL; }
-    portENTER_CRITICAL(&state_lock); state.network_ready=false; state.connected=false; state.last_error=err; portEXIT_CRITICAL(&state_lock);
-    printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
+    portENTER_CRITICAL(&state_lock);
+    state.network_ready=false;
+    state.connected=false;
+    memcpy(state.ip,"sem wifi",9);
+    portEXIT_CRITICAL(&state_lock);
 }
 static bool settings_equal(const wifi_settings_t *a,const wifi_settings_t *b) {
     return a->schema==b->schema && a->use_static==b->use_static &&

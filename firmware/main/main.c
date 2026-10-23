@@ -9,9 +9,11 @@
 #include "jr_face.h"
 #include "jr_portal.h"
 #include "jr_wifi.h"
+#include "jr_wifi_provisioning.h"
 #include "jr_mdns.h"
 
 #define JR_OLED_RETRY_MS 30000U
+#define JR_WIFI_SETUP_TIMEOUT_MS 30000U
 
 static uint32_t now_ms(void) {
     return (uint32_t)(esp_timer_get_time() / 1000ULL);
@@ -34,13 +36,29 @@ void app_main(void) {
     if (jr_face_start() != ESP_OK)
         ESP_LOGW("jrbot_main", "OLED offline; retry limitado a cada 30 s para preservar painel e testes");
 
-    jr_wifi_start();
-    if (jr_wifi_network_ready()) jr_portal_start();
+    jr_wifi_provisioning_button_init();
+    bool setup_mode = jr_wifi_provisioning_boot_requested();
+    if (setup_mode && jr_wifi_provisioning_start() != ESP_OK) setup_mode = false;
+    else jr_wifi_start();
+    bool portal_started = false;
+    uint32_t wifi_start_ms = now_ms();
     ESP_LOGI("jrbot_main", "JrBot ready: camera/mic/status e audio sob demanda; OLED isolado quando offline");
 
     for (;;) {
-        jr_mdns_poll();
         uint32_t ms = now_ms();
+        if (!setup_mode) {
+            jr_wifi_provisioning_button_poll(ms);
+            if (!portal_started && jr_wifi_is_connected()) {
+                jr_portal_start();
+                portal_started = true;
+            }
+            if (!portal_started && !jr_wifi_is_connected() &&
+                (uint32_t)(ms - wifi_start_ms) >= JR_WIFI_SETUP_TIMEOUT_MS) {
+                if (jr_wifi_provisioning_start() == ESP_OK) setup_mode = true;
+                else wifi_start_ms = ms;
+            }
+        }
+        jr_mdns_poll();
         jr_face_status_t face;
         jr_face_get_status(&face);
 

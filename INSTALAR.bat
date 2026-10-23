@@ -116,6 +116,8 @@ for /l %%N in (1,1,!BRANCH_COUNT!) do (
     if /i "!DISPLAY_BRANCH!"=="develop" set "BRANCH_NOTE= - integracao"
     if /i "!DISPLAY_BRANCH!"=="v1" set "BRANCH_NOTE= - JrBot V1"
     if /i "!DISPLAY_BRANCH!"=="v2" set "BRANCH_NOTE= - JrBot V2 voz"
+    if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light" set "BRANCH_NOTE= - RAM leve validada"
+    if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light_provisioning" set "BRANCH_NOTE= - RAM leve + Wi-Fi pelo celular"
     if /i "!DISPLAY_BRANCH:~0,8!"=="feature/" set "BRANCH_NOTE= - desenvolvimento / teste"
     if /i "!DISPLAY_BRANCH:~0,7!"=="hotfix/" set "BRANCH_NOTE= - correcao"
     if /i "!DISPLAY_BRANCH:~0,4!"=="fix/" set "BRANCH_NOTE= - correcao"
@@ -306,6 +308,9 @@ cd /d "%~dp0"
 set "CURRENT_BRANCH="
 set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+set "JRBOT_RAM_LIGHT_BRANCH="
+if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
+if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
 if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
@@ -386,7 +391,7 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
             if errorlevel 1 goto failure
         )
     )
-) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" (
+) else if defined JRBOT_RAM_LIGHT_BRANCH (
     rem Branch fixa de testes: isola o build pela versao real do firmware.
     set "JRBOT_RAM_LIGHT_VERSION="
     if not exist "firmware\version.txt" (
@@ -398,7 +403,8 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
         echo [ERRO] Versao do firmware vazia.
         goto failure
     )
-    set "BUILD_DIR=build-develop-wifi-ram-light-!JRBOT_RAM_LIGHT_VERSION!"
+    rem Caminho curto evita exceder MAX_PATH nos objetos do ESP-IDF no Windows.
+    set "BUILD_DIR=b-!JRBOT_RAM_LIGHT_VERSION:~-8!"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
