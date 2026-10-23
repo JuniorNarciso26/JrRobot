@@ -44,4 +44,5 @@ if(NOT EXISTS "${jr_memory_inventory}")
     file(WRITE "${jr_memory_inventory}" "{\"v\":1,\"ready\":false}\n")
 endif()
 target_add_binary_data(${COMPONENT_LIB} "${jr_memory_inventory}" TEXT RENAME_TO jr_memory_build_json)
+target_add_binary_data(${COMPONENT_LIB} "../core/jr_wifi_setup.html" TEXT RENAME_TO jr_wifi_setup_html)
 

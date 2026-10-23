@@ -3,7 +3,7 @@
 Branch: `test/develop_wifi_ram_light_provisioning`. A base é
 `test/develop_wifi_ram_light` com firmware `_04`. O fluxo SoftAP/HTTP foi
 adaptado do experimento `test/esp-wifi-provisioning` (commit `2593892`).
-Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_03`.
+Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_04`.
 Os componentes ADF do exemplo isolado não são ligados ao firmware do robô:
 o JrBot mantém seu gerenciador de Wi-Fi, seus perfis NVS e sua configuração
 de memória.
@@ -15,10 +15,11 @@ de memória.
 2. Para trocar de rede com uma configuração já salva, segure o botão BOOT
    (GPIO0) por três segundos enquanto o robô está ligado e ocioso; então
    solte o botão. Ele reinicia no modo de configuração sem apagar a rede anterior.
-3. Conecte o celular à rede do JrBot com a senha `JrBot1234`. O celular deve
+3. Conecte o celular à rede aberta do JrBot, sem senha. O celular deve
    detectar o portal cativo e oferecer a página de configuração. Se não abrir,
-   acesse `http://192.168.4.1` no navegador. Digite o SSID de uma rede de
-   2,4 GHz e sua senha. Redes abertas podem deixar a senha vazia.
+   acesse `http://192.168.4.1` no navegador. Escolha uma rede de 2,4 GHz na
+   lista ou digite o SSID, informe a senha da rede e salve. Redes abertas
+   podem deixar a senha vazia. A lista pode ser atualizada manualmente.
 4. Após salvar, o JrBot reinicia e tenta conectar. Se não conseguir obter
    IP em cerca de 30 segundos, volta a oferecer a rede de configuração
    para corrigir as credenciais.
@@ -35,25 +36,34 @@ HTTPS e a Live não são iniciados nesse modo. Depois do reinício com Wi-Fi
 conectado, o AP de configuração não fica ativo. No modo de configuração, o
 servidor DNS responde com o IP do JrBot e as sondas HTTP do celular levam à
 página. A abertura automática depende do sistema operacional e de como ele
-faz a detecção; o IP manual continua disponível. A lista de redes próximas
-ainda não faz parte deste teste integrado.
+faz a detecção; o IP manual continua disponível. A página usa o formulário,
+a seleção de rede e a opção de mostrar a senha adaptados da página do branch
+`test/esp-wifi-provisioning`. A busca de redes é feita sob demanda; o modo
+AP+STA existe apenas durante o provisionamento. Se a busca falhar, o SSID
+pode ser digitado manualmente. O gerenciamento de perfis continua no painel
+USB. Como o AP é aberto, pessoas próximas podem acessar a página durante o
+provisionamento; encerre esse modo após configurar a rede.
 
 ## Medição
 
 Com ESP-IDF 5.5.5 e o mesmo `sdkconfig.develop_wifi_ram_light`, os builds
 locais com o inventário de RAM incorporado produziram:
 
-| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` | `_PROV_03` |
-| --- | ---: | ---: | ---: | ---: |
-| DRAM | 61.376 B | 61.496 B | 61.520 B | 61.520 B |
-| IRAM | 119.808 B | 120.064 B | 120.064 B | 120.064 B |
-| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B | 2.550.960 B |
+| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` | `_PROV_03` | `_PROV_04` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| DRAM | 61.376 B | 61.496 B | 61.520 B | 61.520 B | 61.520 B |
+| IRAM | 119.808 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B |
+| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B | 2.550.960 B | 2.557.712 B |
 
 O portal cativo acrescentou 24 B de DRAM estática, 0 B de IRAM e 1.456 B
 de flash em relação a `_PROV_01`. O socket DNS usa RAM dinâmica somente
 enquanto o AP de configuração está ativo.
 O ajuste para excluir a rede selecionada em `_PROV_03` não alterou DRAM ou
 IRAM estática e acrescentou 64 B ao binário.
+Em `_PROV_04`, a página incorporada e a busca sob demanda acrescentaram
+6.752 B de flash e não alteraram DRAM ou IRAM estática em relação a
+`_PROV_03`. O modo AP+STA pode usar mais RAM dinâmica enquanto a configuração
+está aberta; isso precisa ser medido no aparelho.
 
 Esse inventário mede memória estática. Não mede a alocação dinâmica do
 driver Wi-Fi e do servidor HTTP enquanto o AP está aberto. O AP não roda

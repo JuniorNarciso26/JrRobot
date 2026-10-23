@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include "driver/gpio.h"
@@ -22,8 +23,8 @@
 
 #define JR_SETUP_MAGIC 0x4a525750u
 #define JR_SETUP_BUTTON_MS 3000u
-#define JR_SETUP_AP_PASSWORD "JrBot1234"
 #define JR_SETUP_FORM_MAX 512
+#define JR_SETUP_SCAN_LIMIT 16
 
 static const char *TAG = "jrbot_wifi_setup";
 static RTC_NOINIT_ATTR uint32_t setup_request;
@@ -36,20 +37,7 @@ static bool setup_running;
 static bool button_ready;
 static bool button_armed;
 static uint32_t button_down_ms;
-
-static const char setup_page[] =
-    "<!doctype html><html lang=pt-br><meta charset=utf-8>"
-    "<meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<title>Configurar Wi-Fi do JrBot</title>"
-    "<style>body{font:17px system-ui;max-width:420px;margin:40px auto;padding:0 20px}"
-    "label{display:block;margin:20px 0}input{display:block;width:100%;box-sizing:border-box;"
-    "padding:12px;font:inherit}button{padding:12px 22px;font:inherit}</style>"
-    "<h1>Wi-Fi do JrBot</h1><p>Informe uma rede de 2,4 GHz."
-    " O aparelho reinicia depois de salvar.</p>"
-    "<form method=post action=/save>"
-    "<label>Nome da rede (SSID)<input name=ssid maxlength=32 required></label>"
-    "<label>Senha da rede<input name=pass type=password maxlength=64></label>"
-    "<button type=submit>Salvar Wi-Fi</button></form></html>";
+extern const char setup_page[] asm("_binary_jr_wifi_setup_html_start");
 
 static const char saved_page[] =
     "<!doctype html><html lang=pt-br><meta charset=utf-8>"
@@ -127,6 +115,74 @@ static esp_err_t setup_index(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_sendstr(req, setup_page);
+}
+
+static void setup_json_ssid(const uint8_t *ssid, char *encoded, size_t capacity) {
+    size_t used = 0;
+    for (size_t i = 0; i < 32 && ssid[i] && used + 7 < capacity; i++) {
+        unsigned char ch = ssid[i];
+        if (ch == '"' || ch == '\\') { encoded[used++] = '\\'; encoded[used++] = ch; }
+        else if (ch < 32) {
+            int count = snprintf(encoded + used, capacity - used, "\\u%04X", ch);
+            used += count > 0 ? (size_t)count : 0;
+        } else encoded[used++] = ch;
+    }
+    encoded[used] = 0;
+}
+
+static esp_err_t setup_scan_error(httpd_req_t *req, const char *message) {
+    httpd_resp_set_status(req, "503 Service Unavailable");
+    return httpd_resp_sendstr(req, message);
+}
+
+static esp_err_t setup_scan(httpd_req_t *req) {
+    /* Scan only when the page asks for it; no timer or scan cache in RAM. */
+    wifi_scan_config_t scan = {.show_hidden = false,
+                               .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+                               .scan_time.active = {.min = 0, .max = 90}};
+    esp_err_t err = esp_wifi_scan_start(&scan, true);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "JR_WIFI_SETUP_SCAN result=%s", esp_err_to_name(err));
+        return setup_scan_error(req, "Busca indisponivel");
+    }
+    uint16_t count = 0;
+    err = esp_wifi_scan_get_ap_num(&count);
+    if (err != ESP_OK) {
+        (void)esp_wifi_clear_ap_list();
+        return setup_scan_error(req, "Busca indisponivel");
+    }
+    uint16_t shown = count < JR_SETUP_SCAN_LIMIT ? count : JR_SETUP_SCAN_LIMIT;
+    wifi_ap_record_t *records = shown ? heap_caps_calloc(shown, sizeof(*records),
+                                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) : NULL;
+    if (shown && !records) {
+        (void)esp_wifi_clear_ap_list();
+        return setup_scan_error(req, "Memoria insuficiente");
+    }
+    if (shown) err = esp_wifi_scan_get_ap_records(&shown, records);
+    else (void)esp_wifi_clear_ap_list();
+    if (err != ESP_OK) {
+        (void)esp_wifi_clear_ap_list();
+        free(records);
+        return setup_scan_error(req, "Busca indisponivel");
+    }
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    err = httpd_resp_send_chunk(req, "{\"aps\":[", 8);
+    for (uint16_t i = 0; i < shown && err == ESP_OK; i++) {
+        char encoded[193];
+        char item[255];
+        setup_json_ssid(records[i].ssid, encoded, sizeof(encoded));
+        int length = snprintf(item, sizeof(item),
+                              "%s{\"ssid\":\"%s\",\"rssi\":%d,\"open\":%s}",
+                              i ? "," : "", encoded, records[i].rssi,
+                              records[i].authmode == WIFI_AUTH_OPEN ? "true" : "false");
+        if (length < 0 || (size_t)length >= sizeof(item)) { err = ESP_ERR_INVALID_SIZE; break; }
+        err = httpd_resp_send_chunk(req, item, length);
+    }
+    free(records);
+    if (err != ESP_OK) return err;
+    err = httpd_resp_send_chunk(req, "]}", 2);
+    return err == ESP_OK ? httpd_resp_send_chunk(req, NULL, 0) : err;
 }
 
 static esp_err_t setup_not_found(httpd_req_t *req, httpd_err_code_t error) {
@@ -289,11 +345,11 @@ esp_err_t jr_wifi_provisioning_start(void) {
     snprintf((char *)config.ap.ssid, sizeof(config.ap.ssid), "JrBot-Setup-%02X%02X%02X",
              mac[3], mac[4], mac[5]);
     config.ap.ssid_len = strlen((const char *)config.ap.ssid);
-    memcpy(config.ap.password, JR_SETUP_AP_PASSWORD, sizeof(JR_SETUP_AP_PASSWORD));
-    config.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    config.ap.authmode = WIFI_AUTH_OPEN;
     config.ap.max_connection = 2;
     config.ap.channel = 1;
-    err = esp_wifi_set_mode(WIFI_MODE_AP);
+    /* The station interface is used only to scan while the setup AP stays up. */
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (err != ESP_OK) goto fail_driver;
     err = esp_wifi_set_config(WIFI_IF_AP, &config);
     if (err != ESP_OK) goto fail_driver;
@@ -301,14 +357,16 @@ esp_err_t jr_wifi_provisioning_start(void) {
     if (err != ESP_OK) goto fail_driver;
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 2;
+    http_config.max_uri_handlers = 3;
     http_config.lru_purge_enable = true;
     err = httpd_start(&setup_http, &http_config);
     if (err != ESP_OK) goto fail_started;
     httpd_uri_t index = {.uri = "/", .method = HTTP_GET, .handler = setup_index};
     httpd_uri_t save = {.uri = "/save", .method = HTTP_POST, .handler = setup_save};
+    httpd_uri_t scan_route = {.uri = "/scan", .method = HTTP_GET, .handler = setup_scan};
     err = httpd_register_uri_handler(setup_http, &index);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &save);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &scan_route);
     if (err == ESP_OK)
         err = httpd_register_err_handler(setup_http, HTTPD_404_NOT_FOUND, setup_not_found);
     if (err != ESP_OK) {
@@ -318,8 +376,8 @@ esp_err_t jr_wifi_provisioning_start(void) {
     }
     setup_dns_start();
     setup_running = true;
-    ESP_LOGI(TAG, "JR_WIFI_SETUP_READY ssid=%s password=%s url=http://192.168.4.1 captive_dns=%s",
-             config.ap.ssid, JR_SETUP_AP_PASSWORD, setup_dns_socket >= 0 ? "on" : "off");
+    ESP_LOGI(TAG, "JR_WIFI_SETUP_READY ssid=%s security=open url=http://192.168.4.1 captive_dns=%s",
+             config.ap.ssid, setup_dns_socket >= 0 ? "on" : "off");
     setup_memory("ready");
     return ESP_OK;
 

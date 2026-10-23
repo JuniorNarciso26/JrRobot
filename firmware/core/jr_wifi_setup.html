@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configurar Wi-Fi | JrBot</title>
+  <style>
+    :root{color-scheme:light;font-family:system-ui,sans-serif;background:#f2f5fa;color:#17253d}
+    *{box-sizing:border-box}
+    body{max-width:520px;margin:0 auto;padding:28px 16px 48px;line-height:1.45}
+    .card{background:#fff;border:1px solid #dce3ef;border-radius:18px;padding:22px;box-shadow:0 10px 28px #20345612}
+    .mark{display:inline-block;background:#eaf2ff;color:#1556ac;border-radius:999px;padding:5px 12px;font-size:.82rem;font-weight:700}
+    h1{font-size:1.7rem;margin:14px 0 6px}h2{font-size:1.1rem;margin:26px 0 8px}
+    p{margin:7px 0 18px;color:#4e5c70}.hint{font-size:.88rem;color:#607086}
+    label{display:block;font-weight:650;margin:18px 0 7px}
+    input{width:100%;border:1px solid #b9c6d7;border-radius:10px;padding:13px;font:inherit;color:inherit;background:#fff}
+    input:focus-visible,button:focus-visible{outline:3px solid #78aef5;outline-offset:2px}
+    .password{display:flex;gap:8px}.password input{flex:1;min-width:0}
+    button{font:inherit;cursor:pointer;border-radius:10px;padding:11px 14px;border:1px solid #b9c6d7;background:#fff;color:#173d77}
+    button.primary{width:100%;background:#1765c0;border-color:#1765c0;color:#fff;font-weight:700;margin-top:22px}
+    button:disabled{opacity:.65;cursor:wait}.scan{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    #networks{display:grid;gap:8px}.network{text-align:left;width:100%;display:flex;justify-content:space-between;gap:10px}
+    .network.selected{border-color:#1765c0;background:#eaf2ff}.network small{color:#607086;white-space:nowrap}
+    #message{min-height:1.4em;margin-top:14px}#message.error{color:#a32121}#message.ok{color:#117145}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <span class="mark">JR BOT · CONFIGURAÇÃO</span>
+    <h1>Conectar ao Wi-Fi</h1>
+    <p>Escolha uma rede de 2,4 GHz ou digite o nome. Depois de salvar, o JrBot reinicia automaticamente.</p>
+    <div class="scan"><h2>Redes próximas</h2><button id="refresh" type="button">Atualizar</button></div>
+    <p id="scan-status" class="hint" role="status">Procurando redes…</p>
+    <div id="networks"></div>
+    <form method="post" action="/save" id="wifi-form">
+      <label for="ssid">Nome da rede (SSID)</label>
+      <input id="ssid" name="ssid" maxlength="32" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Selecione acima ou digite aqui">
+      <label for="pass">Senha da rede</label>
+      <div class="password"><input id="pass" name="pass" type="password" maxlength="64" autocomplete="new-password" placeholder="Deixe vazia se a rede for aberta"><button id="toggle" type="button" aria-label="Mostrar senha">Mostrar</button></div>
+      <button class="primary" id="save" type="submit">Salvar e conectar</button>
+    </form>
+    <p id="message" role="status" aria-live="polite"></p>
+    <p class="hint">Se a lista estiver vazia, digite o nome da rede manualmente.</p>
+  </main>
+  <script>
+    const ssid=document.getElementById('ssid');
+    const pass=document.getElementById('pass');
+    const list=document.getElementById('networks');
+    const scanStatus=document.getElementById('scan-status');
+    const message=document.getElementById('message');
+    const refresh=document.getElementById('refresh');
+    const save=document.getElementById('save');
+    document.getElementById('toggle').onclick=function(){
+      const visible=pass.type==='password';
+      pass.type=visible?'text':'password';
+      this.textContent=visible?'Ocultar':'Mostrar';
+      this.setAttribute('aria-label',visible?'Ocultar senha':'Mostrar senha');
+    };
+    async function scan(){
+      refresh.disabled=true;
+      scanStatus.textContent='Procurando redes próximas…';
+      try{
+        const response=await fetch('/scan',{cache:'no-store'});
+        if(!response.ok)throw new Error('scan');
+        const data=await response.json();
+        list.replaceChildren();
+        const seen=new Set();
+        for(const network of data.aps||[]){
+          if(!network.ssid||seen.has(network.ssid))continue;
+          seen.add(network.ssid);
+          const button=document.createElement('button');
+          button.type='button';button.className='network';
+          const name=document.createElement('span');name.textContent=network.ssid;
+          const detail=document.createElement('small');
+          detail.textContent=(network.open?'Aberta':'Protegida')+' · '+network.rssi+' dBm';
+          button.append(name,detail);
+          button.onclick=()=>{ssid.value=network.ssid;list.querySelectorAll('button').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');ssid.focus()};
+          list.append(button);
+        }
+        scanStatus.textContent=seen.size?seen.size+' rede(s) encontrada(s)':'Nenhuma rede encontrada.';
+      }catch(error){scanStatus.textContent='Não foi possível buscar redes. Digite o nome manualmente.'}
+      finally{refresh.disabled=false}
+    }
+    refresh.onclick=scan;
+    document.getElementById('wifi-form').onsubmit=async function(event){
+      event.preventDefault();save.disabled=true;message.className='';message.textContent='Salvando Wi-Fi…';
+      try{
+        const response=await fetch('/save',{method:'POST',body:new URLSearchParams(new FormData(this)),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+        if(!response.ok)throw new Error('save');
+        message.className='ok';message.textContent='Rede salva. O JrBot vai reiniciar e tentar conectar.';
+      }catch(error){message.className='error';message.textContent='Não foi possível salvar. Confira o nome e a senha e tente novamente.';save.disabled=false}
+    };
+    scan();
+  </script>
+</body>
+</html>
