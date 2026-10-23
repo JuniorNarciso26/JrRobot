@@ -216,34 +216,24 @@ if not "!STATUS_SIZE!"=="0" (
 if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
 if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
 
-echo [INFO] Atualizando referencias remotas...
-git fetch --prune origin
-if errorlevel 1 (
-    echo [ERRO] Nao foi possivel consultar o GitHub.
-    popd
-    exit /b 1
-)
-
 call :choose_branch
 if errorlevel 1 (
     popd
     exit /b 1
 )
 
-rem Clones criados com --single-branch nao baixam refs de outras versoes.
-rem O menu consulta todas as branches, entao busque a escolhida explicitamente.
-git config --get-all remote.origin.fetch | findstr /l /c:"+refs/heads/!TARGET_BRANCH!:refs/remotes/origin/!TARGET_BRANCH!" >nul
+rem Clones --single-branch podem guardar refs de branches excluidas no GitHub.
+rem Substitua a lista antiga pela branch ativa escolhida antes do fetch.
+git remote set-branches origin "!TARGET_BRANCH!"
 if errorlevel 1 (
-    git remote set-branches --add origin "!TARGET_BRANCH!"
-    if errorlevel 1 (
-        echo [ERRO] Nao foi possivel configurar a versao !TARGET_BRANCH! no Git.
-        popd
-        exit /b 1
-    )
+    echo [ERRO] Nao foi possivel configurar a versao !TARGET_BRANCH! no Git.
+    popd
+    exit /b 1
 )
-git fetch --no-tags origin "+refs/heads/!TARGET_BRANCH!:refs/remotes/origin/!TARGET_BRANCH!"
+echo [INFO] Atualizando a versao !TARGET_BRANCH!...
+git fetch --no-tags --prune origin
 if errorlevel 1 (
-    echo [ERRO] Nao foi possivel baixar a versao !TARGET_BRANCH! do GitHub.
+    echo [ERRO] Nao foi possivel baixar !TARGET_BRANCH!. Consulte a lista novamente.
     popd
     exit /b 1
 )
