@@ -13,6 +13,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - **#19 áudio MAX98357A: closed/not_planned** em 26/10/2026, por decisão de encerrar a investigação sem afirmar correção do chiado.
 - **#9 licença e propriedade intelectual: closed/completed** em 26/10/2026 pela definição/adopção pública da licença MIT no repositório.
 - **#17 Epic de Roadmap: closed/completed** em 26/10/2026, por consolidação do planejamento V1/V2/V3 em ROADMAP.md; #15 e #16 continuam abertas independentemente.
+- **#28 JrBot Remote Expert / PIPE 2026: closed/not_planned** em 26/10/2026, projeto cancelado por decisão explícita do responsável.
 
 ## Prioridade A — saneamento de histórico / correção
 
@@ -44,7 +45,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - [JrRobot #8](https://github.com/JuniorNarciso26/JrRobot/issues/8): bounties e Contributor Pool.
 - [JrRobot #22](https://github.com/JuniorNarciso26/JrRobot/issues/22): corpo e impressão 3D.
 - [JrRobot #24](https://github.com/JuniorNarciso26/JrRobot/issues/24): estéreo.
-- [JrRobot #28](https://github.com/JuniorNarciso26/JrRobot/issues/28): PIPE / Remote Expert; verificar prazo histórico antes de decidir ação.
+- [JrRobot #28](https://github.com/JuniorNarciso26/JrRobot/issues/28): **ENCERRADA / not_planned em 26/10/2026** — projeto JrBot Remote Expert / PIPE 2026 cancelado por decisão do responsável. Proposta preservada somente como histórico; nenhuma submissão ou validação é presumida. [Registro](https://github.com/JuniorNarciso26/JrRobot/issues/28#issuecomment-6425545043).
 - [JrRobot #52](https://github.com/JuniorNarciso26/JrRobot/issues/52): tração do hackathon; revisar propósito após MVP.
 - [JrRobot #56](https://github.com/JuniorNarciso26/JrRobot/issues/56): NFC, bateria, boost.
 
