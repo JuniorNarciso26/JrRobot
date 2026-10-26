@@ -15,6 +15,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - **#17 Epic de Roadmap: closed/completed** em 26/10/2026, por consolidação do planejamento V1/V2/V3 em ROADMAP.md; #15 e #16 continuam abertas independentemente.
 - **#28 JrBot Remote Expert / PIPE 2026: closed/not_planned** em 26/10/2026, projeto cancelado por decisão explícita do responsável.
 - **#53 JrSkill Developer Challenge: closed/not_planned** em 26/10/2026. O núcleo JrSkill está na `main` e foi validado internamente; convite/piloto de colaboradores externos encerrado sem comprovante de participação externa.
+- **#52 tração do Hackathon/JrSkill: closed/not_planned** em 26/10/2026; MVP interno concluído e metas externas de aquisição de builders encerradas sem comprovação.
 
 ## Prioridade A — saneamento de histórico / correção
 
@@ -47,7 +48,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - [JrRobot #22](https://github.com/JuniorNarciso26/JrRobot/issues/22): corpo e impressão 3D.
 - [JrRobot #24](https://github.com/JuniorNarciso26/JrRobot/issues/24): estéreo.
 - [JrRobot #28](https://github.com/JuniorNarciso26/JrRobot/issues/28): **ENCERRADA / not_planned em 26/10/2026** — projeto JrBot Remote Expert / PIPE 2026 cancelado por decisão do responsável. Proposta preservada somente como histórico; nenhuma submissão ou validação é presumida. [Registro](https://github.com/JuniorNarciso26/JrRobot/issues/28#issuecomment-6425545043).
-- [JrRobot #52](https://github.com/JuniorNarciso26/JrRobot/issues/52): tração do hackathon; revisar propósito após MVP.
+- [JrRobot #52](https://github.com/JuniorNarciso26/JrRobot/issues/52): **ENCERRADA / not_planned em 26/10/2026** — hackathon e MVP técnico JrSkill concluídos e integrados à `main`; metas externas de tração arquivadas sem alegação de cumprimento. [Decisão](https://github.com/JuniorNarciso26/JrRobot/issues/52#issuecomment-6425598387).
 - [JrRobot #56](https://github.com/JuniorNarciso26/JrRobot/issues/56): NFC, bateria, boost.
 
 ## Pull Requests ainda abertos
