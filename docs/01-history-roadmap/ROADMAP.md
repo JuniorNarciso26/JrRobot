@@ -15,6 +15,15 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 
 During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
+## Product roadmap governance — October 26, 2026
+
+The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issues/17) was **closed as completed on October 26, 2026**, because its planning and organizational purpose is now maintained in this document. The closing of the Epic **does not** mean all future versions have been delivered.
+
+- **V1 (local browser control)**: accepted within the approved scope; [Issue #14](https://github.com/JuniorNarciso26/JrRobot/issues/14) closed.
+- **V2 (local voice commands)**: future development tracked separately in [Issue #15](https://github.com/JuniorNarciso26/JrRobot/issues/15); revisit that Issue when V2 work actually resumes.
+- **V3 (programmatic control)**: future scope remains in [Issue #16](https://github.com/JuniorNarciso26/JrRobot/issues/16).
+- This roadmap is the single planning overview; open new, scoped implementation Issues when needed instead of keeping a duplicate roadmap Epic open.
+
 ## Development priorities
 
 | Workstream | Verified starting point | Next objective |
