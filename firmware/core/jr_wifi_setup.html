@@ -1,346 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Configurar Wi-Fi do JrBot</title>
   <style>
-    body{font-family:system-ui,sans-serif;margin:0 auto;max-width:36rem;padding:.75rem 1rem;line-height:1.4;}
-    h2{font-size:1.25rem;margin:.5rem 0 1rem;}
-    label{display:block;margin:.6rem 0;font-weight:600;}
-    input,button,select{font-size:1rem;padding:.55rem .65rem;max-width:100%;box-sizing:border-box;}
-    input[type=text],input[type=password],select,input[type=range]{width:100%;}
-    button{margin:.35rem .5rem .35rem 0;min-height:2.75rem;}
-    .pwd-lbl{display:block;margin:.6rem 0 .25rem;font-weight:600;}
-    .pwd-field{position:relative;width:100%;margin:0 0 .35rem;}
-    .pwd-field input[type=password],.pwd-field input[type=text]{width:100%;padding-right:2.75rem;}
-    button.pwd-toggle{position:absolute;right:.2rem;top:50%;transform:translateY(-50%);width:2.5rem;height:2.5rem;min-height:unset;margin:0;padding:0;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:.25rem;color:#333;}
-    button.pwd-toggle:hover{background:#e8e8e8;}
-    button.pwd-toggle:focus-visible{outline:2px solid #06c;outline-offset:1px;}
-    table{border-collapse:collapse;width:100%;font-size:.9rem;}
-    th,td{border:1px solid #ccc;padding:6px;vertical-align:middle;}
-    #msg{min-height:1.2rem;color:#c00;font-size:.9rem;}
-    .hint{font-size:.85rem;color:#444;margin:.5rem 0;}
-    label.ssid-block{font-weight:600;}
-    .ssid-block .hint{display:block;font-weight:400;font-size:.85rem;color:#444;margin:.2rem 0 .35rem;}
-    .scan-choice-wrap{margin:.75rem 0 1rem;}
-    .scan-choice-wrap h3{margin:.5rem 0;font-size:1.05rem;}
-    .scan-choice-list{display:flex;flex-direction:column;gap:.35rem;}
-    .scan-choice-btn{display:block;width:100%;text-align:left;padding:.65rem .75rem;border:1px solid #ccc;border-radius:.35rem;background:#f8f8f8;font-size:1rem;cursor:pointer;}
-    .scan-choice-btn:active{background:#e8e8e8;}
-    .scan-choice-btn.is-selected{border-color:#06c;background:#eaf3ff;}
-    #scan_choices_status{font-size:.85rem;color:#333;margin:.35rem 0 .25rem;min-height:1.2rem;}
-    .actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
-    .actions button{margin:.2rem 0;}
+    :root{color-scheme:dark;--bg:#0b0d12;--panel:#151923;--panel2:#10131a;--line:#252b38;--txt:#eef3ff;--muted:#9aa7bd;--blue:#2f80ed;--green:#25a55f;--red:#d04b3f}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#182033,var(--bg) 48%);color:var(--txt);font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.5}
+    header{border-bottom:1px solid var(--line);background:#0a0c12bf;padding:16px max(18px,calc((100% - 640px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{font-size:21px;font-weight:800;letter-spacing:.02em}.brand span{color:#7ab7ff}.badge{font-size:11px;color:#b9ffd7;border:1px solid #246b43;background:#12251d;border-radius:99px;padding:7px 10px;white-space:nowrap}
+    main{max-width:640px;margin:0 auto;padding:20px 14px 48px}.card{background:#151923e8;border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 30px #0004;padding:20px;margin-bottom:14px}
+    h1{font-size:25px;line-height:1.2;margin:0 0 9px}h2{font-size:18px;margin:0}p{margin:7px 0 0}.muted{color:var(--muted)}.small{font-size:13px}
+    .step{display:flex;align-items:center;gap:11px;margin-bottom:12px}.number{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;background:#183456;color:#9ccaff;font-weight:800}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+    button,input{font:inherit}button{border:0;border-radius:11px;padding:11px 14px;min-height:44px;color:#fff;font-weight:700;background:var(--blue);cursor:pointer}button:hover{filter:brightness(1.1)}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible{outline:2px solid #7ab7ff;outline-offset:2px}
+    button.secondary{background:#30394d}button.danger{background:#60302f;color:#ffdedb}.primary{width:100%;background:var(--green);margin-top:18px}
+    label{display:block;font-weight:650;margin:18px 0 7px}input{width:100%;background:#090b10;color:var(--txt);border:1px solid #364155;border-radius:10px;padding:12px 13px;min-height:46px}input::placeholder{color:#78869c}
+    .networks{display:grid;gap:8px;margin:12px 0}.network{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:linear-gradient(180deg,#202739,#161b27);border:1px solid #30384b;padding:12px}.network.selected{border-color:var(--blue);background:#183456}.network strong{overflow-wrap:anywhere}.network small{color:var(--muted);white-space:nowrap}
+    .password{display:flex;gap:8px}.password input{min-width:0;flex:1}.password button{flex:none}.feedback{display:none;margin-top:15px;padding:12px 14px;border-radius:10px;border:1px solid #39475d;background:var(--panel2)}.feedback.show{display:block}.feedback.error{border-color:#74312c;background:#2a1819;color:#ffcbc6}.feedback.ok{border-color:#246b43;background:#12251d;color:#b9ffd7}
+    .saved-list{display:grid;gap:8px;margin-top:14px}.saved-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.saved-item strong{overflow-wrap:anywhere}.saved-item p{margin:2px 0 0;color:var(--muted);font-size:12px}.saved-item button{min-width:70px}
+    @media(max-width:440px){header{padding:14px}.card{padding:17px}.network{align-items:flex-start;flex-direction:column;gap:2px}.badge{font-size:10px}.password button{padding:10px}}
   </style>
 </head>
 <body>
-  <h2>Configurar Wi-Fi do JrBot</h2>
-  <p class="hint">Selecione uma rede de 2,4 GHz abaixo ou digite o nome. Após salvar, o JrBot reinicia e tenta se conectar.</p>
-
-  <form id="prov_form" method="post" action="/save">
-    <label class="ssid-block" for="ssid_input">Nome da rede (SSID)
-      <span class="hint">Escolha uma rede da lista ou digite o nome manualmente.</span>
-      <input name="ssid" id="ssid_input" type="text" maxlength="32" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Selecione abaixo ou digite aqui">
-    </label>
-
-    <label class="pwd-lbl" for="prov_password">Senha da rede (vazia para rede aberta)</label>
-    <div class="pwd-field">
-      <input id="prov_password" name="pass" type="password" maxlength="64" autocomplete="new-password">
-      <button type="button" class="pwd-toggle" id="pwd_toggle" aria-label="Mostrar senha" title="Mostrar senha">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-      </button>
-    </div>
-
-    <button type="submit" id="prov_submit">Salvar e conectar</button>
-    <p id="msg" role="status" aria-live="polite"></p>
-  </form>
-
-  <div class="scan-choice-wrap">
-    <h3>Redes próximas</h3>
-    <p class="hint">Toque numa rede para preencher o nome. Use Atualizar para procurar novamente.</p>
-    <button type="button" id="scan_refresh" onclick="refreshScanChoices()">Atualizar redes</button>
-    <div id="scan_choices_status"></div>
-    <div id="scan_choices" class="scan-choice-list"></div>
-  </div>
-
-  <h3>Redes salvas</h3>
-  <p class="hint">Até 4 redes. Excluir uma rede selecionada limpa a seleção de inicialização.</p>
-  <table>
-    <thead>
-      <tr><th>#</th><th>SSID</th><th>Modo</th><th>Selecionada</th><th></th></tr>
-    </thead>
-    <tbody id="profiles"></tbody>
-  </table>
-
-  <p class="actions"><button type="button" onclick="refreshProfiles()">Atualizar redes salvas</button></p>
-
+  <header><div class="brand">Jr<span>Bot</span></div><div class="badge">CONFIGURAÇÃO INICIAL</div></header>
+  <main>
+    <section class="card">
+      <h1>Configurar Wi-Fi do JrBot</h1>
+      <p class="muted">Escolha uma rede de 2,4 GHz. O JrBot testará a conexão antes de salvar a configuração.</p>
+    </section>
+    <form id="wifi-form" method="post" action="/test">
+      <section class="card">
+        <div class="step"><span class="number">1</span><h2>Localizar redes</h2></div>
+        <div class="toolbar"><p class="muted small">Selecione a rede que o JrBot usará.</p><button type="button" class="secondary" id="scan-button">Procurar redes</button></div>
+        <p id="scan-status" class="muted small" role="status">Buscando redes próximas...</p>
+        <div id="networks" class="networks"></div>
+        <label for="ssid">Nome da rede (SSID)</label>
+        <input id="ssid" name="ssid" required maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Escolha acima ou digite o nome">
+        <p class="muted small">Se a rede estiver oculta, digite o nome manualmente.</p>
+      </section>
+      <section class="card">
+        <div class="step"><span class="number">2</span><h2>Inserir senha</h2></div>
+        <p id="security-hint" class="muted small">Use a senha da rede escolhida. Redes abertas não precisam de senha.</p>
+        <label for="pass">Senha do Wi-Fi</label>
+        <div class="password"><input id="pass" name="pass" type="password" maxlength="64" autocomplete="new-password" placeholder="Senha da rede"><button type="button" class="secondary" id="toggle" aria-label="Mostrar senha">Mostrar</button></div>
+        <button type="submit" class="primary" id="submit">Testar conexão e salvar</button>
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      </section>
+    </form>
+    <section class="card">
+      <div class="toolbar"><div><h2>Redes salvas</h2><p class="muted small">Até 4 redes guardadas no JrBot.</p></div><button type="button" class="secondary" id="refresh-profiles">Atualizar</button></div>
+      <div id="profiles" class="saved-list"></div>
+    </section>
+  </main>
   <script>
-    function setMsg(t, c) {
-      var e = document.getElementById('msg');
-
-      if (e) {
-        e.textContent = t || '';
-        e.style.color = c || '#c00';
-      }
-    }
-
-    function setConnectBtn(state) {
-      var b = document.getElementById('prov_submit');
-
-      if (!b) {
-        return;
-      }
-
-      if (state === 'busy') {
-        b.disabled = true;
-        b.textContent = 'Salvando...';
-        return;
-      }
-
-      b.disabled = false;
-      b.textContent = (state === 'ok') ? 'Rede salva' :
-        (state === 'retry') ? 'Tentar novamente' : 'Salvar e conectar';
-    }
-
-    async function req(url, opt) {
-      var r = await fetch(url, opt);
-      var j = null;
-
-      try {
-        j = await r.json();
-      } catch (x) {
-      }
-
-      return {
-        ok: r.ok,
-        status: r.status,
-        json: j
-      };
-    }
-
-    function selectSsid(v) {
-      var si = document.getElementById('ssid_input');
-      var list = document.getElementById('scan_choices');
-      var selected = v || '';
-
-      if (si) {
-        si.value = selected;
-      }
-
-      if (!list) {
-        return;
-      }
-
-      Array.prototype.forEach.call(list.querySelectorAll('button[data-ssid]'), function(btn) {
-        btn.classList.toggle('is-selected', btn.getAttribute('data-ssid') === selected);
-      });
-    }
-
-    function renderScanChoices(aps) {
-      var list = document.getElementById('scan_choices');
-      var n = 0;
-
-      if (!list) {
-        return;
-      }
-
-      list.innerHTML = '';
-
-      (aps || []).forEach(function(a) {
-        var v = a.ssid || '';
-        var lock;
-        var btn;
-
-        if (!v) {
-          return;
-        }
-
-        n++;
-        btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'scan-choice-btn';
-        btn.setAttribute('data-ssid', v);
-
-        lock = a.open ? '\uD83D\uDD13' : '\uD83D\uDD12';
-        btn.textContent = lock + ' ' + v + ' (' + a.rssi + ' dBm)';
-        btn.onclick = function() {
-          selectSsid(v);
-        };
-
-        list.appendChild(btn);
-      });
-
-      if (n === 0) {
-        var p = document.createElement('p');
-        p.className = 'hint';
-        p.textContent = 'Nenhuma rede encontrada. Digite o SSID manualmente.';
-        list.appendChild(p);
-      }
-
-      var si = document.getElementById('ssid_input');
-      if (si) {
-        selectSsid(si.value || '');
-      }
-
-      var s = document.getElementById('scan_choices_status');
-      if (s) {
-        s.textContent = n > 0
-          ? 'Atualizado: ' + new Date().toLocaleTimeString() + ' (' + n + ' rede(s))'
-          : 'Nenhuma rede encontrada.';
-      }
-    }
-
-    async function refreshScanChoices() {
-      var s = document.getElementById('scan_choices_status');
-      var button = document.getElementById('scan_refresh');
-      if (button) button.disabled = true;
-      if (s) s.textContent = 'Procurando redes...';
-      var x;
-      try {
-        x = await req('/scan');
-      } catch (e) {
-        if (s) s.textContent = 'Busca indisponível. Digite o SSID manualmente.';
-        if (button) button.disabled = false;
-        return;
-      }
-      if (button) button.disabled = false;
-
-      if (!x.ok || !x.json) {
-        if (s) {
-          s.textContent = 'Busca indisponível. Digite o SSID manualmente.';
-        }
-        return;
-      }
-
-      if (x.json.error) {
-        if (s) {
-          s.textContent = String(x.json.error) + (x.json.detail ? ' ' + x.json.detail : '');
-        }
-        renderScanChoices([]);
-        return;
-      }
-
-      renderScanChoices(x.json.aps || []);
-    }
-
-    async function refreshProfiles() {
-      var b = document.getElementById('profiles');
-      try {
-        var x = await req('/profiles');
-        if (!x.ok || !x.json || !Array.isArray(x.json.profiles)) throw new Error('profiles');
-        b.replaceChildren();
-        x.json.profiles.forEach(function(profile) {
-          var tr = document.createElement('tr');
-          var name = '';
-          try { name = decodeURIComponent(profile.ssid_pct || ''); } catch (e) { name = profile.ssid_pct || ''; }
-          [profile.id + 1, name, profile.mode, profile.selected ? 'Sim' : 'Não'].forEach(function(value) {
-            var cell = document.createElement('td');
-            cell.textContent = value;
-            tr.appendChild(cell);
-          });
-          var action = document.createElement('td');
-          var del = document.createElement('button');
-          del.type = 'button';
-          del.textContent = 'Apagar';
-          del.onclick = function() { deleteProfile(profile.id, name); };
-          action.appendChild(del);
-          tr.appendChild(action);
-          b.appendChild(tr);
-        });
-      } catch (e) { setMsg('Não foi possível consultar as redes salvas.'); }
-    }
-
-    async function deleteProfile(id, ssid) {
-      if (!confirm('Apagar a rede ' + ssid + ' da memória do JrBot?')) return;
-      try {
-        var x = await req('/profiles?id=' + encodeURIComponent(id), { method: 'DELETE' });
-        if (!x.ok || !x.json || x.json.result !== 'ok') {
-          setMsg('Não foi possível apagar a rede. Tente novamente.');
-          return;
-        }
-        await refreshProfiles();
-        setMsg('Rede removida da memória.', '#0a0');
-      } catch (e) {
-        setMsg('Não foi possível apagar a rede. Verifique a conexão com o robô.');
-      }
-    }
-
-    async function provSave(form) {
-      setConnectBtn('busy');
-      try {
-        var response = await fetch('/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(new FormData(form))
-        });
-        if (response.ok) {
-          setMsg('Rede salva. O JrBot vai reiniciar e tentar conectar.', '#0a0');
-          setConnectBtn('ok');
-          document.getElementById('prov_submit').disabled = true;
-        } else {
-          setMsg('Não foi possível salvar. Confira a rede e a senha e tente novamente.', '#c00');
-          setConnectBtn('retry');
-          document.getElementById('prov_password').focus();
-        }
-      } catch (e) {
-        setConnectBtn('retry');
-        setMsg('A comunicação foi interrompida. Reconecte ao Wi-Fi do robô e abra http://192.168.4.1 para tentar novamente.', '#c00');
-      }
-    }
-
-    var pf = document.getElementById('prov_form');
-    if (pf) {
-      pf.addEventListener('submit', function(e) {
-        e.preventDefault();
-        setMsg('');
-        provSave(pf).catch(function() {
-          setMsg('Não foi possível salvar.', '#c00');
-        });
-      });
-    }
-
-    var si = document.getElementById('ssid_input');
-    if (si) {
-      si.addEventListener('input', function() {
-        selectSsid(si.value || '');
-      });
-    }
-
-    (function() {
-      var inp = document.getElementById('prov_password');
-      var btn = document.getElementById('pwd_toggle');
-      var eye;
-      var eyeOff;
-
-      if (!inp || !btn) {
-        return;
-      }
-
-      eye = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-      eyeOff = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1 4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-
-      btn.innerHTML = eye;
-      btn.addEventListener('click', function() {
-        if (inp.type === 'password') {
-          inp.type = 'text';
-          btn.innerHTML = eyeOff;
-          btn.setAttribute('aria-label', 'Ocultar senha');
-          btn.title = 'Ocultar senha';
-        } else {
-          inp.type = 'password';
-          btn.innerHTML = eye;
-          btn.setAttribute('aria-label', 'Mostrar senha');
-          btn.title = 'Mostrar senha';
-        }
-      });
-    })();
-
-    refreshScanChoices();
-    refreshProfiles();
+    const form=document.getElementById('wifi-form');
+    const ssid=document.getElementById('ssid');
+    const pass=document.getElementById('pass');
+    const submit=document.getElementById('submit');
+    const feedback=document.getElementById('feedback');
+    const scanButton=document.getElementById('scan-button');
+    const networks=document.getElementById('networks');
+    const scanStatus=document.getElementById('scan-status');
+    function message(text,kind){feedback.textContent=text;feedback.className='feedback show'+(kind?' '+kind:'')}
+    function busy(active){submit.disabled=active;scanButton.disabled=active;submit.textContent=active?'Testando conexão...':'Testar conexão e salvar'}
+    async function request(url,options){const response=await fetch(url,options);let data={};try{data=await response.json()}catch(e){}return{ok:response.ok,data}}
+    function selectNetwork(name,button,open){if(ssid.value!==name)pass.value='';ssid.value=name;networks.querySelectorAll('button').forEach(item=>item.classList.remove('selected'));button.classList.add('selected');document.getElementById('security-hint').textContent=open?'Esta rede é aberta; deixe a senha vazia.':'Digite a senha da rede '+name+'.';pass.focus()}
+    async function scan(){scanButton.disabled=true;scanStatus.textContent='Buscando redes próximas...';try{const result=await request('/scan');if(!result.ok)throw Error('scan');networks.replaceChildren();const seen=new Set();for(const ap of result.data.aps||[]){if(!ap.ssid||seen.has(ap.ssid))continue;seen.add(ap.ssid);const button=document.createElement('button');button.type='button';button.className='network';const title=document.createElement('strong');title.textContent=ap.ssid;const detail=document.createElement('small');detail.textContent=(ap.open?'Aberta':'Protegida')+' · '+ap.rssi+' dBm';button.append(title,detail);button.onclick=()=>selectNetwork(ap.ssid,button,ap.open);networks.append(button)}scanStatus.textContent=seen.size?seen.size+' rede(s) encontrada(s).':'Nenhuma rede encontrada. Digite o nome manualmente.'}catch(e){scanStatus.textContent='Busca indisponível. Digite o nome da rede manualmente.'}finally{scanButton.disabled=false}}
+    function testMessage(state){switch(state){case'bad_password':return['Senha errada. Confira e tente novamente. A rede não foi salva.','error'];case'no_network':return['Rede não encontrada. Confira o nome e tente novamente. Nada foi salvo.','error'];case'no_ip':return['A senha foi aceita, mas a rede não forneceu IP. Nada foi salvo.','error'];case'timeout':return['O teste demorou demais. Verifique a rede e tente novamente. Nada foi salvo.','error'];case'save_failed':return['A conexão funcionou, mas não foi possível salvar a rede. Tente novamente.','error'];default:return['Não foi possível conectar. Confira a rede e tente novamente. Nada foi salvo.','error']}}
+    async function monitor(){for(let attempt=0;attempt<36;attempt++){await new Promise(resolve=>setTimeout(resolve,1000));try{const result=await request('/test/status',{cache:'no-store'});if(!result.ok)continue;const state=result.data.state;if(state==='testing')continue;if(state==='saved'){message('Conexão testada! Rede salva. O JrBot vai reiniciar. Depois, volte seu celular ao Wi-Fi de casa e abra https://jrbot.local'+(result.data.ip?' (IP: '+result.data.ip+')':''),'ok');return}const info=testMessage(state);message(info[0],info[1]);busy(false);pass.focus();return}catch(e){message('Aguardando o retorno da rede JrBot-Setup para concluir o teste...')}}message('Não foi possível consultar o resultado. Reconecte-se ao JrBot-Setup e abra esta página novamente.','error');busy(false)}
+    form.onsubmit=async event=>{event.preventDefault();if(!ssid.value.trim()){ssid.focus();return}if(pass.value&&pass.value.length<8){message('A senha deve ter pelo menos 8 caracteres.','error');pass.focus();return}busy(true);message('Testando a senha e aguardando um endereço IP...');try{const result=await request('/test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(form))});if(!result.ok){message(result.data.state==='invalid'?'Confira o nome e a senha da rede.':'Não foi possível iniciar o teste. Tente novamente.','error');busy(false);return}await monitor()}catch(e){message('A comunicação foi interrompida. Verificando o resultado do teste...');await monitor()}};
+    document.getElementById('toggle').onclick=function(){const visible=pass.type==='password';pass.type=visible?'text':'password';this.textContent=visible?'Ocultar':'Mostrar';this.setAttribute('aria-label',visible?'Ocultar senha':'Mostrar senha')};
+    scanButton.onclick=scan;
+    async function refreshProfiles(){const list=document.getElementById('profiles');try{const result=await request('/profiles',{cache:'no-store'});if(!result.ok||!Array.isArray(result.data.profiles))throw Error('profiles');list.replaceChildren();for(const profile of result.data.profiles){let name;try{name=decodeURIComponent(profile.ssid_pct||'')}catch(e){name=profile.ssid_pct||''}const row=document.createElement('div');row.className='saved-item';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=name;const details=document.createElement('p');details.textContent=profile.mode+(profile.selected?' · Rede selecionada':'');info.append(title,details);const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Apagar';del.onclick=()=>deleteProfile(profile.id,name);row.append(info,del);list.append(row)}if(!result.data.profiles.length){const empty=document.createElement('p');empty.className='muted small';empty.textContent='Nenhuma rede salva.';list.append(empty)}}catch(e){list.textContent='Não foi possível consultar as redes salvas.'}}
+    async function deleteProfile(id,name){if(!confirm('Apagar a rede '+name+' da memória do JrBot?'))return;try{const result=await request('/profiles?id='+encodeURIComponent(id),{method:'DELETE'});if(!result.ok)throw Error('delete');await refreshProfiles();message('Rede '+name+' apagada.','ok')}catch(e){message('Não foi possível apagar a rede. Tente novamente.','error')}}
+    document.getElementById('refresh-profiles').onclick=refreshProfiles;
+    scan();refreshProfiles();
   </script>
 </body>
 </html>

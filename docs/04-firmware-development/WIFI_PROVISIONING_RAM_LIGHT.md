@@ -3,7 +3,7 @@
 Branch: `test/develop_wifi_ram_light_provisioning`. A base é
 `test/develop_wifi_ram_light` com firmware `_04`. O fluxo SoftAP/HTTP foi
 adaptado do experimento `test/esp-wifi-provisioning` (commit `2593892`).
-Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_05`.
+Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_06`.
 Os componentes ADF do exemplo isolado não são ligados ao firmware do robô:
 o JrBot mantém seu gerenciador de Wi-Fi, seus perfis NVS e sua configuração
 de memória.
@@ -18,11 +18,14 @@ de memória.
 3. Conecte o celular à rede aberta do JrBot, sem senha. O celular deve
    detectar o portal cativo e oferecer a página de configuração. Se não abrir,
    acesse `http://192.168.4.1` no navegador. Escolha uma rede de 2,4 GHz na
-   lista ou digite o SSID, informe a senha da rede e salve. Redes abertas
-   podem deixar a senha vazia. A lista pode ser atualizada manualmente.
-4. Após salvar, o JrBot reinicia e tenta conectar. Se não conseguir obter
-   IP em cerca de 30 segundos, volta a oferecer a rede de configuração
-   para corrigir as credenciais.
+   lista ou digite o SSID, informe a senha e toque em **Testar conexão e
+   salvar**. Redes abertas podem deixar a senha vazia.
+4. O JrBot testa a autenticação e espera obter IP antes de gravar o perfil.
+   Senha incorreta, rede não encontrada ou falta de IP deixam a configuração
+   anterior intacta e mantêm a rede de configuração aberta para tentar de novo.
+   No sucesso, a tela mostra o IP, o JrBot salva a rede e reinicia após cerca
+   de 10 segundos. Reconecte o celular à rede de casa e abra
+   `https://jrbot.local`.
 
 No painel USB, **Consultar redes salvas** seleciona automaticamente a única
 rede da lista. **Excluir rede salva** também aceita a rede selecionada: o
@@ -38,12 +41,13 @@ servidor DNS responde com o IP do JrBot e as sondas HTTP do celular levam à
 página. A abertura automática depende do sistema operacional e de como ele
 faz a detecção; o IP manual continua disponível. Em `_PROV_05`, o arquivo
 HTML de provisionamento do branch `test/esp-wifi-provisioning` foi incorporado
-e adaptado às rotas e aos perfis do firmware RAM-light. A tela mostra as redes
-próximas e salvas, permite escolher o SSID, exibir a senha digitada e apagar
-uma rede salva. O experimento original tem prioridades e habilitação de até
-oito redes; o firmware integrado mantém o limite de quatro perfis e não usa
-prioridades. A busca é feita sob demanda; o modo AP+STA existe apenas durante
-o provisionamento. Se a busca falhar, o SSID pode ser digitado manualmente.
+e adaptado às rotas e aos perfis do firmware RAM-light. Em `_PROV_06`, a tela
+recebeu as cores do painel JrBot e uma sequência explícita: localizar rede,
+inserir senha, testar e salvar, consultar redes salvas. O experimento original
+tem prioridades e habilitação de até oito redes; o firmware integrado mantém
+o limite de quatro perfis e não usa prioridades. A busca é feita sob demanda;
+o modo AP+STA existe apenas durante o provisionamento. Se a busca falhar,
+o SSID pode ser digitado manualmente.
 Como o AP é aberto, pessoas próximas podem acessar a página durante o
 provisionamento; encerre esse modo após configurar a rede.
 
@@ -52,11 +56,11 @@ provisionamento; encerre esse modo após configurar a rede.
 Com ESP-IDF 5.5.5 e o mesmo `sdkconfig.develop_wifi_ram_light`, os builds
 locais com o inventário de RAM incorporado produziram:
 
-| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` | `_PROV_03` | `_PROV_04` | `_PROV_05` |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| DRAM | 61.376 B | 61.496 B | 61.520 B | 61.520 B | 61.520 B | 61.520 B |
-| IRAM | 119.808 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B |
-| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B | 2.550.960 B | 2.557.712 B | 2.565.568 B |
+| Recurso reservado no ELF | `_04` | `_PROV_01` | `_PROV_02` | `_PROV_03` | `_PROV_04` | `_PROV_05` | `_PROV_06` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| DRAM | 61.376 B | 61.496 B | 61.520 B | 61.520 B | 61.520 B | 61.520 B | 61.568 B |
+| IRAM | 119.808 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B | 120.064 B |
+| Binário de aplicação na flash | 2.542.512 B | 2.549.440 B | 2.550.896 B | 2.550.960 B | 2.557.712 B | 2.565.568 B | 2.569.248 B |
 
 O portal cativo acrescentou 24 B de DRAM estática, 0 B de IRAM e 1.456 B
 de flash em relação a `_PROV_01`. O socket DNS usa RAM dinâmica somente
@@ -69,6 +73,8 @@ Em `_PROV_04`, a página incorporada e a busca sob demanda acrescentaram
 está aberta; isso precisa ser medido no aparelho.
 Em `_PROV_05`, a página original adaptada e a consulta dos perfis acrescentaram
 7.856 B de flash em relação a `_PROV_04`, sem alterar DRAM ou IRAM estática.
+Em `_PROV_06`, o teste antes da gravação e o novo layout acrescentaram 48 B
+de DRAM estática e 3.680 B de flash em relação a `_PROV_05`; a IRAM não mudou.
 
 Esse inventário mede memória estática. Não mede a alocação dinâmica do
 driver Wi-Fi e do servidor HTTP enquanto o AP está aberto. O AP não roda

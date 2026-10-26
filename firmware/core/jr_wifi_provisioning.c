@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,12 +7,14 @@
 #include <errno.h>
 #include "driver/gpio.h"
 #include "esp_attr.h"
+#include "esp_event.h"
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
 #include "freertos/FreeRTOS.h"
@@ -25,28 +28,54 @@
 #define JR_SETUP_BUTTON_MS 3000u
 #define JR_SETUP_FORM_MAX 512
 #define JR_SETUP_SCAN_LIMIT 16
+#define JR_SETUP_TEST_TIMEOUT_MS 20000u
+#define JR_SETUP_RESTART_DELAY_MS 10000u
+
+typedef enum {
+    JR_SETUP_TEST_IDLE,
+    JR_SETUP_TEST_CONNECTING,
+    JR_SETUP_TEST_GOT_IP,
+    JR_SETUP_TEST_SAVING,
+    JR_SETUP_TEST_SAVED,
+    JR_SETUP_TEST_BAD_PASSWORD,
+    JR_SETUP_TEST_NO_NETWORK,
+    JR_SETUP_TEST_NO_IP,
+    JR_SETUP_TEST_TIMEOUT,
+    JR_SETUP_TEST_FAILED,
+    JR_SETUP_TEST_SAVE_FAILED,
+} jr_setup_test_state_t;
+
+typedef struct {
+    char ssid[33];
+    char password[65];
+} jr_setup_candidate_t;
 
 static const char *TAG = "jrbot_wifi_setup";
 static RTC_NOINIT_ATTR uint32_t setup_request;
 static RTC_NOINIT_ATTR uint32_t setup_request_inverse;
 static esp_netif_t *setup_ap;
+static esp_netif_t *setup_sta;
 static httpd_handle_t setup_http;
+static esp_event_handler_instance_t setup_wifi_handler;
+static esp_event_handler_instance_t setup_ip_handler;
+static bool setup_wifi_handler_set;
+static bool setup_ip_handler_set;
 static int setup_dns_socket = -1;
 static uint32_t setup_dns_ip;
 static bool setup_running;
 static bool button_ready;
 static bool button_armed;
 static uint32_t button_down_ms;
+static portMUX_TYPE setup_test_lock = portMUX_INITIALIZER_UNLOCKED;
+static jr_setup_candidate_t *setup_candidate;
+static jr_setup_test_state_t setup_test_state;
+static uint32_t setup_test_started_ms;
+static uint32_t setup_restart_ms;
+static uint16_t setup_test_reason;
+static bool setup_test_linked;
+static bool setup_test_cleanup_busy;
+static char setup_test_ip[16];
 extern const char setup_page[] asm("_binary_jr_wifi_setup_html_start");
-
-static const char saved_page[] =
-    "<!doctype html><html lang=pt-br><meta charset=utf-8>"
-    "<meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<title>Wi-Fi salvo</title><h1>Wi-Fi salvo</h1>"
-    "<p>O JrBot vai reiniciar e tentar a rede informada."
-    " Se nao reiniciar, reinicie manualmente.</p>"
-    "<p>Se a senha estiver incorreta, a rede JrBot-Setup volta em cerca de 30 segundos.</p>"
-    "</html>";
 
 static void setup_memory(const char *stage) {
     ESP_LOGI(TAG, "JR_WIFI_SETUP_MEMORY stage=%s internal_free=%u internal_largest=%u psram_free=%u",
@@ -111,6 +140,132 @@ static bool parse_form(char *form, char *ssid, char *password) {
     return have_ssid && have_password && ssid[0];
 }
 
+static uint32_t setup_now_ms(void) {
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
+
+static bool setup_test_busy(void) {
+    portENTER_CRITICAL(&setup_test_lock);
+    bool busy = setup_candidate || setup_test_cleanup_busy ||
+                setup_test_state == JR_SETUP_TEST_SAVING ||
+                setup_test_state == JR_SETUP_TEST_SAVED;
+    portEXIT_CRITICAL(&setup_test_lock);
+    return busy;
+}
+
+static void setup_test_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
+    (void)arg;
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+        portENTER_CRITICAL(&setup_test_lock);
+        if (setup_test_state == JR_SETUP_TEST_CONNECTING) setup_test_linked = true;
+        portEXIT_CRITICAL(&setup_test_lock);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        const wifi_event_sta_disconnected_t *event = data;
+        portENTER_CRITICAL(&setup_test_lock);
+        if (setup_test_state == JR_SETUP_TEST_CONNECTING ||
+            setup_test_state == JR_SETUP_TEST_GOT_IP) {
+            setup_test_reason = event->reason;
+            if (event->reason == WIFI_REASON_AUTH_FAIL ||
+                event->reason == WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT ||
+                event->reason == WIFI_REASON_HANDSHAKE_TIMEOUT)
+                setup_test_state = JR_SETUP_TEST_BAD_PASSWORD;
+            else if (event->reason == WIFI_REASON_NO_AP_FOUND ||
+                     event->reason == WIFI_REASON_NO_AP_FOUND_W_COMPATIBLE_SECURITY ||
+                     event->reason == WIFI_REASON_NO_AP_FOUND_IN_AUTHMODE_THRESHOLD)
+                setup_test_state = JR_SETUP_TEST_NO_NETWORK;
+            else setup_test_state = JR_SETUP_TEST_FAILED;
+        }
+        portEXIT_CRITICAL(&setup_test_lock);
+    } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
+        const ip_event_got_ip_t *event = data;
+        char ip[16];
+        snprintf(ip, sizeof(ip), IPSTR, IP2STR(&event->ip_info.ip));
+        portENTER_CRITICAL(&setup_test_lock);
+        if (setup_test_state == JR_SETUP_TEST_CONNECTING) {
+            memcpy(setup_test_ip, ip, sizeof(ip));
+            setup_test_state = JR_SETUP_TEST_GOT_IP;
+        }
+        portEXIT_CRITICAL(&setup_test_lock);
+    }
+}
+
+static const char *setup_test_name(jr_setup_test_state_t state) {
+    switch (state) {
+    case JR_SETUP_TEST_CONNECTING:
+    case JR_SETUP_TEST_GOT_IP:
+    case JR_SETUP_TEST_SAVING: return "testing";
+    case JR_SETUP_TEST_SAVED: return "saved";
+    case JR_SETUP_TEST_BAD_PASSWORD: return "bad_password";
+    case JR_SETUP_TEST_NO_NETWORK: return "no_network";
+    case JR_SETUP_TEST_NO_IP: return "no_ip";
+    case JR_SETUP_TEST_TIMEOUT: return "timeout";
+    case JR_SETUP_TEST_SAVE_FAILED: return "save_failed";
+    case JR_SETUP_TEST_FAILED: return "failed";
+    default: return "idle";
+    }
+}
+
+static void setup_test_poll(void) {
+    jr_setup_candidate_t *candidate = NULL;
+    jr_setup_test_state_t state;
+    bool restart = false;
+    uint32_t now = setup_now_ms();
+    portENTER_CRITICAL(&setup_test_lock);
+    if (setup_test_state == JR_SETUP_TEST_CONNECTING &&
+        (uint32_t)(now - setup_test_started_ms) >= JR_SETUP_TEST_TIMEOUT_MS)
+        setup_test_state = setup_test_linked ? JR_SETUP_TEST_NO_IP : JR_SETUP_TEST_TIMEOUT;
+    if (setup_test_state == JR_SETUP_TEST_GOT_IP) {
+        setup_test_state = JR_SETUP_TEST_SAVING;
+        candidate = setup_candidate;
+        setup_candidate = NULL;
+    } else if (setup_test_state >= JR_SETUP_TEST_BAD_PASSWORD && setup_candidate) {
+        candidate = setup_candidate;
+        setup_candidate = NULL;
+        setup_test_cleanup_busy = true;
+    }
+    state = setup_test_state;
+    if (state == JR_SETUP_TEST_SAVED &&
+        (uint32_t)(now - setup_restart_ms) >= JR_SETUP_RESTART_DELAY_MS)
+        restart = true;
+    portEXIT_CRITICAL(&setup_test_lock);
+
+    if (state == JR_SETUP_TEST_SAVING && candidate) {
+        wifi_ap_record_t ap;
+        bool connected = esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
+        char result[160] = {0};
+        bool saved = connected && jr_wifi_configure(candidate->ssid, candidate->password,
+                                                     "jrbot", false, NULL, NULL, NULL,
+                                                     NULL, NULL, result, sizeof(result));
+        memset(candidate, 0, sizeof(*candidate));
+        free(candidate);
+        if (!saved) {
+            (void)esp_wifi_disconnect();
+            wifi_config_t empty = {0};
+            (void)esp_wifi_set_config(WIFI_IF_STA, &empty);
+        }
+        portENTER_CRITICAL(&setup_test_lock);
+        setup_test_state = saved ? JR_SETUP_TEST_SAVED :
+                           connected ? JR_SETUP_TEST_SAVE_FAILED : JR_SETUP_TEST_FAILED;
+        setup_restart_ms = now;
+        portEXIT_CRITICAL(&setup_test_lock);
+        ESP_LOGI(TAG, "JR_WIFI_SETUP_TEST result=%s ip=%s",
+                 saved ? "saved" : connected ? "save_failed" : "disconnected",
+                 saved ? setup_test_ip : "-");
+    } else if (candidate) {
+        ESP_LOGW(TAG, "JR_WIFI_SETUP_TEST result=%s reason=%u no_save=1",
+                 setup_test_name(state), (unsigned)setup_test_reason);
+        (void)esp_wifi_disconnect();
+        wifi_config_t empty = {0};
+        (void)esp_wifi_set_config(WIFI_IF_STA, &empty);
+        memset(candidate, 0, sizeof(*candidate));
+        free(candidate);
+        portENTER_CRITICAL(&setup_test_lock);
+        setup_test_cleanup_busy = false;
+        portEXIT_CRITICAL(&setup_test_lock);
+    }
+    if (restart) esp_restart();
+}
+
 static esp_err_t setup_index(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
@@ -137,6 +292,7 @@ static esp_err_t setup_scan_error(httpd_req_t *req, const char *message) {
 
 static esp_err_t setup_scan(httpd_req_t *req) {
     /* Scan only when the page asks for it; no timer or scan cache in RAM. */
+    if (setup_test_busy()) return setup_scan_error(req, "Teste de conexao em andamento");
     wifi_scan_config_t scan = {.show_hidden = false,
                                .scan_type = WIFI_SCAN_TYPE_ACTIVE,
                                .scan_time.active = {.min = 0, .max = 90}};
@@ -207,6 +363,7 @@ static esp_err_t setup_profiles(httpd_req_t *req) {
 }
 
 static esp_err_t setup_profile_delete(httpd_req_t *req) {
+    if (setup_test_busy()) return setup_scan_error(req, "Teste de conexao em andamento");
     char query[24], id_text[8], *end;
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
         httpd_query_key_value(query, "id", id_text, sizeof(id_text)) != ESP_OK ||
@@ -271,6 +428,7 @@ static size_t setup_dns_reply(uint8_t *packet, size_t length) {
 }
 
 void jr_wifi_provisioning_poll(void) {
+    if (setup_running) setup_test_poll();
     if (setup_dns_socket < 0) return;
     for (int i = 0; i < 4; i++) {
         uint8_t packet[512];
@@ -305,16 +463,36 @@ static void setup_dns_start(void) {
     setup_dns_socket = -1;
 }
 
-static void restart_after_save(void *arg) {
-    (void)arg;
-    vTaskDelay(pdMS_TO_TICKS(1800));
-    esp_restart();
-    vTaskDelete(NULL);
+static esp_err_t setup_test_status(httpd_req_t *req) {
+    jr_setup_test_state_t state;
+    uint16_t reason;
+    char ip[16];
+    portENTER_CRITICAL(&setup_test_lock);
+    state = setup_test_state;
+    if (state >= JR_SETUP_TEST_BAD_PASSWORD &&
+        (setup_candidate || setup_test_cleanup_busy))
+        state = JR_SETUP_TEST_CONNECTING;
+    reason = setup_test_reason;
+    memcpy(ip, setup_test_ip, sizeof(ip));
+    portEXIT_CRITICAL(&setup_test_lock);
+    char json[128];
+    snprintf(json, sizeof(json), "{\"state\":\"%s\",\"reason\":%u,\"ip\":\"%s\"}",
+             setup_test_name(state), (unsigned)reason, ip);
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, json);
 }
 
-static esp_err_t setup_save(httpd_req_t *req) {
+static esp_err_t setup_test_start(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    if (setup_test_busy()) {
+        httpd_resp_set_status(req, "409 Conflict");
+        return httpd_resp_sendstr(req, "{\"state\":\"busy\"}");
+    }
     if (req->content_len <= 0 || req->content_len > JR_SETUP_FORM_MAX) {
-        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Formulario invalido");
+        httpd_resp_set_status(req, "400 Bad Request");
+        return httpd_resp_sendstr(req, "{\"state\":\"invalid\"}");
     }
     char form[JR_SETUP_FORM_MAX + 1];
     size_t used = 0;
@@ -322,30 +500,63 @@ static esp_err_t setup_save(httpd_req_t *req) {
         int count = httpd_req_recv(req, form + used, (size_t)req->content_len - used);
         if (count <= 0) {
             memset(form, 0, sizeof(form));
-            return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Envio incompleto");
+            httpd_resp_set_status(req, "400 Bad Request");
+            return httpd_resp_sendstr(req, "{\"state\":\"invalid\"}");
         }
         used += (size_t)count;
     }
     form[used] = 0;
-    char ssid[33] = {0}, password[65] = {0}, result[160] = {0};
+    char ssid[33] = {0}, password[65] = {0};
     bool valid = parse_form(form, ssid, password);
-    bool saved = valid && jr_wifi_configure(ssid, password, "jrbot", false,
-                                            NULL, NULL, NULL, NULL, NULL,
-                                            result, sizeof(result));
+    size_t pass_len = strlen(password);
+    if (pass_len && pass_len < 8) valid = false;
+    if (pass_len == 64)
+        for (size_t i = 0; i < pass_len; i++)
+            if (!isxdigit((unsigned char)password[i])) valid = false;
+    if (!valid) {
+        memset(password, 0, sizeof(password));
+        memset(form, 0, sizeof(form));
+        httpd_resp_set_status(req, "400 Bad Request");
+        return httpd_resp_sendstr(req, "{\"state\":\"invalid\"}");
+    }
+    jr_setup_candidate_t *candidate = heap_caps_calloc(1, sizeof(*candidate),
+                                                       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!candidate) {
+        memset(password, 0, sizeof(password));
+        memset(form, 0, sizeof(form));
+        return setup_scan_error(req, "Memoria insuficiente");
+    }
+    memcpy(candidate->ssid, ssid, strlen(ssid) + 1);
+    memcpy(candidate->password, password, pass_len + 1);
     memset(password, 0, sizeof(password));
     memset(form, 0, sizeof(form));
-    if (!saved) {
-        ESP_LOGW(TAG, "JR_WIFI_SETUP_SAVE result=%s", valid ? result : "invalid_form");
-        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
-                                   "Rede ou senha invalida. Volte e tente novamente.");
+
+    portENTER_CRITICAL(&setup_test_lock);
+    setup_candidate = candidate;
+    setup_test_state = JR_SETUP_TEST_CONNECTING;
+    setup_test_started_ms = setup_now_ms();
+    setup_test_reason = 0;
+    setup_test_linked = false;
+    setup_test_ip[0] = 0;
+    portEXIT_CRITICAL(&setup_test_lock);
+
+    wifi_config_t config = {0};
+    memcpy(config.sta.ssid, candidate->ssid, strlen(candidate->ssid));
+    memcpy(config.sta.password, candidate->password, strlen(candidate->password));
+    config.sta.threshold.authmode = candidate->password[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &config);
+    if (err == ESP_OK) err = esp_wifi_connect();
+    memset(&config, 0, sizeof(config));
+    if (err != ESP_OK) {
+        portENTER_CRITICAL(&setup_test_lock);
+        setup_test_state = JR_SETUP_TEST_FAILED;
+        portEXIT_CRITICAL(&setup_test_lock);
+        ESP_LOGW(TAG, "JR_WIFI_SETUP_TEST start=%s no_save=1", esp_err_to_name(err));
+        return setup_scan_error(req, "Nao foi possivel iniciar o teste");
     }
-    ESP_LOGI(TAG, "JR_WIFI_SETUP_SAVE result=ok restart=scheduled");
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    esp_err_t err = httpd_resp_sendstr(req, saved_page);
-    if (xTaskCreate(restart_after_save, "jr_wifi_restart", 2048, NULL, 5, NULL) != pdPASS)
-        ESP_LOGE(TAG, "JR_WIFI_SETUP_SAVE restart_task=failed; reinicie manualmente");
-    return err;
+    ESP_LOGI(TAG, "JR_WIFI_SETUP_TEST state=connecting ssid=%s", ssid);
+    httpd_resp_set_status(req, "202 Accepted");
+    return httpd_resp_sendstr(req, "{\"state\":\"testing\"}");
 }
 
 esp_err_t jr_wifi_provisioning_start(void) {
@@ -374,11 +585,29 @@ esp_err_t jr_wifi_provisioning_start(void) {
     err = esp_netif_set_dns_info(setup_ap, ESP_NETIF_DNS_MAIN, &dns);
     if (err != ESP_OK) goto fail;
 
+    esp_netif_config_t sta_netif_config = ESP_NETIF_DEFAULT_WIFI_STA();
+    setup_sta = esp_netif_new(&sta_netif_config);
+    if (!setup_sta) { err = ESP_ERR_NO_MEM; goto fail; }
+    err = esp_netif_attach_wifi_station(setup_sta);
+    if (err != ESP_OK) goto fail;
+    err = esp_wifi_set_default_wifi_sta_handlers();
+    if (err != ESP_OK) goto fail;
+    err = esp_netif_set_hostname(setup_sta, "jrbot");
+    if (err != ESP_OK) goto fail;
+
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&init);
     if (err != ESP_OK) goto fail;
     err = esp_wifi_set_storage(WIFI_STORAGE_RAM);
     if (err != ESP_OK) goto fail_driver;
+    err = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                               setup_test_event, NULL, &setup_wifi_handler);
+    if (err != ESP_OK) goto fail_driver;
+    setup_wifi_handler_set = true;
+    err = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                               setup_test_event, NULL, &setup_ip_handler);
+    if (err != ESP_OK) goto fail_driver;
+    setup_ip_handler_set = true;
 
     uint8_t mac[6] = {0};
     (void)esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
@@ -389,26 +618,31 @@ esp_err_t jr_wifi_provisioning_start(void) {
     config.ap.authmode = WIFI_AUTH_OPEN;
     config.ap.max_connection = 2;
     config.ap.channel = 1;
-    /* The station interface is used only to scan while the setup AP stays up. */
+    /* AP remains available while STA scans and validates the selected network. */
     err = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (err != ESP_OK) goto fail_driver;
     err = esp_wifi_set_config(WIFI_IF_AP, &config);
+    if (err != ESP_OK) goto fail_driver;
+    wifi_config_t empty_sta = {0};
+    err = esp_wifi_set_config(WIFI_IF_STA, &empty_sta);
     if (err != ESP_OK) goto fail_driver;
     err = esp_wifi_start();
     if (err != ESP_OK) goto fail_driver;
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 5;
+    http_config.max_uri_handlers = 6;
     http_config.lru_purge_enable = true;
     err = httpd_start(&setup_http, &http_config);
     if (err != ESP_OK) goto fail_started;
     httpd_uri_t index = {.uri = "/", .method = HTTP_GET, .handler = setup_index};
-    httpd_uri_t save = {.uri = "/save", .method = HTTP_POST, .handler = setup_save};
+    httpd_uri_t test_start = {.uri = "/test", .method = HTTP_POST, .handler = setup_test_start};
+    httpd_uri_t test_status = {.uri = "/test/status", .method = HTTP_GET, .handler = setup_test_status};
     httpd_uri_t scan_route = {.uri = "/scan", .method = HTTP_GET, .handler = setup_scan};
     httpd_uri_t profiles = {.uri = "/profiles", .method = HTTP_GET, .handler = setup_profiles};
     httpd_uri_t profile_delete = {.uri = "/profiles", .method = HTTP_DELETE, .handler = setup_profile_delete};
     err = httpd_register_uri_handler(setup_http, &index);
-    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &save);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &test_start);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &test_status);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &scan_route);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &profiles);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &profile_delete);
@@ -429,8 +663,17 @@ esp_err_t jr_wifi_provisioning_start(void) {
 fail_started:
     esp_wifi_stop();
 fail_driver:
+    if (setup_ip_handler_set) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, setup_ip_handler);
+        setup_ip_handler_set = false;
+    }
+    if (setup_wifi_handler_set) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, setup_wifi_handler);
+        setup_wifi_handler_set = false;
+    }
     esp_wifi_deinit();
 fail:
+    if (setup_sta) { esp_netif_destroy_default_wifi(setup_sta); setup_sta = NULL; }
     if (setup_ap) { esp_netif_destroy_default_wifi(setup_ap); setup_ap = NULL; }
     ESP_LOGE(TAG, "JR_WIFI_SETUP_ERROR result=%s", esp_err_to_name(err));
     setup_memory("error");
