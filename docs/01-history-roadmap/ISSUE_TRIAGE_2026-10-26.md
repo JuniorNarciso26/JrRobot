@@ -14,6 +14,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - **#9 licença e propriedade intelectual: closed/completed** em 26/10/2026 pela definição/adopção pública da licença MIT no repositório.
 - **#17 Epic de Roadmap: closed/completed** em 26/10/2026, por consolidação do planejamento V1/V2/V3 em ROADMAP.md; #15 e #16 continuam abertas independentemente.
 - **#28 JrBot Remote Expert / PIPE 2026: closed/not_planned** em 26/10/2026, projeto cancelado por decisão explícita do responsável.
+- **#53 JrSkill Developer Challenge: closed/not_planned** em 26/10/2026. O núcleo JrSkill está na `main` e foi validado internamente; convite/piloto de colaboradores externos encerrado sem comprovante de participação externa.
 
 ## Prioridade A — saneamento de histórico / correção
 
@@ -36,7 +37,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 | [JrRobot #16](https://github.com/JuniorNarciso26/JrRobot/issues/16) | V3 Runtime API |
 | [JrRobot #11](https://github.com/JuniorNarciso26/JrRobot/issues/11) | JrBrain via LLM API |
 | [JrRobot #12](https://github.com/JuniorNarciso26/JrRobot/issues/12) | JrTalk local |
-| [JrRobot #53](https://github.com/JuniorNarciso26/JrRobot/issues/53) | Piloto externo JrSkill |
+| [JrRobot #53](https://github.com/JuniorNarciso26/JrRobot/issues/53) | **ENCERRADA / not_planned em 26/10/2026:** integração JrSkill já concluída em `main`; rodada externa de novos colaboradores cancelada/arquivada nesta Issue por decisão do responsável, sem alegar que ocorreu. [Encerramento](https://github.com/JuniorNarciso26/JrRobot/issues/53#issuecomment-6425575294) |
 
 ## Prioridade C — planejamento, estratégia e melhorias futuras
 
