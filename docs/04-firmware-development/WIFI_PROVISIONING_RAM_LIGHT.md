@@ -1,17 +1,18 @@
-# Provisionamento de Wi-Fi na branch RAM-light
+# Provisionamento de Wi-Fi do JrBot V1.8.1S
 
-Branch: `test/develop_wifi_ram_light_provisioning`. A base é
-`test/develop_wifi_ram_light` com firmware `_04`. O fluxo SoftAP/HTTP foi
-adaptado do experimento `test/esp-wifi-provisioning` (commit `2593892`).
-Versão atual: `JrBot_V1S_WIFI_RAM_LITE_PROV_06`.
+Versão atual em `main`: `JrBot_V1.8.1S`. O desenvolvimento passou pelo branch
+`test/develop_wifi_ram_light_provisioning`, baseado em
+`test/develop_wifi_ram_light` e no experimento `test/esp-wifi-provisioning`
+(commit `2593892`). A tabela de medição abaixo preserva as versões de teste.
 Os componentes ADF do exemplo isolado não são ligados ao firmware do robô:
 o JrBot mantém seu gerenciador de Wi-Fi, seus perfis NVS e sua configuração
 de memória.
 
 ## Uso no aparelho
 
-1. Sem rede Wi-Fi salva, ligue ou reinicie o JrBot. Ele abre a rede
-   `JrBot-Setup-XXXXXX`, onde os seis últimos caracteres vêm do MAC.
+1. Sem rede Wi-Fi salva, ou se a rede selecionada não responder por cerca de
+   30 segundos após ligar, o JrBot abre `JrBot-Setup-XXXXXX`, onde os seis
+   últimos caracteres vêm do MAC. As redes salvas não são apagadas.
 2. Para trocar de rede com uma configuração já salva, segure o botão BOOT
    (GPIO0) por três segundos enquanto o robô está ligado e ocioso; então
    solte o botão. Ele reinicia no modo de configuração sem apagar a rede anterior.
@@ -25,7 +26,10 @@ de memória.
    anterior intacta e mantêm a rede de configuração aberta para tentar de novo.
    No sucesso, a tela mostra o IP, o JrBot salva a rede e reinicia após cerca
    de 10 segundos. Reconecte o celular à rede de casa e abra
-   `https://jrbot.local`.
+   `https://jrbot.local` na mesma rede local. O mDNS precisa de multicast
+   permitido no roteador e no cliente; o IP atribuído continua disponível
+   para diagnóstico. Sem material HTTPS local, teste por HTTP e não considere
+   a Live validada.
 
 No painel USB, **Consultar redes salvas** seleciona automaticamente a única
 rede da lista. **Excluir rede salva** também aceita a rede selecionada: o
@@ -34,6 +38,8 @@ até reiniciar. No próximo boot, `JrBot-Setup-XXXXXX` fica disponível para
 configurar outra rede. As demais redes salvas permanecem no catálogo.
 
 O formulário usa o registro e os perfis Wi-Fi já existentes no JrBot.
+No modo normal, o firmware anuncia sempre `jrbot.local`, independentemente
+do nome DHCP configurado, e repete a inicialização mDNS após falhas.
 O modo de configuração usa AP e um servidor HTTP pequeno. O portal normal,
 HTTPS e a Live não são iniciados nesse modo. Depois do reinício com Wi-Fi
 conectado, o AP de configuração não fica ativo. No modo de configuração, o
@@ -75,6 +81,10 @@ Em `_PROV_05`, a página original adaptada e a consulta dos perfis acrescentaram
 7.856 B de flash em relação a `_PROV_04`, sem alterar DRAM ou IRAM estática.
 Em `_PROV_06`, o teste antes da gravação e o novo layout acrescentaram 48 B
 de DRAM estática e 3.680 B de flash em relação a `_PROV_05`; a IRAM não mudou.
+O build local de `JrBot_V1.8.1S` com ESP-IDF 5.5.5 e o mesmo perfil mediu
+61.576 B de DRAM estática, 120.064 B de IRAM e 2.569.376 B no binário com
+inventário incorporado. São mais 8 B de DRAM e 128 B de flash que `_PROV_06`
+pela recuperação mDNS e identificação da versão.
 
 Esse inventário mede memória estática. Não mede a alocação dinâmica do
 driver Wi-Fi e do servidor HTTP enquanto o AP está aberto. O AP não roda

@@ -175,8 +175,30 @@ The expanded creator/developer platform remains an ongoing area of development.
 
 [Full Colosseum development diary — Kickoff and Day 1–9](../06-colosseum-history/HACKATHON_DEVLOG.md) · [Day 8 physical and transaction evidence](../06-colosseum-history/HACKATHON_DEVLOG/day8.md) · [Day 9 milestone summary](../06-colosseum-history/HACKATHON_DEVLOG/day9.md)
 
+## October 26, 2026 — JrBot V1.8.1S: Wi-Fi setup and local name recovery
+
+This update follows the V1.8S JrSkill integration on `main`. The firmware ID is
+`JrBot_V1.8.1S`.
+
+- Reduced the Wi-Fi/WebRTC memory footprint in the RAM-light development line.
+- Added an open `JrBot-Setup-XXXXXX` access point and a phone setup page matching
+  the JrBot panel. It opens after about 30 seconds without a startup Wi-Fi
+  connection or on a three-second BOOT-button request.
+- Added network scanning, saved-network management and connection testing. A
+  candidate is saved only after authentication and an assigned IP; failed
+  password and network attempts leave saved credentials unchanged.
+- Kept `jrbot.local` as the mDNS name and added a retry after an mDNS
+  initialization failure. Access still requires a connected local network
+  that permits multicast DNS and, for HTTPS, valid local certificate material.
+- Updated the `main` installer to use the RAM-light build configuration and a
+  build directory isolated by the firmware version.
+
+The firmware build and software checks are recorded in [Testing](../04-firmware-development/TESTING.md).
+A physical acceptance run for this exact version is still pending; the earlier
+HW04 and Devnet records remain evidence for their own tested builds.
+
 ## Where this history stands
 
-The next defined product version is **JrBot V1.8S**, bringing the existing JrBot abilities and JrSkill Network together. As documented here, the integrated release is still being prepared on `V1s-00`; promotion to `main` and consolidated-release testing must be recorded separately.
+The current source version on `main` is **JrBot V1.8.1S**. It builds on the V1.8S JrSkill integration. Consolidated physical testing of the exact V1.8.1S firmware must still be recorded separately.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.

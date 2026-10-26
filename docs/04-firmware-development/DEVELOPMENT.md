@@ -1,6 +1,6 @@
 # JrBot — Development, Installation and First Run
 
-This is the operational guide for the firmware currently recorded on **`V1s-00`**. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md).
+This is the operational guide for **JrBot V1.8.1S on `main`**. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md).
 
 ## 1. Before you begin
 
@@ -20,19 +20,20 @@ Keep the panel Python environment separate from ESP-IDF: `PAINEL.bat` uses `%LOC
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Latest promoted stable baseline: **JrBot_V1.7.04** |
-| `V1s-00` | **V1.8S development completed**, undergoing documentation and release checks |
+| `main` | Current source version: **JrBot_V1.8.1S** |
+| `V1s-00` | Historical V1.8S development line |
+| `test/develop_wifi_ram_light_provisioning` | Wi-Fi/RAM-light test line that preceded V1.8.1S |
 | `develop` | Integration baseline |
 | `v2` | Separate experimental local-voice work |
 | `v1` | Historical reference |
 
 The Windows installer **consults available branches and synchronizes the selected repository**, including when invoked with an action such as `build` or `flash`. Review your work before running it: it rejects ordinary local modifications rather than overwriting them.
 
-To prepare the integration branch manually:
+To prepare the current release branch manually:
 
 ```bash
-git switch V1s-00
-git pull --ff-only origin V1s-00
+git switch main
+git pull --ff-only origin main
 ```
 
 ## 3. Build, flash and start the development panel
@@ -63,18 +64,11 @@ The project targets `esp32s3`; CMake uses `firmware/version.txt`, the HW04 confi
 
 ## 4. Configure Wi-Fi on the robot
 
-The ESP32-S3 runs as a **Wi-Fi station**, not a guaranteed standalone access point. A fresh board without valid saved credentials cannot be expected to serve its browser interface.
+When startup has no working Wi-Fi connection for about 30 seconds, the ESP32-S3 opens the password-free `JrBot-Setup-XXXXXX` network. Connect a phone, use the captive page or open `http://192.168.4.1`, select a 2.4 GHz network and enter its password. The device checks authentication and waits for an IP **before saving**. An incorrect password leaves existing saved networks intact. After success it restarts; reconnect the phone to the home network and open `https://jrbot.local` when HTTPS material is installed. The name is advertised through mDNS and requires both devices on a local network that permits multicast DNS. The assigned IP remains a fallback.
 
-**Recommended procedure from the existing panel:**
+To enter setup while a saved network exists, hold BOOT for three seconds while the robot is idle and release it. If it connects once and later loses Wi-Fi, it keeps trying the selected network; it does not automatically switch to another saved profile or open setup until a new boot/BOOT request. See [Wi-Fi Provisioning](WIFI_PROVISIONING_RAM_LIGHT.md).
 
-1. Connect the board by USB and open `PAINEL.bat`.
-2. Select the **USB/Serial** connection and the device port found by the computer.
-3. Enter the SSID, password, hostname and **DHCP** (default) or a validated static IPv4 configuration in the panel's Wi-Fi form.
-4. Save. The panel sends the firmware's **`wifi_config_pct`** command through Serial.
-5. Confirm `JR_WIFI_SALVO pending_restart=1`, then **restart the ESP32-S3**.
-6. Use the device's `status` response to confirm network connection and the assigned IP. Access the robot's own portal at `http://<device-ip>/` on the local network.
-
-The firmware stores a versioned Wi-Fi record in **NVS**. The Serial-only `wifi_clear` command removes its saved connection and likewise requires a restart.
+The USB panel remains an alternative: select the serial port, configure Wi-Fi and DHCP or a validated static IPv4 address, save through `wifi_config_pct`, then restart. The firmware stores its versioned record and up to four profiles in **NVS**.
 
 An alternative configuration source is `firmware/main/wifi_config.local.h`, copied locally from [the example](../../firmware/main/wifi_config.local.h.example) **before compiling**. Never commit SSIDs, passwords or private keys. The example refers to `CONFIGURAR_WIFI.bat`, but **that script is not tracked in this branch**; do not assume it exists.
 
@@ -86,7 +80,7 @@ In `firmware/module_portal/jr_portal.c`, HTTPS is compiled/started only when the
 
 - If this local material is absent, the log reports **`JR_HTTPS_DISABLED`** and **WebRTC cannot be assumed available**, even though the firmware builds.
 - If properly configured and started, look for **`JR_HTTPS_READY`** and the `/webrtc-audio` route on HTTPS.
-- The log mentions `CONFIGURAR_HTTPS_V1`, but **no corresponding configuration script is tracked in `V1s-00`**. The local certificate/key provisioning procedure is therefore an **open reproducibility gap**. Do not invent a setup command or commit secrets to the repository.
+- The local certificate/key provisioning procedure is not fully tracked in the repository. Do not commit secrets. A build without this material can be used for compilation checks, but it does not validate HTTPS or Live.
 - Browsers and wallet APIs may require a secure context and appropriate trust of the local HTTPS certificate.
 
 This section documents the **implemented condition**, not a claim that a clean checkout includes working HTTPS credentials. See [Architecture](ARCHITECTURE.md) for the resulting Live data paths.
@@ -114,7 +108,7 @@ Then verify each actual result using [Testing](TESTING.md):
 | `/webrtc-audio` over HTTPS | Both audio directions and video on the same local network |
 | JrSkill App on device | Authenticated Devnet wallet, licensed Skill and physically observed allowed action |
 
-The firmware reports **`JrBot_V1S_APP_03`** in `firmware/version.txt` and `core/jr_config.h`, although the release milestone is named **V1.8S**. Treat the filename/build identifier as the real installed firmware identity until release metadata is deliberately aligned.
+The firmware reports **`JrBot_V1.8.1S`** in `firmware/version.txt`, the boot log and `core/jr_config.h`. The `main` installer uses the RAM-light configuration and isolates its build directory by this version.
 
 ## 7. Common diagnostic cases
 
@@ -122,7 +116,7 @@ The firmware reports **`JrBot_V1S_APP_03`** in `firmware/version.txt` and `core/
 | --- | --- |
 | ESP-IDF cannot start | ESP-IDF 5.5.x and its private Python dependencies; do not reuse panel venv |
 | Flash port absent | USB data cable, drivers and selected port detected by the computer |
-| No device web page | Saved Wi-Fi settings, reboot after saving, Serial `status` and assigned IP |
+| No device web page | Saved Wi-Fi settings, setup AP, Serial `status`, `JR_MDNS_READY`/`JR_MDNS_ERROR` and assigned IP |
 | HTTP works but Live does not | `JR_HTTPS_DISABLED` vs `JR_HTTPS_READY`; certificate provisioning |
 | OLED offline | Physical wiring, initial `jr_face_start`, retry logs |
 | Camera test fails | HW04/OV5640 connector, PSRAM availability, `jr_camera_diag.c` |
@@ -131,6 +125,6 @@ The firmware reports **`JrBot_V1S_APP_03`** in `firmware/version.txt` and `core/
 
 ## 8. Contributing and release discipline
 
-Use **Issue → implementation → build → tests → documentation → review → approved promotion**. Do not change or promote `main` automatically.
+Use **Issue → implementation → build → tests → documentation → review → approved promotion**. Record the exact source version and physical evidence for each release.
 
 Keep active documents in English: [Project Status](../01-history-roadmap/PROJECT_STATUS.md) = current work; [Changelog](../01-history-roadmap/CHANGELOG.md) = history; [Roadmap](../01-history-roadmap/ROADMAP.md) = future plans. Each PR must identify affected modules, tested branch/build, physical evidence (or pending status), known limitations and updated documentation.

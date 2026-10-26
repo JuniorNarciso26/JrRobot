@@ -1,5 +1,9 @@
 # develop_wifi — STEP03: nome local com DHCP
 
+> Historical experiment. In V1.8.1S, the production mDNS name is fixed to
+> `jrbot.local` and initialization is retried after a failure. See
+> [current Wi-Fi provisioning](04-firmware-development/WIFI_PROVISIONING_RAM_LIGHT.md).
+
 Versao: `JrBot_V1S_WIFI_STEP03` (2026-10-20).
 Base: STEP02A, commit `1a3d5ca2ea0f0804de71a51e8256d58d42fde087`.
 

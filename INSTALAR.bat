@@ -307,17 +307,21 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
 ) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Isola o build da release oficial conforme firmware/version.txt.
-    rem Evita reutilizar o build da V1.7.04 ao promover V1S APP_03 para main.
-    set "BUILD_DIR=build-v1.7.04"
-    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+    rem Usa o perfil RAM-light e isola o build pela versao publicada.
     set "JRBOT_MAIN_VERSION="
-    if exist "firmware\version.txt" (
-        set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
-        if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_APP_03" (
-            set "BUILD_DIR=build-v1s-app-03-main"
-        )
+    if not exist "firmware\version.txt" (
+        echo [ERRO] firmware\version.txt nao encontrado.
+        goto failure
     )
+    set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
+    if not defined JRBOT_MAIN_VERSION (
+        echo [ERRO] Versao do firmware vazia.
+        goto failure
+    )
+    set "BUILD_DIR=b-!JRBOT_MAIN_VERSION:~-8!"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
 ) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_04" (
     rem Teste isolado da ordem dos fragmentos JPEG no DataChannel.
     set "BUILD_DIR=build-develop-wifi-ram-light-04"

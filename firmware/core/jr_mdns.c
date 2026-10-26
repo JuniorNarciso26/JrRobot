@@ -1,7 +1,9 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include "esp_heap_caps.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "mdns.h"
 #include "sdkconfig.h"
 #include "jr_mdns.h"
@@ -15,7 +17,10 @@
 #error "Keep the mDNS task stack in internal RAM"
 #endif
 
-static bool attempted;
+#define JR_MDNS_RETRY_MS 10000u
+
+static bool ready;
+static uint32_t next_attempt_ms;
 
 static void memory_report(const char *stage) {
     printf("JR_MDNS_MEMORY stage=%s internal_free=%u internal_largest=%u dma_free=%u dma_largest=%u psram_free=%u\n",
@@ -27,17 +32,18 @@ static void memory_report(const char *stage) {
 }
 
 void jr_mdns_poll(void) {
-    if (attempted || !jr_wifi_is_connected() || jr_mode_get()!=JR_MODE_IDLE) return;
-    attempted=true;
+    if (ready || !jr_wifi_is_connected() || jr_mode_get()!=JR_MODE_IDLE) return;
+    uint32_t now=(uint32_t)(esp_timer_get_time()/1000ULL);
+    if (next_attempt_ms && (int32_t)(now-next_attempt_ms)<0) return;
+    next_attempt_ms=now+JR_MDNS_RETRY_MS;
     /* This runs on app_main's stack, never in the system-event callback. */
     esp_netif_t *sta=esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    const char *hostname=NULL;
-    esp_err_t err=sta?esp_netif_get_hostname(sta,&hostname):ESP_ERR_INVALID_STATE;
-    if (err!=ESP_OK || !hostname || !*hostname) {
-        printf("JR_MDNS_ERROR stage=hostname result=%s acesso_por_ip_disponivel=1\n",
-            esp_err_to_name(err==ESP_OK?ESP_ERR_INVALID_STATE:err));
+    if (!sta) {
+        printf("JR_MDNS_ERROR stage=netif result=%s retry_ms=%u acesso_por_ip_disponivel=1\n",
+            esp_err_to_name(ESP_ERR_INVALID_STATE),JR_MDNS_RETRY_MS);
         return;
     }
+    const char *hostname="jrbot";
     printf("JR_MDNS_CONFIG heap=PSRAM stack=INTERNAL stack_bytes=%u interfaces=%u services=%u event_stack_bytes=%u sockets=%u\n",
         (unsigned)CONFIG_MDNS_TASK_STACK_SIZE,(unsigned)CONFIG_MDNS_MAX_INTERFACES,
         (unsigned)CONFIG_MDNS_MAX_SERVICES,(unsigned)CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE,
@@ -45,7 +51,7 @@ void jr_mdns_poll(void) {
     memory_report("before_init");
     const char *stage="init";
     bool initialized=false;
-    err=mdns_init();
+    esp_err_t err=mdns_init();
     if (err!=ESP_OK) goto fail;
     initialized=true;
     stage="hostname"; err=mdns_hostname_set(hostname); if (err!=ESP_OK) goto fail;
@@ -54,6 +60,7 @@ void jr_mdns_poll(void) {
      * The component's own event handlers follow future disconnects and IP changes. */
     stage="enable"; err=mdns_netif_action(sta,MDNS_EVENT_ENABLE_IP4); if (err!=ESP_OK) goto fail;
     stage="announce"; err=mdns_netif_action(sta,MDNS_EVENT_ANNOUNCE_IP4); if (err!=ESP_OK) goto fail;
+    ready=true;
     memory_report("after_init");
     jr_wifi_status_t wifi; jr_wifi_get_status(&wifi);
     printf("JR_MDNS_READY url=https://%s.local ip=%s interface=STA\n",hostname,wifi.ip);
@@ -61,5 +68,6 @@ void jr_mdns_poll(void) {
 fail:
     if (initialized) mdns_free();
     memory_report("after_failure");
-    printf("JR_MDNS_ERROR stage=%s result=%s acesso_por_ip_disponivel=1\n",stage,esp_err_to_name(err));
+    printf("JR_MDNS_ERROR stage=%s result=%s retry_ms=%u acesso_por_ip_disponivel=1\n",
+        stage,esp_err_to_name(err),JR_MDNS_RETRY_MS);
 }

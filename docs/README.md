@@ -13,6 +13,6 @@ This documentation is organized by **primary topic**, so readers can understand 
 
 ## Version status
 
-**JrBot V1.8S** is the planned next product version integrating JrSkill Network with JrBot's existing capabilities. The latest version promoted to `main` remains `JrBot_V1.7.04`. See [Project Status](01-history-roadmap/PROJECT_STATUS.md).
+**JrBot V1.8.1S** is the current source version on `main`. It follows the V1.8S JrSkill integration with lighter Wi-Fi firmware, phone setup and `jrbot.local` recovery. Physical checks for this exact build are tracked in [Project Status](01-history-roadmap/PROJECT_STATUS.md).
 
 This documentation follows the [MIT-licensed repository](../LICENSE). Historical material remains preserved in [trash/](../trash/README.md) for review; archived records are not necessarily up to date.

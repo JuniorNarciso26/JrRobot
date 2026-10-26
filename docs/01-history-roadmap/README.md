@@ -11,7 +11,7 @@ This section documents JrBot's **past, present, and future**, with a clear purpo
 
 ## Current reference
 
-The most recent release promoted to `main` is **`JrBot_V1.7.04`**. **JrBot V1.8S** is the next defined product version, bringing JrSkill Network into the JrBot ecosystem. Its current development branch is `V1s-00`; promotion to `main` and final integrated testing are still pending.
+The current source version on `main` is **`JrBot_V1.8.1S`**. V1.8S integrated JrSkill Network; V1.8.1S adds Wi-Fi setup and mDNS recovery. Physical acceptance of the exact V1.8.1S build is still pending.
 
 The JrSkill creation, publication, license purchase, and physical execution flow has been demonstrated on **Solana Devnet**. This does **not** imply a live Mainnet marketplace.
 

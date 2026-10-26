@@ -10,7 +10,7 @@ See. Hear. Speak. Connect. Express.
 <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
 <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
 <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-<img src="https://img.shields.io/badge/stable-JrBot__V1.7.04-brightgreen" alt="Stable release">
+<img src="https://img.shields.io/badge/version-JrBot__V1.8.1S-brightgreen" alt="Current source version">
 <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
 
 [Website](https://jrbot.com.br) ·
@@ -44,7 +44,7 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | **Hear** | MS3625 I2S recording, selectable duration, WAV playback/download and bidirectional WebRTC audio |
 | **Speak** | MAX98357A output, speaker playback, audio received from phone/computer, volume and diagnostics |
 | **Express** | SSD1306 OLED face with selectable expressions and active-expression status |
-| **Connect** | Wi-Fi (DHCP, saved configuration and reconnection), responsive web interface, local HTTPS and WebRTC |
+| **Connect** | Wi-Fi (DHCP, saved networks and phone setup), `jrbot.local` on compatible local networks, responsive web interface, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
 
 ### What's new in JrBot V1.8S
@@ -52,6 +52,8 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 **JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
 
 The initial Creator Studio, Store, licensing and Skill execution flow have been completed and validated. **An expanded platform for developing and publishing Skills is now under development**, offering new possibilities for creators and developers.
+
+**V1.8.1S** improves Wi-Fi setup: JrBot opens its own setup network when it cannot connect at startup, tests new credentials before saving, and retries local `jrbot.local` announcement after an mDNS startup failure. The exact V1.8.1S build still needs its own physical acceptance run.
 
 ### Current limitations
 
@@ -97,7 +99,7 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-**JrBot V1.8S** is the defined next version of JrBot, combining all existing robot capabilities with **JrSkill Network**. The robot functions and the Solana Devnet flow for acquiring, licensing and executing Skills have been validated. The `V1s-00` branch is being prepared for promotion to `main`.
+**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** is now the source version on `main`, adding phone-based Wi-Fi setup and mDNS recovery; its exact build still needs physical acceptance.
 
 | Project | Status |
 | --- | --- |

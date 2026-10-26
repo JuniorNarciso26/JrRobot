@@ -1,4 +1,4 @@
-# JrBot — Testing and V1.8S Release Checks
+# JrBot — Testing and V1.8.1S Release Checks
 
 A **successful firmware build or positive API response is not enough** to claim that the physical robot worked. Every report must identify the tested branch/build and actual evidence.
 
@@ -23,7 +23,7 @@ These labels describe **the tested scope**, not the status of every module in a 
 | `tests/hardware/panel_results.json` | Explicitly `not_run` in the recorded GitHub edit session |
 | `tests/hardware/test_pin_policy.py` | Pin-policy check used by the installer before building |
 
-The project has earlier **physically validated** camera, OLED, audio and local WebRTC milestones, and recorded Devnet-to-robot Skill execution in the Colosseum history. These are **not automatically a fresh consolidated V1.8S acceptance run**.
+The project has earlier **physically validated** camera, OLED, audio and local WebRTC milestones, and recorded Devnet-to-robot Skill execution in the Colosseum history. These are **not automatically a fresh consolidated V1.8.1S acceptance run**.
 
 ## 3. Run the software checks
 
@@ -45,7 +45,8 @@ Then build the exact selected branch using `INSTALAR.bat build` as described in 
 | **Camera** | `camera_test`, then `/capture` | Actual, viewable camera image |
 | **Microphone** | `mic_test`, `/mic-record` | Input captured and heard in a recording |
 | **Speaker** | `audio_test` or play a recording | Audible output, not just `ESP_OK` |
-| **Wi-Fi/portal** | Configure via Serial, restart, access assigned IP | Local page and status reachable |
+| **Wi-Fi setup** | Boot with no reachable saved network; join `JrBot-Setup-XXXXXX`, scan and enter a wrong password, then the correct one | Wrong password is rejected without saving; correct one gets IP, saves and restarts |
+| **mDNS** | Rejoin the local network and open `https://jrbot.local` from a client on the same LAN | `JR_MDNS_READY`, name resolves and page opens; record `JR_MDNS_ERROR` if it retries |
 | **HTTPS** | Verify `JR_HTTPS_READY` | Secure server actually starts with local material |
 | **Live WebRTC** | Connect on HTTPS, test video and two-way audio | Video and both audio directions observed on local network |
 | **Resource manager** | Start/stop Live and repeat recording/playback | I2S released, no ownership mismatch or watchdog |
@@ -54,17 +55,21 @@ Then build the exact selected branch using `INSTALAR.bat build` as described in 
 
 **Do not claim HTTPS, browser-wallet or WebRTC passed unless certificate provisioning and actual secure-browser operation were tested.** Voice experiments must distinguish `brain_test` simulation from spoken recognition. Acoustic echo cancellation and public-Internet Live are **not verified release capabilities**.
 
-## 5. V1.8S release gate
+## 5. V1.8.1S verification status
 
-Before proposing a `V1s-00 → main` promotion:
+The V1.8.1S candidate compiled with ESP-IDF 5.5.5 using
+`sdkconfig.develop_wifi_ram_light`. The embedded RAM inventory was generated
+and verified: **61,576 B DRAM**, **120,064 B IRAM**, **2,569,376 B application
+image**. The pin-map check, HW04 pin-policy check and mDNS sdkconfig migration
+test passed. The native-GCC mDNS behavior harness was skipped on this Windows
+host because GCC is unavailable. Tests that require a real ESP32-S3, local
+HTTPS material, a browser and a multicast-capable LAN remain **not run** until
+their logs and observations are attached. A successful build does not prove
+wrong-password rejection, mDNS resolution or Live.
 
-1. Confirm the **exact source commit** and compiled firmware ID. The current files still report `JrBot_V1S_APP_03`; the named product milestone is **V1.8S**.
-2. Address or explicitly document the **missing tracked HTTPS provisioning procedure** and confirm secure Live behavior.
-3. Build and flash the consolidated candidate; record build logs and observed HW04 behavior.
-4. Run relevant software tests and the physical checks above; write **pass/fail/not-run** for every item.
-5. Record known limitations, developer sign-off and version references before explicitly approved promotion.
-
-No new release check is claimed by this document.
+Record **PASS / FAIL / NOT RUN** for every physical checklist item above.
+If `jrbot.local` does not resolve on a particular LAN, check the mDNS log and
+use the assigned IP to distinguish device failure from multicast filtering.
 
 ## 6. Minimum reproducible report
 

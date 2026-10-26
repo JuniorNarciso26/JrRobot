@@ -1,6 +1,6 @@
 # JrBot — Firmware and Development
 
-This directory explains how the **current firmware on `V1s-00`** is built, starts, communicates with clients and controls the physical robot. JrBot V1.8S development is recorded as complete; **final release checks and promotion to `main` are still pending**. See [Project Status](../01-history-roadmap/PROJECT_STATUS.md).
+This directory explains how **JrBot V1.8.1S on `main`** is built, starts, communicates with clients and controls the physical robot. The Wi-Fi setup flow is documented in [Wi-Fi Provisioning](WIFI_PROVISIONING_RAM_LIGHT.md); physical acceptance of this exact build is tracked in [Project Status](../01-history-roadmap/PROJECT_STATUS.md).
 
 ## Read in this order
 
