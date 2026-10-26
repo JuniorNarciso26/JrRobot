@@ -14,7 +14,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 
 | Issue | Direção | Não assumir sem evidência |
 | --- | --- | --- |
-| [JrRobot #14 — V1 local](https://github.com/JuniorNarciso26/JrRobot/issues/14) | **Revisada em 26/10:** painel, foto, WAV enviado do celular, DHCP e Live local já implementados. **Manter aberta** por gravação/exportação de vídeo curto, contrato de 4 estados do microfone, assets nomeados e itens antigos ainda não comprovados. [Auditoria na Issue](https://github.com/JuniorNarciso26/JrRobot/issues/14#issuecomment-6420896384) | Não confundir Live com gravação em arquivo; testes físicos/memória gerais estão concluídos |
+| [JrRobot #14 — V1 local](https://github.com/JuniorNarciso26/JrRobot/issues/14) | **Decisão 26/10:** gravação/exportação de vídeo curto em arquivo **abandonada e retirada do escopo da V1** por decisão do responsável; pode voltar em outra versão. **Manter aberta** por estados explícitos do microfone, assets de áudio nomeados e alguns critérios históricos do painel/reconexão não comprovados individualmente. [Decisão registrada](https://github.com/JuniorNarciso26/JrRobot/issues/14#issuecomment-6421110206) | Live WebRTC continua; aprovação física e memória concluídas não demonstram automaticamente cada detalhe da Issue |
 | [JrRobot #26 — WebRTC](https://github.com/JuniorNarciso26/JrRobot/issues/26) | **Revisada em 26/10:** Live local (JPEG + áudio bidirecional) concluído; Issue continua aberta exclusivamente para Internet e qualidade (AEC/jitter), com chiado em #19. [Registro atualizado](https://github.com/JuniorNarciso26/JrRobot/issues/26#issuecomment-6420919719) | Internet e cancelamento de eco não são recursos entregues |
 | [JrRobot #19 — MAX98357A](https://github.com/JuniorNarciso26/JrRobot/issues/19) | **Revisada em 26/10:** código de reprodução e Live analisado; causa do chiado não isolada. Manter aberta como defeito de qualidade distinto do aceite geral. [Nota técnica](https://github.com/JuniorNarciso26/JrRobot/issues/19#issuecomment-6420938629) | Ruído corrigido, fonte hardware/software já identificada ou AEC implementado |
 | [JrRobot #9 — licença](https://github.com/JuniorNarciso26/JrRobot/issues/9) | **Revisada em 26/10:** `LICENSE` MIT e termos de contribuição já presentes na `main`; Cloud mantém licença proprietária. Continua aberta para CLA/cessão, titularidade e revisão jurídica. [Nota](https://github.com/JuniorNarciso26/JrRobot/issues/9#issuecomment-6420966599) | A licença MIT não restringe uso comercial e não resolve automaticamente contratos ou direitos de marca |
@@ -52,7 +52,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 ## Sequência de tratamento
 
 1. Concluído: #55 Wi-Fi, documentação da aceitação.
-2. #14 V1 revisada: manter aberta somente para lacunas reais identificadas, sem refazer funções prontas.
+2. #14 V1 revisada: gravação de vídeo retirada do escopo em 26/10/2026; mantém pendências residuais documentadas e não está elegível a fechamento ainda.
 3. #26 WebRTC revisada: Live local concluído; Internet e AEC continuam como evolução futura.
 4. #19 chiado revisada: causa ainda não isolada; manter aberta para investigação e correção dirigida.
 5. #9 licença revisada, documentos MIT confirmados; pendências contratuais continuam. Próxima: Web #30 e situação operacional.
