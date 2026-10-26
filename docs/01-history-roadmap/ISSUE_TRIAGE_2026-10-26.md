@@ -12,6 +12,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - **#14 V1 controle local: closed/completed** em 26/10/2026, por aceite do escopo entregue e retirada explícita de requisitos extras.
 - **#19 áudio MAX98357A: closed/not_planned** em 26/10/2026, por decisão de encerrar a investigação sem afirmar correção do chiado.
 - **#9 licença e propriedade intelectual: closed/completed** em 26/10/2026 pela definição/adopção pública da licença MIT no repositório.
+- **#17 Epic de Roadmap: closed/completed** em 26/10/2026, por consolidação do planejamento V1/V2/V3 em ROADMAP.md; #15 e #16 continuam abertas independentemente.
 
 ## Prioridade A — saneamento de histórico / correção
 
@@ -38,7 +39,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 
 ## Prioridade C — planejamento, estratégia e melhorias futuras
 
-- [JrRobot #17](https://github.com/JuniorNarciso26/JrRobot/issues/17): epic de roadmap geral.
+- [JrRobot #17](https://github.com/JuniorNarciso26/JrRobot/issues/17): **ENCERRADA / completed em 26/10/2026** — organização consolidada no [Roadmap](ROADMAP.md); V2 #15 e V3 #16 preservadas. [Decisão](https://github.com/JuniorNarciso26/JrRobot/issues/17#issuecomment-6425341551).
 - [JrRobot #10](https://github.com/JuniorNarciso26/JrRobot/issues/10): epic JrBrain.
 - [JrRobot #8](https://github.com/JuniorNarciso26/JrRobot/issues/8): bounties e Contributor Pool.
 - [JrRobot #22](https://github.com/JuniorNarciso26/JrRobot/issues/22): corpo e impressão 3D.
@@ -59,6 +60,6 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 3. #26 WebRTC revisada: Live local concluído; Internet e AEC continuam como evolução futura.
 4. Concluído administrativamente: #19 fechada como `not_planned` por decisão explícita; diagnóstico preservado para nova Issue, se necessária.
 5. Concluído: #9 licença fechada como `completed` pela adoção da MIT. Eventuais contratos jurídicos ficam fora deste escopo; analisar apenas Issues do JrRobot, conforme orientação do responsável.
-6. Demais Issues: manter abertas enquanto houver requisito futuro real; documentar decisão e motivo de cada fechamento individual.
+6. #17 encerrada: roadmap consolidado em documento; V2 #15 e V3 #16 continuam previstas. Demais Issues do JrRobot permanecem para análise individual.
 
 **Regra de fechamento:** concluir apenas escopo objetivamente implementado ou decisão explícita de não prosseguir; manter histórico e links; registrar mudanças de estado. Não executar alterações no firmware, releases, PRs ou serviços como efeito da triagem.
