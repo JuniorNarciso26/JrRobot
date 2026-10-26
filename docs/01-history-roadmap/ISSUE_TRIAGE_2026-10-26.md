@@ -10,6 +10,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 - A documentação não inclui logs inéditos ou novas métricas não fornecidas.
 - **#55 Wi-Fi pelo celular: closed/completed** após registro da integração e aceite. Histórico e guia preservados.
 - **#14 V1 controle local: closed/completed** em 26/10/2026, por aceite do escopo entregue e retirada explícita de requisitos extras.
+- **#19 áudio MAX98357A: closed/not_planned** em 26/10/2026, por decisão de encerrar a investigação sem afirmar correção do chiado.
 
 ## Prioridade A — saneamento de histórico / correção
 
@@ -17,7 +18,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 | --- | --- | --- |
 | [JrRobot #14 — V1 local](https://github.com/JuniorNarciso26/JrRobot/issues/14) | **ENCERRADA / completed em 26/10/2026:** V1 aceita no escopo efetivamente entregue. Gravação de vídeo em arquivo **abandonada**; estados detalhados do microfone, assets nomeados e alguns cenários antigos do checklist **adiados/retirados do escopo**, sem alegação de implementação. Criar novas Issues somente se voltarem a ser necessários. [Decisão final](https://github.com/JuniorNarciso26/JrRobot/issues/14#issuecomment-6421188588) | Encerramento administrativo por redefinição explícita do escopo, não conclusão dos itens adiados |
 | [JrRobot #26 — WebRTC](https://github.com/JuniorNarciso26/JrRobot/issues/26) | **Revisada em 26/10:** Live local (JPEG + áudio bidirecional) concluído; Issue continua aberta exclusivamente para Internet e qualidade (AEC/jitter), com chiado em #19. [Registro atualizado](https://github.com/JuniorNarciso26/JrRobot/issues/26#issuecomment-6420919719) | Internet e cancelamento de eco não são recursos entregues |
-| [JrRobot #19 — MAX98357A](https://github.com/JuniorNarciso26/JrRobot/issues/19) | **Revisada em 26/10:** código de reprodução e Live analisado; causa do chiado não isolada. Manter aberta como defeito de qualidade distinto do aceite geral. [Nota técnica](https://github.com/JuniorNarciso26/JrRobot/issues/19#issuecomment-6420938629) | Ruído corrigido, fonte hardware/software já identificada ou AEC implementado |
+| [JrRobot #19 — MAX98357A](https://github.com/JuniorNarciso26/JrRobot/issues/19) | **ENCERRADA / not_planned em 26/10/2026** por decisão do responsável: investigação de chiado não será continuada nesta etapa; nova Issue se voltar a ser necessária. [Decisão final](https://github.com/JuniorNarciso26/JrRobot/issues/19#issuecomment-6421872572) | **Não** é correção comprovada; a causa-raiz não foi isolada e não houve alteração do firmware |
 | [JrRobot #9 — licença](https://github.com/JuniorNarciso26/JrRobot/issues/9) | **Revisada em 26/10:** `LICENSE` MIT e termos de contribuição já presentes na `main`; Cloud mantém licença proprietária. Continua aberta para CLA/cessão, titularidade e revisão jurídica. [Nota](https://github.com/JuniorNarciso26/JrRobot/issues/9#issuecomment-6420966599) | A licença MIT não restringe uso comercial e não resolve automaticamente contratos ou direitos de marca |
 | [JrBot_Web #30 — site comercial](https://github.com/JuniorNarciso26/JrBot_Web/issues/30) | Conferir o que já foi integrado em main e o que falta em deploy/Hostinger/checkout/WhatsApp | Código integrado significa campanha publicada ou pagamento ativo |
 
@@ -55,7 +56,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 1. Concluído: #55 Wi-Fi, documentação da aceitação.
 2. Concluído: #14 V1 fechada no escopo revisado; vídeo em arquivo cancelado e demais itens extras adiados por decisão do responsável.
 3. #26 WebRTC revisada: Live local concluído; Internet e AEC continuam como evolução futura.
-4. #19 chiado revisada: causa ainda não isolada; manter aberta para investigação e correção dirigida.
+4. Concluído administrativamente: #19 fechada como `not_planned` por decisão explícita; diagnóstico preservado para nova Issue, se necessária.
 5. #9 licença revisada, documentos MIT confirmados; pendências contratuais continuam. Próxima: Web #30 e situação operacional.
 6. Demais Issues: manter abertas enquanto houver requisito futuro real; documentar decisão e motivo de cada fechamento individual.
 
