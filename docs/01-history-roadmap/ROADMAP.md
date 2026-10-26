@@ -11,15 +11,15 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 | **V1.6.3** — Sep 23, 2026 | Local Live WebRTC: bidirectional audio and JPEG video | Physically validated |
 | **V1.7.04** — Sep 28, 2026 | Centralized mode and I2S resource management | **Latest stable release promoted to `main`** |
 | **V1.8S** | Integration of existing robot capabilities with JrSkill Network | Integrated into `main` |
-| **V1.8.1S** — Oct 26, 2026 | Lighter Wi-Fi firmware, phone setup, connection validation and `jrbot.local` recovery | Promoted to `main`; device acceptance pending |
+| **V1.8.1S** — Oct 26, 2026 | Lighter Wi-Fi firmware, phone setup, connection validation and `jrbot.local` recovery | In `main`; physical and memory testing confirmed complete by owner on Oct 26 |
 
-During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). This records code promotion, not a new consolidated physical acceptance run.
+During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
 ## Development priorities
 
 | Workstream | Verified starting point | Next objective |
 | --- | --- | --- |
-| **JrBot V1.8.1S** | Firmware build and host-level Wi-Fi/mDNS checks | Validate setup, wrong-password rejection, `jrbot.local`, Live and reconnection on HW04 |
+| **JrBot V1.8.1S** | Firmware build and host-level Wi-Fi/mDNS checks | Sustain completed acceptance; triage remaining Issues, without reopening physical/memory testing |
 | **JrSkill creator platform** | Initial Creator Studio, Store, licenses, and execution demonstrated on Devnet | Expand development and publishing tools for creators |
 | **Hardware assembly and 3D-printed body** | Electronic assembly documented; mechanical development tracked in [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Gather printable models, document body assembly, and validate the complete build |
 | **JrBot V2** | Local voice-control development line preserved | Develop offline voice recognition and commands |
