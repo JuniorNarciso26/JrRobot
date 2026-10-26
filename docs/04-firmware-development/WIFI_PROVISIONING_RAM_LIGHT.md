@@ -89,7 +89,7 @@ pela recuperação mDNS e identificação da versão.
 Esse inventário mede memória estática. Não mede a alocação dinâmica do
 driver Wi-Fi e do servidor HTTP enquanto o AP está aberto. O AP não roda
 junto com a Live; no modo normal, só permanece o pequeno custo estático
-acima. A RAM livre real precisa ser confirmada na ESP32.
+acima. The historical measurements above are a **static build inventory**, not the dynamic heap profile. On October 26, 2026, the project owner separately confirmed that the physical tests were OK and the memory testing was complete for the current milestone; no additional measurements were requested. No new heap figures are implied by this note.
 
 O log `JR_WIFI_SETUP_MEMORY` informa RAM interna livre, maior bloco e PSRAM
 antes e depois de iniciar AP/HTTP. `JR_WIFI_SETUP_READY` indica se o DNS
@@ -98,5 +98,12 @@ permite comparar a Live com os relatórios do firmware `_04`.
 
 Um build local sem `jr_https_material_local.h` desativa HTTPS/WebRTC.
 Esse build serve para conferir compilação e memória estática, mas não deve
-ser usado para validar a Live. O teste físico precisa do material HTTPS
-local e deve confirmar AP, gravação, reconexão, recuperação por BOOT e Live.
+ser usado para validar a Live. Historically, release acceptance required a build with the local HTTPS material and physical checks for AP, credential saving, reconnection, BOOT recovery and Live. On October 26, 2026, the owner confirmed that physical testing is OK and memory testing is complete for V1.8.1S. No new physical test was executed during this documentation update; earlier logs and measurements retain their original meaning.
+
+## Status de encerramento — 26/10/2026
+
+- Configuração de Wi-Fi pelo celular e mDNS fazem parte de `JrBot_V1.8.1S` em `main`.
+- Testes físicos: **OK**, conforme confirmação explícita do responsável pelo projeto em 26/10/2026.
+- Testes de memória: **concluídos**, conforme a mesma confirmação. Não solicitar medições adicionais para encerrar esta etapa.
+- A Issue [#55](https://github.com/JuniorNarciso26/JrRobot/issues/55) registra a trilha experimental; a implementação final integrada usa o gerenciador Wi-Fi RAM-light do JrBot e não importa os componentes ADF integralmente.
+- Limitações gerais de acesso por Internet e qualidade acústica pertencem a trabalhos separados; não bloqueiam o encerramento do escopo de provisionamento local.
