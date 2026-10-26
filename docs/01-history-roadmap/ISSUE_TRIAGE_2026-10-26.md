@@ -14,7 +14,7 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 
 | Issue | Direção | Não assumir sem evidência |
 | --- | --- | --- |
-| [JrRobot #14 — V1 local](https://github.com/JuniorNarciso26/JrRobot/issues/14) | Revisar checklist antigo contra V1.8.1S; identificar escopo V1 concluído e registrar evidências antes de fechar | Todos os checkboxes são aceitos |
+| [JrRobot #14 — V1 local](https://github.com/JuniorNarciso26/JrRobot/issues/14) | **Revisada em 26/10:** painel, foto, WAV enviado do celular, DHCP e Live local já implementados. **Manter aberta** por gravação/exportação de vídeo curto, contrato de 4 estados do microfone, assets nomeados e itens antigos ainda não comprovados. [Auditoria na Issue](https://github.com/JuniorNarciso26/JrRobot/issues/14#issuecomment-6420896384) | Não confundir Live com gravação em arquivo; testes físicos/memória gerais estão concluídos |
 | [JrRobot #26 — WebRTC](https://github.com/JuniorNarciso26/JrRobot/issues/26) | Registrar Live local já implementado, separar AEC/qualidade e Live remota em futuras etapas; decidir se Issue atual fecha ou permanece epic | Internet, AEC ou ausência de chiado implementados |
 | [JrRobot #19 — MAX98357A](https://github.com/JuniorNarciso26/JrRobot/issues/19) | Diagnosticar chiado na reprodução antes de encerramento | Problema corrigido pela aceitação geral do firmware |
 | [JrRobot #9 — licença](https://github.com/JuniorNarciso26/JrRobot/issues/9) | Conferir condições da licença MIT atual e eventual decisão pendente; revisar como issue histórica | Questões comerciais e de marca integralmente resolvidas |
@@ -52,8 +52,8 @@ Registro de triagem dos três repositórios. **Uma Issue aberta não significa q
 ## Sequência de tratamento
 
 1. Concluído: #55 Wi-Fi, documentação da aceitação.
-2. Próxima: #14 V1, confrontar checklist antigo com implementação atual e testes confirmados.
-3. #26 WebRTC: fechar parte local e separar itens de qualidade/Internet.
+2. #14 V1 revisada: manter aberta somente para lacunas reais identificadas, sem refazer funções prontas.
+3. Próxima: #26 WebRTC: registrar parte local já entregue e separar qualidade acústica e Internet.
 4. #19 chiado: tratar defeito isolado.
 5. #9 licença e Web #30: revisão documental e operacional.
 6. Demais Issues: manter abertas enquanto houver requisito futuro real; documentar decisão e motivo de cada fechamento individual.
