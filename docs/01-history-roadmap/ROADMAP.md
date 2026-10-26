@@ -28,7 +28,8 @@ The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issue
 
 | Workstream | Verified starting point | Next objective |
 | --- | --- | --- |
-| **JrBot V1.8.1S** | Firmware build and host-level Wi-Fi/mDNS checks | Sustain completed acceptance; triage remaining Issues, without reopening physical/memory testing |
+| **JrBot V1.8.1S** | Firmware build and host-level Wi-Fi/mDNS checks | Sustain completed acceptance; no reopening physical/memory tests |
+| **Remote access / WebRTC — [Issue #26](https://github.com/JuniorNarciso26/JrRobot/issues/26)** | Local full-duplex audio and JPEG DataChannel Live working; current signaling is local only | Prioritize secure access from mobile networks: first prove private VPN reachability, then validate ICE/media; evaluate authenticated Internet signaling and TURN if needed, without exposing ESP32 ports |
 | **JrSkill creator platform** | Initial Creator Studio, Store, licenses, and execution demonstrated on Devnet | Expand development and publishing tools for creators |
 | **Hardware assembly and 3D-printed body** | Electronic assembly documented; mechanical development tracked in [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Gather printable models, document body assembly, and validate the complete build |
 | **JrBot V2** | Local voice-control development line preserved | Develop offline voice recognition and commands |
