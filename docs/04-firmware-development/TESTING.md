@@ -55,21 +55,15 @@ Then build the exact selected branch using `INSTALAR.bat build` as described in 
 
 **Do not claim HTTPS, browser-wallet or WebRTC passed unless certificate provisioning and actual secure-browser operation were tested.** Voice experiments must distinguish `brain_test` simulation from spoken recognition. Acoustic echo cancellation and public-Internet Live are **not verified release capabilities**.
 
-## 5. V1.8.1S verification status
+## 5. V1.8.1S verification status — updated October 26, 2026
 
-The V1.8.1S candidate compiled with ESP-IDF 5.5.5 using
-`sdkconfig.develop_wifi_ram_light`. The embedded RAM inventory was generated
-and verified: **61,576 B DRAM**, **120,064 B IRAM**, **2,569,376 B application
-image**. The pin-map check, HW04 pin-policy check and mDNS sdkconfig migration
-test passed. The native-GCC mDNS behavior harness was skipped on this Windows
-host because GCC is unavailable. Tests that require a real ESP32-S3, local
-HTTPS material, a browser and a multicast-capable LAN remain **not run** until
-their logs and observations are attached. A successful build does not prove
-wrong-password rejection, mDNS resolution or Live.
+**Owner-reported final acceptance:** the project owner explicitly confirmed that the **physical tests are OK** and **memory tests are completed**, and that no additional memory/test information is required for this milestone. Treat these two workstreams as complete. This is a direct owner confirmation, not a new test performed by this documentation change. It does not supply per-item logs, exact observation times, or new RAM measurements; do not invent them.
 
-Record **PASS / FAIL / NOT RUN** for every physical checklist item above.
-If `jrbot.local` does not resolve on a particular LAN, check the mDNS log and
-use the assigned IP to distinguish device failure from multicast filtering.
+**Previously recorded build evidence (retained):** the V1.8.1S candidate compiled with ESP-IDF 5.5.5 using `sdkconfig.develop_wifi_ram_light`. The embedded static RAM inventory was **61,576 B DRAM**, **120,064 B IRAM**, **2,569,376 B application image**. Pin-map, HW04 pin-policy and mDNS sdkconfig migration checks passed. The native-GCC mDNS behavior harness was previously skipped on a Windows host without GCC.
+
+The archived `tests/hardware/panel_results.json` and older notes reflect their own historical test sessions and may continue to say `not_run`. They are not overwritten or retroactively represented as evidence for the October 26 acceptance. This status update does not newly validate AEC, cloud Internet Live, or any proposed future feature.
+
+If future releases or regressions require a new acceptance campaign, collect **PASS / FAIL / NOT RUN** by scenario and preserve the corresponding logs. If `jrbot.local` fails on a specific LAN, distinguish mDNS filtering from an IP connectivity failure.
 
 ## 6. Minimum reproducible report
 
