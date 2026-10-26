@@ -53,7 +53,7 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 
 The initial Creator Studio, Store, licensing and Skill execution flow have been completed and validated. **An expanded platform for developing and publishing Skills is now under development**, offering new possibilities for creators and developers.
 
-**V1.8.1S** improves Wi-Fi setup: JrBot opens its own setup network when it cannot connect at startup, tests new credentials before saving, and retries local `jrbot.local` announcement after an mDNS startup failure. The exact V1.8.1S build still needs its own physical acceptance run.
+**V1.8.1S** improves Wi-Fi setup: JrBot opens its own setup network when it cannot connect at startup, tests new credentials before saving, and retries local `jrbot.local` announcement after an mDNS startup failure. On October 26, 2026, the project owner confirmed that the current physical tests passed and memory testing was completed. This confirmation does not provide new per-scenario logs or memory measurements.
 
 ### Current limitations
 
@@ -99,7 +99,7 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** is now the source version on `main`, adding phone-based Wi-Fi setup and mDNS recovery; its exact build still needs physical acceptance.
+**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** is now the source version on `main`, adding phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026.
 
 | Project | Status |
 | --- | --- |
