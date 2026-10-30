@@ -1,6 +1,9 @@
 # Build gerado pelo ESP-IDF/compilação local
 firmware/build/
 build/
+examples/audio_reference_hw04/build/
+examples/audio_reference_hw04/build_tmp/
+examples/audio_reference_hw04/compile.log
 
 # Credenciais e configuração local
 firmware/main/wifi_config.local.h
