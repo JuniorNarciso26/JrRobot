@@ -118,6 +118,7 @@ for /l %%N in (1,1,!BRANCH_COUNT!) do (
     if /i "!DISPLAY_BRANCH!"=="v2" set "BRANCH_NOTE= - JrBot V2 voz"
     if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light" set "BRANCH_NOTE= - RAM leve validada"
     if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light_provisioning" set "BRANCH_NOTE= - RAM leve + Wi-Fi pelo celular"
+    if /i "!DISPLAY_BRANCH!"=="conserto-som" set "BRANCH_NOTE= - teste A do alto-falante"
     if /i "!DISPLAY_BRANCH:~0,8!"=="feature/" set "BRANCH_NOTE= - desenvolvimento / teste"
     if /i "!DISPLAY_BRANCH:~0,7!"=="hotfix/" set "BRANCH_NOTE= - correcao"
     if /i "!DISPLAY_BRANCH:~0,4!"=="fix/" set "BRANCH_NOTE= - correcao"
@@ -319,6 +320,12 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
         goto failure
     )
     set "BUILD_DIR=b-!JRBOT_MAIN_VERSION:~-8!"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+) else if /i "%CURRENT_BRANCH%"=="conserto-som" (
+    rem Teste A usa o mesmo perfil RAM-light da main em um build isolado.
+    set "BUILD_DIR=b-som-a"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"

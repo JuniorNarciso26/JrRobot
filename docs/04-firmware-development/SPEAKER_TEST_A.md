@@ -7,16 +7,19 @@ já configurado. Não altera a transmissão WebRTC.
 
 ## Como verificar no JrBot HW04
 
-1. Pare o Live e deixe o robô em modo idle. Ajuste o volume para um nível
+1. Execute `INSTALAR.bat`, selecione `conserto-som` no menu e confira o commit
+   mostrado. O comando sem argumentos compila, grava na porta COM escolhida e
+   abre o painel. `INSTALAR.bat build` apenas compila.
+2. Pare o Live e deixe o robô em modo idle. Ajuste o volume para um nível
    moderado, por exemplo `audio_volume 35`.
-2. Envie `audio_test` pelo console serial ou pressione o botão de teste no
+3. Envie `audio_test` pelo console serial ou pressione o botão de teste no
    painel existente. Não é necessário iniciar uma sessão Live.
-3. Ouça se o alto-falante reproduz um tom contínuo e limpo. No monitor serial,
+4. Ouça se o alto-falante reproduz um tom contínuo e limpo. No monitor serial,
    confira `TEST_BEGIN` com `freq=440 dur=2000` e `TEST_END` com
    `result=ESP_OK tone_bytes=128000 i2s_released=1`.
-4. Confirme `JR_OK audio_test=tx_completed ... freq=440 duration_ms=2000` e
+5. Confirme `JR_OK audio_test=tx_completed ... freq=440 duration_ms=2000` e
    consulte `audio_diag` ou `status` para ver o último teste e `i2s_owner=none`.
-5. Com o Live ativo, repita o comando: ele deve responder
+6. Com o Live ativo, repita o comando: ele deve responder
    `JR_ERROR audio_test=live_active`, sem emitir o tom.
 
 `ESP_OK` confirma a transmissão I2S, não a audibilidade. Registre o som ouvido
