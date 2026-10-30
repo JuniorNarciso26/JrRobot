@@ -266,7 +266,11 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;
     }
     if (!strcmp(verb,"audio_test") || !strcmp(verb,"som") || !strcmp(verb,"beep")) {
-        esp_err_t err=jr_audio_test_tone(880,900);
+        if (jr_mode_get()==JR_MODE_LIVE) {
+            snprintf(response,cap,"JR_ERROR audio_test=live_active");
+            return false;
+        }
+        esp_err_t err=jr_audio_test_tone(440,2000);
         jr_audio_diag_t a;
         jr_audio_get_diag(&a);
         if (err==ESP_OK) {

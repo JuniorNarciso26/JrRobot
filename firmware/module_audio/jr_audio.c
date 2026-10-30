@@ -12,6 +12,7 @@
 
 #include "jr_audio.h"
 #include "jr_board.h"
+#include "jr_mode_manager.h"
 #include "jr_resource_manager.h"
 
 #define JR_AUDIO_SAMPLE_RATE 16000
@@ -170,7 +171,14 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     if (frequency_hz > 3000) frequency_hz = 3000;
     if (duration_ms < 100) duration_ms = 100;
     if (duration_ms > 5000) duration_ms = 5000;
-    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_PLAYBACK, 15000, "audio_playback")) return ESP_ERR_TIMEOUT;
+    jr_mode_t mode = jr_mode_get();
+    if (mode == JR_MODE_LIVE) return ESP_ERR_INVALID_STATE;
+    uint32_t timeout_ms = mode == JR_MODE_IDLE ? 0 : 15000;
+    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_PLAYBACK, timeout_ms, "audio_playback")) return ESP_ERR_TIMEOUT;
+    if (jr_mode_get() == JR_MODE_LIVE) {
+        jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     uint32_t seq = audio_diag_begin(frequency_hz, duration_ms);
     uint32_t tone_bytes = 0;
@@ -193,6 +201,10 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
     if (err != ESP_OK) goto done;
 
     while (written_frames < total_frames) {
+        if (jr_mode_get() == JR_MODE_LIVE) {
+            err = ESP_ERR_INVALID_STATE;
+            goto done;
+        }
         int frames = total_frames - written_frames;
         if (frames > frames_per_chunk) frames = frames_per_chunk;
         for (int i = 0; i < frames; ++i) {
@@ -223,6 +235,7 @@ esp_err_t jr_audio_test_tone(int frequency_hz, int duration_ms) {
 done:
     jr_audio_stop();
     audio_diag_finish(tone_bytes, err);
+    jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
     if (err == ESP_OK) {
         snprintf(status_text, sizeof(status_text), "MAX98357A teste seq=%lu transmitido bytes=%lu; I2S liberado para o microfone",
                  (unsigned long)seq,(unsigned long)tone_bytes);
@@ -234,7 +247,6 @@ done:
         ESP_LOGE(TAG, "TEST_END seq=%lu result=%s tone_bytes=%lu",
                  (unsigned long)seq,esp_err_to_name(err),(unsigned long)tone_bytes);
     }
-    jr_resource_i2s_release(JR_I2S_OWNER_PLAYBACK, "audio_playback");
     return err;
 }
 
