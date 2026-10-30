@@ -89,19 +89,22 @@ static void usb_process_line(const char *line) {
         cmd = space + 1;
     }
 
-    char response[JR_RESPONSE_MAX_BYTES];
+    /* Reserve room for the correlated prefix in the same stack buffer. */
+    char wire[JR_RESPONSE_MAX_BYTES + 64];
+    char *response = wire + 64;
     bool ok;
     if (!strcmp(cmd, "autonomo_on") || !strcmp(cmd, "autonomo_off") || !strcmp(cmd, "brain_test") || !strcmp(cmd, "brain_status")) {
-        ok = brain_command(cmd, response, sizeof(response));
+        ok = brain_command(cmd, response, JR_RESPONSE_MAX_BYTES);
     } else {
-        ok = jr_handle_command(cmd, response, sizeof(response));
+        ok = jr_handle_command(cmd, response, JR_RESPONSE_MAX_BYTES);
     }
 
     if (*id) {
-        char wire[JR_RESPONSE_MAX_BYTES + 64];
-        int n = snprintf(wire, sizeof(wire), "JR_REPLY id=%s ok=%d %s", id, ok ? 1 : 0, response);
-        if (n > 0 && (size_t)n < sizeof(wire)) usb_write_all(wire);
-        else usb_write_all("JR_ERROR response_too_long");
+        int n = snprintf(wire, 64, "JR_REPLY id=%s ok=%d ", id, ok ? 1 : 0);
+        if (n > 0 && n < 64) {
+            memmove(wire + n, response, strlen(response) + 1);
+            usb_write_all(wire);
+        } else usb_write_all("JR_ERROR response_too_long");
     } else {
         usb_write_all(response);
     }
