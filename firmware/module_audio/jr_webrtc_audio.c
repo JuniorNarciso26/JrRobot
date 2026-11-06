@@ -702,11 +702,12 @@ static int peer_audio_data_handler(esp_peer_audio_frame_t *frame, void *ctx)
         return 0;
     }
 
+    UBaseType_t pending = uxQueueMessagesWaiting(audio_queue);
+    uint32_t received_ms = lab_millis();
     portENTER_CRITICAL(&state_lock);
     status_state.webrtc_rx_packets++;
     status_state.webrtc_rx_bytes += (uint32_t)frame->size;
-    status_state.last_audio_rx_ms = lab_millis();
-    UBaseType_t pending = uxQueueMessagesWaiting(audio_queue);
+    status_state.last_audio_rx_ms = received_ms;
     if (pending > status_state.audio_queue_peak) status_state.audio_queue_peak = (uint32_t)pending;
     portEXIT_CRITICAL(&state_lock);
     return 0;
