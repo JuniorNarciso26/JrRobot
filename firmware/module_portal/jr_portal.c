@@ -285,7 +285,7 @@ static void start_https(void) {
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
-    config.httpd.max_uri_handlers=21;
+    config.httpd.max_uri_handlers=23; /* 17 portal routes + 6 WebRTC/audio lab routes */
     config.httpd.max_open_sockets=7;
     config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;

@@ -97,6 +97,13 @@ typedef struct {
     uint32_t webrtc_rx_packets;
     uint32_t webrtc_rx_bytes;
     uint32_t webrtc_rx_drops;
+    uint32_t audio_queue_peak;
+    uint32_t audio_underruns;
+    uint32_t mic_clip_samples;
+    uint32_t mic_peak;
+    uint32_t speaker_peak;
+    uint32_t last_audio_rx_ms;
+    uint32_t last_speaker_active_ms;
     uint64_t speaker_i2s_frames;
     uint32_t speaker_i2s_errors;
     bool video_dc_open;
@@ -109,6 +116,40 @@ typedef struct {
 
 static portMUX_TYPE state_lock = portMUX_INITIALIZER_UNLOCKED;
 static jr_wa_status_t status_state;
+
+/* Neutral defaults preserve the V1.8.1S full-duplex audio path.
+ * These scalar controls are updated only on HTTP requests; the audio tasks
+ * read a single short critical-section snapshot per 20-ms frame. */
+typedef struct {
+    int volume;
+    int mic_gain;
+    int echo_duck;
+    int gate;
+    int prebuffer;
+} jr_wa_lab_config_t;
+
+static const jr_wa_lab_config_t lab_defaults = {100, 100, 100, 0, 20};
+static jr_wa_lab_config_t lab_config = {100, 100, 100, 0, 20};
+
+static jr_wa_lab_config_t lab_get_config(void)
+{
+    jr_wa_lab_config_t c;
+    portENTER_CRITICAL(&state_lock);
+    c = lab_config;
+    portEXIT_CRITICAL(&state_lock);
+    return c;
+}
+
+static uint32_t lab_millis(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
+
+static int32_t lab_abs(int32_t sample)
+{
+    return sample < 0 ? -sample : sample;
+}
+
 
 static SemaphoreHandle_t session_mutex;
 static QueueHandle_t signal_queue;
@@ -289,6 +330,13 @@ static void reset_session_counters(void)
     status_state.webrtc_rx_packets = 0;
     status_state.webrtc_rx_bytes = 0;
     status_state.webrtc_rx_drops = 0;
+    status_state.audio_queue_peak = 0;
+    status_state.audio_underruns = 0;
+    status_state.mic_clip_samples = 0;
+    status_state.mic_peak = 0;
+    status_state.speaker_peak = 0;
+    status_state.last_audio_rx_ms = 0;
+    status_state.last_speaker_active_ms = 0;
     status_state.speaker_i2s_frames = 0;
     status_state.speaker_i2s_errors = 0;
     status_state.video_dc_open = false;
@@ -654,9 +702,13 @@ static int peer_audio_data_handler(esp_peer_audio_frame_t *frame, void *ctx)
         return 0;
     }
 
+    UBaseType_t pending = uxQueueMessagesWaiting(audio_queue);
+    uint32_t received_ms = lab_millis();
     portENTER_CRITICAL(&state_lock);
     status_state.webrtc_rx_packets++;
     status_state.webrtc_rx_bytes += (uint32_t)frame->size;
+    status_state.last_audio_rx_ms = received_ms;
+    if (pending > status_state.audio_queue_peak) status_state.audio_queue_peak = (uint32_t)pending;
     portEXIT_CRITICAL(&state_lock);
     return 0;
 }
@@ -911,14 +963,36 @@ static void mic_send_task(void *arg)
             continue;
         }
 
+        jr_wa_lab_config_t cfg = lab_get_config();
+        uint32_t now = lab_millis(), last_speaker;
+        portENTER_CRITICAL(&state_lock);
+        last_speaker = status_state.last_speaker_active_ms;
+        portEXIT_CRITICAL(&state_lock);
+        bool speaker_active = last_speaker && (uint32_t)(now - last_speaker) < 250U;
+        int gain = cfg.mic_gain * (speaker_active ? cfg.echo_duck : 100) / 100;
+        uint32_t mic_clip = 0, mic_peak = 0;
+
         for (size_t i = 0; i < JR_WA_G711_SAMPLES_20MS; ++i) {
             size_t f0 = i * 2U;
             size_t f1 = f0 + 1U;
-            int16_t s0 = clamp16(raw[f0 * 2U] >> 14);
-            int16_t s1 = clamp16(raw[f1 * 2U] >> 14);
-            int16_t filtered = (int16_t)(((int32_t)s0 + (int32_t)s1) / 2);
+            int32_t raw0 = raw[f0 * 2U] >> 14;
+            int32_t raw1 = raw[f1 * 2U] >> 14;
+            if (raw0 > 32767 || raw0 < -32768 || raw1 > 32767 || raw1 < -32768) mic_clip++;
+            int16_t s0 = clamp16(raw0);
+            int16_t s1 = clamp16(raw1);
+            int32_t sample = ((int32_t)s0 + (int32_t)s1) / 2;
+            sample = sample * gain / 100;
+            if (lab_abs(sample) > 32767) mic_clip++;
+            int16_t filtered = clamp16(sample);
+            int32_t magnitude = lab_abs((int32_t)filtered);
+            if ((uint32_t)magnitude > mic_peak) mic_peak = (uint32_t)magnitude;
+            if (magnitude < cfg.gate) filtered = 0;
             g711[i] = linear_to_alaw(filtered);
         }
+        portENTER_CRITICAL(&state_lock);
+        status_state.mic_clip_samples += mic_clip;
+        if (mic_peak > status_state.mic_peak) status_state.mic_peak = mic_peak;
+        portEXIT_CRITICAL(&state_lock);
 
         esp_peer_audio_frame_t frame = {
             .pts = (uint32_t)(esp_timer_get_time() / 1000ULL),
@@ -948,26 +1022,63 @@ static void playback_task(void *arg)
     (void)arg;
     jr_wa_audio_packet_t packet;
     int32_t out[JR_WA_RX_PACKET_MAX * 4];
+    bool primed = false;
+    int previous_prebuffer = -1;
 
     while (session_running && tx_chan) {
+        jr_wa_lab_config_t cfg = lab_get_config();
         size_t frames_out = 0;
+        int peak = 0;
+        if (cfg.prebuffer != previous_prebuffer) {
+            primed = false;
+            previous_prebuffer = cfg.prebuffer;
+        }
+        /* A 20-ms PCMA packet is 160 bytes at 8 kHz. Reuse the existing
+         * 12-item queue, normally backed by PSRAM; no additional queue. */
+        int needed = cfg.prebuffer / 20;
+        if (!primed && audio_queue &&
+            (int)uxQueueMessagesWaiting(audio_queue) >= needed) primed = true;
 
-        if (audio_queue && xQueueReceive(audio_queue, &packet, 0) == pdTRUE) {
+        if (primed && audio_queue &&
+            xQueueReceive(audio_queue, &packet, 0) == pdTRUE) {
             size_t samples = packet.size;
             if (samples > JR_WA_RX_PACKET_MAX) samples = JR_WA_RX_PACKET_MAX;
 
             for (size_t i = 0; i < samples; ++i) {
                 int16_t pcm = alaw_to_linear(packet.data[i]);
-                int32_t slot = (int32_t)pcm * 65536;
+                int32_t mag = lab_abs((int32_t)pcm);
+                if (mag > peak) peak = (int)mag;
+                int32_t scaled = ((int32_t)pcm * cfg.volume) / 100;
+                int32_t slot = (int32_t)clamp16(scaled) * 65536;
                 for (int up = 0; up < 2; ++up) {
                     out[frames_out * 2U] = slot;
                     out[frames_out * 2U + 1U] = slot;
                     frames_out++;
                 }
             }
+
+            if (peak > 500 && cfg.volume > 0) {
+                portENTER_CRITICAL(&state_lock);
+                status_state.last_speaker_active_ms = lab_millis();
+                portEXIT_CRITICAL(&state_lock);
+            }
+            portENTER_CRITICAL(&state_lock);
+            if ((uint32_t)peak > status_state.speaker_peak)
+                status_state.speaker_peak = (uint32_t)peak;
+            portEXIT_CRITICAL(&state_lock);
         } else {
+            /* Silence keeps the I2S clock running at its fixed 16-kHz rate. */
             frames_out = JR_WA_I2S_FRAMES_20MS;
             memset(out, 0, frames_out * 2U * sizeof(int32_t));
+            if (primed) {
+                uint32_t last_rx, now = lab_millis();
+                portENTER_CRITICAL(&state_lock);
+                last_rx = status_state.last_audio_rx_ms;
+                if (last_rx && (uint32_t)(now - last_rx) < 150U)
+                    status_state.audio_underruns++;
+                portEXIT_CRITICAL(&state_lock);
+            }
+            primed = false;
         }
 
         size_t requested = frames_out * 2U * sizeof(int32_t);
@@ -1446,6 +1557,82 @@ static esp_err_t signal_post_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, "OK");
 }
 
+/* Small control API. No extra audio buffer, no allocations on the audio path.
+ * GET is polled only while the lab is visible; POST is one bounded JSON object. */
+static esp_err_t lab_status_handler(httpd_req_t *req)
+{
+    jr_wa_lab_config_t cfg;
+    uint32_t clips, mic_peak, speaker_peak, underruns, queue_peak;
+    bool active;
+    portENTER_CRITICAL(&state_lock);
+    cfg = lab_config;
+    clips = status_state.mic_clip_samples;
+    mic_peak = status_state.mic_peak;
+    speaker_peak = status_state.speaker_peak;
+    underruns = status_state.audio_underruns;
+    queue_peak = status_state.audio_queue_peak;
+    active = status_state.active;
+    portEXIT_CRITICAL(&state_lock);
+    unsigned queue_pending = audio_queue ? (unsigned)uxQueueMessagesWaiting(audio_queue) : 0U;
+    char body[460];
+    snprintf(body, sizeof(body),
+             "{\"volume\":%d,\"mic_gain\":%d,\"echo_duck\":%d,\"gate\":%d,\"prebuffer\":%d,"
+             "\"active\":%d,\"queue_pending\":%u,\"queue_peak\":%lu,\"underruns\":%lu,"
+             "\"mic_clip\":%lu,\"mic_peak\":%lu,\"speaker_peak\":%lu,"
+             "\"internal_free\":%u,\"internal_largest\":%u,\"internal_min\":%u,"
+             "\"psram_free\":%u}",
+             cfg.volume, cfg.mic_gain, cfg.echo_duck, cfg.gate, cfg.prebuffer,
+             active ? 1 : 0, queue_pending, (unsigned long)queue_peak, (unsigned long)underruns,
+             (unsigned long)clips, (unsigned long)mic_peak, (unsigned long)speaker_peak,
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, body);
+}
+
+static bool lab_int(cJSON *root, const char *key, int min, int max, int *out)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(root, key);
+    if (!cJSON_IsNumber(item) || item->valuedouble != (double)item->valueint ||
+        item->valueint < min || item->valueint > max) return false;
+    *out = item->valueint;
+    return true;
+}
+
+static esp_err_t lab_config_handler(httpd_req_t *req)
+{
+    if (req->content_len <= 0 || req->content_len >= 192)
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid settings size");
+    char body[192];
+    int got = 0;
+    while (got < req->content_len) {
+        int n = httpd_req_recv(req, body + got, req->content_len - got);
+        if (n <= 0) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "incomplete settings");
+        got += n;
+    }
+    body[got] = 0;
+    cJSON *root = cJSON_Parse(body);
+    jr_wa_lab_config_t next = lab_defaults;
+    bool valid = root && cJSON_IsObject(root) &&
+                 lab_int(root, "volume", 0, 100, &next.volume) &&
+                 lab_int(root, "mic_gain", 25, 150, &next.mic_gain) &&
+                 lab_int(root, "echo_duck", 0, 100, &next.echo_duck) &&
+                 lab_int(root, "gate", 0, 2000, &next.gate) &&
+                 lab_int(root, "prebuffer", 20, 60, &next.prebuffer) &&
+                 next.prebuffer % 20 == 0;
+    cJSON_Delete(root);
+    if (!valid) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid audio settings");
+    portENTER_CRITICAL(&state_lock);
+    lab_config = next;
+    portEXIT_CRITICAL(&state_lock);
+    ESP_LOGI(TAG, "LIVE_AUDIO_LAB volume=%d mic_gain=%d echo_duck=%d gate=%d prebuffer_ms=%d",
+             next.volume, next.mic_gain, next.echo_duck, next.gate, next.prebuffer);
+    return lab_status_handler(req);
+}
+
 static esp_err_t status_handler(httpd_req_t *req)
 {
     jr_wa_status_t s;
@@ -1542,6 +1729,8 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
         {.uri = "/webrtc-audio/signal", .method = HTTP_GET, .handler = signal_get_handler, .user_ctx = NULL},
         {.uri = "/webrtc-audio/signal", .method = HTTP_POST, .handler = signal_post_handler, .user_ctx = NULL},
         {.uri = "/webrtc-audio/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_GET, .handler = lab_status_handler, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_POST, .handler = lab_config_handler, .user_ctx = NULL},
     };
 
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); ++i) {
