@@ -82,25 +82,29 @@
       return;
     }
     busy = true;
+    let restarting = false;
     for (const button of panel.querySelectorAll('button')) button.disabled = true;
     try {
       const data = await request('', {method:'POST', headers:{'Content-Type':'application/json','X-JrBot-WiFi':'1'}, body:JSON.stringify(json)});
       if (data.restarting) {
+        restarting = true;
         feedback('Reinício solicitado. Aguarde a nova conexão e abra https://jrbot.local na nova rede.');
       } else if (data.pending_restart) {
         feedback('Rede selecionada para o próximo reinício. A conexão atual permanece ativa.');
       } else {
         feedback('Rede armazenada. A conexão atual foi preservada.');
       }
-      if (!data.restarting) await refresh();
+      if (!restarting) await refresh();
     } catch (error) {
       feedback('Não foi possível alterar a rede: ' + error.message, true);
     } finally {
       busy = false;
       for (const button of panel.querySelectorAll('button')) button.disabled = false;
-      // Restore disabled states from device status, not from a global override.
-      await status();
-      await profiles();
+      // A restart may close HTTPS immediately; preserve the confirmation message.
+      if (!restarting) {
+        await status();
+        await profiles();
+      }
     }
   }
   async function status() {
