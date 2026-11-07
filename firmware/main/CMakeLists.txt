@@ -14,6 +14,7 @@ idf_component_register(
         "../core/jr_usb_terminal.c"
         "../module_face/jr_face.c"
         "../module_portal/jr_portal.c"
+        "../module_portal/jr_wifi_web.c"
         "../module_portal/jr_audio_receive.c"
         "../module_camera/jr_camera_diag.c"
         "../module_audio/jr_audio.c"
@@ -36,6 +37,7 @@ idf_component_register(
     EMBED_TXTFILES
         "jrskill_app.js"
         "memory_panel.js"
+        "wifi_panel.js"
 )
 
 # Generated inventory stays in the ignored build directory, never the source tree.
