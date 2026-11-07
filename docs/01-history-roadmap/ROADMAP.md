@@ -9,9 +9,10 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 | **V1.6.1** | Browser control, camera, audio, and push-to-talk intercom | Historical version |
 | **V1.6.2** — Sep 19, 2026 | Installer with dynamic branch selection | Documented |
 | **V1.6.3** — Sep 23, 2026 | Local Live WebRTC: bidirectional audio and JPEG video | Physically validated |
-| **V1.7.04** — Sep 28, 2026 | Centralized mode and I2S resource management | **Latest stable release promoted to `main`** |
+| **V1.7.04** — Sep 28, 2026 | Centralized mode and I2S resource management | Historical stable milestone |
 | **V1.8S** | Integration of existing robot capabilities with JrSkill Network | Integrated into `main` |
-| **V1.8.1S** — Oct 26, 2026 | Lighter Wi-Fi firmware, phone setup, connection validation and `jrbot.local` recovery | In `main`; physical and memory testing confirmed complete by owner on Oct 26 |
+| **V1.8.1S** — Oct 26, 2026 | Lighter Wi-Fi firmware, phone setup, connection validation and `jrbot.local` recovery | Owner-confirmed physical and memory tests on Oct 26; inherited by V1.8.2S |
+| **V1.8.2S** — Nov 7, 2026 | Mesa Mix for Live audio: volume, microphone gain, echo ducking, noise gate, pre-buffer and diagnostics | Current source version on `main`; headphone audio reported working, delayed voice return remains |
 
 During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
@@ -28,7 +29,7 @@ The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issue
 
 | Workstream | Verified starting point | Next objective |
 | --- | --- | --- |
-| **JrBot V1.8.1S** | Firmware build and host-level Wi-Fi/mDNS checks | Sustain completed acceptance; no reopening physical/memory tests |
+| **JrBot V1.8.2S** | Mesa Mix integrated into the local Live; positive headphone-use report | Improve delayed self-voice return and collect RAM/PSRAM diagnostics when available |
 | **Remote access / WebRTC — [Issue #26](https://github.com/JuniorNarciso26/JrRobot/issues/26)** | Local full-duplex audio and JPEG DataChannel Live working; current signaling is local only | Prioritize secure access from mobile networks: first prove private VPN reachability, then validate ICE/media; evaluate authenticated Internet signaling and TURN if needed, without exposing ESP32 ports |
 | **JrSkill creator platform** | Initial Creator Studio, Store, licenses, and execution demonstrated on Devnet | Expand development and publishing tools for creators |
 | **Hardware assembly and 3D-printed body** | Electronic assembly documented; mechanical development tracked in [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Gather printable models, document body assembly, and validate the complete build |

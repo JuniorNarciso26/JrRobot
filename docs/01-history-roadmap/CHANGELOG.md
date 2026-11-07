@@ -221,8 +221,14 @@ The PR #57 source compiled locally with ESP-IDF 5.5.5 and the RAM-light
 profile. HW04 pin-policy checks and embedded JavaScript syntax passed. This
 software validation did not flash hardware or measure Live RAM/PSRAM use.
 
+## November 7, 2026 — JrBot V1.8.2S: Mesa Mix for Live audio
+
+The tested Audio Lab work from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57) was promoted to `main` and given the final firmware identifier **`JrBot_V1.8.2S`**. The robot's Live page now presents **Mesa Mix · Live** for adjusting WebRTC speaker volume (0–100%), microphone gain (25–150%), echo ducking (0–100%), noise gate (0–2000 PCM) and pre-buffer (20/40/60 ms). The controls apply during the conversation, live in RAM and return to defaults after a reboot. The existing audio queue is reused, and the page exposes underruns, clipping and RAM/PSRAM diagnostics.
+
+The owner reported good communication with headphones and better perceived sound after reducing microphone gain and speaker volume. Their own voice still returns with a delay, even away from the robot. The exact V1.8.2S source passed an ESP-IDF 5.5.5 RAM-light build, HW04 pin-policy checks and embedded JavaScript syntax validation. No exact tuning values or RAM/PSRAM time series were supplied for V1.8.2S; this release does not claim complete acoustic echo cancellation or measured long-session memory stability. See the [Mesa Mix guide](../04-firmware-development/LIVE_AUDIO_LAB.md).
+
 ## Where this history stands
 
-**JrBot V1.8.1S** is the last owner-accepted baseline and builds on the V1.8S JrSkill integration. `AUDIO_LAB_01` is an experimental tuning candidate; its delayed voice return and RAM/PSRAM behavior still need measured follow-up.
+The current source version on `main` is **JrBot V1.8.2S**. V1.8.1S remains the last separately confirmed full physical-and-memory baseline; V1.8.2S adds Mesa Mix with a positive owner audio report and the delayed voice return still known.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.

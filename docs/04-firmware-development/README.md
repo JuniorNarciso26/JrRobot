@@ -1,6 +1,6 @@
 # JrBot — Firmware and Development
 
-This directory explains the **JrBot V1.8.1S baseline** and its experimental Live Audio Lab candidate: how they are built, start, communicate with clients and control the physical robot. The Wi-Fi setup flow is documented in [Wi-Fi Provisioning](WIFI_PROVISIONING_RAM_LIGHT.md); baseline acceptance is tracked in [Project Status](../01-history-roadmap/PROJECT_STATUS.md).
+This directory explains **JrBot V1.8.2S on `main`**: how it is built, starts, communicates with clients and controls the physical robot. Its Live audio controls are documented in [Mesa Mix](LIVE_AUDIO_LAB.md). The Wi-Fi setup flow is documented in [Wi-Fi Provisioning](WIFI_PROVISIONING_RAM_LIGHT.md); release evidence and known limits are tracked in [Project Status](../01-history-roadmap/PROJECT_STATUS.md).
 
 ## Read in this order
 
@@ -10,7 +10,7 @@ This directory explains the **JrBot V1.8.1S baseline** and its experimental Live
 | **[Architecture](ARCHITECTURE.md)** | Real startup sequence, compiled modules, Live and JrSkill execution |
 | **[Runtime API](API_RUNTIME.md)** | Serial commands, HTTP routes, supported API functions and errors |
 | **[Testing](TESTING.md)** | How to test hardware, record evidence and prepare a release |
-| **[Live Audio Lab](LIVE_AUDIO_LAB.md)** | Experimental Live sound controls, RAM/PSRAM diagnostics, user feedback and remaining tests |
+| **[Mesa Mix · Live](LIVE_AUDIO_LAB.md)** | V1.8.2S Live sound controls, RAM/PSRAM diagnostics and known audio limits |
 
 ## Proposed features — not available as a general runtime engine
 

@@ -1,6 +1,6 @@
-# Provisionamento de Wi-Fi do JrBot V1.8.1S
+# Provisionamento de Wi-Fi do JrBot V1.8.1S–V1.8.2S
 
-Versão atual em `main`: `JrBot_V1.8.1S`. O desenvolvimento passou pelo branch
+Versão atual em `main`: `JrBot_V1.8.2S`; o provisionamento foi introduzido em `JrBot_V1.8.1S`. O desenvolvimento passou pelo branch
 `test/develop_wifi_ram_light_provisioning`, baseado em
 `test/develop_wifi_ram_light` e no experimento `test/esp-wifi-provisioning`
 (commit `2593892`). A tabela de medição abaixo preserva as versões de teste.
@@ -102,7 +102,7 @@ ser usado para validar a Live. Historically, release acceptance required a build
 
 ## Status de encerramento — 26/10/2026
 
-- Configuração de Wi-Fi pelo celular e mDNS fazem parte de `JrBot_V1.8.1S` em `main`.
+- Configuração de Wi-Fi pelo celular e mDNS foram integradas na V1.8.1S e permanecem na `JrBot_V1.8.2S` em `main`.
 - Testes físicos: **OK**, conforme confirmação explícita do responsável pelo projeto em 26/10/2026.
 - Testes de memória: **concluídos**, conforme a mesma confirmação. Não solicitar medições adicionais para encerrar esta etapa.
 - A Issue [#55](https://github.com/JuniorNarciso26/JrRobot/issues/55) registra a trilha experimental; a implementação final integrada usa o gerenciador Wi-Fi RAM-light do JrBot e não importa os componentes ADF integralmente.
