@@ -1,4 +1,4 @@
-# JrBot — Testing and V1.8.1S Release Checks
+# JrBot — Testing and Release Checks
 
 A **successful firmware build or positive API response is not enough** to claim that the physical robot worked. Every report must identify the tested branch/build and actual evidence.
 
@@ -65,7 +65,13 @@ The archived `tests/hardware/panel_results.json` and older notes reflect their o
 
 If future releases or regressions require a new acceptance campaign, collect **PASS / FAIL / NOT RUN** by scenario and preserve the corresponding logs. If `jrbot.local` fails on a specific LAN, distinguish mDNS filtering from an IP connectivity failure.
 
-## 6. Minimum reproducible report
+## 6. V1.8.2S Mesa Mix verification status — November 7, 2026
+
+The current firmware ID is **`JrBot_V1.8.2S`**. It carries the Live audio Mesa Mix from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57). The owner reported working communication with headphones and improved sound after lowering microphone gain and speaker volume. The delayed return of their own voice remains. No numerical RAM/PSRAM series, exact gain settings or measured delay were supplied; these are known evidence limits, not inferred failures. The Mesa Mix controls and diagnostics are described in [its guide](LIVE_AUDIO_LAB.md).
+
+The exact V1.8.2S source compiled locally for ESP32-S3 with **ESP-IDF 5.5.5** and `sdkconfig.develop_wifi_ram_light`. The application image was `0x25ed50` bytes, leaving 53% of the smallest application partition free. HW04 pin-policy checks and the embedded JavaScript syntax check passed. This software validation did not flash a board or measure runtime RAM/PSRAM.
+
+## 7. Minimum reproducible report
 
 ```text
 Date / tester:

@@ -11,7 +11,7 @@ This section documents JrBot's **past, present, and future**, with a clear purpo
 
 ## Current reference
 
-The current source version on `main` is **`JrBot_V1.8.1S`**. V1.8S integrated JrSkill Network; V1.8.1S adds Wi-Fi setup and mDNS recovery. Physical acceptance of the exact V1.8.1S build is still pending.
+The current source version on `main` is **`JrBot_V1.8.2S`**. V1.8S integrated JrSkill Network; V1.8.1S added Wi-Fi setup and mDNS recovery; V1.8.2S adds the **Mesa Mix · Live** for audio tuning. The owner reported good communication with headphones, while a delayed return of their own voice remains known. See [Project Status](PROJECT_STATUS.md) for the evidence and limits.
 
 The JrSkill creation, publication, license purchase, and physical execution flow has been demonstrated on **Solana Devnet**. This does **not** imply a live Mainnet marketplace.
 
