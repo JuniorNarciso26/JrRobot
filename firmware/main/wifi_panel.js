@@ -201,6 +201,7 @@
       timer = setInterval(() => { if (!busy) status(); }, 10000);
   }
   function selectWiFi() {
+    nav.dispatchEvent(new Event('jrbot:wifi-selected'));
     for (const button of nav.querySelectorAll('button')) button.setAttribute('aria-pressed', String(button === wifiTab));
     main.hidden = true;
     memory.hidden = true;
