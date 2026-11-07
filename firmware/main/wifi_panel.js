@@ -98,7 +98,9 @@
     } finally {
       busy = false;
       for (const button of panel.querySelectorAll('button')) button.disabled = false;
-      if (!el('restart').dataset.pending) el('restart').disabled = true;
+      // Restore disabled states from device status, not from a global override.
+      await status();
+      await profiles();
     }
   }
   async function status() {
@@ -140,8 +142,9 @@
         item.appendChild(name);
         const button = document.createElement('button');
         button.type = 'button';
-        button.textContent = profile.selected ? 'Selecionada' : 'Usar esta rede';
-        button.disabled = !!profile.selected || busy;
+        // Allow reapplying a selected SSID: its stored password may have changed.
+        button.textContent = profile.selected ? 'Reaplicar configuração' : 'Usar esta rede';
+        button.disabled = busy;
         button.onclick = () => {
           if (!confirm('Selecionar "' + ssid + '" para o próximo reinício? A conexão atual será preservada até reiniciar.')) return;
           write({action:'use', id:profile.id});
@@ -185,7 +188,7 @@
       el('networks').textContent = '';
       feedback('Busca indisponível: ' + error.message, true);
     } finally {
-      button.disabled = false;
+      button.disabled = busy;
     }
   }
   async function refresh() {
