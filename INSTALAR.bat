@@ -312,6 +312,12 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+) else if /i "%CURRENT_BRANCH%"=="feature/wifi-dashboard" (
+    rem Connected Wi-Fi panel experiment, using the stable V1.8.2S RAM-light profile.
+    set "BUILD_DIR=b-wifi-tab"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
 ) else if /i "%CURRENT_BRANCH%"=="main" (
     rem Usa o perfil RAM-light e isola o build pela versao publicada.
     set "JRBOT_MAIN_VERSION="
