@@ -1,6 +1,6 @@
 # JrBot — Development, Installation and First Run
 
-This is the operational guide for **JrBot V1.8.1S on `main`**. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md).
+This is the operational guide for the **JrBot V1.8.1S baseline** and the experimental **AUDIO_LAB_01** candidate. Check `firmware/version.txt` on the selected branch before building. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md). For Live sound controls and their limits, use [Live Audio Lab](LIVE_AUDIO_LAB.md).
 
 ## 1. Before you begin
 
@@ -20,7 +20,8 @@ Keep the panel Python environment separate from ESP-IDF: `PAINEL.bat` uses `%LOC
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Current source version: **JrBot_V1.8.1S** |
+| `main` | Protected integration branch; confirm its current version in `firmware/version.txt` |
+| `feature/live-audio-lab` | Experimental Live sound tuning candidate **JrBot_V1.8.1S_AUDIO_LAB_01** |
 | `V1s-00` | Historical V1.8S development line |
 | `test/develop_wifi_ram_light_provisioning` | Wi-Fi/RAM-light test line that preceded V1.8.1S |
 | `develop` | Integration baseline |
@@ -108,7 +109,7 @@ Then verify each actual result using [Testing](TESTING.md):
 | `/webrtc-audio` over HTTPS | Both audio directions and video on the same local network |
 | JrSkill App on device | Authenticated Devnet wallet, licensed Skill and physically observed allowed action |
 
-The firmware reports **`JrBot_V1.8.1S`** in `firmware/version.txt`, the boot log and `core/jr_config.h`. The `main` installer uses the RAM-light configuration and isolates its build directory by this version.
+The V1.8.1S baseline reports **`JrBot_V1.8.1S`** in `firmware/version.txt`, the boot log and `core/jr_config.h`; the Audio Lab candidate reports **`JrBot_V1.8.1S_AUDIO_LAB_01`**. The installer uses the RAM-light configuration for both branches and isolates their build directories.
 
 ## 7. Common diagnostic cases
 

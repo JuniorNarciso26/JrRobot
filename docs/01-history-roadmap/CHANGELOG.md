@@ -194,11 +194,35 @@ This update follows the V1.8S JrSkill integration on `main`. The firmware ID is
   build directory isolated by the firmware version.
 
 The firmware build and software checks are recorded in [Testing](../04-firmware-development/TESTING.md).
-A physical acceptance run for this exact version is still pending; the earlier
-HW04 and Devnet records remain evidence for their own tested builds.
+The owner later reported physical and memory tests OK for this version, without
+new per-scenario logs or numerical memory measurements. The earlier HW04 and
+Devnet records remain evidence for their own tested builds.
+
+## November 7, 2026 — Experimental Live Audio Lab candidate
+
+The `feature/live-audio-lab` branch identifies its firmware as
+`JrBot_V1.8.1S_AUDIO_LAB_01`. It adds a **Mesa de Áudio** to the Live page on
+`jrbot.local`, with separate speaker volume, microphone gain, echo ducking,
+noise gate and 20/40/60 ms pre-buffer controls. The settings are temporary in
+RAM. Diagnostics expose queue occupancy, underruns, microphone clipping and
+RAM/PSRAM availability. This is a tuning tool, not full acoustic echo
+cancellation.
+
+The owner reported that communication works and sounds good with headphones.
+Reducing microphone gain and speaker volume while the microphone was open
+improved the perceived sound. The owner still hears their own voice return
+with a delay, even while away from the robot. No exact gain settings, delay
+measurement or RAM/PSRAM time series were supplied. The result is a positive
+audio field report, not complete validation of memory stability, video and
+I2S behavior. See the [Audio Lab guide](../04-firmware-development/LIVE_AUDIO_LAB.md)
+for controls, diagnostics, limits and the remaining test procedure.
+
+The PR #57 source compiled locally with ESP-IDF 5.5.5 and the RAM-light
+profile. HW04 pin-policy checks and embedded JavaScript syntax passed. This
+software validation did not flash hardware or measure Live RAM/PSRAM use.
 
 ## Where this history stands
 
-The current source version on `main` is **JrBot V1.8.1S**. It builds on the V1.8S JrSkill integration. Consolidated physical testing of the exact V1.8.1S firmware must still be recorded separately.
+**JrBot V1.8.1S** is the last owner-accepted baseline and builds on the V1.8S JrSkill integration. `AUDIO_LAB_01` is an experimental tuning candidate; its delayed voice return and RAM/PSRAM behavior still need measured follow-up.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.

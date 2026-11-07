@@ -10,7 +10,7 @@ See. Hear. Speak. Connect. Express.
 <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
 <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
 <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-<img src="https://img.shields.io/badge/version-JrBot__V1.8.1S-brightgreen" alt="Current source version">
+<img src="https://img.shields.io/badge/baseline-JrBot__V1.8.1S-brightgreen" alt="Last accepted baseline">
 <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
 
 [Website](https://jrbot.com.br) ·
@@ -54,6 +54,8 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 The initial Creator Studio, Store, licensing and Skill execution flow have been completed and validated. **An expanded platform for developing and publishing Skills is now under development**, offering new possibilities for creators and developers.
 
 **V1.8.1S** improves Wi-Fi setup: JrBot opens its own setup network when it cannot connect at startup, tests new credentials before saving, and retries local `jrbot.local` announcement after an mDNS startup failure. On October 26, 2026, the project owner confirmed that the current physical tests passed and memory testing was completed. This confirmation does not provide new per-scenario logs or memory measurements.
+
+The experimental **Live Audio Lab** adds a Mesa de Áudio inside the robot's Live page for tuning speaker volume, microphone gain, echo ducking, noise gate and pre-buffer. The owner reports good communication with headphones and improved sound after lowering microphone gain and speaker volume. A delayed return of their own voice remains under investigation; RAM/PSRAM measurements for this experiment have not been provided. See the [Audio Lab guide](docs/04-firmware-development/LIVE_AUDIO_LAB.md).
 
 ### Current limitations
 
@@ -99,7 +101,7 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** is now the source version on `main`, adding phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026.
+**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** is the last accepted baseline, adding phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026. **AUDIO_LAB_01** is an experimental audio tuning candidate with a positive headphone-use report and unresolved delayed voice return.
 
 | Project | Status |
 | --- | --- |
