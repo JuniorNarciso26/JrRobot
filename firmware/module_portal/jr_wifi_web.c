@@ -215,11 +215,15 @@ static esp_err_t wifi_post(httpd_req_t *req)
                 optional_string(json, "dns2"), result, sizeof(result));
         }
         /* The current station remains connected. The saved profile is not selected yet. */
-    } else if (!strcmp(action, "use")) {
+    } else if (!strcmp(action, "use") || !strcmp(action, "delete")) {
         const cJSON *item = cJSON_GetObjectItemCaseSensitive(json, "id");
         if (cJSON_IsNumber(item) && item->valuedouble == (double)item->valueint &&
-            item->valueint >= 0 && item->valueint <= 3)
-            success = jr_wifi_profile_use((unsigned)item->valueint, result, sizeof(result));
+            item->valueint >= 0 && item->valueint <= 3) {
+            if (!strcmp(action, "delete"))
+                success = jr_wifi_profile_delete((unsigned)item->valueint, result, sizeof(result));
+            else
+                success = jr_wifi_profile_use((unsigned)item->valueint, result, sizeof(result));
+        }
     } else if (!strcmp(action, "restart")) {
         jr_wifi_status_t status;
         jr_wifi_get_status(&status);
@@ -243,6 +247,13 @@ static esp_err_t wifi_post(httpd_req_t *req)
     }
     jr_wifi_status_t status;
     jr_wifi_get_status(&status);
+    if (!strcmp(action, "delete")) {
+        /* A deletion never disconnects the running station. Deleting the
+         * selected profile opens provisioning on the next reboot. */
+        return json_reply(req, "200 OK", status.pending_restart ?
+            "{\"ok\":true,\"deleted\":true,\"pending_restart\":true}" :
+            "{\"ok\":true,\"deleted\":true,\"pending_restart\":false}");
+    }
     return json_reply(req, "200 OK", status.pending_restart ?
         "{\"ok\":true,\"pending_restart\":true}" :
         "{\"ok\":true,\"pending_restart\":false}");
