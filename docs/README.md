@@ -13,6 +13,6 @@ This documentation is organized by **primary topic**, so readers can understand 
 
 ## Version status
 
-**JrBot V1.8.2S** is the current source version on `main`. It retains the V1.8.1S Wi-Fi setup and adds the [Mesa Mix for Live audio](04-firmware-development/LIVE_AUDIO_LAB.md): speaker volume, microphone gain, echo ducking, noise gate, pre-buffer and RAM/PSRAM diagnostics. The reported delayed return of the user's own voice remains a known limitation. See [Project Status](01-history-roadmap/PROJECT_STATUS.md) for the evidence and its limits.
+**JrBot V1.8.3S** is the current source version on `main`. It includes the [Mesa Mix for Live audio](04-firmware-development/LIVE_AUDIO_LAB.md) from V1.8.2S and adds the [Wi-Fi dashboard](04-firmware-development/WIFI_DASHBOARD.md): current SSID/IP/channel/RSSI, optional signal updates, manual network scanning, up to four saved profiles, add/select/delete with confirmation, and confirmed reboot to switch networks. The existing phone setup is retained. The delayed return of the user's voice remains a known audio limitation; authentication for local Wi-Fi management and full V1.8.3S hardware/memory regression evidence are not claimed. See [Project Status](01-history-roadmap/PROJECT_STATUS.md).
 
 This documentation follows the [MIT-licensed repository](../LICENSE). Historical material remains preserved in [trash/](../trash/README.md) for review; archived records are not necessarily up to date.
