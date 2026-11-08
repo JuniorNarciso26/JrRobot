@@ -227,8 +227,24 @@ The tested Audio Lab work from [PR #57](https://github.com/JuniorNarciso26/JrRob
 
 The owner reported good communication with headphones and better perceived sound after reducing microphone gain and speaker volume. Their own voice still returns with a delay, even away from the robot. The exact V1.8.2S source passed an ESP-IDF 5.5.5 RAM-light build, HW04 pin-policy checks and embedded JavaScript syntax validation. No exact tuning values or RAM/PSRAM time series were supplied for V1.8.2S; this release does not claim complete acoustic echo cancellation or measured long-session memory stability. See the [Mesa Mix guide](../04-firmware-development/LIVE_AUDIO_LAB.md).
 
+## November 7, 2026 — JrBot V1.8.3S: Wi-Fi management after connection
+
+The connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59) was integrated into `main`. The firmware version is **`JrBot_V1.8.3S`**, preserving the V1.8.2S Live audio Mesa Mix.
+
+- Added a third tab, **Wi-Fi**, beside **Control** and **Memory**, in the local browser portal `https://jrbot.local`.
+- Exposed connected/disconnected status, current SSID, assigned IP, RSSI in dBm, Wi-Fi channel and operating mode without returning stored passwords. RSSI refresh is manual or optional every 10 seconds while the tab is visible.
+- Added an on-demand scan (up to eight displayed networks), explicitly blocked during Live/autonomous operation to avoid disrupting audio/video.
+- Allowed saving and updating Wi-Fi credentials, viewing up to **four profiles**, and selecting one for the next reboot, with existing NVS storage.
+- Added **Excluir / Delete** next to each stored network, with confirmation. Deleting the selected network warns that initial provisioning may be needed on the next boot.
+- Kept the current connection running while saving or selecting a profile. Switching networks requires a **separately confirmed reboot**, which can change the device IP.
+- Retained the first-run phone provisioning and USB/Serial recovery paths.
+- Added HTTPS-only `/wifi-manager` endpoints for status/profiles/scan and profile writes. The general `/cmd` endpoint continues to block network Wi-Fi configuration commands.
+- Avoided a persistent ESP32 scan task, using the existing scanner and temporary PSRAM-backed response buffers.
+
+**Acceptance and limits:** the owner approved the dashboard for promotion. Source integration and the V1.8.3S identifier were confirmed in GitHub. Full independent hardware/network-switch regression, compile-size and RAM/PSRAM measurements were not documented as completed in this integration. HTTPS origin restrictions do not replace login/authentication, and the dashboard must not be exposed to the public Internet. See [Wi-Fi Dashboard](../04-firmware-development/WIFI_DASHBOARD.md) and [Project Status](PROJECT_STATUS.md).
+
 ## Where this history stands
 
-The current source version on `main` is **JrBot V1.8.2S**. V1.8.1S remains the last separately confirmed full physical-and-memory baseline; V1.8.2S adds Mesa Mix with a positive owner audio report and the delayed voice return still known.
+The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the last separately owner-confirmed full physical-and-memory baseline; V1.8.2S added Mesa Mix with a positive headphone audio report and delayed self-voice return still known; V1.8.3S adds the connected Wi-Fi management dashboard, network profile deletion, and confirmed network switching.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
