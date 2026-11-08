@@ -1,15 +1,16 @@
 # JrBot — Firmware Architecture and Execution
 
-This document follows the **actual ESP-IDF source compiled from `V1s-00`**. It explains what starts on the ESP32-S3 and how commands reach hardware. Installation belongs to [Development](DEVELOPMENT.md); command formats belong to [Runtime API](API_RUNTIME.md).
+This document follows the **ESP-IDF source on `main` for JrBot V1.8.3S**. It explains what starts on the ESP32-S3 and how commands reach hardware. Installation belongs to [Development](DEVELOPMENT.md); command formats belong to [Runtime API](API_RUNTIME.md).
 
 ## 1. Firmware layout and build
 
-`firmware/CMakeLists.txt` selects the `esp32s3` target; `firmware/main/CMakeLists.txt` names the C files included in the firmware and embeds `jrskill_app.js` as a text asset.
+`firmware/CMakeLists.txt` selects the `esp32s3` target; `firmware/main/CMakeLists.txt` names the C files included in the firmware and embeds browser assets including `jrskill_app.js`, `memory_panel.js` and `wifi_panel.js` as text assets.
 
 | Code path | Responsibility |
 | --- | --- |
 | `main/main.c` | `app_main()` and boot loop |
-| `core/jr_wifi.c` | Wi-Fi, NVS settings and connection status |
+| `core/jr_wifi.c` | Wi-Fi, NVS settings and connection status (up to four stored profiles) |
+| `core/jr_wifi_scan.c`, `jr_wifi_provisioning.c` | On-demand network scanner and first-run phone setup/recovery |
 | `core/jr_commands.c`, `jr_usb_terminal.c` | Serial/USB commands and status |
 | `core/jr_mode_manager.c` | Logical operating modes |
 | `core/jr_resource_manager.c` | Shared I2S ownership and diagnostics |
@@ -18,6 +19,8 @@ This document follows the **actual ESP-IDF source compiled from `V1s-00`**. It e
 | `module_audio/jr_mic.c`, `jr_audio.c` | Microphone and speaker on demand |
 | `module_audio/jr_webrtc_audio.c` | Local Live WebRTC audio and JPEG transport |
 | `module_portal/jr_portal.c`, `jr_audio_receive.c` | Local HTTP/HTTPS routes, browser assets and WAV reception |
+| `module_portal/jr_wifi_web.c` | HTTPS-only management API: Wi-Fi status, scan, saved-profile selection/deletion and confirmed reboot |
+| `main/memory_panel.js`, `wifi_panel.js` | Browser-side RAM inspector and connected Wi-Fi management interface |
 | `module_runtime/jr_runtime_api.c` | Allowlisted JSON API |
 | `module_brain/jr_brain.c`, `jr_voice.c`, `jr_reply_audio.c` | Local voice/brain experiments; not a finished V2 voice release |
 | `main/jrskill_app.js` | **Browser-side** JrSkill App embedded in the firmware image |
@@ -61,22 +64,35 @@ HTTP POST /cmd ─────┘
 
 The command layer handles legacy/local commands (`version`, `status`, expression names, audio diagnostics and Serial Wi-Fi setup). Requests prefixed with `api ` are passed to `jr_runtime_api_handle()`, which only permits registered functions such as `capabilities`, `get` and `face`.
 
-**HTTP is more restricted than Serial.** Wi-Fi setup and certain diagnostics are deliberately Serial-only; a request header is a command marker, **not proof of user authentication**.
+**HTTP is more restricted than Serial.** The `/cmd` network command route blocks `wifi_*` configuration and certain diagnostics remain Serial-only. From V1.8.3S, the separate HTTPS-only `/wifi-manager` API permits bounded profile operations; it has header/origin checks but **no user login/authentication**. A request header is a command marker, not proof of identity.
 
 ## 4. Portal, camera and real-time communication
 
 | Path | Implementation |
 | --- | --- |
 | Local HTTP | Port **80**, root interface, status/commands, snapshot and recording routes |
-| Local HTTPS | Port **443**, only when local certificate/key material is present |
+| Local HTTPS | Port **443**, only when local certificate/key material is present; hosts WebRTC, Mesa Mix and Wi-Fi management API |
 | Camera | OV5640 → JPEG in `jr_camera_diag.c`; snapshots by `/capture` |
 | Live video | JPEG frames → WebRTC **DataChannel** → browser |
 | Live microphone | MS3625 → I2S RX → **PCMA/G.711 A-law** → WebRTC audio |
 | Live speaker | Browser WebRTC audio → PCMA decode → I2S TX → MAX98357A |
 
-The WebRTC signaling/status handlers are registered **only on HTTPS** by `jr_webrtc_audio_register_routes()`. When HTTPS material is absent the firmware logs `JR_HTTPS_DISABLED` and **WebRTC is unavailable in that build configuration**. The intended communication is local-network Live, not an Internet-facing service.
+The WebRTC signaling/status handlers are registered **only on HTTPS** by `jr_webrtc_audio_register_routes()`; connected Wi-Fi management is registered on the same HTTPS listener by `jr_wifi_web_register_routes()`. When HTTPS material is absent the firmware logs `JR_HTTPS_DISABLED` and **WebRTC is unavailable in that build configuration**. The intended communication is local-network Live, not an Internet-facing service.
 
-See [Development](DEVELOPMENT.md) for the missing tracked HTTPS provisioning script and [API](API_RUNTIME.md) for HTTP endpoints.
+### Connected-mode Wi-Fi management (V1.8.3S)
+
+```text
+Browser Wi-Fi tab (wifi_panel.js)
+   ├─ GET /wifi-manager?view=status   → esp_wifi_sta_get_ap_info() (RSSI/channel)
+   ├─ GET /wifi-manager?view=profiles → jr_wifi_profiles_list() (NVS, no passwords)
+   ├─ GET /wifi-manager?view=scan     → jr_wifi_scan() (IDLE only; manual)
+   └─ POST /wifi-manager             → jr_wifi_profile_save()/use()/delete()
+                                           └─ separate confirmation → esp_restart()
+```
+
+The robot **continues using the active Wi-Fi link** while a different profile is selected or deleted. Applying another network takes a separately confirmed reboot, and the robot can enter first-run setup if the selected profile is removed. The existing scanner and NVS profiles are reused; no new background scan task is started. The dashboard runs in the client's browser, while the ESP32 handles the bounded HTTPS requests. Avoid changing Wi-Fi or scanning during Live; writes require `IDLE`. No production remote access/authentication is provided.
+
+See [Development](DEVELOPMENT.md) for HTTPS setup conditions, [API](API_RUNTIME.md) for routes and [Wi-Fi Dashboard](WIFI_DASHBOARD.md) for operational steps.
 
 ## 5. Modes, audio resource ownership and recovery
 
