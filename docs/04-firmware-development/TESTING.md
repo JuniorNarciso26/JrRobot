@@ -67,11 +67,29 @@ If future releases or regressions require a new acceptance campaign, collect **P
 
 ## 6. V1.8.2S Mesa Mix verification status — November 7, 2026
 
-The current firmware ID is **`JrBot_V1.8.2S`**. It carries the Live audio Mesa Mix from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57). The owner reported working communication with headphones and improved sound after lowering microphone gain and speaker volume. The delayed return of their own voice remains. No numerical RAM/PSRAM series, exact gain settings or measured delay were supplied; these are known evidence limits, not inferred failures. The Mesa Mix controls and diagnostics are described in [its guide](LIVE_AUDIO_LAB.md).
+The firmware ID for this audio milestone was **`JrBot_V1.8.2S`**. It carries the Live audio Mesa Mix from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57). The owner reported working communication with headphones and improved sound after lowering microphone gain and speaker volume. The delayed return of their own voice remains. No numerical RAM/PSRAM series, exact gain settings or measured delay were supplied; these are known evidence limits, not inferred failures. The Mesa Mix controls and diagnostics are described in [its guide](LIVE_AUDIO_LAB.md).
 
 The exact V1.8.2S source compiled locally for ESP32-S3 with **ESP-IDF 5.5.5** and `sdkconfig.develop_wifi_ram_light`. The application image was `0x25ed50` bytes, leaving 53% of the smallest application partition free. HW04 pin-policy checks and the embedded JavaScript syntax check passed. This software validation did not flash a board or measure runtime RAM/PSRAM.
 
-## 7. Minimum reproducible report
+## 7. V1.8.3S Wi-Fi dashboard integration — November 7, 2026
+
+**Source integrated:** [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59) and [PR #60](https://github.com/JuniorNarciso26/JrRobot/pull/60) were merged into `main`, identified by `JrBot_V1.8.3S`. The user accepted the UI for integration, but this section **does not claim** a newly measured ESP-IDF binary, standalone HW04 flashing, RAM/PSRAM profile or full network-switch regression. The browser JavaScript passed syntax checks during the development branch review; this is not a hardware test.
+
+| Scenario | Expected behavior | Status recorded in this document |
+| --- | --- | --- |
+| Portal navigation | Three tabs: Control, Memory, Wi-Fi | Code integrated; end-user acceptance reported |
+| Signal status | Current SSID, IP, RSSI (dBm), channel, mode; optional 10-second updates only when tab is open | No logged RSSI comparison |
+| Network scan | Scan on demand; at most eight results; refuses during Live/autonomous modes | Code integrated; physical regression not recorded |
+| Save and use profile | Store up to four profiles; no secrets in responses; selecting keeps current connection until confirmed reboot | Code integrated; network-switch test not recorded |
+| Delete unselected profile | Confirm removal, erase from NVS, current connection preserved | Code integrated; physical deletion test not recorded |
+| Delete selected profile | Warning about next-boot setup; no immediate disconnection; recovery still available | Code integrated; recovery test not recorded |
+| Confirmed network switch | Apply chosen SSID after user-confirmed reboot; IP may change | Code integrated; hardware test not recorded |
+| Security | HTTPS-only Wi-Fi writes; Serial-style `wifi_*` commands remain blocked on `/cmd`; no authenticated Internet administration | Code boundary reviewed; security penetration test not recorded |
+| Performance and regressions | Stable WebRTC audio/video, Mesa Mix and OLED; internal RAM/PSRAM and largest free block monitored | New measurements not supplied |
+
+Follow the precise steps and memory considerations in [Wi-Fi Dashboard](WIFI_DASHBOARD.md). The developer's statement that this feature is complete refers to **scope and promotion**, not unrecorded measurement results.
+
+## 8. Minimum reproducible report
 
 ```text
 Date / tester:
