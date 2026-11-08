@@ -232,6 +232,8 @@ static esp_err_t wifi_post(httpd_req_t *req)
             schedule = success;
         }
     }
+    /* Preserve the action before freeing the parsed JSON that owns its string. */
+    bool deleted = !strcmp(action, "delete");
     /* Do not keep password or SSID secrets in temporary request allocations. */
     cJSON *pass = cJSON_GetObjectItemCaseSensitive(json, "password");
     if (cJSON_IsString(pass) && pass->valuestring)
@@ -247,7 +249,7 @@ static esp_err_t wifi_post(httpd_req_t *req)
     }
     jr_wifi_status_t status;
     jr_wifi_get_status(&status);
-    if (!strcmp(action, "delete")) {
+    if (deleted) {
         /* A deletion never disconnects the running station. Deleting the
          * selected profile opens provisioning on the next reboot. */
         return json_reply(req, "200 OK", status.pending_restart ?
