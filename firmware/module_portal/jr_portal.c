@@ -13,6 +13,7 @@
 #include "jr_portal.h"
 #include "jr_audio_receive.h"
 #include "jr_webrtc_audio.h"
+#include "jr_wifi_web.h"
 #include "jr_memory.h"
 #include "jr_memory_tasks.h"
 #include "jr_memory_full.h"
@@ -29,6 +30,7 @@
 extern const char jrskill_app_js_start[] asm("_binary_jrskill_app_js_start");
 extern const char jrskill_app_js_end[] asm("_binary_jrskill_app_js_end");
 extern const char memory_panel_js_start[] asm("_binary_memory_panel_js_start");
+extern const char wifi_panel_js_start[] asm("_binary_wifi_panel_js_start");
 extern const char memory_build_json_start[] asm("_binary_jr_memory_build_json_start");
 
 static httpd_handle_t web_server;
@@ -47,7 +49,7 @@ static esp_err_t web_root_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     const char *marker=strstr(JRBOT_WEB_V1_HTML,"</body>");
     if (!marker) return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
-    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script><script src='/memory-panel.js'></script>";
+    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script><script src='/memory-panel.js'></script><script src='/wifi-panel.js'></script>";
     esp_err_t err=httpd_resp_send_chunk(req,JRBOT_WEB_V1_HTML,(ssize_t)(marker-JRBOT_WEB_V1_HTML));
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,inject,HTTPD_RESP_USE_STRLEN);
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,marker,HTTPD_RESP_USE_STRLEN);
@@ -106,6 +108,12 @@ static esp_err_t web_memory_handler(httpd_req_t *req) {
     bool ok = jr_memory_format(response, sizeof(response));
     return reply(req, ok ? "200 OK" : "500 Internal Server Error",
                  ok ? response : "JR_ERROR memory_buffer");
+}
+
+static esp_err_t web_wifi_js_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req,"application/javascript; charset=utf-8");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_send(req,wifi_panel_js_start,HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t web_memory_js_handler(httpd_req_t *req) {
@@ -247,6 +255,7 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
         {.uri="/memory",.method=HTTP_GET,.handler=web_memory_handler},
         {.uri="/memory-panel.js",.method=HTTP_GET,.handler=web_memory_js_handler},
+        {.uri="/wifi-panel.js",.method=HTTP_GET,.handler=web_wifi_js_handler},
         {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler},
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
@@ -270,7 +279,7 @@ static void start_http(void) {
     httpd_config_t config=HTTPD_DEFAULT_CONFIG();
     config.server_port=80;
     config.stack_size=12288;
-    config.max_uri_handlers=17;
+    config.max_uri_handlers=18;
     config.lru_purge_enable=true;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
@@ -285,7 +294,7 @@ static void start_https(void) {
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
-    config.httpd.max_uri_handlers=23; /* 17 portal routes + 6 WebRTC/audio lab routes */
+    config.httpd.max_uri_handlers=26; /* 17 portal routes + 6 WebRTC/audio lab routes */
     config.httpd.max_open_sockets=7;
     config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;
@@ -297,6 +306,7 @@ static void start_https(void) {
     err=register_routes(https_server);
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","https_register=%s",esp_err_to_name(err)); return; }
     err=jr_webrtc_audio_register_routes(https_server);
+    if (err==ESP_OK) err=jr_wifi_web_register_routes(https_server);
     if (err!=ESP_OK) { httpd_ssl_stop(https_server); https_server=NULL; ESP_LOGE("jrbot_portal","webrtc_audio_register=%s",esp_err_to_name(err)); return; }
     ESP_LOGI("jrbot_portal","JR_HTTPS_READY port=443 ctrl_port=32769 cert=local V1.6 WebRTCAudio=/webrtc-audio");
 #else

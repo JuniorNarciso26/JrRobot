@@ -504,6 +504,8 @@
     syncTimer();
     if (showMemory) read();
   }
+  // Stop memory polling when another portal tab (Wi-Fi) becomes active.
+  nav.addEventListener('jrbot:wifi-selected', () => { active = false; generation++; syncTimer(); });
   controls[0].onclick = () => select(false);
   controls[1].onclick = () => select(true);
   get('refresh').onclick = () => read();
