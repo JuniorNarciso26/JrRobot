@@ -1,6 +1,6 @@
 # JrBot — Development, Installation and First Run
 
-This is the operational guide for **JrBot V1.8.2S on `main`**. Check `firmware/version.txt` on the selected branch before building. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md). For the Live audio mixer and its limits, use [Mesa Mix](LIVE_AUDIO_LAB.md).
+This is the operational guide for **JrBot V1.8.3S on `main`**. Check `firmware/version.txt` on the selected branch before building. For the internal startup sequence use [Architecture](ARCHITECTURE.md); for commands use [Runtime API](API_RUNTIME.md). For the Live audio mixer and its limits, use [Mesa Mix](LIVE_AUDIO_LAB.md). For managing Wi-Fi after the robot is connected, see [Wi-Fi Dashboard](WIFI_DASHBOARD.md).
 
 ## 1. Before you begin
 
@@ -20,8 +20,9 @@ Keep the panel Python environment separate from ESP-IDF: `PAINEL.bat` uses `%LOC
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Current source version: **JrBot_V1.8.2S** with Mesa Mix for Live audio |
+| `main` | Current source version: **JrBot_V1.8.3S** with Mesa Mix and connected-mode Wi-Fi dashboard |
 | `feature/live-audio-lab` | Preserved historical experiment **JrBot_V1.8.1S_AUDIO_LAB_01** that led to V1.8.2S |
+| `feature/wifi-dashboard` | Preserved development line for the Wi-Fi management feature promoted in V1.8.3S |
 | `V1s-00` | Historical V1.8S development line |
 | `test/develop_wifi_ram_light_provisioning` | Wi-Fi/RAM-light test line that preceded V1.8.1S |
 | `develop` | Integration baseline |
@@ -71,6 +72,16 @@ To enter setup while a saved network exists, hold BOOT for three seconds while t
 
 The USB panel remains an alternative: select the serial port, configure Wi-Fi and DHCP or a validated static IPv4 address, save through `wifi_config_pct`, then restart. The firmware stores its versioned record and up to four profiles in **NVS**.
 
+### Manage Wi-Fi after the first connection (V1.8.3S)
+
+Open **`https://jrbot.local`** on the same local network, then select **Wi-Fi** next to **Control** and **Memory**. The tab displays the active SSID, IP, Wi-Fi channel, current mode and received signal level **RSSI (dBm)**. Use **Refresh status** or optional ten-second updates to check the signal without scanning for new networks.
+
+To add or switch networks, stop Live/autonomous mode first. Press **Find networks** (manual scan; at most eight listed) or type the SSID, enter the password and choose **Save network without disconnecting**. Under **Saved networks**, select **Use this network** to make the profile active for the next boot. Only **Confirm and restart** applies the new Wi-Fi connection. It may change IP and temporarily interrupt the browser; reconnect your phone to the target network and reopen `https://jrbot.local`.
+
+Under **Saved networks**, **Delete** removes a stored network after confirmation. The current connection remains active immediately after deletion. Deleting the *selected* profile raises a stronger warning: the next boot may require the original setup procedure unless another profile is selected. Up to four saved profiles are supported; the page never displays stored passwords.
+
+**Important:** the management API requires local **HTTPS** and has **no account authentication**. Never expose it directly to the public Internet. Initial phone provisioning and serial setup continue to work as recovery options. See [Wi-Fi Dashboard](WIFI_DASHBOARD.md) for the detailed flow and feature-specific limits.
+
 An alternative configuration source is `firmware/main/wifi_config.local.h`, copied locally from [the example](../../firmware/main/wifi_config.local.h.example) **before compiling**. Never commit SSIDs, passwords or private keys. The example refers to `CONFIGURAR_WIFI.bat`, but **that script is not tracked in this branch**; do not assume it exists.
 
 ## 5. Understand HTTPS and Live availability
@@ -109,7 +120,7 @@ Then verify each actual result using [Testing](TESTING.md):
 | `/webrtc-audio` over HTTPS | Both audio directions and video on the same local network |
 | JrSkill App on device | Authenticated Devnet wallet, licensed Skill and physically observed allowed action |
 
-The current `main` firmware reports **`JrBot_V1.8.2S`** in `firmware/version.txt`, the boot log and `core/jr_config.h`. The preserved `feature/live-audio-lab` branch reports its historical `AUDIO_LAB_01` identifier. The installer uses the RAM-light configuration and isolates build directories by version.
+The current `main` firmware reports **`JrBot_V1.8.3S`** in `firmware/version.txt`, the boot log and `core/jr_config.h`. Historical branches `feature/live-audio-lab` and `feature/wifi-dashboard` are preserved. The installer uses the RAM-light configuration and isolates build directories by version.
 
 ## 7. Common diagnostic cases
 

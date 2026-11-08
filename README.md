@@ -10,7 +10,7 @@ See. Hear. Speak. Connect. Express.
 <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
 <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
 <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-<img src="https://img.shields.io/badge/version-JrBot__V1.8.2S-brightgreen" alt="Current source version">
+<img src="https://img.shields.io/badge/version-JrBot__V1.8.3S-brightgreen" alt="Current source version">
 <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
 
 [Website](https://jrbot.com.br) ·
@@ -44,7 +44,7 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | **Hear** | MS3625 I2S recording, selectable duration, WAV playback/download and bidirectional WebRTC audio |
 | **Speak** | MAX98357A output, speaker playback, audio received from phone/computer, volume and diagnostics |
 | **Express** | SSD1306 OLED face with selectable expressions and active-expression status |
-| **Connect** | Wi-Fi (DHCP, saved networks and phone setup), `jrbot.local` on compatible local networks, responsive web interface, local HTTPS and WebRTC |
+| **Connect** | Wi-Fi (DHCP, phone setup and up to four saved networks), an in-portal Wi-Fi dashboard (SSID, IP, RSSI and channel), manual network scan, profile selection/deletion, `jrbot.local` on compatible local networks, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
 
 ### What's new in JrBot V1.8S
@@ -57,7 +57,17 @@ The initial Creator Studio, Store, licensing and Skill execution flow have been 
 
 ### JrBot V1.8.2S: Mesa Mix for Live audio
 
-**JrBot V1.8.2S** is the current source version on `main`. Its **Mesa Mix · Live** lets users adjust WebRTC speaker volume, microphone gain, echo ducking, noise gate and pre-buffer in the robot's web page. Settings apply during the Live and reset when the robot restarts. The owner reports good communication with headphones and improved sound after lowering microphone gain and speaker volume. A delayed return of their own voice remains under investigation; no RAM/PSRAM time series were supplied for this version. See the [Mesa Mix guide](docs/04-firmware-development/LIVE_AUDIO_LAB.md).
+**JrBot V1.8.2S** introduced **Mesa Mix · Live**, which lets users adjust WebRTC speaker volume, microphone gain, echo ducking, noise gate and pre-buffer in the robot's web page. Settings apply during the Live and reset when the robot restarts. The owner reports good communication with headphones and improved sound after lowering microphone gain and speaker volume. A delayed return of their own voice remains under investigation; no RAM/PSRAM time series were supplied for this version. See the [Mesa Mix guide](docs/04-firmware-development/LIVE_AUDIO_LAB.md).
+
+### JrBot V1.8.3S: Wi-Fi dashboard after first setup
+
+**JrBot V1.8.3S** is the current source version on `main`. The robot's local page, `https://jrbot.local`, now has **Control · Memory · Wi-Fi** tabs. The Wi-Fi tab shows whether the robot is connected, the current network (SSID), assigned IP, signal strength (RSSI in dBm), Wi-Fi channel and current operating mode. You can refresh the signal on demand or optionally every 10 seconds while the tab is visible.
+
+When the robot is idle, you can scan nearby networks (up to eight displayed), save a new network or update a saved profile, view up to four saved networks, select which one to use next, and **delete a saved network** with confirmation. Changing the selected network does **not** interrupt the active connection immediately: applying it requires a separate, confirmed reboot. Deleting the selected profile warns that first-time setup may be required at the next boot.
+
+The existing first-run phone setup remains available when the robot cannot connect. Network changes use a dedicated **HTTPS-only** local endpoint; the ordinary HTTP command route still rejects Wi-Fi commands. **This panel does not yet implement user authentication and must not be exposed directly to the public Internet.** The new release is integrated in source control; compile/runtime memory and full hardware regression metrics have not been independently verified in this documentation update.
+
+See [Wi-Fi dashboard guide](docs/04-firmware-development/WIFI_DASHBOARD.md), [Installation](docs/04-firmware-development/DEVELOPMENT.md) and [Project status](docs/01-history-roadmap/PROJECT_STATUS.md).
 
 ### Current limitations
 
@@ -103,7 +113,7 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** added phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026. **V1.8.2S** adds the Live audio Mesa Mix, promoted from the tested `AUDIO_LAB_01` branch with the delayed voice return documented as a known limitation.
+**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** added phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026. **V1.8.2S** added the Live audio Mesa Mix, promoted from the tested `AUDIO_LAB_01` branch with the delayed voice return documented as a known limitation. **V1.8.3S** adds the connected-mode Wi-Fi dashboard, manual signal/network inspection and saved-network management, including selection and confirmed deletion.
 
 | Project | Status |
 | --- | --- |
@@ -121,7 +131,7 @@ JrBot welcomes contributions in ESP32-S3 firmware, hardware, audio/WebRTC, camer
 
 Start with the [Contribution Guide](CONTRIBUTING.md) and [open Issues](https://github.com/JuniorNarciso26/JrRobot/issues). Describe the change, evidence and any missing physical tests in a Pull Request.
 
-**Documentation:** [Index](docs/README.md) · [Architecture](docs/04-firmware-development/ARCHITECTURE.md) · [Development](docs/04-firmware-development/DEVELOPMENT.md) · [Testing](docs/04-firmware-development/TESTING.md) · [Runtime API](docs/04-firmware-development/API_RUNTIME.md) · [Changelog](docs/01-history-roadmap/CHANGELOG.md)
+**Documentation:** [Index](docs/README.md) · [Wi-Fi Dashboard](docs/04-firmware-development/WIFI_DASHBOARD.md) · [Architecture](docs/04-firmware-development/ARCHITECTURE.md) · [Development](docs/04-firmware-development/DEVELOPMENT.md) · [Testing](docs/04-firmware-development/TESTING.md) · [Runtime API](docs/04-firmware-development/API_RUNTIME.md) · [Changelog](docs/01-history-roadmap/CHANGELOG.md)
 
 ## License
 
