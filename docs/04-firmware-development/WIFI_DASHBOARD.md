@@ -1,8 +1,8 @@
 # Wi-Fi — Aba de gerenciamento apos a configuracao inicial
 
-**Branch de teste:** `feature/wifi-dashboard`  
-**Firmware de teste:** `JrBot_V1.8.3S`  
-**Base:** `JrBot_V1.8.2S` (`main`).
+**Status:** incorporado na `main` pela [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59) em 07/11/2026.  
+**Firmware oficial:** `JrBot_V1.8.3S`  
+**Origem:** `feature/wifi-dashboard`, baseada na versão `JrBot_V1.8.2S`.
 
 ## Funcionalidade
 
@@ -63,7 +63,7 @@ O monitoramento opcional do RSSI ocorre a cada 10 segundos **somente com a aba a
 - O codigo do painel esta na flash, carregado e executado pelo navegador. **Verificar o efeito real da API e da pagina sobre a RAM interna e o tamanho final da flash no hardware.**
 - A busca de redes exige modo `idle`, pois pode prejudicar audio/video durante a Live.
 
-## Plano de testes antes de mesclar
+## Plano de verificacao apos a integracao
 
 1. Compilar no ESP-IDF 5.5 e gravar `JrBot_V1.8.3S` na placa HW04.
 2. Confirmar as tres abas **Controle, Memoria, Wi-Fi** no celular e computador.
@@ -78,4 +78,4 @@ O monitoramento opcional do RSSI ocorre a cada 10 segundos **somente com a aba a
 11. Rodar Live de audio/video, OLED e Mesa Mix para confirmar que nao houve regressao.
 12. Comparar RAM interna livre, maior bloco, PSRAM, consumo durante consultas e varredura; verificar tambem tamanho do binario/flash.
 
-**Status:** codigo de teste publicado na branch; ainda sem validacao fisica do ESP32-S3 e sem compilacao confirmada. Nao promover automaticamente a `main`.
+**Status:** PR #59 mesclada na `main` e versão `JrBot_V1.8.3S` confirmada no repositório. A compilação ESP-IDF e a validação completa em hardware não foram verificadas nesta documentação; os itens acima permanecem como checklist de regressão. A branch original foi preservada.
