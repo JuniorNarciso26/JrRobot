@@ -6,7 +6,7 @@
   if (!main || !nav || !memory || document.getElementById('jr-wifi-panel')) return;
 
   const style = document.createElement('style');
-  style.textContent = '#jr-wifi-panel[hidden]{display:none!important}#jr-wifi-panel{max-width:1000px;margin:14px auto;padding:16px;color:inherit}#jr-wifi-panel h2{margin:0 0 10px}#jr-wifi-panel .wifi-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:10px 0}#jr-wifi-panel .wifi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#jr-wifi-panel .wifi-info{padding:10px;background:#111d32;border-radius:10px;min-width:0;overflow-wrap:anywhere}#jr-wifi-panel .wifi-info small{display:block;color:#a5b6ce;margin-bottom:4px}#jr-wifi-panel .wifi-list{display:grid;gap:8px;margin:12px 0}#jr-wifi-panel .wifi-item{border:1px solid #29415f;border-radius:10px;padding:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}#jr-wifi-panel label{display:block;margin-top:12px}#jr-wifi-panel input{width:100%;max-width:440px;background:#0e1a2e;color:#fff;border:1px solid #45617f;border-radius:8px;padding:10px}#jr-wifi-panel input[type=checkbox]{width:auto}#jr-wifi-panel .wifi-note{color:#9fb1ca;font-size:13px;margin:10px 0;line-height:1.5}#jr-wifi-panel .wifi-warning{border-left:3px solid #e4ab54;padding:8px 12px;margin:12px 0;background:#1b2231}#jr-wifi-panel .wifi-feedback{min-height:22px;margin:10px 0;color:#c3d6ef}#jr-wifi-panel .wifi-feedback.error{color:#ff9696}#jr-wifi-panel button:disabled{opacity:.55;cursor:not-allowed}@media(max-width:560px){#jr-wifi-panel .wifi-grid{grid-template-columns:1fr}}';
+  style.textContent = '#jr-wifi-panel[hidden]{display:none!important}#jr-wifi-panel{max-width:1000px;margin:14px auto;padding:16px;color:inherit}#jr-wifi-panel h2{margin:0 0 10px}#jr-wifi-panel .wifi-tools{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:10px 0}#jr-wifi-panel .wifi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#jr-wifi-panel .wifi-info{padding:10px;background:#111d32;border-radius:10px;min-width:0;overflow-wrap:anywhere}#jr-wifi-panel .wifi-info small{display:block;color:#a5b6ce;margin-bottom:4px}#jr-wifi-panel .wifi-list{display:grid;gap:8px;margin:12px 0}#jr-wifi-panel .wifi-item{border:1px solid #29415f;border-radius:10px;padding:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}#jr-wifi-panel label{display:block;margin-top:12px}#jr-wifi-panel input{width:100%;max-width:440px;background:#0e1a2e;color:#fff;border:1px solid #45617f;border-radius:8px;padding:10px}#jr-wifi-panel input[type=checkbox]{width:auto}#jr-wifi-panel .wifi-note{color:#9fb1ca;font-size:13px;margin:10px 0;line-height:1.5}#jr-wifi-panel .wifi-warning{border-left:3px solid #e4ab54;padding:8px 12px;margin:12px 0;background:#1b2231}#jr-wifi-panel .wifi-feedback{min-height:22px;margin:10px 0;color:#c3d6ef}#jr-wifi-panel .wifi-feedback.error{color:#ff9696}#jr-wifi-panel .wifi-actions{display:flex;gap:8px;flex-wrap:wrap}#jr-wifi-panel .wifi-delete{background:#4d2630;border:1px solid #a95869;color:#ffe2e7}#jr-wifi-panel button:disabled{opacity:.55;cursor:not-allowed}@media(max-width:560px){#jr-wifi-panel .wifi-grid{grid-template-columns:1fr}}';
   document.head.appendChild(style);
 
   const wifiTab = document.createElement('button');
@@ -89,6 +89,10 @@
       if (data.restarting) {
         restarting = true;
         feedback('Reinício solicitado. Aguarde a nova conexão e abra https://jrbot.local na nova rede.');
+      } else if (data.deleted) {
+        feedback(json.selected
+          ? 'Rede selecionada excluída. A conexão atual permanece ativa; no próximo reinício o JrBot poderá entrar na configuração inicial.'
+          : 'Rede salva excluída. A conexão atual permanece ativa.');
       } else if (data.pending_restart) {
         feedback('Rede selecionada para o próximo reinício. A conexão atual permanece ativa.');
       } else {
@@ -144,6 +148,8 @@
         const ssid = decodeSSID(profile.ssid_pct);
         name.textContent = ssid + ' · ' + profile.mode + (profile.selected ? ' · Selecionada' : '');
         item.appendChild(name);
+        const actions = document.createElement('div');
+        actions.className = 'wifi-actions';
         const button = document.createElement('button');
         button.type = 'button';
         // Allow reapplying a selected SSID: its stored password may have changed.
@@ -153,7 +159,22 @@
           if (!confirm('Selecionar "' + ssid + '" para o próximo reinício? A conexão atual será preservada até reiniciar.')) return;
           write({action:'use', id:profile.id});
         };
-        item.appendChild(button);
+        actions.appendChild(button);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Excluir';
+        remove.className = 'wifi-delete';
+        remove.disabled = busy;
+        remove.setAttribute('aria-label', 'Excluir rede ' + ssid);
+        remove.onclick = () => {
+          const warning = profile.selected
+            ? 'ATENÇÃO: esta é a rede selecionada. Excluí-la não desconecta agora, mas no próximo reinício o JrBot poderá entrar na configuração inicial. Excluir "' + ssid + '"?'
+            : 'Excluir a rede salva "' + ssid + '"? A conexão atual será preservada.';
+          if (!confirm(warning)) return;
+          write({action:'delete', id:profile.id, selected:!!profile.selected});
+        };
+        actions.appendChild(remove);
+        item.appendChild(actions);
         target.appendChild(item);
       }
     } catch (error) {
