@@ -38,6 +38,7 @@ The device starts **HTTP on port 80** after network initialization. Additional r
 | `POST /audio` | Receive supported WAV/audio input |
 | `GET /live-diag` | Legacy Live microphone diagnostics |
 | `GET /jrskill-app.js` | Browser-side JrSkill application asset |
+| `GET /memory-panel.js`, `GET /wifi-panel.js` | Browser scripts for RAM diagnostics and connected-mode Wi-Fi tab |
 | `GET /autofocus`, `/manual-focus` | Currently return **503**, not an implemented focusing control |
 
 **HTTPS-only WebRTC endpoints**, registered if HTTPS starts successfully:
@@ -47,10 +48,25 @@ The device starts **HTTP on port 80** after network initialization. Additional r
 | `GET /webrtc-audio` | Local Live interface |
 | `GET/POST /webrtc-audio/signal` | Session signaling |
 | `GET /webrtc-audio/status` | Live session status |
+| `GET /webrtc-audio/lab` | V1.8.2S Mesa Mix settings and audio/RAM indicators |
+| `POST /webrtc-audio/lab` | Update temporary Live audio settings during a session |
+
+**V1.8.3S Wi-Fi management API (HTTPS-only)** — these routes are separate from the Serial command interface and are registered only when the HTTPS service starts:
+
+| Method and path | Behavior |
+| --- | --- |
+| `GET /wifi-manager?view=status` | Current connection, SSID (percent-encoded), IP, RSSI, channel, Wi-Fi auth type, operating mode and pending restart; no saved password |
+| `GET /wifi-manager?view=profiles` | Up to four saved SSID profiles, selected status and DHCP/static configuration indicator; no credentials returned |
+| `GET /wifi-manager?view=scan` | On-demand scan of nearby networks, limited to eight displayed; available only in `IDLE` mode |
+| `POST /wifi-manager` | JSON actions `save`, `use`, `delete` (profile id 0–3), or `restart`; modifying operations require `IDLE`, JSON content type and `X-JrBot-WiFi: 1` |
+
+`save` requires `ssid` and `password` and stores a profile without disconnecting the current station. `use` selects a saved profile for the next boot, and `delete` erases that profile from NVS after the browser confirms. A selected profile can be deleted but requires a stronger warning because initial setup may be needed on the next boot. `restart` executes only when a Wi-Fi change is pending and triggers a deliberate device reboot. The UI is documented in [Wi-Fi Dashboard](WIFI_DASHBOARD.md).
+
+**Security:** Wi-Fi writes are accessible through the local HTTPS listener with origin/header restrictions, **not login authentication**. The ordinary `POST /cmd` still blocks all `wifi_*` network commands. Neither the Wi-Fi dashboard nor its API should be published to the Internet.
 
 The HTTPS requirement is **conditional on local `jr_https_material_local.h`**; a clean checkout does not contain this ignored certificate/key material. If the device logs `JR_HTTPS_DISABLED`, do not expect the WebRTC routes to exist. Refer to [Development](DEVELOPMENT.md).
 
-**Security boundary:** The `X-JrBot-Command: 1` header is required on `POST /cmd`, but **is not authentication**. Firmware blocks Wi-Fi configuration and `camera_test` from this network command path. Do not expose this interface directly to the public Internet.
+**Security boundary:** The `X-JrBot-Command: 1` header is required on `POST /cmd`, but **is not authentication**. Firmware blocks Serial-style Wi-Fi configuration and `camera_test` from the `/cmd` network command path. The dedicated `/wifi-manager` endpoints above are a separate HTTPS-only interface, not a bypass through `/cmd`. Do not expose this interface directly to the public Internet.
 
 ## 3. Runtime API v1 contract
 
