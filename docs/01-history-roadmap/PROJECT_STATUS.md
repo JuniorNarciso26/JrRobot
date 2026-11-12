@@ -2,6 +2,15 @@
 
 **Last updated: November 8, 2026**
 
+## Candidate under test — V1.8.4S (`develop`)
+
+The `develop` branch has been synchronized with the approved V1.8.3S
+`main` tree and now carries a candidate Wi-Fi reliability fix. It tries
+the selected Wi-Fi first, then other saved profiles after bounded failures,
+and remembers a successful alternative for the next boot. This is not a
+V1.8.4S production release: ESP-IDF build and HW04 tests, Live regressions
+and RAM/PSRAM measurements remain to be completed. `main` stays at V1.8.3S.
+
 ## Current status
 
 **JrBot V1.8.3S is the current source version on `main`.** It retains the V1.8.2S Mesa Mix for Live audio from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57) and adds the connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59): current SSID, IP, RSSI, channel and mode; manual scan; up to four saved profiles; add/select/delete; and confirmed reboot for switching networks. The owner approved its promotion to `main`. That acceptance is not, by itself, an independently logged full hardware regression or measured RAM/PSRAM test. V1.8.1S remains the earlier baseline for which the owner separately confirmed full physical and memory testing on October 26.
