@@ -1,0 +1,3 @@
+[submodule "experiments/voice-playground/esp-skainet"]
+	path = experiments/voice-playground/esp-skainet
+	url = https://github.com/espressif/esp-skainet.git
