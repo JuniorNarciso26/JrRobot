@@ -50,3 +50,7 @@ O projeto nao substitui arquivos da arvore `firmware/`. Flashar qualquer exemplo
 - [ ] Teste do exemplo no hardware de referencia da Espressif.
 - [ ] Adaptacao opcional em projeto separado para I2S JrBot.
 - [ ] Teste fisico de ativacao `Hi ESP` pelo microfone JrBot.
+
+
+## Adaptacao separada para o microfone JrBot (novo teste)
+O exemplo Espressif acima permanece **inalterado**. Para testar o microfone HW04 real, foi criado um projeto ESP-IDF minimo separado em [`jrbot-hi-esp`](jrbot-hi-esp/README.md). Ele substitui apenas a origem do audio PCM do exemplo WakeNet direto por I2S GPIO21/47/41 e exibe logs `MIC_LEVEL` e `HI_ESP_DETECTED`. Nao adiciona interface, resposta falada nem funcionalidades ao firmware principal. Nao houve compilacao ou teste fisico nesta etapa.
