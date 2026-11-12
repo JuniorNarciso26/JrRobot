@@ -250,6 +250,21 @@ The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the l
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
 
 
+## November 12, 2026 — V1.8.4S ROAM_01 (develop, hardware validation pending)
+
+ESP32-S3 Wi-Fi station now uses the ESP-IDF built-in all-channel scan sorted
+by RSSI on each connection, instead of fast-first-match scanning. A native
+-70 dBm low-RSSI event (not native automatic roaming) triggers a bounded,
+asynchronous, same-SSID AP scan **in idle mode only**; a different BSSID must
+offer at least 12 dB better signal before a controlled reconnect. Scans
+have at least 90 seconds of cooldown; no polling task or periodic scan.
+No forced roaming during Live. `JR_WIFI_ROAM` logs decisions.
+The 2.4 GHz-only ESP32-S3 does not support 5 GHz regardless of SSID naming.
+Changing BSSID briefly interrupts existing network sessions; TLS errors
+with good RSSI remain a separate issue. Requires ESP-IDF build and HW04
+hardware / Live test before promotion to main.
+Build stamp: `2026-11-12_JrBot_V1.8.4S_ROAM_01`.
+
 ## November 12, 2026 — V1.8.4S DIAG_01: intermittent Wi-Fi / HTTPS investigation (develop)
 
 Diagnostic-only follow-up. The owner reported losing Wi-Fi/panel access some
