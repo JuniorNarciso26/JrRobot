@@ -15,7 +15,7 @@ MOCK = r'''
 typedef int esp_err_t;
 enum { ESP_OK=0,ESP_FAIL=-1,ESP_ERR_INVALID_ARG=1,ESP_ERR_INVALID_STATE=2,
        ESP_ERR_NO_MEM=3,ESP_ERR_NVS_NOT_FOUND=4,ESP_ERR_INVALID_SIZE=5,
-       ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED=6 };
+       ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED=6,ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED=7 };
 const char *esp_err_to_name(esp_err_t);
 typedef int portMUX_TYPE;
 #define portMUX_INITIALIZER_UNLOCKED 0
@@ -54,6 +54,7 @@ esp_netif_t *esp_netif_new(const esp_netif_config_t *);
 esp_err_t esp_netif_attach_wifi_station(esp_netif_t *);
 esp_err_t esp_netif_set_hostname(esp_netif_t *,const char *);
 esp_err_t esp_netif_dhcpc_stop(esp_netif_t *);
+esp_err_t esp_netif_dhcpc_start(esp_netif_t *);
 esp_err_t esp_netif_set_ip_info(esp_netif_t *,const esp_netif_ip_info_t *);
 esp_err_t esp_netif_set_dns_info(esp_netif_t *,int,const esp_netif_dns_info_t *);
 void esp_netif_destroy_default_wifi(esp_netif_t *);
@@ -78,6 +79,8 @@ HARNESS = r'''
 typedef struct { char key[16]; size_t size; unsigned char bytes[512]; } blob_t;
 static blob_t blobs[8];
 static bool fail_write,fail_commit;
+static unsigned simulated_connects;
+static char simulated_ssid[33];
 static unsigned opens;
 const char *esp_err_to_name(esp_err_t err) { return err==ESP_OK?"ESP_OK":"TEST_ERROR"; }
 esp_err_t nvs_flash_init(void) { return ESP_OK; }
@@ -98,6 +101,25 @@ esp_err_t nvs_set_blob(nvs_handle_t h,const char *key,const void *data,size_t si
 }
 esp_err_t nvs_erase_key(nvs_handle_t h,const char *key) { (void)h;blob_t *b=find(key);if(!b)return ESP_ERR_NVS_NOT_FOUND;memset(b,0,sizeof(*b));return ESP_OK; }
 esp_err_t nvs_commit(nvs_handle_t h) { (void)h;return fail_commit?ESP_FAIL:ESP_OK; }
+/* Minimal driver stubs for deterministic saved-network failover checks. */
+esp_err_t esp_wifi_connect(void) { simulated_connects++; return ESP_OK; }
+esp_err_t esp_wifi_set_config(int iface,const wifi_config_t *c) {
+    assert(iface==WIFI_IF_STA);
+    snprintf(simulated_ssid,sizeof(simulated_ssid),"%s",c->sta.ssid);
+    return ESP_OK;
+}
+esp_err_t esp_netif_set_hostname(esp_netif_t *dev,const char *name) {
+    (void)dev; assert(name && name[0]); return ESP_OK;
+}
+esp_err_t esp_netif_dhcpc_start(esp_netif_t *dev) { (void)dev; return ESP_OK; }
+esp_err_t esp_netif_dhcpc_stop(esp_netif_t *dev) { (void)dev; return ESP_OK; }
+esp_err_t esp_netif_set_ip_info(esp_netif_t *dev,const esp_netif_ip_info_t *info) {
+    (void)dev; (void)info; return ESP_OK;
+}
+esp_err_t esp_netif_set_dns_info(esp_netif_t *dev,int kind,const esp_netif_dns_info_t *info) {
+    (void)dev; (void)kind; (void)info; return ESP_OK;
+}
+uint32_t ipaddr_addr(const char *ip) { (void)ip; return 0; }
 static char reply[2048];
 static bool save(const char *ssid,const char *pass) { return jr_wifi_profile_save(ssid,pass,"jrbot",false,"","","","","",reply,sizeof(reply)); }
 static void check_selected(const char *ssid,const char *pass) {
@@ -152,6 +174,35 @@ int main(void) {
     assert(jr_wifi_profile_delete(0,reply,sizeof(reply)));assert(strstr(reply,"setup_on_restart=1"));
     check_selected("","");reboot();assert(!jr_wifi_is_configured());
     assert(jr_wifi_profiles_list(reply,sizeof(reply)));assert(strstr(reply,"\"profiles\":[]"));
+
+    /* V1.8.4S: last used network goes down; next saved one is attempted. */
+    memset(blobs,0,sizeof(blobs));
+    assert(nvs_set_blob(1,"cfg_v2",&original,sizeof(original))==ESP_OK);
+    reboot();
+    assert(save("Backup","backuppass123"));
+    station=(esp_netif_t *)(uintptr_t)1;
+    wifi_started=true;
+    wifi_attempts=1;
+    wifi_tried_profiles=0;
+    wifi_retry_pending=false;
+    simulated_connects=0;
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_STA_DISCONNECTED,NULL);
+    jr_wifi_poll();
+    assert(simulated_connects==1); /* Retried original before changing network. */
+    assert(!strcmp(active.ssid,"Original"));
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_STA_DISCONNECTED,NULL);
+    jr_wifi_poll();
+    assert(!strcmp(active.ssid,"Backup"));
+    assert(!strcmp(simulated_ssid,"Backup"));
+    assert(simulated_connects==2);
+    check_selected("Original","password123"); /* Not persisted before success. */
+    ip_event_got_ip_t ip={0};
+    wifi_event_handler(NULL,IP_EVENT,IP_EVENT_STA_GOT_IP,&ip);
+    jr_wifi_poll();
+    check_selected("Backup","backuppass123");
+    assert(jr_wifi_is_connected());
+    assert(wifi_attempts==1 && wifi_tried_profiles==0);
+    wifi_started=false;
     return 0;
 }
 '''
