@@ -250,6 +250,19 @@ The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the l
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
 
 
+## November 12, 2026 — V1.8.4S DIAG_01: intermittent Wi-Fi / HTTPS investigation (develop)
+
+Diagnostic-only follow-up. The owner reported losing Wi-Fi/panel access some
+time after connecting; earlier HW04 logs showed HTTP URI handler failures,
+TLS handshake errors and subsequent Serial monitor interruption. Added
+Wi-Fi association/disconnection/IP event logs, retry/exhaustion messages,
+a lightweight 30-second connected SSID/BSSID/RSSI/IP and internal/PSRAM heap
+snapshot, and request-route/error/heap logging on failed HTTP handlers.
+Queries and passwords are not logged. TLS handshake errors occur before
+route dispatch and remain printed by ESP-IDF; correlate to periodic samples.
+Build stamp: \`2026-11-12_JrBot_V1.8.4S_DIAG_01\`.
+No recovery/connection behavior changed; hardware/ESP-IDF acceptance pending.
+
 ## November 12, 2026 — V1.8.4S follow-up: automatic recovery reboot
 
 After a HW04 log showed startup falling into captive setup at ~30 seconds,
