@@ -7,6 +7,8 @@
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
+#include "esp_timer.h"
+#include "jr_mode_manager.h"
 #include "lwip/inet.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -31,6 +33,15 @@ static jr_wifi_status_t state={.ip="sem wifi"};
 /* V1.8.4S: keep network failover state in the existing Wi-Fi module; no extra task. */
 #define PROFILE_LIMIT 4
 #define WIFI_ATTEMPTS_PER_PROFILE 2
+/* Event-triggered AP selection: no periodic scan, no extra task. */
+#define JR_ROAM_RSSI_LOW_DBM (-70)
+#define JR_ROAM_MIN_GAIN_DB 12
+#define JR_ROAM_COOLDOWN_MS 90000U
+#define JR_ROAM_SCAN_CAP 8
+static bool roam_low_pending, roam_scan_inflight, roam_scan_done;
+static bool roam_switch_requested, roam_reconnect_pending, roam_rearm_pending;
+static bool roam_has_scanned;
+static uint32_t roam_last_scan_ms;
 static bool wifi_retry_pending, wifi_got_ip_pending, wifi_fallback_active;
 static unsigned wifi_attempts;
 static uint8_t wifi_tried_profiles;
@@ -178,6 +189,9 @@ static esp_err_t wifi_apply_profile(const wifi_settings_t *config) {
     memcpy(sta.sta.ssid,config->ssid,strlen(config->ssid));
     memcpy(sta.sta.password,config->pass,strlen(config->pass));
     sta.sta.threshold.authmode=config->pass[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
+    /* ESP-IDF native scan: choose strongest compatible AP for the given SSID. */
+    sta.sta.scan_method=WIFI_ALL_CHANNEL_SCAN;
+    sta.sta.sort_method=WIFI_CONNECT_AP_BY_SIGNAL;
     err=esp_wifi_set_config(WIFI_IF_STA,&sta);
     memset(&sta,0,sizeof(sta));
     return err;
@@ -238,9 +252,115 @@ static void wifi_remember_connected(void) {
         printf("JR_WIFI_FAILOVER preferred_network=%s saved=1\n",active.ssid);
     }
 }
+
+/* ESP-IDF raises RSSI_LOW, but does not roam automatically on this setting.
+ * Scan only after the low signal event, and only while the robot is idle.
+ * The Wi-Fi driver owns the scan buffers; collect and release records once.
+ */
+static void wifi_roam_evaluate_scan(void) {
+    wifi_ap_record_t found[JR_ROAM_SCAN_CAP]={0};
+    uint16_t count=JR_ROAM_SCAN_CAP;
+    esp_err_t err=esp_wifi_scan_get_ap_records(&count,found);
+    if(err!=ESP_OK) {
+        printf("JR_WIFI_ROAM scan_results_error=%s\n",esp_err_to_name(err));
+        roam_rearm_pending=true;
+        return;
+    }
+    wifi_ap_record_t current={0};
+    if(!jr_wifi_is_connected() || jr_mode_get()!=JR_MODE_IDLE ||
+       esp_wifi_sta_get_ap_info(&current)!=ESP_OK) {
+        puts("JR_WIFI_ROAM decision=skip_connection_or_mode_changed");
+        roam_rearm_pending=true;
+        return;
+    }
+    int best=(int)current.rssi;
+    bool better=false;
+    for(uint16_t i=0;i<count;i++) {
+        if(strcmp((const char *)found[i].ssid,active.ssid) ||
+           !memcmp(found[i].bssid,current.bssid,sizeof(current.bssid))) continue;
+        /* All candidate APs have the same SSID; the driver re-checks auth. */
+        if((int)found[i].rssi>=((int)current.rssi+JR_ROAM_MIN_GAIN_DB) &&
+           (int)found[i].rssi>best) {
+            best=found[i].rssi;
+            better=true;
+        }
+    }
+    printf("JR_WIFI_ROAM scan_done candidates=%u current_rssi=%d best_rssi=%d min_gain=%d decision=%s\n",
+           (unsigned)count,(int)current.rssi,best,JR_ROAM_MIN_GAIN_DB,
+           better?"switch":"keep");
+    if(!better) { roam_rearm_pending=true; return; }
+    /* Reconnect with all-channel selection; never fix the driver to a BSSID. */
+    portENTER_CRITICAL(&state_lock);
+    roam_switch_requested=true;
+    portEXIT_CRITICAL(&state_lock);
+    err=esp_wifi_disconnect();
+    if(err!=ESP_OK) {
+        portENTER_CRITICAL(&state_lock);
+        roam_switch_requested=false;
+        portEXIT_CRITICAL(&state_lock);
+        roam_rearm_pending=true;
+        printf("JR_WIFI_ROAM disconnect_error=%s\n",esp_err_to_name(err));
+    }
+}
+static void wifi_roam_poll(void) {
+    uint32_t now=(uint32_t)(esp_timer_get_time()/1000ULL);
+    bool rejoin=false, done=false, weak=false, connected=false;
+    portENTER_CRITICAL(&state_lock);
+    rejoin=roam_reconnect_pending;roam_reconnect_pending=false;
+    done=roam_scan_done;roam_scan_done=false;
+    weak=roam_low_pending;
+    connected=state.connected;
+    portEXIT_CRITICAL(&state_lock);
+    if(rejoin) {
+        esp_err_t err=esp_wifi_connect();
+        printf("JR_WIFI_ROAM reconnect_same_ssid=%s result=%s\n",active.ssid,esp_err_to_name(err));
+        if(err!=ESP_OK) {
+            set_error(err);
+            portENTER_CRITICAL(&state_lock);
+            wifi_retry_pending=true;
+            portEXIT_CRITICAL(&state_lock);
+        }
+        return;
+    }
+    if(done) { wifi_roam_evaluate_scan();return; }
+    if(!connected) return;
+    if(weak && jr_mode_get()==JR_MODE_IDLE &&
+       (!roam_has_scanned || (uint32_t)(now-roam_last_scan_ms)>=JR_ROAM_COOLDOWN_MS)) {
+        wifi_scan_config_t options={0};
+        options.ssid=(uint8_t *)active.ssid;
+        esp_err_t err=esp_wifi_scan_start(&options,false);
+        if(err==ESP_OK) {
+            portENTER_CRITICAL(&state_lock);
+            roam_low_pending=false;
+            roam_scan_inflight=true;
+            portEXIT_CRITICAL(&state_lock);
+            roam_last_scan_ms=now;
+            roam_has_scanned=true;
+            printf("JR_WIFI_ROAM event=scan_started threshold_dbm=%d ssid=%s\n",
+                   JR_ROAM_RSSI_LOW_DBM,active.ssid);
+        } else {
+            roam_last_scan_ms=now;
+            roam_has_scanned=true;
+            roam_rearm_pending=true;
+            portENTER_CRITICAL(&state_lock);
+            roam_low_pending=false;
+            portEXIT_CRITICAL(&state_lock);
+            printf("JR_WIFI_ROAM event=scan_deferred error=%s\n",esp_err_to_name(err));
+        }
+        return;
+    }
+    if(roam_rearm_pending &&
+       (!roam_has_scanned || (uint32_t)(now-roam_last_scan_ms)>=JR_ROAM_COOLDOWN_MS)) {
+        roam_rearm_pending=false;
+        esp_err_t err=esp_wifi_set_rssi_threshold(JR_ROAM_RSSI_LOW_DBM);
+        if(err!=ESP_OK)printf("JR_WIFI_ROAM rearm_error=%s\n",esp_err_to_name(err));
+    }
+}
+
 /* Called by app_main; do not perform storage/driver configuration in event handler. */
 void jr_wifi_poll(void) {
     if (!wifi_started) return;
+    wifi_roam_poll();
     bool connected, retry, ip_ready;
     portENTER_CRITICAL(&state_lock);
     connected=state.connected;
@@ -251,6 +371,12 @@ void jr_wifi_poll(void) {
         wifi_attempts=1;
         wifi_tried_profiles=0;
         wifi_remember_connected();
+        roam_low_pending=false;
+        roam_rearm_pending=false;
+        esp_err_t arm=esp_wifi_set_rssi_threshold(JR_ROAM_RSSI_LOW_DBM);
+        printf("JR_WIFI_ROAM monitor_threshold=%d result=%s
+",
+               JR_ROAM_RSSI_LOW_DBM,esp_err_to_name(arm));
         return;
     }
     if (!retry || connected) return;
@@ -275,8 +401,24 @@ static void wifi_event_handler(void *arg,esp_event_base_t base,int32_t id,void *
         esp_err_t err=esp_wifi_connect(); if (err!=ESP_OK) set_error(err);
     } else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {
         portENTER_CRITICAL(&state_lock);
+        bool voluntary=roam_switch_requested;
+        roam_switch_requested=false;
         state.connected=false; memcpy(state.ip,"sem wifi",9);
-        wifi_retry_pending=true;
+        roam_low_pending=false;
+        roam_reconnect_pending=voluntary;
+        wifi_retry_pending=!voluntary;
+        portEXIT_CRITICAL(&state_lock);
+    } else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_BSS_RSSI_LOW) {
+        portENTER_CRITICAL(&state_lock);
+        roam_low_pending=true;
+        portEXIT_CRITICAL(&state_lock);
+        printf("JR_WIFI_ROAM event=rssi_low threshold_dbm=%d\n",JR_ROAM_RSSI_LOW_DBM);
+    } else if (base==WIFI_EVENT && id==WIFI_EVENT_SCAN_DONE) {
+        portENTER_CRITICAL(&state_lock);
+        if(roam_scan_inflight) {
+            roam_scan_inflight=false;
+            roam_scan_done=true;
+        }
         portEXIT_CRITICAL(&state_lock);
     } else if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {
         const ip_event_got_ip_t *event=data; char ip[16];
@@ -312,6 +454,9 @@ void jr_wifi_start(void) {
     err=wifi_apply_profile(&active); if (err!=ESP_OK) goto fail;
     wifi_attempts=1; wifi_tried_profiles=0;
     wifi_retry_pending=false; wifi_got_ip_pending=false; wifi_fallback_active=false;
+    roam_low_pending=false; roam_scan_inflight=false; roam_scan_done=false;
+    roam_switch_requested=false; roam_reconnect_pending=false; roam_rearm_pending=false;
+    roam_has_scanned=false; roam_last_scan_ms=0;
     err=esp_wifi_start(); if (err!=ESP_OK) goto fail;
     wifi_started=true;
     portENTER_CRITICAL(&state_lock); state.network_ready=true; portEXIT_CRITICAL(&state_lock);
@@ -323,6 +468,9 @@ fail:
 }
 void jr_wifi_stop(void) {
     wifi_retry_pending=false; wifi_got_ip_pending=false; wifi_fallback_active=false;
+    roam_low_pending=false; roam_scan_inflight=false; roam_scan_done=false;
+    roam_switch_requested=false; roam_reconnect_pending=false; roam_rearm_pending=false;
+    roam_has_scanned=false; roam_last_scan_ms=0;
     wifi_attempts=0; wifi_tried_profiles=0;
     if (wifi_handler_set) { esp_event_handler_instance_unregister(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_handler); wifi_handler_set=false; }
     if (ip_handler_set) { esp_event_handler_instance_unregister(IP_EVENT,IP_EVENT_STA_GOT_IP,ip_handler); ip_handler_set=false; }
