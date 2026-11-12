@@ -28,6 +28,13 @@ static esp_event_handler_instance_t wifi_handler, ip_handler;
 static bool wifi_handler_set, ip_handler_set;
 static portMUX_TYPE state_lock=portMUX_INITIALIZER_UNLOCKED;
 static jr_wifi_status_t state={.ip="sem wifi"};
+/* V1.8.4S: keep network failover state in the existing Wi-Fi module; no extra task. */
+#define PROFILE_LIMIT 4
+#define WIFI_ATTEMPTS_PER_PROFILE 2
+static bool wifi_retry_pending, wifi_got_ip_pending, wifi_fallback_active;
+static unsigned wifi_attempts;
+static uint8_t wifi_tried_profiles;
+static esp_err_t profile_get(nvs_handle_t h,unsigned id,wifi_settings_t *out);
 
 static void set_error(esp_err_t err) {
     portENTER_CRITICAL(&state_lock); state.last_error=err; portEXIT_CRITICAL(&state_lock);
@@ -145,17 +152,135 @@ bool jr_wifi_network_ready(void) { jr_wifi_status_t s; jr_wifi_get_status(&s); r
 const char *jr_wifi_ip(void) { return state.ip; }
 const char *jr_wifi_ssid(void) { return active.ssid; }
 
+/* Apply IP mode before connecting another saved profile. */
+static esp_err_t wifi_addressing(const wifi_settings_t *config) {
+    if (config->use_static) {
+        esp_err_t err=esp_netif_dhcpc_stop(station);
+        if (err!=ESP_OK && err!=ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) return err;
+        esp_netif_ip_info_t info={0};
+        info.ip.addr=ipaddr_addr(config->ip);
+        info.gw.addr=ipaddr_addr(config->gateway);
+        info.netmask.addr=ipaddr_addr(config->mask);
+        err=esp_netif_set_ip_info(station,&info); if (err!=ESP_OK) return err;
+        esp_netif_dns_info_t dns={0}; dns.ip.type=ESP_IPADDR_TYPE_V4;
+        dns.ip.u_addr.ip4.addr=ipaddr_addr(config->dns1);
+        err=esp_netif_set_dns_info(station,ESP_NETIF_DNS_MAIN,&dns); if (err!=ESP_OK) return err;
+        dns.ip.u_addr.ip4.addr=ipaddr_addr(config->dns2);
+        return esp_netif_set_dns_info(station,ESP_NETIF_DNS_BACKUP,&dns);
+    }
+    esp_err_t err=esp_netif_dhcpc_start(station);
+    return err==ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED?ESP_OK:err;
+}
+static esp_err_t wifi_apply_profile(const wifi_settings_t *config) {
+    esp_err_t err=esp_netif_set_hostname(station,config->host); if (err!=ESP_OK) return err;
+    err=wifi_addressing(config); if (err!=ESP_OK) return err;
+    wifi_config_t sta={0};
+    memcpy(sta.sta.ssid,config->ssid,strlen(config->ssid));
+    memcpy(sta.sta.password,config->pass,strlen(config->pass));
+    sta.sta.threshold.authmode=config->pass[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
+    err=esp_wifi_set_config(WIFI_IF_STA,&sta);
+    memset(&sta,0,sizeof(sta));
+    return err;
+}
+/* Read candidates only on the main loop, never in an ESP-IDF event callback. */
+static bool wifi_choose_next(void) {
+    nvs_handle_t h;
+    esp_err_t err=nvs_open("jr_wifi",NVS_READONLY,&h);
+    if (err!=ESP_OK) return false;
+    wifi_settings_t candidate={0};
+    bool chosen=false;
+    for (unsigned id=0;id<PROFILE_LIMIT;id++) {
+        uint8_t bit=(uint8_t)(1u<<id);
+        if (wifi_tried_profiles&bit) continue;
+        wifi_tried_profiles|=bit;
+        err=profile_get(h,id,&candidate);
+        if (err==ESP_ERR_NVS_NOT_FOUND) continue;
+        if (err!=ESP_OK) {
+            printf("JR_WIFI_FAILOVER invalid_profile=%u error=%s\\n",id,esp_err_to_name(err));
+            continue;
+        }
+        if (!candidate.ssid[0] || !strcmp(candidate.ssid,active.ssid)) continue;
+        err=wifi_apply_profile(&candidate);
+        if (err!=ESP_OK) {
+            printf("JR_WIFI_FAILOVER profile=%u config_error=%s\\n",id,esp_err_to_name(err));
+            continue;
+        }
+        active=candidate;
+        wifi_fallback_active=true;
+        wifi_attempts=1;
+        chosen=true;
+        printf("JR_WIFI_FAILOVER attempting_profile=%u ssid=%s\\n",id,active.ssid);
+        err=esp_wifi_connect();
+        if (err!=ESP_OK) {
+            set_error(err);
+            wifi_retry_pending=true;
+        }
+        break;
+    }
+    memset(candidate.pass,0,sizeof(candidate.pass));
+    nvs_close(h);
+    return chosen;
+}
+/* Persist the *successful* fallback as the next boot preference. No write on failure. */
+static void wifi_remember_connected(void) {
+    if (!wifi_fallback_active) return;
+    wifi_fallback_active=false;
+    nvs_handle_t h;
+    esp_err_t err=nvs_open("jr_wifi",NVS_READWRITE,&h);
+    if (err!=ESP_OK) { set_error(err); return; }
+    err=nvs_set_blob(h,"cfg_v2",&active,sizeof(active));
+    if (err==ESP_OK) err=nvs_commit(h);
+    nvs_close(h);
+    if (err!=ESP_OK) {
+        set_error(err);
+        printf("JR_WIFI_FAILOVER connected_not_persisted=%s\\n",esp_err_to_name(err));
+    } else {
+        printf("JR_WIFI_FAILOVER preferred_network=%s saved=1\\n",active.ssid);
+    }
+}
+/* Called by app_main; do not perform storage/driver configuration in event handler. */
+void jr_wifi_poll(void) {
+    if (!wifi_started) return;
+    bool connected, retry, ip_ready;
+    portENTER_CRITICAL(&state_lock);
+    connected=state.connected;
+    retry=wifi_retry_pending; wifi_retry_pending=false;
+    ip_ready=wifi_got_ip_pending; wifi_got_ip_pending=false;
+    portEXIT_CRITICAL(&state_lock);
+    if (ip_ready && connected) {
+        wifi_attempts=1;
+        wifi_tried_profiles=0;
+        wifi_remember_connected();
+        return;
+    }
+    if (!retry || connected) return;
+    if (wifi_attempts<WIFI_ATTEMPTS_PER_PROFILE) {
+        wifi_attempts++;
+        esp_err_t err=esp_wifi_connect();
+        if (err!=ESP_OK) {
+            set_error(err);
+            portENTER_CRITICAL(&state_lock); wifi_retry_pending=true; portEXIT_CRITICAL(&state_lock);
+        }
+        return;
+    }
+    if (!wifi_choose_next()) puts("JR_WIFI_FAILOVER exhausted; setup_recovery_available=1");
+}
 static void wifi_event_handler(void *arg,esp_event_base_t base,int32_t id,void *data) {
     (void)arg;
     if (base==WIFI_EVENT && id==WIFI_EVENT_STA_START) {
         esp_err_t err=esp_wifi_connect(); if (err!=ESP_OK) set_error(err);
     } else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {
-        portENTER_CRITICAL(&state_lock); state.connected=false; memcpy(state.ip,"sem wifi",9); portEXIT_CRITICAL(&state_lock);
-        esp_err_t err=esp_wifi_connect(); if (err!=ESP_OK) set_error(err);
+        portENTER_CRITICAL(&state_lock);
+        state.connected=false; memcpy(state.ip,"sem wifi",9);
+        wifi_retry_pending=true;
+        portEXIT_CRITICAL(&state_lock);
     } else if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {
         const ip_event_got_ip_t *event=data; char ip[16];
         snprintf(ip,sizeof(ip),IPSTR,IP2STR(&event->ip_info.ip));
-        portENTER_CRITICAL(&state_lock); memcpy(state.ip,ip,sizeof(ip)); state.connected=true; state.last_error=ESP_OK; portEXIT_CRITICAL(&state_lock);
+        portENTER_CRITICAL(&state_lock);
+        memcpy(state.ip,ip,sizeof(ip)); state.connected=true; state.last_error=ESP_OK;
+        wifi_retry_pending=false; wifi_got_ip_pending=true;
+        portEXIT_CRITICAL(&state_lock);
         printf("JR_WIFI conectado ip=%s\n",ip);
     }
 }
@@ -172,28 +297,17 @@ void jr_wifi_start(void) {
     if (!station) { err=ESP_ERR_NO_MEM; goto fail; }
     err=esp_netif_attach_wifi_station(station); if (err!=ESP_OK) goto fail;
     err=esp_wifi_set_default_wifi_sta_handlers(); if (err!=ESP_OK) goto fail;
-    err=esp_netif_set_hostname(station,active.host); if (err!=ESP_OK) goto fail;
-    if (active.use_static) {
-        esp_netif_ip_info_t info={0};
-        info.ip.addr=ipaddr_addr(active.ip); info.gw.addr=ipaddr_addr(active.gateway); info.netmask.addr=ipaddr_addr(active.mask);
-        err=esp_netif_dhcpc_stop(station); if (err!=ESP_OK && err!=ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) goto fail;
-        err=esp_netif_set_ip_info(station,&info); if (err!=ESP_OK) goto fail;
-        esp_netif_dns_info_t dns={0}; dns.ip.type=ESP_IPADDR_TYPE_V4;
-        dns.ip.u_addr.ip4.addr=ipaddr_addr(active.dns1); err=esp_netif_set_dns_info(station,ESP_NETIF_DNS_MAIN,&dns); if (err!=ESP_OK) goto fail;
-        dns.ip.u_addr.ip4.addr=ipaddr_addr(active.dns2); err=esp_netif_set_dns_info(station,ESP_NETIF_DNS_BACKUP,&dns); if (err!=ESP_OK) goto fail;
-    }
+    /* Addressing is configured after the STA driver is initialized. */
     wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT();
     err=esp_wifi_init(&init); if (err!=ESP_OK) goto fail; driver_initialized=true;
     /* Our versioned record is authoritative; do not keep a second driver copy. */
     err=esp_wifi_set_storage(WIFI_STORAGE_RAM); if (err!=ESP_OK) goto fail;
     err=esp_event_handler_instance_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_event_handler,NULL,&wifi_handler); if (err!=ESP_OK) goto fail; wifi_handler_set=true;
     err=esp_event_handler_instance_register(IP_EVENT,IP_EVENT_STA_GOT_IP,wifi_event_handler,NULL,&ip_handler); if (err!=ESP_OK) goto fail; ip_handler_set=true;
-    wifi_config_t config={0};
-    memcpy(config.sta.ssid,active.ssid,strlen(active.ssid));
-    memcpy(config.sta.password,active.pass,strlen(active.pass));
-    config.sta.threshold.authmode=active.pass[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
     err=esp_wifi_set_mode(WIFI_MODE_STA); if (err!=ESP_OK) goto fail;
-    err=esp_wifi_set_config(WIFI_IF_STA,&config); if (err!=ESP_OK) goto fail;
+    err=wifi_apply_profile(&active); if (err!=ESP_OK) goto fail;
+    wifi_attempts=1; wifi_tried_profiles=0;
+    wifi_retry_pending=false; wifi_got_ip_pending=false; wifi_fallback_active=false;
     err=esp_wifi_start(); if (err!=ESP_OK) goto fail;
     wifi_started=true;
     portENTER_CRITICAL(&state_lock); state.network_ready=true; portEXIT_CRITICAL(&state_lock);
@@ -204,6 +318,8 @@ fail:
     printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
 }
 void jr_wifi_stop(void) {
+    wifi_retry_pending=false; wifi_got_ip_pending=false; wifi_fallback_active=false;
+    wifi_attempts=0; wifi_tried_profiles=0;
     if (wifi_handler_set) { esp_event_handler_instance_unregister(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_handler); wifi_handler_set=false; }
     if (ip_handler_set) { esp_event_handler_instance_unregister(IP_EVENT,IP_EVENT_STA_GOT_IP,ip_handler); ip_handler_set=false; }
     if (driver_initialized) { if (wifi_started) esp_wifi_stop(); esp_wifi_deinit(); driver_initialized=false; wifi_started=false; }
@@ -249,7 +365,6 @@ static bool save_record(const wifi_settings_t *c,char *response,unsigned cap) {
     snprintf(response,cap,c->ssid[0]?"JR_WIFI_SALVO pending_restart=1 reinicie_a_placa":"JR_WIFI_LIMPO pending_restart=1 reinicie_a_placa");
     return true;
 }
-#define PROFILE_LIMIT 4
 static esp_err_t profile_read(nvs_handle_t h,unsigned id,wifi_settings_t *out) {
     char key[16]; snprintf(key,sizeof(key),"p%u",id);
     size_t size=sizeof(*out);
