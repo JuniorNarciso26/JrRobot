@@ -12,6 +12,7 @@
 #include "jr_wifi.h"
 #include "jr_wifi_provisioning.h"
 #include "jr_mdns.h"
+#include "jr_net_diag.h"
 
 #define JR_OLED_RETRY_MS 30000U
 #define JR_WIFI_SETUP_TIMEOUT_MS 30000U
@@ -40,7 +41,10 @@ void app_main(void) {
     jr_wifi_provisioning_button_init();
     bool setup_mode = jr_wifi_provisioning_boot_requested();
     if (setup_mode && jr_wifi_provisioning_start() != ESP_OK) setup_mode = false;
-    if (!setup_mode) jr_wifi_start();
+    if (!setup_mode) {
+        jr_wifi_start();
+        if (jr_wifi_network_ready()) jr_net_diag_watch();
+    }
     bool portal_started = false;
     uint32_t wifi_start_ms = now_ms();
     ESP_LOGI("jrbot_main", "JrBot ready: camera/mic/status e audio sob demanda; OLED isolado quando offline");
@@ -49,6 +53,7 @@ void app_main(void) {
         uint32_t ms = now_ms();
         if (setup_mode) jr_wifi_provisioning_poll();
         if (!setup_mode) {
+            jr_net_diag_poll(ms);
             jr_wifi_provisioning_button_poll(ms);
             jr_wifi_poll();
             if (!portal_started && jr_wifi_is_connected()) {
