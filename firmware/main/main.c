@@ -49,6 +49,7 @@ void app_main(void) {
         if (setup_mode) jr_wifi_provisioning_poll();
         if (!setup_mode) {
             jr_wifi_provisioning_button_poll(ms);
+            jr_wifi_poll();
             if (!portal_started && jr_wifi_is_connected()) {
                 jr_portal_start();
                 portal_started = true;
