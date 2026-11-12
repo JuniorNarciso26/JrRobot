@@ -1,3 +1,27 @@
+## V1.8.4S ROAM_01 — melhor BSSID sem scans periodicos (12/11/2026)
+
+No ESP-IDF 5.5.x a configuracao `WIFI_ALL_CHANNEL_SCAN` +
+`WIFI_CONNECT_AP_BY_SIGNAL` permite selecionar o ponto de acesso com
+melhor RSSI **no ato da conexao**. Nao significa roaming automatico
+durante o uso. A API `esp_wifi_set_rssi_threshold(-70)` dispara um
+evento de baixa potencia, mas e a aplicacao que precisa decidir o que
+fazer com ele.
+
+A versao ROAM_01 do JrBot executa um scan assincrono do mesmo SSID
+apenas quando recebe o evento de baixa de RSSI e o modo esta `idle`.
+So solicita uma nova conexao se houver BSSID distinto pelo menos 12 dB
+mais forte; intervalo minimo de 90 s entre scans. Em Live nao busca nem
+forca troca preventiva, pois a desconexao/reconexao encerraria sessoes
+existentes TCP/HTTPS/WebRTC. Mantem failover das redes salvas para quedas
+reais. Nao ha tarefa adicional nem scan periodico.
+O ESP32-S3 so opera com Wi-Fi em 2,4 GHz, independentemente do SSID.
+
+Codigo disponivel somente em `develop`, build `ROAM_01`;
+compilacao ESP-IDF e validacao HW04 ainda pendentes.
+Documentacao detalhada: [WIFI_DASHBOARD.md](WIFI_DASHBOARD.md).
+
+---
+
 ## Atualização V1.8.4S — recuperação automática após teste em HW04 (12/11/2026)
 
 **Evidência física apresentada no log `JrBot-painel-log (38).txt`:** a V1.8.4S
