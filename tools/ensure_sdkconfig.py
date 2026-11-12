@@ -25,6 +25,7 @@ def main() -> int:
     lines = raw.splitlines()
     enabled_prefix = option + "="
     disabled_line = f"# {option} is not set"
+    configured_line = disabled_line if value == "n" else f"{option}={value}"
 
     out: list[str] = []
     replaced = False
@@ -32,7 +33,7 @@ def main() -> int:
         stripped = line.strip()
         if stripped.startswith(enabled_prefix) or stripped == disabled_line:
             if not replaced:
-                out.append(f"{option}={value}")
+                out.append(configured_line)
                 replaced = True
             continue
         out.append(line)
@@ -40,10 +41,10 @@ def main() -> int:
     if not replaced:
         if out and out[-1] != "":
             out.append("")
-        out.append(f"{option}={value}")
+        out.append(configured_line)
 
     path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
-    print(f"[OK] {option}={value} em {path}")
+    print(f"[OK] {configured_line} em {path}")
     return 0
 
 

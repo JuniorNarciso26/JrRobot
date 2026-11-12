@@ -1,4 +1,3 @@
 #pragma once
-#include <stdbool.h>
-#include "esp_err.h"
-esp_err_t jr_mdns_start(void);
+/* Called by the existing main loop. Starts once, after an IP is available. */
+void jr_mdns_poll(void);

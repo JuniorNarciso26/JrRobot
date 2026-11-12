@@ -16,11 +16,12 @@
 #include "jr_mode_manager.h"
 #include "jr_resource_manager.h"
 #include "jr_wifi.h"
-#include "jr_wifi_serial.h"
 #include "jr_face.h"
 #include "jr_camera_diag.h"
 #include "jr_brain.h"
 #include "jr_runtime_api.h"
+#include "jr_memory.h"
+#include "jr_memory_tasks.h"
 
 static SemaphoreHandle_t command_lock;
 static bool terminal_started;
@@ -54,7 +55,7 @@ bool jr_decode_component(const char *src, size_t len, char *dst, size_t cap, boo
     return true;
 }
 
-static bool parse_wifi_config(const char *args, bool encoded, bool join, char *response, size_t cap) {
+static bool parse_wifi_config(const char *args, bool encoded, bool profile_only, char *response, size_t cap) {
     char ssid[33] = "", pass[65] = "", host[33] = "jrbot";
     char ip[16] = "192.168.0.50", gw[16] = "192.168.0.1", mask[16] = "255.255.255.0";
     char dns1[16] = "8.8.8.8", dns2[16] = "8.8.4.4", stat[6] = "0";
@@ -88,7 +89,9 @@ static bool parse_wifi_config(const char *args, bool encoded, bool join, char *r
     }
     if (!(seen & 1) || (strcmp(stat,"0") && strcmp(stat,"1"))) goto invalid;
     {
-        bool ok = join ? jr_wifi_serial_join(ssid,pass,response,cap) : jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
+        bool ok = profile_only
+            ? jr_wifi_profile_save(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap)
+            : jr_wifi_configure(ssid,pass,host,!strcmp(stat,"1"),ip,gw,mask,dns1,dns2,response,(unsigned)cap);
         memset(pass, 0, sizeof(pass));
         return ok;
     }
@@ -163,11 +166,13 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     const char *args = space ? space+1 : "";
     if (!strcmp(verb,"wifi_config") || !strcmp(verb,"wifi_config_pct"))
         return parse_wifi_config(args,!strcmp(verb,"wifi_config_pct"),false,response,cap);
-    if (!strcmp(verb,"wifi_join_pct")) return parse_wifi_config(args,true,true,response,cap);
-    if (!strcmp(verb,"wifi_delete_pct")) {
-        char ssid[33];
-        if (!jr_decode_component(args,strlen(args),ssid,sizeof(ssid),false) || !ssid[0]) goto invalid;
-        return jr_wifi_serial_delete(ssid,response,cap);
+    if (!strcmp(verb,"wifi_profile_save_pct")) return parse_wifi_config(args,true,true,response,cap);
+    if (!strcmp(verb,"wifi_profile_use") || !strcmp(verb,"wifi_profile_delete")) {
+        char *end; errno=0; unsigned long id=strtoul(args,&end,10);
+        if (!*args || end==args || errno || id>3) goto invalid;
+        while (*end==' ') end++;
+        if (*end) goto invalid;
+        return !strcmp(verb,"wifi_profile_use")?jr_wifi_profile_use((unsigned)id,response,(unsigned)cap):jr_wifi_profile_delete((unsigned)id,response,(unsigned)cap);
     }
     if (!strcmp(verb,"api")) {
         while (*args==' ') args++;
@@ -216,6 +221,8 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return false;
     }
     if (!strcmp(verb,"status")) return jr_format_status(response,cap);
+    if (!strcmp(verb,"memoria")) return jr_memory_format(response,cap);
+    if (!strcmp(verb,"tarefas")) return jr_memory_tasks_format(response,cap);
     if (!strcmp(verb,"version")) {
         snprintf(response,cap,"JR_OK version=%s build_sp=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
         return true;
@@ -249,17 +256,11 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
         return true;
     }
     if (!strcmp(verb,"help") || !strcmp(verb,"ajuda")) {
-        snprintf(response,cap,"JR_HELP protocol=2 version status api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_config_pct wifi_clear wifi_prov_start"); return true;
+        snprintf(response,cap,"JR_HELP protocol=2 version status memoria tarefas api{json} autonomo_on autonomo_off brain_status brain_test camera_test mic_test mic_status audio_test audio_play_recording audio_diag demo neutro feliz triste animado bravo surpreso pensando cetico sono confuso piscando amor brincalhao preocupado cool bateria audio_volume[0-100] wifi_scan wifi_profiles wifi_profile_save_pct wifi_profile_use[0-3] wifi_profile_delete[0-3] wifi_config_pct wifi_clear"); return true;
     }
-    if (!strcmp(verb,"wifi_scan")) return jr_wifi_serial_scan(true,response,cap);
-    if (!strcmp(verb,"wifi_scan_result")) return jr_wifi_serial_scan(false,response,cap);
-    if (!strcmp(verb,"wifi_profiles")) return jr_wifi_serial_profiles(response,cap);
+    if (!strcmp(verb,"wifi_scan")) return jr_wifi_scan(response,(unsigned)cap);
+    if (!strcmp(verb,"wifi_profiles")) return jr_wifi_profiles_list(response,(unsigned)cap);
     if (!strcmp(verb,"wifi_clear")) return jr_wifi_clear(response,(unsigned)cap);
-    if (!strcmp(verb,"wifi_prov_start")) {
-        esp_err_t err=jr_wifi_begin_provisioning();
-        snprintf(response,cap,err==ESP_OK?"JR_WIFI_SETUP rede=JrBot-Config url=http://192.168.4.1:8080":"JR_WIFI_ERROR provisioning=%s",esp_err_to_name(err));
-        return err==ESP_OK;
-    }
     if (!strcmp(verb,"demo")) {
         jr_face_set_demo(!jr_face_demo_enabled());
         snprintf(response,cap,"JR_OK demo=%d",jr_face_demo_enabled()); return true;
@@ -373,3 +374,4 @@ void jr_terminal_start(void) {
     if (xTaskCreate(terminal_task,"terminal",8192,NULL,5,NULL)!=pdPASS) { puts("JR_ERROR terminal_task_create"); return; }
     terminal_started=true;
 }
+

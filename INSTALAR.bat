@@ -116,6 +116,8 @@ for /l %%N in (1,1,!BRANCH_COUNT!) do (
     if /i "!DISPLAY_BRANCH!"=="develop" set "BRANCH_NOTE= - integracao"
     if /i "!DISPLAY_BRANCH!"=="v1" set "BRANCH_NOTE= - JrBot V1"
     if /i "!DISPLAY_BRANCH!"=="v2" set "BRANCH_NOTE= - JrBot V2 voz"
+    if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light" set "BRANCH_NOTE= - RAM leve validada"
+    if /i "!DISPLAY_BRANCH!"=="test/develop_wifi_ram_light_provisioning" set "BRANCH_NOTE= - RAM leve + Wi-Fi pelo celular"
     if /i "!DISPLAY_BRANCH:~0,8!"=="feature/" set "BRANCH_NOTE= - desenvolvimento / teste"
     if /i "!DISPLAY_BRANCH:~0,7!"=="hotfix/" set "BRANCH_NOTE= - correcao"
     if /i "!DISPLAY_BRANCH:~0,4!"=="fix/" set "BRANCH_NOTE= - correcao"
@@ -214,16 +216,24 @@ if not "!STATUS_SIZE!"=="0" (
 if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
 if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
 
-echo [INFO] Atualizando referencias remotas...
-git fetch --prune origin
+call :choose_branch
 if errorlevel 1 (
-    echo [ERRO] Nao foi possivel consultar o GitHub.
     popd
     exit /b 1
 )
 
-call :choose_branch
+rem Clones --single-branch podem guardar refs de branches excluidas no GitHub.
+rem Substitua a lista antiga pela branch ativa escolhida antes do fetch.
+git remote set-branches origin "!TARGET_BRANCH!"
 if errorlevel 1 (
+    echo [ERRO] Nao foi possivel configurar a versao !TARGET_BRANCH! no Git.
+    popd
+    exit /b 1
+)
+echo [INFO] Atualizando a versao !TARGET_BRANCH!...
+git fetch --no-tags --prune origin
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel baixar !TARGET_BRANCH!. Consulte a lista novamente.
     popd
     exit /b 1
 )
@@ -286,32 +296,149 @@ set "PORT_FILE=%TEMP%\jrbot_port_%RANDOM%_%RANDOM%.txt"
 cd /d "%~dp0"
 
 set "CURRENT_BRANCH="
+set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+set "JRBOT_RAM_LIGHT_BRANCH="
+if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
+if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
 if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
+) else if /i "%CURRENT_BRANCH%"=="feature/live-audio-lab" (
+    rem Isolated Audio Lab experiment: same RAM-light profile as approved V1.8.1S.
+    set "BUILD_DIR=b-audio-lab"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+) else if /i "%CURRENT_BRANCH%"=="feature/wifi-dashboard" (
+    rem V1.8.3S Wi-Fi dashboard test; reuse the stable V1.8.2S RAM-light build profile.
+    set "BUILD_DIR=b-wifi-tab"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
 ) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Isola o build da release oficial conforme firmware/version.txt.
-    rem Evita reutilizar o build da V1.7.04 ao promover V1S APP_03 para main.
-    set "BUILD_DIR=build-v1.7.04"
-    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
+    rem Usa o perfil RAM-light e isola o build pela versao publicada.
     set "JRBOT_MAIN_VERSION="
-    if exist "firmware\version.txt" (
-        set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
-        if /i "!JRBOT_MAIN_VERSION!"=="JrBot_V1S_APP_03" (
-            set "BUILD_DIR=build-v1s-app-03-main"
+    if not exist "firmware\version.txt" (
+        echo [ERRO] firmware\version.txt nao encontrado.
+        goto failure
+    )
+    set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
+    if not defined JRBOT_MAIN_VERSION (
+        echo [ERRO] Versao do firmware vazia.
+        goto failure
+    )
+    set "BUILD_DIR=b-!JRBOT_MAIN_VERSION:~-8!"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_04" (
+    rem Teste isolado da ordem dos fragmentos JPEG no DataChannel.
+    set "BUILD_DIR=build-develop-wifi-ram-light-04"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light_04"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light_04" (
+        if exist "firmware\sdkconfig.develop_wifi_ram_light_03" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light_03" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi_ram_light_02" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light_02" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light_04" >nul
+            if errorlevel 1 goto failure
         )
-        if /i "!JRBOT_MAIN_VERSION:~0,15!"=="JrBot_V1S_WIFI_" (
-            set "BUILD_DIR=build-v1s-wifi-main"
-            set "SDKCONFIG_FILE=sdkconfig.v1s-wifi-main"
+    )
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_03" (
+    rem Identificacao do firmware exibida pelo status no portal e nos logs.
+    set "BUILD_DIR=build-develop-wifi-ram-light-03"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light_03"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light_03" (
+        if exist "firmware\sdkconfig.develop_wifi_ram_light_02" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light_02" "firmware\sdkconfig.develop_wifi_ram_light_03" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.develop_wifi_ram_light_03" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light_03" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light_03" >nul
+            if errorlevel 1 goto failure
+        )
+    )
+) else if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_02" (
+    rem Segunda rodada isolada: fila de audio WebRTC na PSRAM.
+    set "BUILD_DIR=build-develop-wifi-ram-light-02"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light_02"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light_02" (
+        if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+            copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light_02" >nul
+            if errorlevel 1 goto failure
+        )
+    )
+) else if defined JRBOT_RAM_LIGHT_BRANCH (
+    rem Branch fixa de testes: isola o build pela versao real do firmware.
+    set "JRBOT_RAM_LIGHT_VERSION="
+    if not exist "firmware\version.txt" (
+        echo [ERRO] firmware\version.txt nao encontrado.
+        goto failure
+    )
+    set /p "JRBOT_RAM_LIGHT_VERSION=" < "firmware\version.txt"
+    if not defined JRBOT_RAM_LIGHT_VERSION (
+        echo [ERRO] Versao do firmware vazia.
+        goto failure
+    )
+    rem Caminho curto evita exceder MAX_PATH nos objetos do ESP-IDF no Windows.
+    set "BUILD_DIR=b-!JRBOT_RAM_LIGHT_VERSION:~-8!"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi_ram_light" (
+        if exist "firmware\sdkconfig.develop_wifi" (
+            copy /y "firmware\sdkconfig.develop_wifi" "firmware\sdkconfig.develop_wifi_ram_light" >nul
+            if errorlevel 1 goto failure
+        ) else if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi_ram_light" >nul
+            if errorlevel 1 goto failure
+        )
+    )
+) else if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+    rem Baseline da main: build isolado e copia dos ajustes locais ja usados na main.
+    set "BUILD_DIR=build-develop-wifi-baseline"
+    set "SDKCONFIG_FILE=sdkconfig.develop_wifi"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    if not exist "firmware\sdkconfig.develop_wifi" (
+        if exist "firmware\sdkconfig.develop-v1.6.3" (
+            copy /y "firmware\sdkconfig.develop-v1.6.3" "firmware\sdkconfig.develop_wifi" >nul
+            if errorlevel 1 goto failure
+            echo [INFO] Ajustes locais da main copiados para develop_wifi.
         )
     )
 ) else if /i "%CURRENT_BRANCH%"=="develop" (
-    rem Candidata JrBot V1S + Wi-Fi pelo celular, isolada do build anterior.
-    set "BUILD_DIR=build-v1s-wifi-develop"
-    set "SDKCONFIG_FILE=sdkconfig.v1s-wifi-develop"
+    rem Integracao baseada na release oficial JrBot_V1.7.04.
+    set "BUILD_DIR=build-v1.7.04-develop"
+    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v1.7-v2" (
     rem Branch historica da derivacao experimental que originou a V1.7.04.
     set "BUILD_DIR=build-v1.7-v2"
@@ -419,37 +546,50 @@ call :check
 if errorlevel 1 goto failure
 pushd firmware
 if exist "%SDKCONFIG_FILE%" (
-    echo [INFO] Garantindo WebSocket, DTLS-SRTP e pilha de eventos no sdkconfig existente...
+    echo [INFO] Garantindo suporte WebSocket no sdkconfig existente...
     python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HTTPD_WS_SUPPORT" "y"
     if errorlevel 1 (
         popd
         goto failure
     )
-    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MBEDTLS_SSL_PROTO_DTLS" "y"
+)
+if /i "%CURRENT_BRANCH%"=="develop_wifi" (
+    python "..\tools\ensure_mdns_sdkconfig.py" "%SDKCONFIG_FILE%"
     if errorlevel 1 (
         popd
         goto failure
     )
-    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MBEDTLS_SSL_DTLS_SRTP" "y"
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_FREERTOS_USE_TRACE_FACILITY" "y"
     if errorlevel 1 (
         popd
         goto failure
     )
-    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE" "4096"
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HEAP_TASK_TRACKING" "y"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_HEAP_TRACK_DELETED_TASKS" "y"
     if errorlevel 1 (
         popd
         goto failure
     )
 )
-rem Cached sdkconfig values override defaults. Apply this trial to Wi-Fi builds only.
-if /i "%BUILD_DIR:~0,15%"=="build-v1s-wifi-" (
-    if exist "%SDKCONFIG_FILE%" (
-        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MDNS_MEMORY_ALLOC_INTERNAL" "n"
+if defined JRBOT_WIFI_RAM_LIGHT_BUILD (
+    python "..\tools\ensure_mdns_sdkconfig.py" "%SDKCONFIG_FILE%"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    for %%K in (CONFIG_HEAP_TASK_TRACKING CONFIG_HEAP_TRACK_DELETED_TASKS CONFIG_HM1055_SUPPORT CONFIG_HM0360_SUPPORT CONFIG_NT99141_SUPPORT CONFIG_OV3660_SUPPORT CONFIG_OV2640_SUPPORT CONFIG_OV7670_SUPPORT) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "n"
         if errorlevel 1 (
             popd
             goto failure
         )
-        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "CONFIG_MDNS_MEMORY_ALLOC_SPIRAM" "y"
+    )
+    for %%K in (CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "8"
         if errorlevel 1 (
             popd
             goto failure
@@ -460,6 +600,14 @@ python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% bu
 if errorlevel 1 (
     popd
     goto failure
+)
+if defined JRBOT_WIFI_MEMORY_BUILD (
+    echo [INFO] Incorporando inventario completo da RAM do ELF/map...
+    python "..\tools\build_memory_report.py" --build-dir "%BUILD_DIR%" --sdkconfig "%SDKCONFIG_FILE%" --rebuild
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
 )
 if /i "%ACTION%"=="build" (
     popd
@@ -473,6 +621,11 @@ if errorlevel 1 (
     goto failure
 )
 popd
+if exist firmware\version.txt (
+    set /p "FW_VERSION=" < "firmware\version.txt"
+    echo [OK] Versao enviada para ESP32: !FW_VERSION!
+)
+echo [INFO] Confirme a versao instalada no campo Firmware do painel ou em /status.
 if /i "%ACTION%"=="flash" goto success
 goto panel
 
@@ -497,8 +650,8 @@ echo [SUCESSO] JRBOT PREPARADO
 echo ============================================================
 if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
 if exist firmware\version.txt (
-    set /p FW_VERSION=<firmware\version.txt
-    echo Firmware: !FW_VERSION!
+    set /p "FW_VERSION=" < "firmware\version.txt"
+    echo Versao do codigo: !FW_VERSION!
 )
 if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
 exit /b 0

@@ -1,1 +1,2 @@
-JrBot_V1S_WIFI_06
+JrBot_V1.8.3S
+

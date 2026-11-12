@@ -42,7 +42,9 @@
 #define JR_WA_PEER_TASK_PRIORITY        18
 #define JR_WA_STOP_WAIT_MS              2500
 #define JR_WA_SIGNAL_POST_MAX           (16 * 1024)
-#define JR_WA_VIDEO_DC_CHUNK_SIZE        10000
+/* Bound each DataChannel write's peak TLS/SCTP memory use with mDNS active.
+ * 128 sequence numbers still cover the configured 262144-byte camera buffer. */
+#define JR_WA_VIDEO_DC_CHUNK_SIZE        2048
 #define JR_WA_VIDEO_DC_HEADER_SIZE       5
 #define JR_WA_VIDEO_DC_END               0x80
 #define JR_WA_VIDEO_DC_SEQ_MASK          0x7F
@@ -52,7 +54,6 @@
 typedef enum {
     JR_WA_VIDEO_PROFILE_FAST = 0,
     JR_WA_VIDEO_PROFILE_BALANCED,
-    JR_WA_VIDEO_PROFILE_QUALITY,
 } jr_wa_video_profile_t;
 
 static const char *TAG = "jrbot_webrtc_audio";
@@ -60,15 +61,14 @@ static const char *TAG = "jrbot_webrtc_audio";
 static void log_heap_state(const char *stage)
 {
     ESP_LOGI(TAG,
-             "HEAP stage=%s internal_free=%u internal_largest=%u internal_min=%u dma_free=%u dma_largest=%u psram_free=%u psram_largest=%u",
+             "HEAP stage=%s internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u dma_free=%u dma_largest=%u",
              stage,
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
 }
 
 typedef struct {
@@ -97,6 +97,13 @@ typedef struct {
     uint32_t webrtc_rx_packets;
     uint32_t webrtc_rx_bytes;
     uint32_t webrtc_rx_drops;
+    uint32_t audio_queue_peak;
+    uint32_t audio_underruns;
+    uint32_t mic_clip_samples;
+    uint32_t mic_peak;
+    uint32_t speaker_peak;
+    uint32_t last_audio_rx_ms;
+    uint32_t last_speaker_active_ms;
     uint64_t speaker_i2s_frames;
     uint32_t speaker_i2s_errors;
     bool video_dc_open;
@@ -110,9 +117,49 @@ typedef struct {
 static portMUX_TYPE state_lock = portMUX_INITIALIZER_UNLOCKED;
 static jr_wa_status_t status_state;
 
+/* Neutral defaults preserve the V1.8.1S full-duplex audio path.
+ * These scalar controls are updated only on HTTP requests; the audio tasks
+ * read a single short critical-section snapshot per 20-ms frame. */
+typedef struct {
+    int volume;
+    int mic_gain;
+    int echo_duck;
+    int gate;
+    int prebuffer;
+} jr_wa_lab_config_t;
+
+static const jr_wa_lab_config_t lab_defaults = {100, 100, 100, 0, 20};
+static jr_wa_lab_config_t lab_config = {100, 100, 100, 0, 20};
+
+static jr_wa_lab_config_t lab_get_config(void)
+{
+    jr_wa_lab_config_t c;
+    portENTER_CRITICAL(&state_lock);
+    c = lab_config;
+    portEXIT_CRITICAL(&state_lock);
+    return c;
+}
+
+static uint32_t lab_millis(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
+
+static int32_t lab_abs(int32_t sample)
+{
+    return sample < 0 ? -sample : sample;
+}
+
+
 static SemaphoreHandle_t session_mutex;
 static QueueHandle_t signal_queue;
 static QueueHandle_t audio_queue;
+#if configSUPPORT_STATIC_ALLOCATION == 1
+/* FreeRTOS allocates dynamic queues in internal RAM. Keep its control block
+ * internal, but put the 12 audio packets in PSRAM. */
+static StaticQueue_t audio_queue_control;
+static uint8_t *audio_queue_storage;
+#endif
 
 static i2s_chan_handle_t tx_chan;
 static i2s_chan_handle_t rx_chan;
@@ -145,12 +192,6 @@ static void video_profile_params(jr_wa_video_profile_t profile,
             if (quality) *quality = 16;
             if (fps) *fps = 15;
             if (name) *name = "fast";
-            break;
-        case JR_WA_VIDEO_PROFILE_QUALITY:
-            if (size) *size = JR_CAMERA_SIZE_SVGA;
-            if (quality) *quality = 16;
-            if (fps) *fps = 7;
-            if (name) *name = "quality";
             break;
         case JR_WA_VIDEO_PROFILE_BALANCED:
         default:
@@ -289,6 +330,13 @@ static void reset_session_counters(void)
     status_state.webrtc_rx_packets = 0;
     status_state.webrtc_rx_bytes = 0;
     status_state.webrtc_rx_drops = 0;
+    status_state.audio_queue_peak = 0;
+    status_state.audio_underruns = 0;
+    status_state.mic_clip_samples = 0;
+    status_state.mic_peak = 0;
+    status_state.speaker_peak = 0;
+    status_state.last_audio_rx_ms = 0;
+    status_state.last_speaker_active_ms = 0;
     status_state.speaker_i2s_frames = 0;
     status_state.speaker_i2s_errors = 0;
     status_state.video_dc_open = false;
@@ -654,9 +702,13 @@ static int peer_audio_data_handler(esp_peer_audio_frame_t *frame, void *ctx)
         return 0;
     }
 
+    UBaseType_t pending = uxQueueMessagesWaiting(audio_queue);
+    uint32_t received_ms = lab_millis();
     portENTER_CRITICAL(&state_lock);
     status_state.webrtc_rx_packets++;
     status_state.webrtc_rx_bytes += (uint32_t)frame->size;
+    status_state.last_audio_rx_ms = received_ms;
+    if (pending > status_state.audio_queue_peak) status_state.audio_queue_peak = (uint32_t)pending;
     portEXIT_CRITICAL(&state_lock);
     return 0;
 }
@@ -762,6 +814,8 @@ static int send_jpeg_data_channel(const uint8_t *jpeg, size_t jpeg_size, uint8_t
 
         offset += payload;
         seq++;
+        /* Give the transport time to drain the larger number of small writes. */
+        if (offset < jpeg_size) vTaskDelay(pdMS_TO_TICKS(1));
     }
     return ESP_PEER_ERR_NONE;
 }
@@ -790,6 +844,7 @@ static void video_send_task(void *arg)
     ESP_LOGI(TAG, "VIDEO_DC_TASK_READY profile=%s size=%s quality=%d fps=%d chunk=%d",
              initial_name, jr_camera_size_name(initial_size), initial_quality,
              initial_fps, JR_WA_VIDEO_DC_CHUNK_SIZE);
+    log_heap_state("video_task_ready");
 
     while (session_running) {
         if (!get_peer_connected() || !video_dc_open || !peer) {
@@ -831,7 +886,12 @@ static void video_send_task(void *arg)
             status_state.video_send_errors++;
         }
         uint32_t sent_frames = status_state.video_frames;
+        uint32_t send_errors = status_state.video_send_errors;
         portEXIT_CRITICAL(&state_lock);
+
+        if (ret != ESP_PEER_ERR_NONE && (send_errors == 1U || send_errors % 50U == 0U)) {
+            log_heap_state("video_send_error");
+        }
 
         if (ret == ESP_PEER_ERR_WOULD_BLOCK) {
             ESP_LOGW(TAG, "VIDEO_DC_DROP buffer_full bytes=%u", (unsigned)frame.len);
@@ -903,14 +963,36 @@ static void mic_send_task(void *arg)
             continue;
         }
 
+        jr_wa_lab_config_t cfg = lab_get_config();
+        uint32_t now = lab_millis(), last_speaker;
+        portENTER_CRITICAL(&state_lock);
+        last_speaker = status_state.last_speaker_active_ms;
+        portEXIT_CRITICAL(&state_lock);
+        bool speaker_active = last_speaker && (uint32_t)(now - last_speaker) < 250U;
+        int gain = cfg.mic_gain * (speaker_active ? cfg.echo_duck : 100) / 100;
+        uint32_t mic_clip = 0, mic_peak = 0;
+
         for (size_t i = 0; i < JR_WA_G711_SAMPLES_20MS; ++i) {
             size_t f0 = i * 2U;
             size_t f1 = f0 + 1U;
-            int16_t s0 = clamp16(raw[f0 * 2U] >> 14);
-            int16_t s1 = clamp16(raw[f1 * 2U] >> 14);
-            int16_t filtered = (int16_t)(((int32_t)s0 + (int32_t)s1) / 2);
+            int32_t raw0 = raw[f0 * 2U] >> 14;
+            int32_t raw1 = raw[f1 * 2U] >> 14;
+            if (raw0 > 32767 || raw0 < -32768 || raw1 > 32767 || raw1 < -32768) mic_clip++;
+            int16_t s0 = clamp16(raw0);
+            int16_t s1 = clamp16(raw1);
+            int32_t sample = ((int32_t)s0 + (int32_t)s1) / 2;
+            sample = sample * gain / 100;
+            if (lab_abs(sample) > 32767) mic_clip++;
+            int16_t filtered = clamp16(sample);
+            int32_t magnitude = lab_abs((int32_t)filtered);
+            if ((uint32_t)magnitude > mic_peak) mic_peak = (uint32_t)magnitude;
+            if (magnitude < cfg.gate) filtered = 0;
             g711[i] = linear_to_alaw(filtered);
         }
+        portENTER_CRITICAL(&state_lock);
+        status_state.mic_clip_samples += mic_clip;
+        if (mic_peak > status_state.mic_peak) status_state.mic_peak = mic_peak;
+        portEXIT_CRITICAL(&state_lock);
 
         esp_peer_audio_frame_t frame = {
             .pts = (uint32_t)(esp_timer_get_time() / 1000ULL),
@@ -940,26 +1022,63 @@ static void playback_task(void *arg)
     (void)arg;
     jr_wa_audio_packet_t packet;
     int32_t out[JR_WA_RX_PACKET_MAX * 4];
+    bool primed = false;
+    int previous_prebuffer = -1;
 
     while (session_running && tx_chan) {
+        jr_wa_lab_config_t cfg = lab_get_config();
         size_t frames_out = 0;
+        int peak = 0;
+        if (cfg.prebuffer != previous_prebuffer) {
+            primed = false;
+            previous_prebuffer = cfg.prebuffer;
+        }
+        /* A 20-ms PCMA packet is 160 bytes at 8 kHz. Reuse the existing
+         * 12-item queue, normally backed by PSRAM; no additional queue. */
+        int needed = cfg.prebuffer / 20;
+        if (!primed && audio_queue &&
+            (int)uxQueueMessagesWaiting(audio_queue) >= needed) primed = true;
 
-        if (audio_queue && xQueueReceive(audio_queue, &packet, 0) == pdTRUE) {
+        if (primed && audio_queue &&
+            xQueueReceive(audio_queue, &packet, 0) == pdTRUE) {
             size_t samples = packet.size;
             if (samples > JR_WA_RX_PACKET_MAX) samples = JR_WA_RX_PACKET_MAX;
 
             for (size_t i = 0; i < samples; ++i) {
                 int16_t pcm = alaw_to_linear(packet.data[i]);
-                int32_t slot = (int32_t)pcm * 65536;
+                int32_t mag = lab_abs((int32_t)pcm);
+                if (mag > peak) peak = (int)mag;
+                int32_t scaled = ((int32_t)pcm * cfg.volume) / 100;
+                int32_t slot = (int32_t)clamp16(scaled) * 65536;
                 for (int up = 0; up < 2; ++up) {
                     out[frames_out * 2U] = slot;
                     out[frames_out * 2U + 1U] = slot;
                     frames_out++;
                 }
             }
+
+            if (peak > 500 && cfg.volume > 0) {
+                portENTER_CRITICAL(&state_lock);
+                status_state.last_speaker_active_ms = lab_millis();
+                portEXIT_CRITICAL(&state_lock);
+            }
+            portENTER_CRITICAL(&state_lock);
+            if ((uint32_t)peak > status_state.speaker_peak)
+                status_state.speaker_peak = (uint32_t)peak;
+            portEXIT_CRITICAL(&state_lock);
         } else {
+            /* Silence keeps the I2S clock running at its fixed 16-kHz rate. */
             frames_out = JR_WA_I2S_FRAMES_20MS;
             memset(out, 0, frames_out * 2U * sizeof(int32_t));
+            if (primed) {
+                uint32_t last_rx, now = lab_millis();
+                portENTER_CRITICAL(&state_lock);
+                last_rx = status_state.last_audio_rx_ms;
+                if (last_rx && (uint32_t)(now - last_rx) < 150U)
+                    status_state.audio_underruns++;
+                portEXIT_CRITICAL(&state_lock);
+            }
+            primed = false;
         }
 
         size_t requested = frames_out * 2U * sizeof(int32_t);
@@ -1046,32 +1165,12 @@ static void stop_session_unlocked(void)
     restore_autonomous_after_live(has_resources ? "live_end" : "start_failed");
 }
 
-static void live_memory_snapshot(const char *stage, const char *result)
-{
-    /* Capture before allocating the diagnostic message itself. */
-    char text[320];
-    snprintf(text, sizeof(text),
-             "stage=%s result=%s internal_free=%u internal_largest=%u internal_min=%u dma_free=%u dma_largest=%u psram_free=%u psram_largest=%u",
-             stage, result,
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
-    ESP_LOGI(TAG, "LIVE_MEMORY %s", text);
-    (void)queue_signal_object("memory", (const uint8_t *)text, (int)strlen(text));
-}
-
 static esp_err_t start_session_unlocked(void)
 {
     stop_session_unlocked();
     flush_signal_queue();
     flush_audio_queue();
     reset_session_counters();
-    live_memory_snapshot("before_session", "pending");
-    const char *failure_stage = "i2s_open";
 
     live_previous_mode = jr_mode_set(JR_MODE_LIVE, "webrtc_start");
     live_mode_entered = true;
@@ -1080,7 +1179,6 @@ static esp_err_t start_session_unlocked(void)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "JR_MODE live_start result=error stage=autonomous_suspend error=%s",
                  esp_err_to_name(err));
-        live_memory_snapshot("autonomous_suspend", esp_err_to_name(err));
         restore_autonomous_after_live("suspend_failed");
         return err;
     }
@@ -1089,7 +1187,6 @@ static esp_err_t start_session_unlocked(void)
         ESP_LOGE(TAG, "audio bus busy");
         ESP_LOGE(TAG, "JR_MODE live_start result=error stage=audio_bus error=%s",
                  esp_err_to_name(ESP_ERR_TIMEOUT));
-        live_memory_snapshot("audio_bus", "ESP_ERR_TIMEOUT");
         restore_autonomous_after_live("audio_bus_busy");
         return ESP_ERR_TIMEOUT;
     }
@@ -1134,7 +1231,6 @@ static esp_err_t start_session_unlocked(void)
     }
     log_heap_state("before_peer_open");
 
-    failure_stage = "peer_open";
     int ret = esp_peer_open(&cfg, esp_peer_get_default_impl(), &peer);
     log_heap_state("after_peer_open");
     if (ret != ESP_PEER_ERR_NONE || !peer) {
@@ -1150,35 +1246,22 @@ static esp_err_t start_session_unlocked(void)
     status_state.sessions++;
     portEXIT_CRITICAL(&state_lock);
 
-    failure_stage = "task_peer";
-    log_heap_state("before_task_peer");
-    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_peer stack_bytes=%u", (unsigned)JR_WA_PEER_TASK_STACK);
     if (xTaskCreatePinnedToCore(peer_loop_task, "jr_wa_peer", JR_WA_PEER_TASK_STACK,
                                 NULL, JR_WA_PEER_TASK_PRIORITY, &peer_task_handle, 1) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
-    log_heap_state("after_task_peer");
-    failure_stage = "task_mic";
-    log_heap_state("before_task_mic");
-    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_mic stack_bytes=%u", (unsigned)JR_WA_MIC_TASK_STACK);
     if (xTaskCreatePinnedToCore(mic_send_task, "jr_wa_mic", JR_WA_MIC_TASK_STACK,
                                 NULL, JR_WA_TASK_PRIORITY, &mic_task_handle, 0) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
-    log_heap_state("after_task_mic");
-    failure_stage = "task_play";
-    log_heap_state("before_task_play");
-    ESP_LOGI(TAG, "LIVE_TASK name=jr_wa_play stack_bytes=%u", (unsigned)JR_WA_PLAY_TASK_STACK);
     if (xTaskCreatePinnedToCore(playback_task, "jr_wa_play", JR_WA_PLAY_TASK_STACK,
                                 NULL, JR_WA_TASK_PRIORITY, &play_task_handle, 0) != pdPASS) {
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
-    log_heap_state("after_task_play");
 
-    failure_stage = "peer_new_connection";
     ret = esp_peer_new_connection(peer);
     if (ret != ESP_PEER_ERR_NONE) {
         ESP_LOGE(TAG, "esp_peer_new_connection failed ret=%d", ret);
@@ -1210,15 +1293,12 @@ static esp_err_t start_session_unlocked(void)
              mode_status.autonomous_before_live ? 1 : 0,
              mode_status.autonomous_suspended ? 1 : 0,
              mode_status.autonomous_restore_pending ? 1 : 0);
-    live_memory_snapshot("after_session", "ESP_OK");
     return ESP_OK;
 
 fail:
-    ESP_LOGE(TAG, "JR_MODE live_start result=error stage=%s error=%s",
-             failure_stage, esp_err_to_name(err));
-    live_memory_snapshot(failure_stage, esp_err_to_name(err));
+    ESP_LOGE(TAG, "JR_MODE live_start result=error stage=session_setup error=%s",
+             esp_err_to_name(err));
     stop_session_unlocked();
-    log_heap_state("after_failed_session_cleanup");
     return err;
 }
 
@@ -1444,8 +1524,6 @@ static esp_err_t signal_post_handler(httpd_req_t *req)
             next_profile = JR_WA_VIDEO_PROFILE_FAST;
         } else if (strcmp(profile->valuestring, "balanced") == 0) {
             next_profile = JR_WA_VIDEO_PROFILE_BALANCED;
-        } else if (strcmp(profile->valuestring, "quality") == 0) {
-            next_profile = JR_WA_VIDEO_PROFILE_QUALITY;
         } else {
             cJSON_Delete(root);
             return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid video profile");
@@ -1477,6 +1555,82 @@ static esp_err_t signal_post_handler(httpd_req_t *req)
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "peer signaling failed");
     }
     return httpd_resp_sendstr(req, "OK");
+}
+
+/* Small control API. No extra audio buffer, no allocations on the audio path.
+ * GET is polled only while the lab is visible; POST is one bounded JSON object. */
+static esp_err_t lab_status_handler(httpd_req_t *req)
+{
+    jr_wa_lab_config_t cfg;
+    uint32_t clips, mic_peak, speaker_peak, underruns, queue_peak;
+    bool active;
+    portENTER_CRITICAL(&state_lock);
+    cfg = lab_config;
+    clips = status_state.mic_clip_samples;
+    mic_peak = status_state.mic_peak;
+    speaker_peak = status_state.speaker_peak;
+    underruns = status_state.audio_underruns;
+    queue_peak = status_state.audio_queue_peak;
+    active = status_state.active;
+    portEXIT_CRITICAL(&state_lock);
+    unsigned queue_pending = audio_queue ? (unsigned)uxQueueMessagesWaiting(audio_queue) : 0U;
+    char body[460];
+    snprintf(body, sizeof(body),
+             "{\"volume\":%d,\"mic_gain\":%d,\"echo_duck\":%d,\"gate\":%d,\"prebuffer\":%d,"
+             "\"active\":%d,\"queue_pending\":%u,\"queue_peak\":%lu,\"underruns\":%lu,"
+             "\"mic_clip\":%lu,\"mic_peak\":%lu,\"speaker_peak\":%lu,"
+             "\"internal_free\":%u,\"internal_largest\":%u,\"internal_min\":%u,"
+             "\"psram_free\":%u}",
+             cfg.volume, cfg.mic_gain, cfg.echo_duck, cfg.gate, cfg.prebuffer,
+             active ? 1 : 0, queue_pending, (unsigned long)queue_peak, (unsigned long)underruns,
+             (unsigned long)clips, (unsigned long)mic_peak, (unsigned long)speaker_peak,
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, body);
+}
+
+static bool lab_int(cJSON *root, const char *key, int min, int max, int *out)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(root, key);
+    if (!cJSON_IsNumber(item) || item->valuedouble != (double)item->valueint ||
+        item->valueint < min || item->valueint > max) return false;
+    *out = item->valueint;
+    return true;
+}
+
+static esp_err_t lab_config_handler(httpd_req_t *req)
+{
+    if (req->content_len <= 0 || req->content_len >= 192)
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid settings size");
+    char body[192];
+    int got = 0;
+    while (got < req->content_len) {
+        int n = httpd_req_recv(req, body + got, req->content_len - got);
+        if (n <= 0) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "incomplete settings");
+        got += n;
+    }
+    body[got] = 0;
+    cJSON *root = cJSON_Parse(body);
+    jr_wa_lab_config_t next = lab_defaults;
+    bool valid = root && cJSON_IsObject(root) &&
+                 lab_int(root, "volume", 0, 100, &next.volume) &&
+                 lab_int(root, "mic_gain", 25, 150, &next.mic_gain) &&
+                 lab_int(root, "echo_duck", 0, 100, &next.echo_duck) &&
+                 lab_int(root, "gate", 0, 2000, &next.gate) &&
+                 lab_int(root, "prebuffer", 20, 60, &next.prebuffer) &&
+                 next.prebuffer % 20 == 0;
+    cJSON_Delete(root);
+    if (!valid) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid audio settings");
+    portENTER_CRITICAL(&state_lock);
+    lab_config = next;
+    portEXIT_CRITICAL(&state_lock);
+    ESP_LOGI(TAG, "LIVE_AUDIO_LAB volume=%d mic_gain=%d echo_duck=%d gate=%d prebuffer_ms=%d",
+             next.volume, next.mic_gain, next.echo_duck, next.gate, next.prebuffer);
+    return lab_status_handler(req);
 }
 
 static esp_err_t status_handler(httpd_req_t *req)
@@ -1546,7 +1700,28 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
 
     if (!session_mutex) session_mutex = xSemaphoreCreateMutex();
     if (!signal_queue) signal_queue = xQueueCreate(JR_WA_SIGNAL_QUEUE_DEPTH, sizeof(char *));
-    if (!audio_queue) audio_queue = xQueueCreate(JR_WA_AUDIO_QUEUE_DEPTH, sizeof(jr_wa_audio_packet_t));
+    if (!audio_queue) {
+#if configSUPPORT_STATIC_ALLOCATION == 1
+        const size_t storage_bytes = JR_WA_AUDIO_QUEUE_DEPTH * sizeof(jr_wa_audio_packet_t);
+        audio_queue_storage = heap_caps_malloc(storage_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (audio_queue_storage) {
+            audio_queue = xQueueCreateStatic(JR_WA_AUDIO_QUEUE_DEPTH,
+                                             sizeof(jr_wa_audio_packet_t),
+                                             audio_queue_storage, &audio_queue_control);
+            if (!audio_queue) {
+                heap_caps_free(audio_queue_storage);
+                audio_queue_storage = NULL;
+            } else {
+                ESP_LOGI(TAG, "AUDIO_QUEUE storage=psram bytes=%u depth=%u",
+                         (unsigned)storage_bytes, JR_WA_AUDIO_QUEUE_DEPTH);
+            }
+        }
+#endif
+        if (!audio_queue) {
+            ESP_LOGW(TAG, "AUDIO_QUEUE PSRAM unavailable; using internal RAM");
+            audio_queue = xQueueCreate(JR_WA_AUDIO_QUEUE_DEPTH, sizeof(jr_wa_audio_packet_t));
+        }
+    }
     if (!session_mutex || !signal_queue || !audio_queue) return ESP_ERR_NO_MEM;
 
     const httpd_uri_t routes[] = {
@@ -1554,6 +1729,8 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
         {.uri = "/webrtc-audio/signal", .method = HTTP_GET, .handler = signal_get_handler, .user_ctx = NULL},
         {.uri = "/webrtc-audio/signal", .method = HTTP_POST, .handler = signal_post_handler, .user_ctx = NULL},
         {.uri = "/webrtc-audio/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_GET, .handler = lab_status_handler, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_POST, .handler = lab_config_handler, .user_ctx = NULL},
     };
 
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); ++i) {
