@@ -25,6 +25,7 @@
 #include "jr_wifi_provisioning.h"
 
 #define JR_SETUP_MAGIC 0x4a525750u
+#define JR_WIFI_RECOVERY_MAGIC 0x4a525752u
 #define JR_SETUP_BUTTON_MS 3000u
 #define JR_SETUP_FORM_MAX 512
 #define JR_SETUP_SCAN_LIMIT 16
@@ -53,6 +54,9 @@ typedef struct {
 static const char *TAG = "jrbot_wifi_setup";
 static RTC_NOINIT_ATTR uint32_t setup_request;
 static RTC_NOINIT_ATTR uint32_t setup_request_inverse;
+/* Survives a software reboot, never changes stored Wi-Fi credentials. */
+static RTC_NOINIT_ATTR uint32_t recovery_restart_marker;
+static RTC_NOINIT_ATTR uint32_t recovery_restart_marker_inverse;
 static esp_netif_t *setup_ap;
 static esp_netif_t *setup_sta;
 static httpd_handle_t setup_http;
@@ -86,12 +90,40 @@ static void setup_memory(const char *stage) {
 }
 
 bool jr_wifi_provisioning_boot_requested(void) {
-    bool requested = esp_reset_reason() == ESP_RST_SW &&
+    esp_reset_reason_t reason = esp_reset_reason();
+    /* A cold boot starts a fresh recovery budget; a software reboot keeps it. */
+    if (reason != ESP_RST_SW) {
+        recovery_restart_marker = 0;
+        recovery_restart_marker_inverse = 0;
+    }
+    bool requested = reason == ESP_RST_SW &&
                      setup_request == JR_SETUP_MAGIC &&
                      setup_request_inverse == ~JR_SETUP_MAGIC;
     setup_request = 0;
     setup_request_inverse = 0;
     return requested || !jr_wifi_is_configured();
+}
+
+/* Called only when no IP was obtained within the initial connection window.
+ * One restart allows the saved-profile sequence a clean second attempt.
+ * If the second boot also fails, keep the recovery portal instead of looping.
+ */
+bool jr_wifi_provisioning_auto_restart_once(void) {
+    if (recovery_restart_marker == JR_WIFI_RECOVERY_MAGIC &&
+        recovery_restart_marker_inverse == ~JR_WIFI_RECOVERY_MAGIC) {
+        ESP_LOGW(TAG, "JR_WIFI_RECOVERY restart_already_attempted=1; open_setup=1");
+        return false;
+    }
+    recovery_restart_marker = JR_WIFI_RECOVERY_MAGIC;
+    recovery_restart_marker_inverse = ~JR_WIFI_RECOVERY_MAGIC;
+    ESP_LOGW(TAG, "JR_WIFI_RECOVERY no_ip=1 auto_restart=1 once_only=1");
+    return true;
+}
+
+void jr_wifi_provisioning_recovery_connected(void) {
+    /* Reset the one-shot guard after any verified STA IP success. */
+    recovery_restart_marker = 0;
+    recovery_restart_marker_inverse = 0;
 }
 
 static int hex_value(char c) {
