@@ -40,7 +40,11 @@ static void copy_text(char *dst,size_t cap,const char *src){ if(!cap)return; if(
 static const char *reason_name(uint16_t reason){
     switch(reason){
         case 0:return "NONE";
+        case 1:return "UNSPECIFIED";
         case 2:return "AUTH_EXPIRE";
+        case 3:return "AUTH_LEAVE";
+        case 4:return "ASSOC_EXPIRE";
+        case 8:return "ASSOC_LEAVE";
         case 15:return "4WAY_HANDSHAKE_TIMEOUT";
         case 23:return "8021X_AUTH_FAILED";
         case 200:return "BEACON_TIMEOUT";
