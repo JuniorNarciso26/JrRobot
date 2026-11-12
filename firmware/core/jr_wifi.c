@@ -276,7 +276,7 @@ static void wifi_roam_evaluate_scan(void) {
     int best=(int)current.rssi;
     bool better=false;
     for(uint16_t i=0;i<count;i++) {
-        if(strcmp((const char *)found[i].ssid,active.ssid) ||
+        if(strncmp((const char *)found[i].ssid,active.ssid,sizeof(found[i].ssid)) ||
            !memcmp(found[i].bssid,current.bssid,sizeof(current.bssid))) continue;
         /* All candidate APs have the same SSID; the driver re-checks auth. */
         if((int)found[i].rssi>=((int)current.rssi+JR_ROAM_MIN_GAIN_DB) &&
@@ -326,6 +326,17 @@ static void wifi_roam_poll(void) {
     if(!connected) return;
     if(weak && jr_mode_get()==JR_MODE_IDLE &&
        (!roam_has_scanned || (uint32_t)(now-roam_last_scan_ms)>=JR_ROAM_COOLDOWN_MS)) {
+        wifi_ap_record_t current={0};
+        if(esp_wifi_sta_get_ap_info(&current)==ESP_OK &&
+           current.rssi>=JR_ROAM_RSSI_LOW_DBM) {
+            portENTER_CRITICAL(&state_lock);
+            roam_low_pending=false;
+            portEXIT_CRITICAL(&state_lock);
+            esp_err_t arm=esp_wifi_set_rssi_threshold(JR_ROAM_RSSI_LOW_DBM);
+            printf("JR_WIFI_ROAM event=rssi_recovered rssi=%d threshold=%d arm=%s\n",
+                   (int)current.rssi,JR_ROAM_RSSI_LOW_DBM,esp_err_to_name(arm));
+            return;
+        }
         wifi_scan_config_t options={0};
         options.ssid=(uint8_t *)active.ssid;
         portENTER_CRITICAL(&state_lock);
