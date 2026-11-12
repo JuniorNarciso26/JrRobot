@@ -196,20 +196,20 @@ static bool wifi_choose_next(void) {
         err=profile_get(h,id,&candidate);
         if (err==ESP_ERR_NVS_NOT_FOUND) continue;
         if (err!=ESP_OK) {
-            printf("JR_WIFI_FAILOVER invalid_profile=%u error=%s\\n",id,esp_err_to_name(err));
+            printf("JR_WIFI_FAILOVER invalid_profile=%u error=%s\n",id,esp_err_to_name(err));
             continue;
         }
         if (!candidate.ssid[0] || !strcmp(candidate.ssid,active.ssid)) continue;
         err=wifi_apply_profile(&candidate);
         if (err!=ESP_OK) {
-            printf("JR_WIFI_FAILOVER profile=%u config_error=%s\\n",id,esp_err_to_name(err));
+            printf("JR_WIFI_FAILOVER profile=%u config_error=%s\n",id,esp_err_to_name(err));
             continue;
         }
         active=candidate;
         wifi_fallback_active=true;
         wifi_attempts=1;
         chosen=true;
-        printf("JR_WIFI_FAILOVER attempting_profile=%u ssid=%s\\n",id,active.ssid);
+        printf("JR_WIFI_FAILOVER attempting_profile=%u ssid=%s\n",id,active.ssid);
         err=esp_wifi_connect();
         if (err!=ESP_OK) {
             set_error(err);
@@ -233,9 +233,9 @@ static void wifi_remember_connected(void) {
     nvs_close(h);
     if (err!=ESP_OK) {
         set_error(err);
-        printf("JR_WIFI_FAILOVER connected_not_persisted=%s\\n",esp_err_to_name(err));
+        printf("JR_WIFI_FAILOVER connected_not_persisted=%s\n",esp_err_to_name(err));
     } else {
-        printf("JR_WIFI_FAILOVER preferred_network=%s saved=1\\n",active.ssid);
+        printf("JR_WIFI_FAILOVER preferred_network=%s saved=1\n",active.ssid);
     }
 }
 /* Called by app_main; do not perform storage/driver configuration in event handler. */
