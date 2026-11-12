@@ -229,8 +229,8 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     (void)esp_mn_commands_clear();
 
     int accepted = 0;
+    /* V2: aceitar somente as pronuncias oficiais de JR BOT. */
     accepted += add_name_alias("JR BOT");
-    accepted += add_name_alias("JUNIOR BOT");
     accepted += add_name_alias("J R BOT");
     if (accepted == 0) {
         ESP_LOGE(TAG, "MultiNet rejected every JrBot alias");
