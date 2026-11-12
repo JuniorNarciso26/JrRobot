@@ -4,6 +4,8 @@
 typedef struct { bool configured, connected, network_ready, pending_restart; char ip[16]; esp_err_t last_error; } jr_wifi_status_t;
 void jr_wifi_prepare(void);
 void jr_wifi_start(void);
+/* Process bounded retries and saved-profile failover from app_main. */
+void jr_wifi_poll(void);
 void jr_wifi_stop(void);
 bool jr_wifi_network_ready(void);
 void jr_wifi_get_status(jr_wifi_status_t *out);
