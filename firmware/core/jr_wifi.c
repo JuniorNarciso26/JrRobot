@@ -256,6 +256,8 @@ void jr_wifi_poll(void) {
     if (!retry || connected) return;
     if (wifi_attempts<WIFI_ATTEMPTS_PER_PROFILE) {
         wifi_attempts++;
+        printf("JR_WIFI_RETRY active_profile=\"%s\" attempt=%u max=%u\n",
+               active.ssid,wifi_attempts,(unsigned)WIFI_ATTEMPTS_PER_PROFILE);
         esp_err_t err=esp_wifi_connect();
         if (err!=ESP_OK) {
             set_error(err);
@@ -263,7 +265,9 @@ void jr_wifi_poll(void) {
         }
         return;
     }
-    if (!wifi_choose_next()) puts("JR_WIFI_FAILOVER exhausted; setup_recovery_available=1");
+    if (!wifi_choose_next())
+        printf("JR_WIFI_FAILOVER exhausted active_profile=\"%s\" attempts=%u setup_recovery_available=1\n",
+               active.ssid,wifi_attempts);
 }
 static void wifi_event_handler(void *arg,esp_event_base_t base,int32_t id,void *data) {
     (void)arg;
@@ -311,7 +315,7 @@ void jr_wifi_start(void) {
     err=esp_wifi_start(); if (err!=ESP_OK) goto fail;
     wifi_started=true;
     portENTER_CRITICAL(&state_lock); state.network_ready=true; portEXIT_CRITICAL(&state_lock);
-    puts("JR_WIFI conectando"); return;
+    printf("JR_WIFI connecting active_profile=\"%s\"\n",active.ssid); return;
 fail:
     jr_wifi_stop();
     set_error(err);
