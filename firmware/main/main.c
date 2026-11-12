@@ -1,5 +1,6 @@
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "jr_config.h"
@@ -51,11 +52,17 @@ void app_main(void) {
             jr_wifi_provisioning_button_poll(ms);
             jr_wifi_poll();
             if (!portal_started && jr_wifi_is_connected()) {
+                jr_wifi_provisioning_recovery_connected();
                 jr_portal_start();
                 portal_started = true;
             }
             if (!portal_started && !jr_wifi_is_connected() &&
                 (uint32_t)(ms - wifi_start_ms) >= JR_WIFI_SETUP_TIMEOUT_MS) {
+                /* Boot recovery is automatic exactly once: no human reset needed. */
+                if (jr_wifi_provisioning_auto_restart_once()) {
+                    ESP_LOGW("jrbot_main", "JR_WIFI_RECOVERY restarting_for_saved_profiles");
+                    esp_restart();
+                }
                 if (jr_wifi_provisioning_start() == ESP_OK) setup_mode = true;
                 else wifi_start_ms = ms;
             }
