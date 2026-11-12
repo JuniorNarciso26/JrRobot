@@ -1,3 +1,30 @@
+## Atualização V1.8.4S — recuperação automática após teste em HW04 (12/11/2026)
+
+**Evidência física apresentada no log `JrBot-painel-log (38).txt`:** a V1.8.4S
+iniciou com `FNarciso 2.4G` selecionada e sem IP; após cerca de 30 segundos
+abriu `JrBot-Setup-8A7DA9`. Após reinício manual, conectou automaticamente
+à `CPGAS_5G`, obteve `192.168.0.123` e a gravou como rede preferida.
+Isso mostra que a recuperação abriu o portal antes de uma conexão alternativa
+terminar; não comprova que a senha de `FNarciso` estava errada.
+
+**Correção adicional em `develop`:** quando a tentativa inicial não consegue
+IP em aproximadamente 30 s, o JrBot executa **um único reinício automático
+por software** e tenta as redes salvas novamente. O marcador
+`RTC_NOINIT_ATTR` sobrevive ao reinício por software e impede
+loop: se continuar sem IP por mais ~30 s na segunda inicialização,
+abre o portal de configuração normalmente. Um boot a frio reinicia
+essa cota; uma conexão com IP zera o marcador para um futuro ciclo.
+Os perfis e senhas em NVS não são apagados; o reinício não é
+disparado depois de o JrBot já ter conexão e serviços ativos.
+
+**Testes:** `python -m unittest discover -s tests/wifi_recovery -v`
+isola e compila funções reais do guard de recuperação em mock host.
+A nova correção ainda exige compilação ESP-IDF e teste HW04 completo
+com desconexão da rede selecionada, rede reserva válida, ambas indisponíveis
+e Live após a troca. Não promover à `main` sem esse teste.
+
+---
+
 ## V1.8.4S — failover entre redes Wi-Fi salvas (candidata em develop)
 
 A partir desta versão candidata, o JrBot não fica limitado à rede selecionada.
