@@ -7,7 +7,10 @@
 The `develop` branch has been synchronized with the approved V1.8.3S
 `main` tree and now carries a candidate Wi-Fi reliability fix. It tries
 the selected Wi-Fi first, then other saved profiles after bounded failures,
-and remembers a successful alternative for the next boot. This is not a
+and remembers a successful alternative for the next boot. A follow-up HW04
+log showed captive setup opening before the first fallback finished; the
+candidate now attempts one automatic software restart on startup timeout,
+then opens setup if the subsequent boot also fails (no reboot loop). This is not a
 V1.8.4S production release: ESP-IDF build and HW04 tests, Live regressions
 and RAM/PSRAM measurements remain to be completed. `main` stays at V1.8.3S.
 
