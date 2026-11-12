@@ -1,3 +1,27 @@
+## V1.8.4S — failover entre redes Wi-Fi salvas (candidata em develop)
+
+A partir desta versão candidata, o JrBot não fica limitado à rede selecionada.
+No boot, tenta primeiro o perfil selecionado em NVS. Se houver falha de
+conexão, faz uma segunda tentativa e, depois, experimenta cada um dos outros
+perfis salvos (até quatro), sem pedir a senha de novo. Ao obter um endereço IP
+com a rede alternativa, esta se torna a rede preferida no próximo boot.
+Falhas não apagam nem substituem as credenciais. Na ausência de redes
+funcionais, a recuperação pelo AP de configuração continua disponível
+após aproximadamente 30 s. A troca automática de rede pressupõe uma
+desconexão; o fluxo normal não faz varreduras periódicas, preservando memória
+e a sessão de áudio/vídeo enquanto a conexão se mantém.
+
+A etapa automática usa as credenciais já gravadas na NVS e não garante que
+a senha de uma rede antiga permaneça válida. O log Serial identifica o SSID
+tentado e o sucesso, sem registrar a senha. Se for necessário alterar a
+senha, usar o portal/painel existente.
+
+**Estado de validação:** alteração de código entregue como candidata na
+`develop`; teste de conexão real na placa HW04, memória e regressão de Live
+ainda necessários antes de aprovar o merge na `main`.
+
+---
+
 # Provisionamento de Wi-Fi do JrBot V1.8.1S–V1.8.2S
 
 Versão atual em `main`: `JrBot_V1.8.2S`; o provisionamento foi introduzido em `JrBot_V1.8.1S`. O desenvolvimento passou pelo branch
