@@ -79,3 +79,19 @@ O monitoramento opcional do RSSI ocorre a cada 10 segundos **somente com a aba a
 12. Comparar RAM interna livre, maior bloco, PSRAM, consumo durante consultas e varredura; verificar tambem tamanho do binario/flash.
 
 **Status:** PR #59 mesclada na `main` e versão `JrBot_V1.8.3S` confirmada no repositório. A compilação ESP-IDF e a validação completa em hardware não foram verificadas nesta documentação; os itens acima permanecem como checklist de regressão. A branch original foi preservada.
+
+
+## V1.8.4S — correção automática (develop)
+
+Com a V1.8.4S candidata, o boot começa pelo perfil selecionado e pode
+alternar automaticamente para outros SSIDs salvos após duas falhas de
+conexão por perfil. Quando uma rede alternativa conecta e recebe IP, o
+JrBot a grava como preferida para o próximo boot. O painel continua
+permitindo seleção manual, exclusão de redes e reinício confirmado. Não
+há varredura permanente: o failover ocorre após uma desconexão, sem tarefa
+extra. A mudança não foi promovida à main nem validada fisicamente.
+
+Teste de aprovação: grave a candidata, deixe a última rede fora de alcance,
+confirme que a outra rede salva conecta e atualiza a seleção; depois repita
+com senha antiga incorreta, todas redes indisponíveis, configuração IP fixa,
+exclusão de perfil, reconexão com WebRTC e memória interna/PSRAM.
