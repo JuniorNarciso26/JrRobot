@@ -260,7 +260,7 @@ a lightweight 30-second connected SSID/BSSID/RSSI/IP and internal/PSRAM heap
 snapshot, and request-route/error/heap logging on failed HTTP handlers.
 Queries and passwords are not logged. TLS handshake errors occur before
 route dispatch and remain printed by ESP-IDF; correlate to periodic samples.
-Build stamp: \`2026-11-12_JrBot_V1.8.4S_DIAG_01\`.
+Build stamp: `2026-11-12_JrBot_V1.8.4S_DIAG_01`.
 No recovery/connection behavior changed; hardware/ESP-IDF acceptance pending.
 
 ## November 12, 2026 — V1.8.4S follow-up: automatic recovery reboot
