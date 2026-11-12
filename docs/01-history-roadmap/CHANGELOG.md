@@ -248,3 +248,12 @@ The connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarcis
 The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the last separately owner-confirmed full physical-and-memory baseline; V1.8.2S added Mesa Mix with a positive headphone audio report and delayed self-voice return still known; V1.8.3S adds the connected Wi-Fi management dashboard, network profile deletion, and confirmed network switching.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
+
+
+## November 12, 2026 — V1.8.4S candidate (develop only)
+
+- Synchronized `develop` with the source tree of approved V1.8.3S `main` while retaining both Git histories.
+- Added bounded retries and automatic fallback to other NVS-saved Wi-Fi profiles when the selected network does not connect.
+- The first alternative that obtains an IP is persisted as the preferred profile for the next reboot; failed candidates are not persisted.
+- Kept the existing four-profile limit, captive portal recovery, manual Wi-Fi panel and no extra polling task.
+- Added a mock NVS/driver regression scenario. Real ESP-IDF build and HW04/Live/memory regression are pending. No merge to `main`.
