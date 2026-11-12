@@ -81,6 +81,7 @@ static blob_t blobs[8];
 static bool fail_write,fail_commit;
 static unsigned simulated_connects;
 static char simulated_ssid[33];
+const char *WIFI_EVENT="WIFI_EVENT",*IP_EVENT="IP_EVENT";
 static unsigned opens;
 const char *esp_err_to_name(esp_err_t err) { return err==ESP_OK?"ESP_OK":"TEST_ERROR"; }
 esp_err_t nvs_flash_init(void) { return ESP_OK; }
