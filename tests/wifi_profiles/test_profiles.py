@@ -36,7 +36,8 @@ void nvs_close(nvs_handle_t);
 typedef const char *esp_event_base_t;
 typedef void *esp_event_handler_instance_t;
 extern const char *WIFI_EVENT,*IP_EVENT;
-enum { WIFI_EVENT_STA_START,WIFI_EVENT_STA_DISCONNECTED,IP_EVENT_STA_GOT_IP,ESP_EVENT_ANY_ID };
+enum { WIFI_EVENT_STA_START,WIFI_EVENT_STA_DISCONNECTED,IP_EVENT_STA_GOT_IP,ESP_EVENT_ANY_ID,
+       WIFI_EVENT_STA_BSS_RSSI_LOW,WIFI_EVENT_SCAN_DONE };
 esp_err_t esp_event_loop_create_default(void);
 esp_err_t esp_event_handler_instance_register(esp_event_base_t,int,void (*)(void *,esp_event_base_t,int32_t,void *),void *,esp_event_handler_instance_t *);
 esp_err_t esp_event_handler_instance_unregister(esp_event_base_t,int,esp_event_handler_instance_t);
@@ -60,8 +61,13 @@ esp_err_t esp_netif_set_dns_info(esp_netif_t *,int,const esp_netif_dns_info_t *)
 void esp_netif_destroy_default_wifi(esp_netif_t *);
 typedef struct { int unused; } wifi_init_config_t;
 #define WIFI_INIT_CONFIG_DEFAULT() {0}
-enum { WIFI_STORAGE_RAM,WIFI_AUTH_WPA2_PSK,WIFI_AUTH_OPEN,WIFI_MODE_STA,WIFI_IF_STA };
-typedef struct { struct { char ssid[32],password[64]; struct { int authmode; } threshold; } sta; } wifi_config_t;
+enum { WIFI_STORAGE_RAM,WIFI_AUTH_WPA2_PSK,WIFI_AUTH_OPEN,WIFI_MODE_STA,WIFI_IF_STA,
+       WIFI_ALL_CHANNEL_SCAN=15,WIFI_CONNECT_AP_BY_SIGNAL=17,WIFI_SCAN_TYPE_ACTIVE };
+typedef struct { struct { char ssid[32],password[64]; struct { int authmode; } threshold;
+                int scan_method,sort_method; } sta; } wifi_config_t;
+typedef struct { uint8_t *ssid; int scan_type; } wifi_scan_config_t;
+typedef struct { uint8_t ssid[33],bssid[6]; int8_t rssi; uint8_t primary; int authmode; } wifi_ap_record_t;
+typedef struct { uint8_t ssid[32],bssid[6]; uint8_t ssid_len,channel,authmode; } wifi_event_sta_connected_t;
 esp_err_t esp_wifi_init(const wifi_init_config_t *);
 esp_err_t esp_wifi_set_storage(int);
 esp_err_t esp_wifi_set_mode(int);
@@ -69,6 +75,12 @@ esp_err_t esp_wifi_set_config(int,const wifi_config_t *);
 esp_err_t esp_wifi_start(void);
 esp_err_t esp_wifi_stop(void);
 esp_err_t esp_wifi_connect(void);
+esp_err_t esp_wifi_disconnect(void);
+esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *,bool);
+esp_err_t esp_wifi_scan_get_ap_records(uint16_t *,wifi_ap_record_t *);
+esp_err_t esp_wifi_sta_get_ap_info(wifi_ap_record_t *);
+esp_err_t esp_wifi_set_rssi_threshold(int32_t);
+int64_t esp_timer_get_time(void);
 esp_err_t esp_wifi_deinit(void);
 esp_err_t esp_wifi_set_default_wifi_sta_handlers(void);
 uint32_t ipaddr_addr(const char *);
@@ -81,6 +93,13 @@ static blob_t blobs[8];
 static bool fail_write,fail_commit;
 static unsigned simulated_connects;
 static char simulated_ssid[33];
+static unsigned simulated_scans,simulated_disconnects,simulated_rssi_arms;
+static int simulated_scan_method,simulated_sort_method;
+static int simulated_mode=JR_MODE_IDLE;
+static int64_t simulated_time_us;
+static wifi_ap_record_t associated;
+static wifi_ap_record_t scan_candidates[2];
+static unsigned scan_candidate_count;
 const char *WIFI_EVENT="WIFI_EVENT",*IP_EVENT="IP_EVENT";
 static unsigned opens;
 const char *esp_err_to_name(esp_err_t err) { return err==ESP_OK?"ESP_OK":"TEST_ERROR"; }
@@ -104,9 +123,26 @@ esp_err_t nvs_erase_key(nvs_handle_t h,const char *key) { (void)h;blob_t *b=find
 esp_err_t nvs_commit(nvs_handle_t h) { (void)h;return fail_commit?ESP_FAIL:ESP_OK; }
 /* Minimal driver stubs for deterministic saved-network failover checks. */
 esp_err_t esp_wifi_connect(void) { simulated_connects++; return ESP_OK; }
+esp_err_t esp_wifi_disconnect(void) { simulated_disconnects++; return ESP_OK; }
+esp_err_t esp_wifi_set_rssi_threshold(int32_t rssi) {
+    assert(rssi==-70); simulated_rssi_arms++; return ESP_OK;
+}
+int64_t esp_timer_get_time(void) { return simulated_time_us; }
+jr_mode_t jr_mode_get(void) { return (jr_mode_t)simulated_mode; }
+esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config,bool blocking) {
+    assert(config && config->ssid && !blocking && !strcmp((const char *)config->ssid,active.ssid));
+    simulated_scans++; return ESP_OK;
+}
+esp_err_t esp_wifi_scan_get_ap_records(uint16_t *size,wifi_ap_record_t *out) {
+    unsigned n=scan_candidate_count<*size?scan_candidate_count:*size;
+    memcpy(out,scan_candidates,n*sizeof(*out));*size=(uint16_t)n;return ESP_OK;
+}
+esp_err_t esp_wifi_sta_get_ap_info(wifi_ap_record_t *out) { *out=associated;return ESP_OK; }
 esp_err_t esp_wifi_set_config(int iface,const wifi_config_t *c) {
     assert(iface==WIFI_IF_STA);
     snprintf(simulated_ssid,sizeof(simulated_ssid),"%s",c->sta.ssid);
+    simulated_scan_method=c->sta.scan_method;
+    simulated_sort_method=c->sta.sort_method;
     return ESP_OK;
 }
 esp_err_t esp_netif_set_hostname(esp_netif_t *dev,const char *name) {
@@ -196,6 +232,8 @@ int main(void) {
     assert(!strcmp(active.ssid,"Backup"));
     assert(!strcmp(simulated_ssid,"Backup"));
     assert(simulated_connects==2);
+    assert(simulated_scan_method==WIFI_ALL_CHANNEL_SCAN);
+    assert(simulated_sort_method==WIFI_CONNECT_AP_BY_SIGNAL);
     check_selected("Original","password123"); /* Not persisted before success. */
     ip_event_got_ip_t ip={0};
     wifi_event_handler(NULL,IP_EVENT,IP_EVENT_STA_GOT_IP,&ip);
@@ -203,6 +241,32 @@ int main(void) {
     check_selected("Backup","backuppass123");
     assert(jr_wifi_is_connected());
     assert(wifi_attempts==1 && wifi_tried_profiles==0);
+    assert(simulated_rssi_arms==1);
+
+    /* Signal event triggers a scan, but not an immediate forced disconnect. */
+    memset(&associated,0,sizeof(associated));
+    strcpy((char *)associated.ssid,"Backup");
+    associated.bssid[0]=1;associated.rssi=-82;
+    memset(scan_candidates,0,sizeof(scan_candidates));
+    strcpy((char *)scan_candidates[0].ssid,"Backup");
+    scan_candidates[0].bssid[0]=2;scan_candidates[0].rssi=-55;
+    scan_candidate_count=1;
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_STA_BSS_RSSI_LOW,NULL);
+    jr_wifi_poll();assert(simulated_scans==1 && simulated_disconnects==0);
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_SCAN_DONE,NULL);
+    jr_wifi_poll();assert(simulated_disconnects==1);
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_STA_DISCONNECTED,NULL);
+    jr_wifi_poll();assert(simulated_connects==3);
+    wifi_event_handler(NULL,IP_EVENT,IP_EVENT_STA_GOT_IP,&ip);
+    jr_wifi_poll();assert(simulated_rssi_arms==2);
+    /* Never interrupt audio/video with background scanning. */
+    simulated_time_us=1000000000LL;simulated_mode=JR_MODE_LIVE;
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_STA_BSS_RSSI_LOW,NULL);
+    jr_wifi_poll();assert(simulated_scans==1);
+    simulated_mode=JR_MODE_IDLE;
+    jr_wifi_poll();assert(simulated_scans==2);
+    wifi_event_handler(NULL,WIFI_EVENT,WIFI_EVENT_SCAN_DONE,NULL);
+    jr_wifi_poll(); /* Returns to idle after second scan. */
     wifi_started=false;
     return 0;
 }
@@ -215,7 +279,7 @@ class ProfileTests(unittest.TestCase):
             directory = Path(directory)
             (directory / "sdk_mock.h").write_text(MOCK)
             for header in ["esp_event.h", "esp_err.h", "esp_netif.h", "esp_wifi.h", "esp_wifi_default.h",
-                           "nvs.h", "nvs_flash.h", "freertos/FreeRTOS.h", "lwip/inet.h"]:
+                           "nvs.h", "nvs_flash.h", "freertos/FreeRTOS.h", "lwip/inet.h", "esp_timer.h"]:
                 path = directory / header
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text('#include "sdk_mock.h"\n')
