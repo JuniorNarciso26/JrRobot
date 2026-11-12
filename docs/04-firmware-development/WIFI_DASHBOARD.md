@@ -81,6 +81,19 @@ O monitoramento opcional do RSSI ocorre a cada 10 segundos **somente com a aba a
 **Status:** PR #59 mesclada na `main` e versão `JrBot_V1.8.3S` confirmada no repositório. A compilação ESP-IDF e a validação completa em hardware não foram verificadas nesta documentação; os itens acima permanecem como checklist de regressão. A branch original foi preservada.
 
 
+## Correção adicional V1.8.4S — autoreinício controlado (develop)
+
+O log físico de 12/11/2026 mostrou que o portal cativo podia iniciar
+após ~30 s sem IP antes de a rede alternativa terminar de conectar.
+Como o próprio teste confirmou sucesso após reinício manual, o boot
+passa a executar **um único reinício automático** na primeira expiração
+desse tempo. Se a segunda inicialização ainda não obtiver IP,
+oferece a tela de configuração, sem reiniciar em ciclo.
+Com IP válido, o marcador de recuperação é limpo. A seleção
+manual, o limite de quatro redes e o armazenamento NVS permanecem.
+O reinício automático só acontece antes de o portal normal iniciar;
+não derruba sessões Live já estabelecidas. Testes ESP-IDF/HW04 pendentes.
+
 ## V1.8.4S — correção automática (develop)
 
 Com a V1.8.4S candidata, o boot começa pelo perfil selecionado e pode
