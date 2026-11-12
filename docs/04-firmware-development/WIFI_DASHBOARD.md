@@ -1,5 +1,53 @@
 # Wi-Fi — Aba de gerenciamento apos a configuracao inicial
 
+## V1.8.4S ROAM_01 — escolha nativa de AP forte e gatilho RSSI (`develop`)
+
+**Objetivo:** comportamento geral do produto, não adaptação à rede de um cliente.
+Fundamentado no ESP-IDF 5.5.x para ESP32-S3:
+- https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/wifi.html
+- https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-reference/network/esp_wifi.html
+
+**Diferença essencial:** `WIFI_ALL_CHANNEL_SCAN` com
+`WIFI_CONNECT_AP_BY_SIGNAL` seleciona o AP compatível de melhor
+RSSI **durante a conexão**, não realiza roaming periódico automaticamente.
+`esp_wifi_set_rssi_threshold(-70)` apenas emite o evento
+`WIFI_EVENT_STA_BSS_RSSI_LOW`; o firmware decide se deve procurar/trocar.
+O limite de **-70 dBm é escolha de engenharia do JrBot**, não regra nativa da
+Espressif e não uma garantia de continuidade da sessão como no iPhone.
+
+**Implementação enxuta:**
+1. Usar scan de todos os canais e ordenar APs pelo sinal em toda conexão
+   inicial e reconexão; não travar BSSID.
+2. Ao obter IP, armar o gatilho RSSI -70 dBm nativo do ESP-IDF.
+3. Ao receber RSSI baixo, fazer **um scan assíncrono** apenas do SSID atual
+   e apenas em modo `idle`; não escanear no modo Live/voz/gravação.
+4. Se houver outro BSSID do mesmo SSID com ganho de **12 dB ou mais**,
+   desconectar e reconectar usando a seleção nativa por melhor sinal.
+   Isso **interrompe momentaneamente TCP/TLS**; não é roaming 802.11r
+   transparente nem 11k/v garantido. Sem ganho, manter o AP atual.
+5. Aguardar pelo menos **90 segundos** entre scans de baixa potência;
+   rearme do evento RSSI após o intervalo se necessário.
+   Sem tarefa adicional, varredura periódica, histórico em flash ou senhas no log.
+6. Em falha real, continuam valendo a reconexão/failover por perfis salvos
+   e o portal de recuperação de inicialização já existentes.
+
+**Logs:** `JR_WIFI_ROAM` mostra configuração do limiar, evento de baixa,
+scan iniciado/finalizado, RSSI anterior/melhor e decisão `keep/switch`.
+`JR_NET_ASSOC` e `JR_NET_HEALTH` permitem confirmar o BSSID.
+Build: `2026-11-12_JrBot_V1.8.4S_ROAM_01`.
+
+**Limites e testes:** o Wi-Fi do ESP32-S3 é **somente 2,4 GHz**: nomes de
+SSID contendo "5G" não mudam a frequência. Validar na HW04 o primeiro
+boot com dois repetidores no mesmo SSID, evento abaixo de -70 dBm,
+roaming apenas com ganho >=12 dB, não procurar em Live,
+perda/failover real e HTTPS/WebRTC depois da troca.
+As falhas TLS também ocorreram com RSSI bom no log 41: esta mudança
+**não é uma correção comprovada de TLS**.
+Modificação candidata não validada com compilação ESP-IDF ou teste
+físico; **não promover à main** sem aprovação.
+
+---
+
 ## Investigação de queda intermitente — V1.8.4S / DIAG_01 (`develop`)
 
 Após testes em HW04 em 12/11/2026, a conexão Wi-Fi foi observada funcionando
