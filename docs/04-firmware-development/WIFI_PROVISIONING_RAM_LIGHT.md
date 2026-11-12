@@ -1,3 +1,78 @@
+## V1.8.4S ROAM_01 — melhor BSSID sem scans periodicos (12/11/2026)
+
+No ESP-IDF 5.5.x a configuracao `WIFI_ALL_CHANNEL_SCAN` +
+`WIFI_CONNECT_AP_BY_SIGNAL` permite selecionar o ponto de acesso com
+melhor RSSI **no ato da conexao**. Nao significa roaming automatico
+durante o uso. A API `esp_wifi_set_rssi_threshold(-70)` dispara um
+evento de baixa potencia, mas e a aplicacao que precisa decidir o que
+fazer com ele.
+
+A versao ROAM_01 do JrBot executa um scan assincrono do mesmo SSID
+apenas quando recebe o evento de baixa de RSSI e o modo esta `idle`.
+So solicita uma nova conexao se houver BSSID distinto pelo menos 12 dB
+mais forte; intervalo minimo de 90 s entre scans. Em Live nao busca nem
+forca troca preventiva, pois a desconexao/reconexao encerraria sessoes
+existentes TCP/HTTPS/WebRTC. Mantem failover das redes salvas para quedas
+reais. Nao ha tarefa adicional nem scan periodico.
+O ESP32-S3 so opera com Wi-Fi em 2,4 GHz, independentemente do SSID.
+
+Codigo disponivel somente em `develop`, build `ROAM_01`;
+compilacao ESP-IDF e validacao HW04 ainda pendentes.
+Documentacao detalhada: [WIFI_DASHBOARD.md](WIFI_DASHBOARD.md).
+
+---
+
+## Atualização V1.8.4S — recuperação automática após teste em HW04 (12/11/2026)
+
+**Evidência física apresentada no log `JrBot-painel-log (38).txt`:** a V1.8.4S
+iniciou com `FNarciso 2.4G` selecionada e sem IP; após cerca de 30 segundos
+abriu `JrBot-Setup-8A7DA9`. Após reinício manual, conectou automaticamente
+à `CPGAS_5G`, obteve `192.168.0.123` e a gravou como rede preferida.
+Isso mostra que a recuperação abriu o portal antes de uma conexão alternativa
+terminar; não comprova que a senha de `FNarciso` estava errada.
+
+**Correção adicional em `develop`:** quando a tentativa inicial não consegue
+IP em aproximadamente 30 s, o JrBot executa **um único reinício automático
+por software** e tenta as redes salvas novamente. O marcador
+`RTC_NOINIT_ATTR` sobrevive ao reinício por software e impede
+loop: se continuar sem IP por mais ~30 s na segunda inicialização,
+abre o portal de configuração normalmente. Um boot a frio reinicia
+essa cota; uma conexão com IP zera o marcador para um futuro ciclo.
+Os perfis e senhas em NVS não são apagados; o reinício não é
+disparado depois de o JrBot já ter conexão e serviços ativos.
+
+**Testes:** `python -m unittest discover -s tests/wifi_recovery -v`
+isola e compila funções reais do guard de recuperação em mock host.
+A nova correção ainda exige compilação ESP-IDF e teste HW04 completo
+com desconexão da rede selecionada, rede reserva válida, ambas indisponíveis
+e Live após a troca. Não promover à `main` sem esse teste.
+
+---
+
+## V1.8.4S — failover entre redes Wi-Fi salvas (candidata em develop)
+
+A partir desta versão candidata, o JrBot não fica limitado à rede selecionada.
+No boot, tenta primeiro o perfil selecionado em NVS. Se houver falha de
+conexão, faz uma segunda tentativa e, depois, experimenta cada um dos outros
+perfis salvos (até quatro), sem pedir a senha de novo. Ao obter um endereço IP
+com a rede alternativa, esta se torna a rede preferida no próximo boot.
+Falhas não apagam nem substituem as credenciais. Na ausência de redes
+funcionais, a recuperação pelo AP de configuração continua disponível
+após aproximadamente 30 s. A troca automática de rede pressupõe uma
+desconexão; o fluxo normal não faz varreduras periódicas, preservando memória
+e a sessão de áudio/vídeo enquanto a conexão se mantém.
+
+A etapa automática usa as credenciais já gravadas na NVS e não garante que
+a senha de uma rede antiga permaneça válida. O log Serial identifica o SSID
+tentado e o sucesso, sem registrar a senha. Se for necessário alterar a
+senha, usar o portal/painel existente.
+
+**Estado de validação:** alteração de código entregue como candidata na
+`develop`; teste de conexão real na placa HW04, memória e regressão de Live
+ainda necessários antes de aprovar o merge na `main`.
+
+---
+
 # Provisionamento de Wi-Fi do JrBot V1.8.1S–V1.8.2S
 
 Versão atual em `main`: `JrBot_V1.8.2S`; o provisionamento foi introduzido em `JrBot_V1.8.1S`. O desenvolvimento passou pelo branch

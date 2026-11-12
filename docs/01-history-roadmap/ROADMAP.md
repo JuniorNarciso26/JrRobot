@@ -15,6 +15,8 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 | **V1.8.2S** — Nov 7, 2026 | Mesa Mix for Live audio: volume, microphone gain, echo ducking, noise gate, pre-buffer and diagnostics | Integrated into `main`; headphone audio reported working, delayed voice return remains |
 | **V1.8.3S** — Nov 7, 2026 | Wi-Fi dashboard: SSID, RSSI, IP and channel; manual scan; up to four saved networks; add/select/delete and confirmed reboot to switch | **Current source version on `main`**; owner accepted integration, hardware/memory regression data not separately supplied |
 
+| **V1.8.4S** — Nov 12, 2026 | Correção experimental: tentativa automática de outros SSIDs já salvos, preferindo última rede conectada | **Candidata em `develop`**, pendente de teste HW04 e aprovação para `main` |
+
 During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
 ## Product roadmap governance — October 26, 2026

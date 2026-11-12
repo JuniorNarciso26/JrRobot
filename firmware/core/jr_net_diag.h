@@ -26,9 +26,14 @@ typedef struct {
     char disconnect_reason[32];
     bool ap_available;
     char bssid[18];
+    char actual_ssid[33];
     int rssi;
     unsigned channel;
     unsigned authmode;
 } jr_net_diag_t;
 
 void jr_net_diag_snapshot(jr_net_diag_t *out);
+/* Registers event diagnostics; call after Wi-Fi event loop creation. */
+void jr_net_diag_watch(void);
+/* A bounded 30-second health line to correlate link loss with heap pressure. */
+void jr_net_diag_poll(uint32_t now_ms);

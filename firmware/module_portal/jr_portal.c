@@ -18,6 +18,7 @@
 #include "jr_memory_tasks.h"
 #include "jr_memory_full.h"
 #include "esp_heap_caps.h"
+#include "esp_timer.h"
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
@@ -247,26 +248,68 @@ static esp_err_t disabled_camera_handler(httpd_req_t *req) {
     return reply(req,"503 Service Unavailable","JR_CAMERA_DISABLED recurso_indisponivel");
 }
 
+/* Log URI failures at the application boundary. TLS handshakes fail before
+ * dispatch and remain handled by ESP-IDF; JR_NET_HEALTH samples the heap.
+ * Strip the query so no URL parameters or credentials are emitted.
+ */
+#define JR_MONITOR_HTTP_HANDLER(fn) \
+    static esp_err_t fn##_monitored(httpd_req_t *req) { \
+        esp_err_t result=fn(req); \
+        if(result!=ESP_OK) { \
+            const char *uri=req->uri?req->uri:"-"; \
+            size_t path_len=strcspn(uri,"?"); \
+            if(path_len>96U)path_len=96U; \
+            ESP_LOGW("jrbot_portal","JR_HTTP_FAIL uptime_ms=%llu method=%s uri=%.*s result=%s(%d) internal_free=%u internal_largest=%u psram_free=%u", \
+                (unsigned long long)(esp_timer_get_time()/1000ULL), \
+                req->method==HTTP_POST?"POST":"GET",(int)path_len,uri, \
+                esp_err_to_name(result),(int)result, \
+                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); \
+        } \
+        return result; \
+    }
+
+JR_MONITOR_HTTP_HANDLER(web_root_handler)
+JR_MONITOR_HTTP_HANDLER(web_v16_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_jrskill_app_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_status_handler)
+JR_MONITOR_HTTP_HANDLER(web_memory_handler)
+JR_MONITOR_HTTP_HANDLER(web_memory_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_wifi_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_cmd_handler)
+JR_MONITOR_HTTP_HANDLER(legacy_get_handler)
+JR_MONITOR_HTTP_HANDLER(web_capture_handler)
+JR_MONITOR_HTTP_HANDLER(jr_mic_record_wav_handler)
+JR_MONITOR_HTTP_HANDLER(jr_mic_live_pcm_handler)
+JR_MONITOR_HTTP_HANDLER(jr_mic_stream_handler)
+JR_MONITOR_HTTP_HANDLER(jr_mic_ws_handler)
+JR_MONITOR_HTTP_HANDLER(jr_mic_live_diag_handler)
+JR_MONITOR_HTTP_HANDLER(jr_audio_receive_wav_handler)
+JR_MONITOR_HTTP_HANDLER(disabled_camera_handler)
+
+#undef JR_MONITOR_HTTP_HANDLER
+
 static esp_err_t register_routes(httpd_handle_t server) {
     const httpd_uri_t routes[]={
-        {.uri="/",.method=HTTP_GET,.handler=web_root_handler},
-        {.uri="/v16.js",.method=HTTP_GET,.handler=web_v16_js_handler},
-        {.uri="/jrskill-app.js",.method=HTTP_GET,.handler=web_jrskill_app_js_handler},
-        {.uri="/status",.method=HTTP_GET,.handler=web_status_handler},
-        {.uri="/memory",.method=HTTP_GET,.handler=web_memory_handler},
-        {.uri="/memory-panel.js",.method=HTTP_GET,.handler=web_memory_js_handler},
-        {.uri="/wifi-panel.js",.method=HTTP_GET,.handler=web_wifi_js_handler},
-        {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler},
-        {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler},
-        {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler},
-        {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler},
-        {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler},
-        {.uri="/mic-stream",.method=HTTP_GET,.handler=jr_mic_stream_handler},
-        {.uri="/mic-ws",.method=HTTP_GET,.handler=jr_mic_ws_handler,.is_websocket=true},
-        {.uri="/live-diag",.method=HTTP_GET,.handler=jr_mic_live_diag_handler},
-        {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler},
-        {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler},
-        {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler}
+        {.uri="/",.method=HTTP_GET,.handler=web_root_handler_monitored},
+        {.uri="/v16.js",.method=HTTP_GET,.handler=web_v16_js_handler_monitored},
+        {.uri="/jrskill-app.js",.method=HTTP_GET,.handler=web_jrskill_app_js_handler_monitored},
+        {.uri="/status",.method=HTTP_GET,.handler=web_status_handler_monitored},
+        {.uri="/memory",.method=HTTP_GET,.handler=web_memory_handler_monitored},
+        {.uri="/memory-panel.js",.method=HTTP_GET,.handler=web_memory_js_handler_monitored},
+        {.uri="/wifi-panel.js",.method=HTTP_GET,.handler=web_wifi_js_handler_monitored},
+        {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler_monitored},
+        {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler_monitored},
+        {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler_monitored},
+        {.uri="/mic-record",.method=HTTP_GET,.handler=jr_mic_record_wav_handler_monitored},
+        {.uri="/mic-live",.method=HTTP_GET,.handler=jr_mic_live_pcm_handler_monitored},
+        {.uri="/mic-stream",.method=HTTP_GET,.handler=jr_mic_stream_handler_monitored},
+        {.uri="/mic-ws",.method=HTTP_GET,.handler=jr_mic_ws_handler_monitored,.is_websocket=true},
+        {.uri="/live-diag",.method=HTTP_GET,.handler=jr_mic_live_diag_handler_monitored},
+        {.uri="/audio",.method=HTTP_POST,.handler=jr_audio_receive_wav_handler_monitored},
+        {.uri="/autofocus",.method=HTTP_GET,.handler=disabled_camera_handler_monitored},
+        {.uri="/manual-focus",.method=HTTP_GET,.handler=disabled_camera_handler_monitored}
     };
     for (size_t i=0;i<sizeof(routes)/sizeof(routes[0]);i++) {
         esp_err_t err=httpd_register_uri_handler(server,&routes[i]);

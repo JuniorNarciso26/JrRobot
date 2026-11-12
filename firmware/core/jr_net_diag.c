@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_event.h"
+#include "esp_netif.h"
 #include "esp_wifi.h"
+#include "esp_timer.h"
+#include "esp_heap_caps.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
@@ -25,9 +28,11 @@ typedef struct {
 
 static portMUX_TYPE diag_lock=portMUX_INITIALIZER_UNLOCKED;
 static bool watch_active;
-static esp_event_handler_instance_t disconnect_handler;
+static esp_event_handler_instance_t wifi_monitor_handler, ip_monitor_handler;
+static bool wifi_watch_set, ip_watch_set;
 static uint16_t last_reason;
 static uint32_t disconnect_events;
+static uint32_t last_health_ms;
 
 static bool terminated(const char *s,size_t cap){ return memchr(s,0,cap)!=NULL; }
 static void copy_text(char *dst,size_t cap,const char *src){ if(!cap)return; if(!src)src=""; snprintf(dst,cap,"%s",src); }
@@ -35,7 +40,11 @@ static void copy_text(char *dst,size_t cap,const char *src){ if(!cap)return; if(
 static const char *reason_name(uint16_t reason){
     switch(reason){
         case 0:return "NONE";
+        case 1:return "UNSPECIFIED";
         case 2:return "AUTH_EXPIRE";
+        case 3:return "AUTH_LEAVE";
+        case 4:return "ASSOC_EXPIRE";
+        case 8:return "ASSOC_LEAVE";
         case 15:return "4WAY_HANDSHAKE_TIMEOUT";
         case 23:return "8021X_AUTH_FAILED";
         case 200:return "BEACON_TIMEOUT";
@@ -49,24 +58,101 @@ static const char *reason_name(uint16_t reason){
     }
 }
 
-static void on_wifi_event(void *arg,esp_event_base_t base,int32_t id,void *data){
+/* Event-only logging: do not scan, access NVS or allocate heap on Wi-Fi callbacks. */
+static unsigned long uptime_ms(void) {
+    return (unsigned long)(esp_timer_get_time()/1000ULL);
+}
+
+static void event_ssid(char out[33],const uint8_t *bytes,unsigned length) {
+    unsigned n=length>32?32:length;
+    memcpy(out,bytes,n);
+    out[n]=0;
+}
+
+static void on_net_event(void *arg,esp_event_base_t base,int32_t id,void *data) {
     (void)arg;
-    if(base!=WIFI_EVENT||id!=WIFI_EVENT_STA_DISCONNECTED)return;
-    const wifi_event_sta_disconnected_t *event=(const wifi_event_sta_disconnected_t *)data;
-    uint16_t reason=event?event->reason:0;
-    uint32_t count;
-    portENTER_CRITICAL(&diag_lock);
-    last_reason=reason;
-    disconnect_events++;
-    count=disconnect_events;
-    portEXIT_CRITICAL(&diag_lock);
-    printf("JR_NET_DIAG disconnect_event=%lu reason_code=%u reason=%s\n",(unsigned long)count,(unsigned)reason,reason_name(reason));
+    if(base==WIFI_EVENT && id==WIFI_EVENT_STA_CONNECTED){
+        const wifi_event_sta_connected_t *ev=(const wifi_event_sta_connected_t *)data;
+        if(!ev)return;
+        char ssid[33];
+        event_ssid(ssid,ev->ssid,ev->ssid_len);
+        printf("JR_NET_ASSOC uptime_ms=%lu ssid=\"%s\" active_profile=\"%s\" bssid=%02X:%02X:%02X:%02X:%02X:%02X channel=%u authmode=%u\n",
+               uptime_ms(),ssid,jr_wifi_ssid(),ev->bssid[0],ev->bssid[1],ev->bssid[2],
+               ev->bssid[3],ev->bssid[4],ev->bssid[5],(unsigned)ev->channel,(unsigned)ev->authmode);
+    } else if(base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED){
+        const wifi_event_sta_disconnected_t *ev=(const wifi_event_sta_disconnected_t *)data;
+        uint16_t reason=ev?ev->reason:0;
+        char ssid[33]={0};
+        if(ev)event_ssid(ssid,ev->ssid,ev->ssid_len);
+        uint32_t count;
+        portENTER_CRITICAL(&diag_lock);
+        last_reason=reason;
+        disconnect_events++;
+        count=disconnect_events;
+        portEXIT_CRITICAL(&diag_lock);
+        printf("JR_NET_DIAG disconnect_event=%lu uptime_ms=%lu ssid=\"%s\" active_profile=\"%s\" bssid=%02X:%02X:%02X:%02X:%02X:%02X reason_code=%u reason=%s internal_free=%u internal_largest=%u psram_free=%u\n",
+               (unsigned long)count,uptime_ms(),ssid,jr_wifi_ssid(),
+               ev?ev->bssid[0]:0,ev?ev->bssid[1]:0,ev?ev->bssid[2]:0,
+               ev?ev->bssid[3]:0,ev?ev->bssid[4]:0,ev?ev->bssid[5]:0,
+               (unsigned)reason,reason_name(reason),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+               (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    } else if(base==IP_EVENT && id==IP_EVENT_STA_GOT_IP){
+        const ip_event_got_ip_t *ev=(const ip_event_got_ip_t *)data;
+        if(!ev)return;
+        printf("JR_NET_IP uptime_ms=%lu event=got_ip ip=" IPSTR " active_profile=\"%s\"\n",
+               uptime_ms(),IP2STR(&ev->ip_info.ip),jr_wifi_ssid());
+    } else if(base==IP_EVENT && id==IP_EVENT_STA_LOST_IP){
+        printf("JR_NET_IP uptime_ms=%lu event=lost_ip active_profile=\"%s\"\n",
+               uptime_ms(),jr_wifi_ssid());
+    }
 }
 
 static void ensure_watch(void){
-    if(watch_active)return;
-    esp_err_t err=esp_event_handler_instance_register(WIFI_EVENT,WIFI_EVENT_STA_DISCONNECTED,on_wifi_event,NULL,&disconnect_handler);
-    if(err==ESP_OK)watch_active=true;
+    if(!wifi_watch_set){
+        esp_err_t err=esp_event_handler_instance_register(WIFI_EVENT,ESP_EVENT_ANY_ID,on_net_event,NULL,&wifi_monitor_handler);
+        if(err==ESP_OK)wifi_watch_set=true;
+        else printf("JR_NET_DIAG wifi_watch_error=%s\n",esp_err_to_name(err));
+    }
+    if(!ip_watch_set){
+        esp_err_t err=esp_event_handler_instance_register(IP_EVENT,ESP_EVENT_ANY_ID,on_net_event,NULL,&ip_monitor_handler);
+        if(err==ESP_OK)ip_watch_set=true;
+        else printf("JR_NET_DIAG ip_watch_error=%s\n",esp_err_to_name(err));
+    }
+    watch_active=wifi_watch_set && ip_watch_set;
+}
+
+void jr_net_diag_watch(void) { ensure_watch(); }
+
+/* One short line every 30 s, even when idle or no packets arrive.
+ * The associated SSID/BSSID come from the driver, NOT from saved NVS.
+ */
+void jr_net_diag_poll(uint32_t now_ms){
+    if((uint32_t)(now_ms-last_health_ms)<30000U)return;
+    last_health_ms=now_ms;
+    jr_wifi_status_t status={0};
+    jr_wifi_get_status(&status);
+    wifi_ap_record_t ap={0};
+    bool radio=status.connected && esp_wifi_sta_get_ap_info(&ap)==ESP_OK;
+    char actual_ssid[33]={0},bssid[18]="-";
+    if(radio){
+        event_ssid(actual_ssid,ap.ssid,32);
+        snprintf(bssid,sizeof(bssid),"%02X:%02X:%02X:%02X:%02X:%02X",
+                 ap.bssid[0],ap.bssid[1],ap.bssid[2],
+                 ap.bssid[3],ap.bssid[4],ap.bssid[5]);
+    }
+    uint32_t count;uint16_t reason;
+    portENTER_CRITICAL(&diag_lock);
+    count=disconnect_events;reason=last_reason;
+    portEXIT_CRITICAL(&diag_lock);
+    printf("JR_NET_HEALTH uptime_ms=%lu connected=%d ip=%s active_profile=\"%s\" actual_ssid=\"%s\" bssid=%s rssi=%d channel=%u disconnects=%lu last_reason=%u internal_free=%u internal_largest=%u psram_free=%u\n",
+           uptime_ms(),status.connected?1:0,status.ip,jr_wifi_ssid(),
+           radio?actual_ssid:"-",bssid,radio?(int)ap.rssi:0,radio?(unsigned)ap.primary:0U,
+           (unsigned long)count,(unsigned)reason,
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 }
 
 static bool record_valid(const jr_net_record_t *r){
@@ -149,14 +235,15 @@ void jr_net_diag_snapshot(jr_net_diag_t *out){
     wifi_ap_record_t ap={0};
     if(esp_wifi_sta_get_ap_info(&ap)==ESP_OK){
         out->ap_available=true;
+        snprintf(out->actual_ssid,sizeof(out->actual_ssid),"%.*s",32,(const char *)ap.ssid);
         snprintf(out->bssid,sizeof(out->bssid),"%02X:%02X:%02X:%02X:%02X:%02X",ap.bssid[0],ap.bssid[1],ap.bssid[2],ap.bssid[3],ap.bssid[4],ap.bssid[5]);
         out->rssi=ap.rssi;
         out->channel=ap.primary;
         out->authmode=(unsigned)ap.authmode;
     }
 
-    printf("JR_NET_DIAG saved_found=%d saved_valid=%d source=%s ssid=\"%s\" host=%s mode=%s cfg_ip=%s gateway=%s mask=%s dns1=%s dns2=%s connected=%d network_ready=%d pending_restart=%d runtime_ip=%s last_error=%s watch=%d disconnect_events=%lu reason_code=%u reason=%s ap=%d bssid=%s channel=%u rssi=%d authmode=%u\n",
+    printf("JR_NET_DIAG saved_found=%d saved_valid=%d source=%s ssid=\"%s\" host=%s mode=%s cfg_ip=%s gateway=%s mask=%s dns1=%s dns2=%s connected=%d network_ready=%d pending_restart=%d runtime_ip=%s last_error=%s watch=%d disconnect_events=%lu reason_code=%u reason=%s ap=%d bssid=%s channel=%u rssi=%d authmode=%u actual_ssid=\"%s\"\n",
         out->saved_record_found?1:0,out->saved_record_valid?1:0,out->source,out->ssid,out->hostname,out->static_mode?"IP_FIXO":"DHCP",out->configured_ip,out->gateway,out->mask,out->dns1,out->dns2,
         out->connected?1:0,out->network_ready?1:0,out->pending_restart?1:0,out->runtime_ip,esp_err_to_name(out->last_error),out->event_watch_active?1:0,(unsigned long)out->disconnect_events,
-        (unsigned)out->last_disconnect_reason,out->disconnect_reason,out->ap_available?1:0,out->bssid,out->channel,out->rssi,out->authmode);
+        (unsigned)out->last_disconnect_reason,out->disconnect_reason,out->ap_available?1:0,out->bssid,out->channel,out->rssi,out->authmode,out->actual_ssid);
 }

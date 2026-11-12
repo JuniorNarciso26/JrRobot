@@ -248,3 +248,51 @@ The connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarcis
 The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the last separately owner-confirmed full physical-and-memory baseline; V1.8.2S added Mesa Mix with a positive headphone audio report and delayed self-voice return still known; V1.8.3S adds the connected Wi-Fi management dashboard, network profile deletion, and confirmed network switching.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
+
+
+## November 12, 2026 — V1.8.4S ROAM_01 (develop, hardware validation pending)
+
+ESP32-S3 Wi-Fi station now uses the ESP-IDF built-in all-channel scan sorted
+by RSSI on each connection, instead of fast-first-match scanning. A native
+-70 dBm low-RSSI event (not native automatic roaming) triggers a bounded,
+asynchronous, same-SSID AP scan **in idle mode only**; a different BSSID must
+offer at least 12 dB better signal before a controlled reconnect. Scans
+have at least 90 seconds of cooldown; no polling task or periodic scan.
+No forced roaming during Live. `JR_WIFI_ROAM` logs decisions.
+The 2.4 GHz-only ESP32-S3 does not support 5 GHz regardless of SSID naming.
+Changing BSSID briefly interrupts existing network sessions; TLS errors
+with good RSSI remain a separate issue. Requires ESP-IDF build and HW04
+hardware / Live test before promotion to main.
+Build stamp: `2026-11-12_JrBot_V1.8.4S_ROAM_01`.
+
+## November 12, 2026 — V1.8.4S DIAG_01: intermittent Wi-Fi / HTTPS investigation (develop)
+
+Diagnostic-only follow-up. The owner reported losing Wi-Fi/panel access some
+time after connecting; earlier HW04 logs showed HTTP URI handler failures,
+TLS handshake errors and subsequent Serial monitor interruption. Added
+Wi-Fi association/disconnection/IP event logs, retry/exhaustion messages,
+a lightweight 30-second connected SSID/BSSID/RSSI/IP and internal/PSRAM heap
+snapshot, and request-route/error/heap logging on failed HTTP handlers.
+Queries and passwords are not logged. TLS handshake errors occur before
+route dispatch and remain printed by ESP-IDF; correlate to periodic samples.
+Build stamp: `2026-11-12_JrBot_V1.8.4S_DIAG_01`.
+No recovery/connection behavior changed; hardware/ESP-IDF acceptance pending.
+
+## November 12, 2026 — V1.8.4S follow-up: automatic recovery reboot
+
+After a HW04 log showed startup falling into captive setup at ~30 seconds,
+followed by successful saved-profile failover only after a manual restart,
+`develop` received an automatic, **one-time software reboot** on initial
+startup connection timeout. A paired RTC marker blocks reboot loops;
+a successful STA IP or cold boot clears the marker. If the second boot
+still cannot connect, captive setup opens as before. This is a follow-up
+fix to the V1.8.4S candidate, not a new promoted production version.
+Host-unit test added; ESP-IDF compilation and physical acceptance remain pending.
+
+## November 12, 2026 — V1.8.4S candidate (develop only)
+
+- Synchronized `develop` with the source tree of approved V1.8.3S `main` while retaining both Git histories.
+- Added bounded retries and automatic fallback to other NVS-saved Wi-Fi profiles when the selected network does not connect.
+- The first alternative that obtains an IP is persisted as the preferred profile for the next reboot; failed candidates are not persisted.
+- Kept the existing four-profile limit, captive portal recovery, manual Wi-Fi panel and no extra polling task.
+- Added a mock NVS/driver regression scenario. Real ESP-IDF build and HW04/Live/memory regression are pending. No merge to `main`.

@@ -1,19 +1,45 @@
 # JrBot Project Status
 
-**Last updated: November 8, 2026**
+**Last updated: November 12, 2026**
+
+## Current release — V1.8.4S (`main`)
+
+**JrBot V1.8.4S** integrates Wi-Fi reliability enhancements accepted by the
+project owner after observing the HW04 test of the `ROAM_01` build.
+The ESP-IDF now prefers the strongest compatible access point during
+connection (`WIFI_ALL_CHANNEL_SCAN` and `WIFI_CONNECT_AP_BY_SIGNAL`).
+It also uses the native **-70 dBm RSSI-low event** to trigger a bounded,
+same-SSID scan **while idle only**. A change of BSSID is requested only
+if a candidate is at least **12 dB** stronger, with scans at least
+**90 seconds** apart. This is an application-controlled reconnection;
+the ESP-IDF event alone does not perform seamless roaming.
+
+The firmware retains up to four saved networks, bounded retries/failover,
+one-time startup recovery restart, provisioning and `jrbot.local`.
+Additional Serial logs identify the actual SSID/BSSID, connection failures,
+HTTP handler errors, heap, RSSI and Wi-Fi events.
+
+**Test evidence and remaining limitations:** the supplied HW04 `ROAM_01`
+log showed a strong BSSID (about -42 dBm), zero recorded disconnects
+during the roughly five-minute interval, successful WebRTC connection and
+normal session stop. The same-SSID automatic roaming path **was not
+triggered** (signal stayed strong). Repeated TLS alerts and Live
+video-buffer drops with low remaining internal RAM were recorded and
+remain unresolved. A full independent ESP-IDF compilation and exhaustive
+HW04 regression have not been documented. The user explicitly approved
+promotion despite these remaining validation items.
 
 ## Current status
 
-**JrBot V1.8.3S is the current source version on `main`.** It retains the V1.8.2S Mesa Mix for Live audio from [PR #57](https://github.com/JuniorNarciso26/JrRobot/pull/57) and adds the connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59): current SSID, IP, RSSI, channel and mode; manual scan; up to four saved profiles; add/select/delete; and confirmed reboot for switching networks. The owner approved its promotion to `main`. That acceptance is not, by itself, an independently logged full hardware regression or measured RAM/PSRAM test. V1.8.1S remains the earlier baseline for which the owner separately confirmed full physical and memory testing on October 26.
-
 | Item | Status |
 | --- | --- |
-| **Current version** | `JrBot_V1.8.3S` on `main` (Wi-Fi management dashboard; previous V1.8.2S Mesa Mix retained) |
-| **Previous baseline** | `JrBot_V1.8.1S` — owner-confirmed physical and memory testing on October 26 |
+| **Current version** | `JrBot_V1.8.4S` on `main` — Wi-Fi stronger-AP selection, limited roaming, failover/recovery and diagnostics |
+| **Previous baseline** | `JrBot_V1.8.3S` — connected-mode Wi-Fi dashboard; V1.8.2S Mesa Mix retained |
 | **Live audio** | Mesa Mix with volume, microphone gain, echo ducking, noise gate and pre-buffer; owner reports good communication with headphones |
-| **Wi-Fi management** | Connected-mode Wi-Fi tab: RSSI, IP, SSID, channel, scan while idle, up to four profiles, add/select/delete, reboot confirmation; no hot switching |
-| **Memory evidence** | V1.8.1S baseline completed by owner report; no separate V1.8.3S long-session RAM/PSRAM series supplied |
-| **Current work** | Delayed return of the user's own voice in Live; Issue #26 secure remote access proof, not yet validated off-LAN |
+| **Wi-Fi management** | Dashboard with SSID/IP/RSSI, scan while idle, up to four profiles, add/select/delete, confirmed restart; same-SSID RSSI-triggered roaming now also available |
+| **Wi-Fi evidence** | Strongest AP used in recent HW04 log; no drops in short window; low-RSSI roaming scenario untested |
+| **Memory and HTTPS** | TLS alerts continue with strong Wi-Fi; Live internal RAM margin and video drops require further improvement |
+| **Current work** | Long-session Wi-Fi/WebRTC regression, memory and TLS diagnosis; Issue #26 secure remote access proof, not yet validated off-LAN |
 | **Previous milestone** | V1.8S JrSkill integration |
 
 ## What V1.8.1S includes

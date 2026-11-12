@@ -261,12 +261,30 @@ static esp_err_t wifi_post(httpd_req_t *req)
         "{\"ok\":true,\"pending_restart\":false}");
 }
 
+/* Report request failures only; never log Wi-Fi form bodies or passwords. */
+#define JR_WIFI_TRACE_ROUTE(fn) \
+    static esp_err_t fn##_traced(httpd_req_t *req) { \
+        esp_err_t err=fn(req); \
+        if(err!=ESP_OK) { \
+            ESP_LOGW(TAG,"JR_HTTP_FAIL uptime_ms=%llu method=%s uri=/wifi-manager result=%s(%d) internal_free=%u internal_largest=%u psram_free=%u", \
+                     (unsigned long long)(esp_timer_get_time()/1000ULL), \
+                     req->method==HTTP_POST?"POST":"GET",esp_err_to_name(err),(int)err, \
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                     (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); \
+        } \
+        return err; \
+    }
+JR_WIFI_TRACE_ROUTE(wifi_get)
+JR_WIFI_TRACE_ROUTE(wifi_post)
+#undef JR_WIFI_TRACE_ROUTE
+
 esp_err_t jr_wifi_web_register_routes(httpd_handle_t server)
 {
     if (!server) return ESP_ERR_INVALID_ARG;
     const httpd_uri_t routes[] = {
-        {.uri = "/wifi-manager", .method = HTTP_GET, .handler = wifi_get},
-        {.uri = "/wifi-manager", .method = HTTP_POST, .handler = wifi_post},
+        {.uri = "/wifi-manager", .method = HTTP_GET, .handler = wifi_get_traced},
+        {.uri = "/wifi-manager", .method = HTTP_POST, .handler = wifi_post_traced},
     };
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); i++) {
         esp_err_t err = httpd_register_uri_handler(server, &routes[i]);

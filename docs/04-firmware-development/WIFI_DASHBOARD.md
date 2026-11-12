@@ -1,5 +1,103 @@
 # Wi-Fi — Aba de gerenciamento apos a configuracao inicial
 
+## V1.8.4S ROAM_01 — escolha nativa de AP forte e gatilho RSSI (`develop`)
+
+**Objetivo:** comportamento geral do produto, não adaptação à rede de um cliente.
+Fundamentado no ESP-IDF 5.5.x para ESP32-S3:
+- https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/wifi.html
+- https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-reference/network/esp_wifi.html
+
+**Diferença essencial:** `WIFI_ALL_CHANNEL_SCAN` com
+`WIFI_CONNECT_AP_BY_SIGNAL` seleciona o AP compatível de melhor
+RSSI **durante a conexão**, não realiza roaming periódico automaticamente.
+`esp_wifi_set_rssi_threshold(-70)` apenas emite o evento
+`WIFI_EVENT_STA_BSS_RSSI_LOW`; o firmware decide se deve procurar/trocar.
+O limite de **-70 dBm é escolha de engenharia do JrBot**, não regra nativa da
+Espressif e não uma garantia de continuidade da sessão como no iPhone.
+
+**Implementação enxuta:**
+1. Usar scan de todos os canais e ordenar APs pelo sinal em toda conexão
+   inicial e reconexão; não travar BSSID.
+2. Ao obter IP, armar o gatilho RSSI -70 dBm nativo do ESP-IDF.
+3. Ao receber RSSI baixo, fazer **um scan assíncrono** apenas do SSID atual
+   e apenas em modo `idle`; não escanear no modo Live/voz/gravação.
+4. Se houver outro BSSID do mesmo SSID com ganho de **12 dB ou mais**,
+   desconectar e reconectar usando a seleção nativa por melhor sinal.
+   Isso **interrompe momentaneamente TCP/TLS**; não é roaming 802.11r
+   transparente nem 11k/v garantido. Sem ganho, manter o AP atual.
+5. Aguardar pelo menos **90 segundos** entre scans de baixa potência;
+   rearme do evento RSSI após o intervalo se necessário.
+   Sem tarefa adicional, varredura periódica, histórico em flash ou senhas no log.
+6. Em falha real, continuam valendo a reconexão/failover por perfis salvos
+   e o portal de recuperação de inicialização já existentes.
+
+**Logs:** `JR_WIFI_ROAM` mostra configuração do limiar, evento de baixa,
+scan iniciado/finalizado, RSSI anterior/melhor e decisão `keep/switch`.
+`JR_NET_ASSOC` e `JR_NET_HEALTH` permitem confirmar o BSSID.
+Build: `2026-11-12_JrBot_V1.8.4S_ROAM_01`.
+
+**Limites e testes:** o Wi-Fi do ESP32-S3 é **somente 2,4 GHz**: nomes de
+SSID contendo "5G" não mudam a frequência. Validar na HW04 o primeiro
+boot com dois repetidores no mesmo SSID, evento abaixo de -70 dBm,
+roaming apenas com ganho >=12 dB, não procurar em Live,
+perda/failover real e HTTPS/WebRTC depois da troca.
+As falhas TLS também ocorreram com RSSI bom no log 41: esta mudança
+**não é uma correção comprovada de TLS**.
+Modificação candidata não validada com compilação ESP-IDF ou teste
+físico; **não promover à main** sem aprovação.
+
+---
+
+## Investigação de queda intermitente — V1.8.4S / DIAG_01 (`develop`)
+
+Após testes em HW04 em 12/11/2026, a conexão Wi-Fi foi observada funcionando
+após reinício, porém o acesso ao painel HTTPS falhou após algum tempo.
+O log anterior apresentou `httpd_uri: uri handler execution failed`, falhas
+de handshake TLS `-0x7280`/`-0x0050` e perda do monitor Serial. Isso **não**
+determina se a causa foi perda de rádio, TLS, heap ou outro subsistema.
+
+Esta alteração é **somente instrumentação**: não muda políticas de reconexão,
+os quatro perfis NVS, o portal cativo ou o fluxo de Live. A implementação atual
+limita tentativas de conexão quando todas as redes falham e a recuperação de
+boot de ~30 s só atua antes de iniciar o portal principal. Uma queda tardia,
+portanto, pode deixar o robô desconectado até intervenção; investigar nos logs
+antes de alterar a política.
+
+**Linhas novas do Serial (filtrar pelo prefixo):**
+
+- `JR_NET_ASSOC`: associação ao AP (SSID realmente usado, BSSID, canal);
+- `JR_NET_IP`: IP obtido ou evento de perda de IP;
+- `JR_NET_DIAG disconnect_event=`: hora de atividade, SSID/BSSID do evento,
+  código/motivo de desconexão, memória interna e PSRAM disponíveis;
+- `JR_WIFI_RETRY` e `JR_WIFI_FAILOVER`: tentativa, troca e exaustão dos
+  perfis;
+- `JR_NET_HEALTH`: amostra a cada 30 s (SSID de perfil ativo, SSID do AP
+  realmente associado, BSSID, RSSI, canal, IP, contagem de quedas, RAM interna
+  livre, maior bloco contínuo e PSRAM livre);
+- `JR_HTTP_FAIL`: URI sem query string, método HTTP, erro de retorno e heap
+  quando um handler retorna erro. Erros durante a **negociação TLS** acontecem
+  antes da URI e continuam registrados pelo próprio ESP-IDF; correlacionar
+  com `JR_NET_HEALTH` para observar a memória próxima ao evento.
+
+Nenhuma senha ou conteúdo do corpo HTTP é gravado nos logs.
+O build é identificável por
+`build_sp=2026-11-12_JrBot_V1.8.4S_DIAG_01`.
+A versão exibida segue `JrBot_V1.8.4S` (candidata somente em `develop`).
+
+**Procedimento:** instalar esse build, abrir Serial COM8 no painel e deixar
+o robô funcionando pelo menos até reproduzir a falha (sem reiniciar antes de
+salvar o log). Testar primeiro parado e depois com a câmera/Live, guardando
+os logs completos incluindo o período anterior e posterior à queda.
+Comparar `JR_NET_HEALTH` antes da falha com `JR_NET_DIAG`, `JR_HTTP_FAIL`
+e `esp-tls-mbedtls`. Verificar se `actual_ssid` coincide com o
+`active_profile`. **Validação pendente:** build ESP-IDF 5.5.5,
+memória efetiva em HW04 e reprodução de queda. Não promover à `main`
+antes da aprovação do responsável.
+
+---
+
+
+
 **Status:** incorporado na `main` pela [PR #59](https://github.com/JuniorNarciso26/JrRobot/pull/59) em 07/11/2026.  
 **Firmware oficial:** `JrBot_V1.8.3S`  
 **Origem:** `feature/wifi-dashboard`, baseada na versão `JrBot_V1.8.2S`.
@@ -79,3 +177,32 @@ O monitoramento opcional do RSSI ocorre a cada 10 segundos **somente com a aba a
 12. Comparar RAM interna livre, maior bloco, PSRAM, consumo durante consultas e varredura; verificar tambem tamanho do binario/flash.
 
 **Status:** PR #59 mesclada na `main` e versão `JrBot_V1.8.3S` confirmada no repositório. A compilação ESP-IDF e a validação completa em hardware não foram verificadas nesta documentação; os itens acima permanecem como checklist de regressão. A branch original foi preservada.
+
+
+## Correção adicional V1.8.4S — autoreinício controlado (develop)
+
+O log físico de 12/11/2026 mostrou que o portal cativo podia iniciar
+após ~30 s sem IP antes de a rede alternativa terminar de conectar.
+Como o próprio teste confirmou sucesso após reinício manual, o boot
+passa a executar **um único reinício automático** na primeira expiração
+desse tempo. Se a segunda inicialização ainda não obtiver IP,
+oferece a tela de configuração, sem reiniciar em ciclo.
+Com IP válido, o marcador de recuperação é limpo. A seleção
+manual, o limite de quatro redes e o armazenamento NVS permanecem.
+O reinício automático só acontece antes de o portal normal iniciar;
+não derruba sessões Live já estabelecidas. Testes ESP-IDF/HW04 pendentes.
+
+## V1.8.4S — correção automática (develop)
+
+Com a V1.8.4S candidata, o boot começa pelo perfil selecionado e pode
+alternar automaticamente para outros SSIDs salvos após duas falhas de
+conexão por perfil. Quando uma rede alternativa conecta e recebe IP, o
+JrBot a grava como preferida para o próximo boot. O painel continua
+permitindo seleção manual, exclusão de redes e reinício confirmado. Não
+há varredura permanente: o failover ocorre após uma desconexão, sem tarefa
+extra. A mudança não foi promovida à main nem validada fisicamente.
+
+Teste de aprovação: grave a candidata, deixe a última rede fora de alcance,
+confirme que a outra rede salva conecta e atualiza a seleção; depois repita
+com senha antiga incorreta, todas redes indisponíveis, configuração IP fixa,
+exclusão de perfil, reconexão com WebRTC e memória interna/PSRAM.

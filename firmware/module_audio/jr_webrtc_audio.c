@@ -1694,6 +1694,32 @@ static esp_err_t status_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, text);
 }
 
+/* Route-level diagnostics; TLS handshake errors happen before these handlers. */
+#define JR_WA_TRACE_ROUTE(fn) \
+    static esp_err_t fn##_traced(httpd_req_t *req) { \
+        esp_err_t err=fn(req); \
+        if(err!=ESP_OK) { \
+            const char *uri=req->uri?req->uri:"-"; \
+            size_t len=strcspn(uri,"?"); \
+            if(len>80U)len=80U; \
+            ESP_LOGW(TAG,"JR_HTTP_FAIL uptime_ms=%llu method=%s uri=%.*s result=%s(%d) internal_free=%u internal_largest=%u psram_free=%u", \
+                     (unsigned long long)(esp_timer_get_time()/1000ULL), \
+                     req->method==HTTP_POST?"POST":"GET",(int)len,uri, \
+                     esp_err_to_name(err),(int)err, \
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                     (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT), \
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); \
+        } \
+        return err; \
+    }
+JR_WA_TRACE_ROUTE(page_handler)
+JR_WA_TRACE_ROUTE(signal_get_handler)
+JR_WA_TRACE_ROUTE(signal_post_handler)
+JR_WA_TRACE_ROUTE(status_handler)
+JR_WA_TRACE_ROUTE(lab_status_handler)
+JR_WA_TRACE_ROUTE(lab_config_handler)
+#undef JR_WA_TRACE_ROUTE
+
 esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
 {
     if (!server) return ESP_ERR_INVALID_ARG;
@@ -1725,12 +1751,12 @@ esp_err_t jr_webrtc_audio_register_routes(httpd_handle_t server)
     if (!session_mutex || !signal_queue || !audio_queue) return ESP_ERR_NO_MEM;
 
     const httpd_uri_t routes[] = {
-        {.uri = "/webrtc-audio", .method = HTTP_GET, .handler = page_handler, .user_ctx = NULL},
-        {.uri = "/webrtc-audio/signal", .method = HTTP_GET, .handler = signal_get_handler, .user_ctx = NULL},
-        {.uri = "/webrtc-audio/signal", .method = HTTP_POST, .handler = signal_post_handler, .user_ctx = NULL},
-        {.uri = "/webrtc-audio/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = NULL},
-        {.uri = "/webrtc-audio/lab", .method = HTTP_GET, .handler = lab_status_handler, .user_ctx = NULL},
-        {.uri = "/webrtc-audio/lab", .method = HTTP_POST, .handler = lab_config_handler, .user_ctx = NULL},
+        {.uri = "/webrtc-audio", .method = HTTP_GET, .handler = page_handler_traced, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/signal", .method = HTTP_GET, .handler = signal_get_handler_traced, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/signal", .method = HTTP_POST, .handler = signal_post_handler_traced, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/status", .method = HTTP_GET, .handler = status_handler_traced, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_GET, .handler = lab_status_handler_traced, .user_ctx = NULL},
+        {.uri = "/webrtc-audio/lab", .method = HTTP_POST, .handler = lab_config_handler_traced, .user_ctx = NULL},
     };
 
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); ++i) {
