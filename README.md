@@ -55,6 +55,8 @@ The initial Creator Studio, Store, licensing and Skill execution flow have been 
 
 **V1.8.1S** improves Wi-Fi setup: JrBot opens its own setup network when it cannot connect at startup, tests new credentials before saving, and retries local `jrbot.local` announcement after an mDNS startup failure. On October 26, 2026, the project owner confirmed that the current physical tests passed and memory testing was completed. This confirmation does not provide new per-scenario logs or memory measurements.
 
+**Development candidate V1.8.4S:** automatic failover among previously saved Wi-Fi profiles is being tested on `develop`. The official `main` remains V1.8.3S until hardware validation and approval.
+
 ### JrBot V1.8.2S: Mesa Mix for Live audio
 
 **JrBot V1.8.2S** introduced **Mesa Mix · Live**, which lets users adjust WebRTC speaker volume, microphone gain, echo ducking, noise gate and pre-buffer in the robot's web page. Settings apply during the Live and reset when the robot restarts. The owner reports good communication with headphones and improved sound after lowering microphone gain and speaker volume. A delayed return of their own voice remains under investigation; no RAM/PSRAM time series were supplied for this version. See the [Mesa Mix guide](docs/04-firmware-development/LIVE_AUDIO_LAB.md).
