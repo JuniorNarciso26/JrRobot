@@ -328,11 +328,13 @@ static void wifi_roam_poll(void) {
        (!roam_has_scanned || (uint32_t)(now-roam_last_scan_ms)>=JR_ROAM_COOLDOWN_MS)) {
         wifi_scan_config_t options={0};
         options.ssid=(uint8_t *)active.ssid;
+        portENTER_CRITICAL(&state_lock);
+        roam_scan_inflight=true;
+        portEXIT_CRITICAL(&state_lock);
         esp_err_t err=esp_wifi_scan_start(&options,false);
         if(err==ESP_OK) {
             portENTER_CRITICAL(&state_lock);
             roam_low_pending=false;
-            roam_scan_inflight=true;
             portEXIT_CRITICAL(&state_lock);
             roam_last_scan_ms=now;
             roam_has_scanned=true;
@@ -344,6 +346,7 @@ static void wifi_roam_poll(void) {
             roam_rearm_pending=true;
             portENTER_CRITICAL(&state_lock);
             roam_low_pending=false;
+            roam_scan_inflight=false;
             portEXIT_CRITICAL(&state_lock);
             printf("JR_WIFI_ROAM event=scan_deferred error=%s\n",esp_err_to_name(err));
         }
@@ -374,8 +377,7 @@ void jr_wifi_poll(void) {
         roam_low_pending=false;
         roam_rearm_pending=false;
         esp_err_t arm=esp_wifi_set_rssi_threshold(JR_ROAM_RSSI_LOW_DBM);
-        printf("JR_WIFI_ROAM monitor_threshold=%d result=%s
-",
+        printf("JR_WIFI_ROAM monitor_threshold=%d result=%s\n",
                JR_ROAM_RSSI_LOW_DBM,esp_err_to_name(arm));
         return;
     }
