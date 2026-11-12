@@ -4,8 +4,8 @@
 
 Após testes em HW04 em 12/11/2026, a conexão Wi-Fi foi observada funcionando
 após reinício, porém o acesso ao painel HTTPS falhou após algum tempo.
-O log anterior apresentou \`httpd_uri: uri handler execution failed\`, falhas
-de handshake TLS \`-0x7280\`/\`-0x0050\` e perda do monitor Serial. Isso **não**
+O log anterior apresentou `httpd_uri: uri handler execution failed`, falhas
+de handshake TLS `-0x7280`/`-0x0050` e perda do monitor Serial. Isso **não**
 determina se a causa foi perda de rádio, TLS, heap ou outro subsistema.
 
 Esta alteração é **somente instrumentação**: não muda políticas de reconexão,
@@ -17,33 +17,33 @@ antes de alterar a política.
 
 **Linhas novas do Serial (filtrar pelo prefixo):**
 
-- \`JR_NET_ASSOC\`: associação ao AP (SSID realmente usado, BSSID, canal);
-- \`JR_NET_IP\`: IP obtido ou evento de perda de IP;
-- \`JR_NET_DIAG disconnect_event=\`: hora de atividade, SSID/BSSID do evento,
+- `JR_NET_ASSOC`: associação ao AP (SSID realmente usado, BSSID, canal);
+- `JR_NET_IP`: IP obtido ou evento de perda de IP;
+- `JR_NET_DIAG disconnect_event=`: hora de atividade, SSID/BSSID do evento,
   código/motivo de desconexão, memória interna e PSRAM disponíveis;
-- \`JR_WIFI_RETRY\` e \`JR_WIFI_FAILOVER\`: tentativa, troca e exaustão dos
+- `JR_WIFI_RETRY` e `JR_WIFI_FAILOVER`: tentativa, troca e exaustão dos
   perfis;
-- \`JR_NET_HEALTH\`: amostra a cada 30 s (SSID de perfil ativo, SSID do AP
+- `JR_NET_HEALTH`: amostra a cada 30 s (SSID de perfil ativo, SSID do AP
   realmente associado, BSSID, RSSI, canal, IP, contagem de quedas, RAM interna
   livre, maior bloco contínuo e PSRAM livre);
-- \`JR_HTTP_FAIL\`: URI sem query string, método HTTP, erro de retorno e heap
+- `JR_HTTP_FAIL`: URI sem query string, método HTTP, erro de retorno e heap
   quando um handler retorna erro. Erros durante a **negociação TLS** acontecem
   antes da URI e continuam registrados pelo próprio ESP-IDF; correlacionar
-  com \`JR_NET_HEALTH\` para observar a memória próxima ao evento.
+  com `JR_NET_HEALTH` para observar a memória próxima ao evento.
 
 Nenhuma senha ou conteúdo do corpo HTTP é gravado nos logs.
 O build é identificável por
-\`build_sp=2026-11-12_JrBot_V1.8.4S_DIAG_01\`.
-A versão exibida segue \`JrBot_V1.8.4S\` (candidata somente em \`develop\`).
+`build_sp=2026-11-12_JrBot_V1.8.4S_DIAG_01`.
+A versão exibida segue `JrBot_V1.8.4S` (candidata somente em `develop`).
 
 **Procedimento:** instalar esse build, abrir Serial COM8 no painel e deixar
 o robô funcionando pelo menos até reproduzir a falha (sem reiniciar antes de
 salvar o log). Testar primeiro parado e depois com a câmera/Live, guardando
 os logs completos incluindo o período anterior e posterior à queda.
-Comparar \`JR_NET_HEALTH\` antes da falha com \`JR_NET_DIAG\`, \`JR_HTTP_FAIL\`
-e \`esp-tls-mbedtls\`. Verificar se \`actual_ssid\` coincide com o
-\`active_profile\`. **Validação pendente:** build ESP-IDF 5.5.5,
-memória efetiva em HW04 e reprodução de queda. Não promover à \`main\`
+Comparar `JR_NET_HEALTH` antes da falha com `JR_NET_DIAG`, `JR_HTTP_FAIL`
+e `esp-tls-mbedtls`. Verificar se `actual_ssid` coincide com o
+`active_profile`. **Validação pendente:** build ESP-IDF 5.5.5,
+memória efetiva em HW04 e reprodução de queda. Não promover à `main`
 antes da aprovação do responsável.
 
 ---
