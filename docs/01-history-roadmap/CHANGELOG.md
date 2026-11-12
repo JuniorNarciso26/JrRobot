@@ -250,6 +250,17 @@ The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the l
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
 
 
+## November 12, 2026 — V1.8.4S follow-up: automatic recovery reboot
+
+After a HW04 log showed startup falling into captive setup at ~30 seconds,
+followed by successful saved-profile failover only after a manual restart,
+`develop` received an automatic, **one-time software reboot** on initial
+startup connection timeout. A paired RTC marker blocks reboot loops;
+a successful STA IP or cold boot clears the marker. If the second boot
+still cannot connect, captive setup opens as before. This is a follow-up
+fix to the V1.8.4S candidate, not a new promoted production version.
+Host-unit test added; ESP-IDF compilation and physical acceptance remain pending.
+
 ## November 12, 2026 — V1.8.4S candidate (develop only)
 
 - Synchronized `develop` with the source tree of approved V1.8.3S `main` while retaining both Git histories.
