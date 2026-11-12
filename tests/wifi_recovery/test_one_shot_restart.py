@@ -16,7 +16,7 @@ HEADER = ROOT / "firmware" / "core" / "jr_wifi_provisioning.h"
 
 
 def extract_function(source: str, name: str) -> str:
-    match = re.search(r"\\b(?:bool|void)\\s+" + re.escape(name) + r"\\s*\\([^)]*\\)\\s*\\{", source)
+    match = re.search(r"\b(?:bool|void)\s+" + re.escape(name) + r"\s*\([^)]*\)\s*\{", source)
     if not match:
         raise AssertionError("Missing production function: " + name)
     depth = 0
@@ -38,8 +38,8 @@ class RecoveryGuardTests(unittest.TestCase):
             "jr_wifi_provisioning_auto_restart_once",
             "jr_wifi_provisioning_recovery_connected",
         )
-        functions = "\\n\\n".join(extract_function(source, name) for name in names)
-        defines = "\\n".join(line for line in source.splitlines()
+        functions = "\n\n".join(extract_function(source, name) for name in names)
+        defines = "\n".join(line for line in source.splitlines()
                             if line.startswith("#define JR_SETUP_MAGIC ") or
                             line.startswith("#define JR_WIFI_RECOVERY_MAGIC "))
         harness = r"""
@@ -55,7 +55,7 @@ static esp_reset_reason_t esp_reset_reason(void) { return reason; }
 static bool jr_wifi_is_configured(void) { return configured; }
 static uint32_t setup_request, setup_request_inverse;
 static uint32_t recovery_restart_marker, recovery_restart_marker_inverse;
-""" + defines + "\\n" + functions + r"""
+""" + defines + "\n" + functions + r"""
 int main(void) {
     reason = 0; /* cold boot */
     assert(!jr_wifi_provisioning_boot_requested());
