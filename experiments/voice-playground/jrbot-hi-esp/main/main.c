@@ -3,6 +3,7 @@
  * The official ESP-Skainet examples remain unmodified in ../esp-skainet.
  * Only the I2S input is adapted here for the MS3625 microphone.
  */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
