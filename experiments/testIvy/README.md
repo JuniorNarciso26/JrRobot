@@ -13,14 +13,11 @@ Pinned upstream revision: `35b2b77088a511a9fdaf3ee5f06ac7ed7bd069cc`.
 5. Verify audio loopback and model dependencies before attempting STT/LLM/TTS.
 
 ## Obtain upstream source
-The original Ivy repository is **not vendored as a complete copy** in this branch.
-The `.gitmodules` file records the intended upstream reference, but until a
-Git gitlink is committed it is not a fully registered submodule. Clone explicitly:
+The original Ivy repository is tracked as a **pinned Git submodule** at `experiments/testIvy/ivy-upstream` (revision `35b2b77088a511a9fdaf3ee5f06ac7ed7bd069cc`). Clone it with:
 
 ```sh
-git clone https://github.com/iamankushpandit/esp_ai.git ivy-upstream
-cd ivy-upstream
-git checkout 35b2b77088a511a9fdaf3ee5f06ac7ed7bd069cc
+git switch testIvy
+git submodule update --init experiments/testIvy/ivy-upstream
 ```
 
 Keep the upstream source unchanged and develop modifications as an overlay.
@@ -55,5 +52,28 @@ See `docs/02-assembly/WIRING.md`.
 The upstream reference and HW04-specific settings are recorded in
 `hw04_audio_config.h`. This branch does **not** enable or alter the JrBot
 production audio driver or attempt to boot Ivy's incompatible board startup.
-Next implementation task: implement an alternate Ivy `board_audio.c` for
-HW04 with a no-codec I2S RX/TX path, then introduce an audio-only entrypoint.
+The separate `audio_hw04` ESP-IDF project provides an initial no-codec I2S
+RX/TX hardware smoke test. It is **not yet hooked up to Ivy STT/TTS/LLM**.
+
+## Audio-only test (manual hardware validation)
+
+Use the JrBot toolchain ESP-IDF 5.5.x for this independent minimal test. Do **not**
+run `INSTALAR.bat` from the repository root: it builds the normal JrBot firmware.
+
+```sh
+cd experiments/testIvy/audio_hw04
+idf.py set-target esp32s3
+idf.py build
+idf.py -p YOUR_SERIAL_PORT flash monitor
+```
+
+Expected behavior: a short 440-Hz tone from the MAX98357A on boot, then Serial
+`MIC frames=... peak=... avg_abs=...` lines which change when you speak.
+No Wi-Fi, SD, camera, OLED, or WebRTC task is started. Microphone channel is
+assumed LEFT (L/R tied to GND), 32-bit I2S RX sampled as upper 16 bits.
+**Build and physical validation have NOT been performed here.**
+
+After this succeeds, replace the Ivy ES8311-specific board implementation with
+a HW04-compatible adapter while keeping the upstream submodule unchanged;
+then assess model storage (the original Ivy uses SD) and the ESP-IDF 6.1
+requirement. No claim of complete offline Ivy operation yet.
