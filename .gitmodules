@@ -1,0 +1,3 @@
+[submodule "experiments/testIvy/ivy-upstream"]
+	path = experiments/testIvy/ivy-upstream
+	url = https://github.com/iamankushpandit/esp_ai.git
