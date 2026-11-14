@@ -57,8 +57,15 @@ RX/TX hardware smoke test. It is **not yet hooked up to Ivy STT/TTS/LLM**.
 
 ## Audio-only test (manual hardware validation)
 
-Use the JrBot toolchain ESP-IDF 5.5.x for this independent minimal test. Do **not**
-run `INSTALAR.bat` from the repository root: it builds the normal JrBot firmware.
+Use the JrBot toolchain ESP-IDF 5.5.x for this independent minimal test.
+**Recommended:** run `INSTALAR.bat` from the repository root and select the `testIvy` branch. On this branch, `build`, `flash`, and the default `all` action route to the **audio-only** project, not the normal JrBot firmware. Flashing asks for explicit confirmation. The `panel` action remains the original PC panel and is not used for this test.
+
+```bat
+INSTALAR.bat build
+INSTALAR.bat flash
+```
+
+After flashing, open a serial monitor at the selected COM port to see the `MIC` logs. This does not yet run the original Ivy voice assistant.
 
 ```sh
 cd experiments/testIvy/audio_hw04
