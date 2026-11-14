@@ -113,6 +113,7 @@ for /l %%N in (1,1,!BRANCH_COUNT!) do (
     set "DISPLAY_BRANCH=!BRANCH_%%N!"
     set "BRANCH_NOTE="
     if /i "!DISPLAY_BRANCH!"=="main" set "BRANCH_NOTE= - ultima versao aprovada"
+    if /i "!DISPLAY_BRANCH!"=="testIvy" set "BRANCH_NOTE= - teste isolado de audio Ivy"
     if /i "!DISPLAY_BRANCH!"=="develop" set "BRANCH_NOTE= - integracao"
     if /i "!DISPLAY_BRANCH!"=="v1" set "BRANCH_NOTE= - JrBot V1"
     if /i "!DISPLAY_BRANCH!"=="v2" set "BRANCH_NOTE= - JrBot V2 voz"
@@ -462,6 +463,9 @@ if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="panel" goto panel
 
+rem testIvy runs an isolated audio-only ESP-IDF project; never build standard firmware.
+if /i "%CURRENT_BRANCH%"=="testIvy" goto ivy_dispatch
+
 call :ensure_idf
 if errorlevel 1 goto failure
 
@@ -472,6 +476,47 @@ if /i "%ACTION%"=="menuconfig" goto menuconfig
 
 echo ERRO: opcao invalida: %ACTION%
 goto help
+
+:ivy_dispatch
+echo.
+echo ============================================================
+echo  testIvy - TESTE ISOLADO DE MICROFONE E ALTO-FALANTE
+echo  Nao executa a IA Ivy nem a interface do JrBot.
+echo ============================================================
+if /i not "%ACTION%"=="build" if /i not "%ACTION%"=="flash" if /i not "%ACTION%"=="all" if /i not "%ACTION%"=="menuconfig" (
+    echo [ERRO] Acao nao suportada no testIvy: %ACTION%
+    goto failure
+)
+call :ensure_idf
+if errorlevel 1 goto failure
+if /i "%ACTION%"=="flash" call :select_port
+if /i "%ACTION%"=="all" call :select_port
+if errorlevel 1 goto failure
+if not exist "experiments\\testIvy\\audio_hw04\\CMakeLists.txt" (
+    echo [ERRO] Projeto de teste Ivy nao encontrado.
+    goto failure
+)
+pushd "experiments\\testIvy\\audio_hw04"
+if /i "%ACTION%"=="menuconfig" (
+    python "%IDF_PATH%\\tools\\idf.py" -B b-ivy-hw04 menuconfig
+    if errorlevel 1 (popd & goto failure)
+    popd
+    goto success
+)
+echo [INFO] Compilando somente o teste I2S HW04...
+python "%IDF_PATH%\\tools\\idf.py" -B b-ivy-hw04 build
+if errorlevel 1 (popd & goto failure)
+if /i "%ACTION%"=="build" (popd & goto success)
+echo [ATENCAO] O firmware de teste substituira temporariamente o firmware no ESP32.
+echo [ATENCAO] O teste NAO inclui camera, OLED, Wi-Fi, WebRTC nem IA Ivy.
+choice /c SN /n /m "Confirmar gravacao do teste Ivy? [S/N]: "
+if errorlevel 2 (popd & goto failure)
+python "%IDF_PATH%\\tools\\idf.py" -B b-ivy-hw04 -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (popd & goto failure)
+popd
+echo [OK] Teste Ivy HW04 gravado. Para ver mic e tom use monitor serial.
+echo [INFO] Para restaurar o JrBot, selecione main no INSTALAR.bat e grave novamente.
+goto success
 
 :ensure_idf
 set "IDF_EXPORT="
@@ -675,6 +720,7 @@ echo   INSTALAR.bat build        escolhe versao, atualiza e compila
 echo   INSTALAR.bat flash        escolhe versao, atualiza, compila e grava
 echo   INSTALAR.bat panel        escolhe versao, atualiza e abre painel
 echo   INSTALAR.bat menuconfig   escolhe versao, atualiza e abre menuconfig
+echo   testIvy: build / flash / all usam somente audio_hw04, sem IA.
 echo.
 echo O menu consulta todas as branches remotas ativas no GitHub.
 echo Branches archive/* nao aparecem no menu.
