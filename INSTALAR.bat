@@ -214,7 +214,7 @@ if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
 if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
 
 echo [INFO] Atualizando referencias remotas...
-git fetch --prune origin
+git fetch --no-tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel consultar o GitHub.
     popd
