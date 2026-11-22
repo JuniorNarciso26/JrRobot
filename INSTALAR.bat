@@ -187,6 +187,14 @@ if errorlevel 1 (
     exit /b 1
 )
 rmdir /s /q "%CLONE_TEMP%" >nul 2>&1
+if /i "!TARGET_BRANCH!"=="testIvy" (
+    echo [INFO] Inicializando submodulo original Ivy...
+    git -C "%PROJECT_DIR%" submodule update --init -- "experiments/testIvy/ivy-upstream"
+    if errorlevel 1 (
+        echo [ERRO] Falha ao baixar codigo original da Ivy.
+        exit /b 1
+    )
+)
 echo [OK] Projeto baixado. Versao: !TARGET_BRANCH!
 exit /b 0
 
@@ -203,6 +211,27 @@ rem O runner temporario permite restaurar o instalador antes da verificacao.
 git restore --source=HEAD --worktree -- "INSTALAR.bat" >nul 2>&1
 if errorlevel 1 git checkout -- "INSTALAR.bat" >nul 2>&1
 
+rem Recupera apenas arquivos rastreados AUSENTES do laboratorio testIvy.
+rem Nunca faz reset, clean, nem sobrescreve arquivos existentes/modificados.
+if /i "!CURRENT_BRANCH!"=="testIvy" (
+    git diff --cached --quiet -- "experiments/testIvy"
+    if not errorlevel 1 (
+        git diff --quiet --diff-filter=ACMRTUXB -- "experiments/testIvy"
+        if not errorlevel 1 (
+            set "IVY_MISSING="
+            for /f "delims=" %%F in ('git ls-files --deleted -- "experiments/testIvy"') do set "IVY_MISSING=1"
+            if defined IVY_MISSING (
+                echo [INFO] Restaurando arquivos rastreados ausentes do testIvy...
+                git restore --source=HEAD --worktree -- "experiments/testIvy"
+                if errorlevel 1 (
+                    echo [ERRO] Nao foi possivel restaurar arquivos ausentes do testIvy.
+                    popd
+                    exit /b 1
+                )
+            )
+        )
+    )
+)
 git status --porcelain > "!STATUS_TMP!"
 findstr /l /v /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" > "!STATUS_FILTERED_TMP!"
 for %%A in ("!STATUS_FILTERED_TMP!") do set "STATUS_SIZE=%%~zA"
@@ -268,6 +297,15 @@ if errorlevel 1 (
     echo Nenhum reset automatico sera realizado.
     popd
     exit /b 1
+)
+if /i "!TARGET_BRANCH!"=="testIvy" (
+    echo [INFO] Verificando submodulo original Ivy...
+    git submodule update --init -- "experiments/testIvy/ivy-upstream"
+    if errorlevel 1 (
+        echo [ERRO] Falha ao inicializar submodulo Ivy. Arquivos locais preservados.
+        popd
+        exit /b 1
+    )
 )
 for /f "delims=" %%C in ('git rev-parse --short HEAD') do echo [OK] !TARGET_BRANCH! atualizada. Commit: %%C
 popd
