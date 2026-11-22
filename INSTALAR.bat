@@ -295,7 +295,17 @@ set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
-if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
+if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
+    rem WakeNet10 portugues + sistema principal; build isolado do firmware aprovado.
+    set "BUILD_DIR=b-ola-esp"
+    set "SDKCONFIG_FILE=sdkconfig.ola-esp-autonomo"
+    set "JRBOT_WIFI_MEMORY_BUILD=1"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    if not exist "firmware\sdkconfig.ola-esp-autonomo" if exist "firmware\sdkconfig.develop_wifi_ram_light" (
+        copy /y "firmware\sdkconfig.develop_wifi_ram_light" "firmware\sdkconfig.ola-esp-autonomo" >nul
+        if errorlevel 1 goto failure
+    )
+) else if /i "%CURRENT_BRANCH%"=="feature/v1.6.3-live" (
     rem V1.6.3 final: Live WebRTC full-duplex + JPEG DataChannel.
     set "BUILD_DIR=build-feature-v1.6.3-live-final"
     set "SDKCONFIG_FILE=sdkconfig.feature-v1.6.3-live-final"
@@ -583,6 +593,23 @@ if defined JRBOT_WIFI_RAM_LIGHT_BUILD (
     )
     for %%K in (CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM) do (
         python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "8"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+    )
+)
+if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
+    echo [INFO] Selecionando somente WakeNet10 pt-BR Ola ESP...
+    for %%K in (CONFIG_SR_WN_WN9_HIESP CONFIG_SR_MN_EN_MULTINET6_QUANT) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "n"
+        if errorlevel 1 (
+            popd
+            goto failure
+        )
+    )
+    for %%K in (CONFIG_SR_WN_WN10_PT_OLAESP CONFIG_SR_MN_EN_NONE CONFIG_MODEL_IN_FLASH) do (
+        python "..\tools\ensure_sdkconfig.py" "%SDKCONFIG_FILE%" "%%K" "y"
         if errorlevel 1 (
             popd
             goto failure
