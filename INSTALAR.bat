@@ -222,16 +222,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem Clones --single-branch podem guardar refs de branches excluidas no GitHub.
-rem Substitua a lista antiga pela branch ativa escolhida antes do fetch.
-git remote set-branches origin "!TARGET_BRANCH!"
-if errorlevel 1 (
-    echo [ERRO] Nao foi possivel configurar a versao !TARGET_BRANCH! no Git.
-    popd
-    exit /b 1
-)
+rem O instalador consulta TODAS as branches do GitHub; nao limita o remote a uma branch.
 echo [INFO] Atualizando a versao !TARGET_BRANCH!...
-git fetch --no-tags --prune origin
+git fetch --no-tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel baixar !TARGET_BRANCH!. Consulte a lista novamente.
     popd
