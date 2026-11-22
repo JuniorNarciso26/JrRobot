@@ -27,7 +27,7 @@
 #define JR_VOICE_TASK_STACK 10240
 #define JR_MN_DURATION_MS 5000
 #define JR_NAME_COMMAND_ID 1
-#define JR_REPLY_SETTLE_MS 220
+#define JR_REPLY_SETTLE_MS 350
 
 static const char *TAG = "jrbot_voice";
 static portMUX_TYPE voice_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -261,9 +261,14 @@ static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
     return ESP_OK;
 }
 
-static esp_err_t init_wakenet_fallback(int *chunk, int *sample_rate) {
+static esp_err_t init_wakenet_ola_esp(int *chunk, int *sample_rate) {
     char *model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);
     if (!model_name) return ESP_ERR_NOT_FOUND;
+    // Refuse to silently select an older English wake word from stale sdkconfig.
+    if (strcmp(model_name, "wn10_pt_olaesp") != 0) {
+        ESP_LOGE(TAG, "WakeNet mismatch: expected=wn10_pt_olaesp found=%s", model_name);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
     wakenet = esp_wn_handle_from_name(model_name);
     if (!wakenet) return ESP_ERR_NOT_SUPPORTED;
@@ -279,7 +284,7 @@ static esp_err_t init_wakenet_fallback(int *chunk, int *sample_rate) {
     *chunk = wn_chunk;
     *sample_rate = wn_rate;
     voice_mode = JR_VOICE_MODE_WAKENET_FALLBACK;
-    ESP_LOGW(TAG, "JrBot MultiNet unavailable; fallback model=%s wakeword=Hi_ESP rate=%d chunk=%d",
+    ESP_LOGI(TAG, "WakeNet ready model=%s wakeword=Ola_ESP rate=%d chunk=%d",
              wn_model_name, wn_rate, wn_chunk);
     return ESP_OK;
 }
@@ -299,15 +304,11 @@ static esp_err_t reply_and_resume(void) {
     portEXIT_CRITICAL(&voice_lock);
 
     close_mic();
-    ESP_LOGI(TAG, "reply begin type=spoken_oi");
+    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=beep frequency=880Hz duration_ms=180");
 
-    esp_err_t reply_err = jr_reply_play_oi();
-    const char *reply_type = "spoken_oi";
-    if (reply_err != ESP_OK) {
-        ESP_LOGW(TAG, "spoken reply failed: %s; using chirp fallback", esp_err_to_name(reply_err));
-        reply_type = "chirp_fallback";
-        reply_err = jr_audio_test_tone(1040, 180);
-    }
+    esp_err_t reply_err = jr_audio_test_tone(880, 180);
+    const char *reply_type = "beep";
+    ESP_LOGI(TAG, "WAKE_REPLY_END result=%s", esp_err_to_name(reply_err));
 
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
     if (stop_requested) return reply_err;
@@ -319,7 +320,7 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "reply end type=%s result=%s listening_resumed=1",
+    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED type=%s result=%s listening_resumed=1",
              reply_type, esp_err_to_name(reply_err));
     return reply_err;
 }
@@ -368,9 +369,9 @@ static bool handle_wakenet_frame(void) {
     callback = wake_callback;
     portEXIT_CRITICAL(&voice_lock);
 
-    ESP_LOGI(TAG, "fallback wake word detected keyword=Hi_ESP model=%s count=%lu",
+    ESP_LOGI(TAG, "WAKEWORD_DETECTED keyword=Ola_ESP model=%s count=%lu",
              wn_model_name, (unsigned long)count);
-    if (callback) callback("Hi ESP", wn_model_name, (int)detected);
+    if (callback) callback("Ola ESP", wn_model_name, (int)detected);
     return true;
 }
 
@@ -396,6 +397,7 @@ static void voice_task(void *arg) {
 
         uint64_t level_sum = 0;
         for (int i = 0; i < chunk; ++i) {
+            // Preserve the gain proven by HW04 WakeNet tests; record clipping for tuning.
             int32_t scaled = raw_buffer[i] >> 14;
             if (scaled > 32767) scaled = 32767;
             if (scaled < -32768) scaled = -32768;
@@ -451,27 +453,17 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
 
     int chunk = 0;
     int sample_rate = 0;
-    esp_err_t err = init_multinet_name(&chunk, &sample_rate);
+    // Only Portuguese WakeNet in autonomous mode; MultiNet is not initialized.
+    esp_err_t err = init_wakenet_ola_esp(&chunk, &sample_rate);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "direct JrBot recognizer init failed: %s; trying WakeNet fallback",
-                 esp_err_to_name(err));
-
-        if (mn_commands_ready) {
-            (void)esp_mn_commands_free();
-            mn_commands_ready = false;
-        }
-        if (mn_data && multinet) {
-            multinet->destroy(mn_data);
-            mn_data = NULL;
-        }
-        multinet = NULL;
-
-        err = init_wakenet_fallback(&chunk, &sample_rate);
-        if (err != ESP_OK) {
-            status_error(err);
-            voice_cleanup();
-            return err;
-        }
+        status_error(err);
+        voice_cleanup();
+        return err;
+    }
+    if (sample_rate != 16000) {
+        status_error(ESP_ERR_NOT_SUPPORTED);
+        voice_cleanup();
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
     raw_buffer = calloc((size_t)chunk, sizeof(int32_t));
@@ -505,7 +497,7 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     } else {
         snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
         snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
-        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Hi ESP");
+        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Ola ESP");
     }
     portEXIT_CRITICAL(&voice_lock);
 
