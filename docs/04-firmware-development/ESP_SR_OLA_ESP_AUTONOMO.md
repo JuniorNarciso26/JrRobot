@@ -63,3 +63,35 @@ de som audível: confirmar pelo alto-falante.
 
 **Status atual: preparado em GitHub para validação. Não compilado nem
 testado no HW04 nesta branch. Não fazer merge em `main` antes do teste.**
+
+## Controle pelo celular (JrBotLocal)
+
+Na mesma rede Wi-Fi do JrBot, abrir `http://jrbot.local/` (ou o IP do robô)
+no navegador do celular. A página embarcada do próprio ESP32 mostra a nova
+seção **Modo autônomo**, com os controles **Ligar autônomo** e
+**Desligar autônomo**.
+
+Esses botões usam a API existente `POST /cmd` e seus comandos
+`autonomo_on` e `autonomo_off`, iguais aos comandos usados pelo painel.
+O estado é consultado através de `brain_status` ao abrir a página
+e a cada cinco segundos, evitando um botão fora de sincronia quando o
+modo foi alterado pelo painel do computador.
+
+**Não há serviço novo nem login:** a página é acessível somente pela rede
+local, como os demais controles `/cmd`. Use apenas em rede confiável.
+Durante o modo autônomo, o microfone reserva o I2S; desligar antes dos
+testes de som e do Live.
+
+### Teste do celular
+
+1. Abrir `http://jrbot.local/` no celular, na mesma rede Wi-Fi.
+2. Tocar em **Ligar autônomo** e verificar **Ligado e escutando Olá ESP**.
+3. Falar "Olá ESP" e confirmar o bip (880 Hz) no MAX98357A.
+4. Tocar em **Desligar autônomo** e confirmar estado **Desligado**.
+5. Ligar pelo painel do computador e observar se o estado no celular muda.
+6. Desligar pelo celular e confirmar no painel do computador.
+7. Executar `node tests/hardware/test_jrbot_local_autonomous.cjs`
+   para a verificação estática do HTML e do JavaScript embarcados.
+
+**Status: publicado no branch experimental; a interface móvel ainda requer
+teste em navegador real e no hardware.**
