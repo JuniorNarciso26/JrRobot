@@ -74,8 +74,15 @@ idf.py build
 idf.py -p YOUR_SERIAL_PORT flash monitor
 ```
 
-Expected behavior: a short 440-Hz tone from the MAX98357A on boot, then Serial
+Expected behavior: **no automatic speaker tone**; Serial
 `MIC frames=... peak=... avg_abs=...` lines which change when you speak.
+Send a command with Enter via the ESP-IDF serial console (terminal must support sending input):
+
+- `teste som` — temporarily pauses microphone I2S, emits a 1.5-second 440-Hz tone using 16-bit stereo Philips I2S (the same sample/slot format as the original JrBot `jr_audio_test_tone()`), then restores microphone capture. Look for `SPEAKER_TEST_START` / `SPEAKER_TEST_END result=ESP_OK` in the logs. `ESP_OK` confirms data transfer, **not audible sound**.
+- `iniciar ivy` — currently replies `IVY_NAO_DISPONIVEL`, because Ivy STT/LLM/TTS and model storage are not integrated yet. **It does not activate Ivy**.
+- `ajuda` — lists the commands.
+
+This is an experimental serial interface and requires build/hardware validation. The sound test is run ONLY on command.
 No Wi-Fi, SD, camera, OLED, or WebRTC task is started. Microphone channel is
 assumed LEFT (L/R tied to GND), 32-bit I2S RX sampled as upper 16 bits.
 **Build and physical validation have NOT been performed here.**
