@@ -17,12 +17,14 @@
 #include "driver/i2s_std.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "../../hw04_audio_config.h"
 
 #define FRAMES 256
 #define AUDIO_PI 3.14159265358979323846f
 static const char *TAG = "ivy_hw04_audio";
 static i2s_chan_handle_t rx_chan = NULL;
+static SemaphoreHandle_t audio_lock = NULL;
 static int32_t capture[FRAMES * 2];
 
 static esp_err_t start_mic(void)
@@ -154,7 +156,9 @@ static void serial_task(void *arg)
             ESP_LOGI(TAG, "SERIAL_COMMAND %s", line);
             if (strcmp(line, "teste som") == 0) {
                 ESP_LOGI(TAG, "TESTE_SOM solicitado");
+                xSemaphoreTake(audio_lock, portMAX_DELAY);
                 esp_err_t result = play_speaker_test();
+                xSemaphoreGive(audio_lock);
                 ESP_LOGI(TAG, "TESTE_SOM resultado=%s", esp_err_to_name(result));
             } else if (strcmp(line, "iniciar ivy") == 0) {
                 ESP_LOGW(TAG, "IVY_NAO_DISPONIVEL: reconhecimento, LLM e TTS ainda nao integrados neste firmware de diagnostico. Nenhuma IA foi iniciada.");
@@ -176,6 +180,8 @@ void app_main(void)
     ESP_LOGI(TAG, "GPIO BCLK=%d WS=%d MIC=%d AMP=%d",
              IVY_HW04_I2S_BCLK, IVY_HW04_I2S_LRCK,
              IVY_HW04_I2S_DIN, IVY_HW04_I2S_DOUT);
+    audio_lock = xSemaphoreCreateMutex();
+    ESP_ERROR_CHECK(audio_lock ? ESP_OK : ESP_ERR_NO_MEM);
     ESP_ERROR_CHECK(start_mic());
     xTaskCreate(serial_task, "ivy_console", 4096, NULL, 5, NULL);
     ESP_LOGI(TAG, "Microfone ativo; para o alto-falante envie 'teste som' + ENTER no Serial.");
@@ -184,13 +190,11 @@ void app_main(void)
         uint64_t magnitude = 0;
         uint32_t frames = 0;
         for (int block = 0; block < 64; ++block) {
-            if (!rx_chan) {
-                vTaskDelay(pdMS_TO_TICKS(30));
-                continue;
-            }
+            if (xSemaphoreTake(audio_lock, pdMS_TO_TICKS(1000)) != pdTRUE) continue;
             size_t got = 0;
-            esp_err_t err = i2s_channel_read(rx_chan, capture, sizeof(capture),
-                                             &got, pdMS_TO_TICKS(500));
+            esp_err_t err = rx_chan ? i2s_channel_read(rx_chan, capture, sizeof(capture),
+                                             &got, pdMS_TO_TICKS(500)) : ESP_ERR_INVALID_STATE;
+            xSemaphoreGive(audio_lock);
             if (err != ESP_OK) continue;
             uint32_t count = (uint32_t)(got / (2 * sizeof(int32_t)));
             for (uint32_t i = 0; i < count; ++i) {
