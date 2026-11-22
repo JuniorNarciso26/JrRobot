@@ -232,11 +232,20 @@ if /i "!CURRENT_BRANCH!"=="testIvy" (
         )
     )
 )
-git status --porcelain > "!STATUS_TMP!"
+rem Apenas mudancas de arquivos RASTREADOS impedem a sincronizacao.
+rem Artefatos gerados, certificados e arquivos nao rastreados sao preservados.
+rem O git switch continua protegendo conflitos reais de caminhos.
+    echo [INFO] Arquivos gerados e arquivos locais nao rastreados serao preservados.
+git status --porcelain --untracked-files=no > "!STATUS_TMP!"
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel consultar o estado Git.
+    popd
+    exit /b 1
+)
 findstr /l /v /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" > "!STATUS_FILTERED_TMP!"
 for %%A in ("!STATUS_FILTERED_TMP!") do set "STATUS_SIZE=%%~zA"
 if not "!STATUS_SIZE!"=="0" (
-    echo [ERRO] Existem alteracoes locais. Nada sera sobrescrito.
+    echo [ERRO] Arquivos rastreados foram modificados; nada sera sobrescrito.
     type "!STATUS_FILTERED_TMP!"
     del "!STATUS_TMP!" >nul 2>&1
     del "!STATUS_FILTERED_TMP!" >nul 2>&1
