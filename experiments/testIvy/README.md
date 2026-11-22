@@ -91,3 +91,47 @@ After this succeeds, replace the Ivy ES8311-specific board implementation with
 a HW04-compatible adapter while keeping the upstream submodule unchanged;
 then assess model storage (the original Ivy uses SD) and the ESP-IDF 6.1
 requirement. No claim of complete offline Ivy operation yet.
+
+
+## Next stage after speaker and microphone hardware confirmation (2026-11-22)
+
+The user physically confirmed that the `teste som` Serial command produces sound.
+The microphone I2S log also showed varying samples. Audio hardware bring-up can be
+considered provisionally validated. Full audio recording quality, STT and TTS are
+not yet validated.
+
+**Do not label `iniciar ivy` as operational yet.** In the current program it
+correctly returns `IVY_NAO_DISPONIVEL`.
+
+### Verified upstream dependency
+
+Ivy `components/story_stt/include/story_stt.h` documents
+`stt_open(model_path, fast_arena, bulk_arena)`, `stt_push_chunk` (5760
+samples of 16 kHz signed PCM) and `stt_transcribe`.
+Its memory budget `docs/MEMORY_BUDGET.md` lists a **13.8 MB conformer STT
+model.bin streamed from microSD**, with approximately 5.4-6.97 MB PSRAM
+working memory and a 256 KB contiguous internal RAM workspace. This cannot
+be assumed to fit an ESP32-S3 N16R8 16 MB flash image alongside the app.
+Ivy upstream targets ESP-IDF 6.1 while the independent audio smoke test
+targets the JrBot ESP-IDF 5.5.x toolchain.
+
+### Next implementation milestone
+
+1. Confirm external model storage. Ivy upstream's SDMMC pins cannot be used
+   unchanged on HW04: GPIO41 is microphone DIN and GPIO47 is the I2S WS;
+   other camera pins are also allocated. Plan an independent SPI microSD
+   interface only after a free-pin / camera-conflict review.
+2. Create an Ivy-compatible HW04 board audio adapter (16 kHz signed PCM
+   input, output to MAX98357A) around the validated I2S functions.
+3. Provide an isolated application with `teste som` and `iniciar ivy`:
+   `iniciar ivy` must perform actual SD/model initialization, report
+   explicit failures, then accept and transcribe voice. Do not report success
+   if the STT weights are missing.
+4. Evaluate further LLM/TTS storage and memory requirements separately;
+   do not enable camera, OLED, Wi-Fi or WebRTC during initial Ivy runtime.
+5. Validate flash/build logs and physical voice transcription before merging
+   any integration work. Keep `main` untouched.
+
+See upstream files:
+- `https://github.com/iamankushpandit/esp_ai/blob/main/docs/MEMORY_BUDGET.md`
+- `https://github.com/iamankushpandit/esp_ai/blob/main/components/story_stt/include/story_stt.h`
