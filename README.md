@@ -57,6 +57,14 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### Development preview: JrBot V2.1D_TTS (develop branch only, November 23, 2026)
+
+The `develop` branch is now synchronized with the approved V2.0 `main` code and adds an **experimental offline Brazilian Portuguese speech synthesizer** based on Apache-2.0 `tuanpmt/vtts` v0.11.0. The standalone vTTS model was tested successfully on the ESP32-S3 HW04. **Integration into the full firmware has not yet been compiled or hardware-validated.**
+
+A new **Voice** tab is prepared alongside Control, Memory and Wi-Fi, with selectable Lite/Quality voice models, volume, digital **gain (0–24 dB)**, speed, expressiveness, treble attenuation, status, memory/RTF metrics and a text-to-speech test input. Speech is OFF after every reboot and is intended for idle-only use, with I2S resource ownership respected. The integration uses ESP-IDF 6.1.x on `develop`, while the production `main` stays on 5.5.x.
+
+**Do not merge or flash blindly:** compile and check the 11 MiB application partition, 4 MiB ESP-SR model partition, 8 MiB PSRAM and WakeNet/WebRTC regressions first. See [vTTS develop integration and QA checklist](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md).
+
 ### What's new in JrBot V1.8S
 
 **JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
