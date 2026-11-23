@@ -9,6 +9,7 @@
 #include "jr_usb_terminal.h"
 #include "jr_face.h"
 #include "jr_portal.h"
+#include "jr_tts.h"
 #include "jr_wifi.h"
 #include "jr_wifi_provisioning.h"
 #include "jr_mdns.h"
@@ -30,6 +31,7 @@ void app_main(void) {
     ESP_LOGI("jrbot_main", "OV5640 enabled on board camera connector");
 
     jr_wifi_prepare();
+    jr_tts_init(); /* NVS ready; speech remains OFF until explicitly enabled. */
     if (jr_commands_init() != ESP_OK) ESP_LOGE("jrbot_main", "Command mutex unavailable");
     jr_terminal_start();
     jr_usb_terminal_start();
