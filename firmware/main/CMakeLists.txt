@@ -95,7 +95,7 @@ idf_component_register(
         "../module_runtime"
         "../module_tts"
         ${JR_TTS_INCLUDES}
-    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap json mdns
+    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap mdns
     EMBED_TXTFILES
         "jrskill_app.js"
         "memory_panel.js"
