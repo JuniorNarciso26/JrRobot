@@ -140,6 +140,7 @@ def prepare(root: Path = ROOT) -> int:
         if _valid_header(previous):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(previous, target)
+            os.chmod(target, stat.S_IRUSR | stat.S_IWUSR)
             _force_portal_rebuild(root)
             print("[OK] HTTPS local recuperado da instalacao anterior:", previous.parent.parent.parent)
             print("[INFO] Certificado e chave continuam apenas neste computador.")
@@ -149,7 +150,7 @@ def prepare(root: Path = ROOT) -> int:
         contents = _generate()
     except ImportError as error:
         print("[ERRO] Biblioteca cryptography ausente no Python do ESP-IDF:", error)
-        print("[INFO] Instale/repere o ambiente Python do ESP-IDF 6.1.1 antes de gravar.")
+        print("[INFO] Repare o ambiente Python do ESP-IDF 6.1.1 antes de gravar.")
         return 2
     except Exception as error:
         print("[ERRO] Nao foi possivel criar o certificado HTTPS local:", error)
