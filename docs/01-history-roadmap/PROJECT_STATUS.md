@@ -2,7 +2,27 @@
 
 **Last updated: November 12, 2026**
 
-## Current release — V1.8.4S (`main`)
+## Current release — V2.0 (`main`)
+
+**JrBot V2.0**, approved by the owner on **November 22, 2026**, begins the
+voice generation of the JrBot firmware. It retains the full functionality
+developed through **V1.8.4S** and adds the first validated offline voice
+recognition milestone: ESP-SR 2.6.2 WakeNet10 (`wn10_pt_olaesp`).
+
+With the Autonomous mode turned on from the computer panel or the mobile
+`jrbot.local` sliding switch, saying **"Olá ESP"** produces a short bip
+through MAX98357A. The OLED then displays the **Love** expression for
+3 seconds, automatically reverting to Neutral, while the robot is
+ready for later wake-word detections. The owner confirms that this
+coexists successfully with the prior robot features on HW04 hardware.
+
+This is **wake-word activation, not general speech transcription**.
+Custom "Olá JrBot", phrase synthesis in Portuguese, and ongoing
+conversation are not included in V2.0.
+
+**Previous release:** V1.8.4S retained below for historical evidence.
+
+## Previous release — V1.8.4S
 
 **JrBot V1.8.4S** integrates Wi-Fi reliability enhancements accepted by the
 project owner after observing the HW04 test of the `ROAM_01` build.
@@ -33,8 +53,8 @@ promotion despite these remaining validation items.
 
 | Item | Status |
 | --- | --- |
-| **Current version** | `JrBot_V1.8.4S` on `main` — Wi-Fi stronger-AP selection, limited roaming, failover/recovery and diagnostics |
-| **Previous baseline** | `JrBot_V1.8.3S` — connected-mode Wi-Fi dashboard; V1.8.2S Mesa Mix retained |
+| **Current version** | `JrBot_V2.0` — V1.8.4S capabilities plus offline Portuguese WakeNet10 voice activation and Love face reaction |
+| **Previous baseline** | `JrBot_V1.8.4S` — Wi-Fi reliability; retains V1.8.3S dashboard and V1.8.2S Mesa Mix |
 | **Live audio** | Mesa Mix with volume, microphone gain, echo ducking, noise gate and pre-buffer; owner reports good communication with headphones |
 | **Wi-Fi management** | Dashboard with SSID/IP/RSSI, scan while idle, up to four profiles, add/select/delete, confirmed restart; same-SSID RSSI-triggered roaming now also available |
 | **Wi-Fi evidence** | Strongest AP used in recent HW04 log; no drops in short window; low-RSSI roaming scenario untested |
