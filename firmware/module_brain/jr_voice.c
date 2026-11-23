@@ -226,6 +226,10 @@ static esp_err_t reply_and_resume(void) {
     esp_err_t reply_err = jr_audio_test_tone(880, 180);
     const char *reply_type = "beep";
     ESP_LOGI(TAG, "WAKE_REPLY_END result=%s", esp_err_to_name(reply_err));
+    if (reply_err == ESP_OK && !stop_requested && wake_callback) {
+        // The OLED Love reaction begins only AFTER the beep completes.
+        wake_callback("Ola ESP", wn_model_name, 1);
+    }
 
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
     if (stop_requested) return reply_err;
@@ -246,17 +250,14 @@ static bool handle_wakenet_frame(void) {
     wakenet_state_t detected = wakenet->detect(wn_data, pcm_buffer);
     if (detected != WAKENET_DETECTED) return false;
 
-    jr_voice_wake_cb_t callback;
     uint32_t count;
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
     count = voice_status.detections;
-    callback = wake_callback;
     portEXIT_CRITICAL(&voice_lock);
 
     ESP_LOGI(TAG, "WAKEWORD_DETECTED keyword=Ola_ESP model=%s count=%lu",
              wn_model_name, (unsigned long)count);
-    if (callback) callback("Ola ESP", wn_model_name, (int)detected);
     return true;
 }
 
