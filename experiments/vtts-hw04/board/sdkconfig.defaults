@@ -1,3 +1,12 @@
 # ESP32-S3 N16R8: 16MB Flash / 8MB octal PSRAM.
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_SPIRAM_MODE_OCT=y
+
+# JrBot HW04 uses a CH343 USB-to-UART bridge (COM8 on the owner's PC).
+# Boot ROM output is visible over CH343 regardless of the app console selection;
+# vTTS must use UART0 for BOTH input and output instead of internal USB/JTAG.
+# These board-specific defaults override sdkconfig.defaults.esp32s3 upstream.
+# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_NUM=0
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
