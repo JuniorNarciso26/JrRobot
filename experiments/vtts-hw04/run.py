@@ -148,14 +148,52 @@ def idf_args() -> list[str]:
     ]
 
 
+def ensure_uart_console_config() -> bool:
+    """Migrate an existing local vTTS sdkconfig from USB-JTAG to CH343/UART0.
+
+    ESP-IDF sdkconfig overrides sdkconfig.defaults. A user who compiled the
+    first revision already has the wrong console selected in sdkconfig.jrbot-hw04.
+    Preserve that config before modifying it; never touch JrBot's own sdkconfig.
+    """
+    cfg = FW / f"sdkconfig.{BOARD}"
+    if not cfg.is_file():
+        return False
+    data = cfg.read_text(encoding="utf-8")
+    if "CONFIG_ESP_CONSOLE_UART_DEFAULT=y" in data and "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y" not in data:
+        return False
+
+    previous = cfg.with_name(cfg.name + ".before-ch343")
+    if not previous.exists():
+        shutil.copy2(cfg, previous)
+        print("[BACKUP] Configuracao antiga salva em", previous)
+
+    data = re.sub(r"(?m)^CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y$",
+                  "# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set", data)
+    data = re.sub(r"(?m)^# CONFIG_ESP_CONSOLE_UART_DEFAULT is not set$",
+                  "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", data)
+    if "CONFIG_ESP_CONSOLE_UART_DEFAULT=y" not in data:
+        data += "\nCONFIG_ESP_CONSOLE_UART_DEFAULT=y\n"
+    if "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y" in data:
+        fail("Falha ao desligar console USB/JTAG no sdkconfig.")
+    cfg.write_text(data, encoding="utf-8")
+    print("[FIX] Console do teste configurado para UART0 / CH343 (115200 bps).")
+    return True
+
+
 def build(script: Path) -> None:
     if not FW.is_dir():
         fail("Execute prepare antes de compilar.")
     cmd = [sys.executable, str(script)] + idf_args()
+    migrated = ensure_uart_console_config()
     if not (FW / f"sdkconfig.{BOARD}").exists():
         execute(cmd + ["set-target", "esp32s3"], cwd=FW)
+    if migrated:
+        execute(cmd + ["reconfigure"], cwd=FW)
     execute(cmd + ["build"], cwd=FW)
-    print("[OK] Build concluido. Escolha flash para gravar o firmware isolado.")
+    effective = (FW / f"sdkconfig.{BOARD}").read_text(encoding="utf-8")
+    if "CONFIG_ESP_CONSOLE_UART_DEFAULT=y" not in effective or "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y" in effective:
+        fail("Build com console incorreto. Configure UART0 em menuconfig antes do flash.")
+    print("[OK] Build concluido com console UART0 para CH343. Escolha flash.")
 
 
 def serial_port(port: str | None) -> str:
