@@ -32,7 +32,7 @@ static void emit_event(const char *line) {
     ESP_LOGI(TAG, "%s", line);
 }
 
-static void react_happy(const char *source, const char *keyword, const char *model_name) {
+static void react_love(const char *source, const char *keyword, const char *model_name) {
     uint32_t trigger;
     portENTER_CRITICAL(&brain_lock);
     brain_triggers++;
@@ -50,19 +50,19 @@ static void react_happy(const char *source, const char *keyword, const char *mod
              (unsigned long)trigger);
     emit_event(line);
 
-    if (!jr_face_set_expression("feliz")) {
+    if (!jr_face_set_temporary_expression("love", 3000U)) {
         portENTER_CRITICAL(&brain_lock);
         brain_last_error = ESP_FAIL;
         brain_state = JR_BRAIN_ERROR;
         portEXIT_CRITICAL(&brain_lock);
         set_event("face_error");
-        emit_event("JR_BRAIN event=face_error expression=feliz");
+        emit_event("JR_BRAIN event=face_error expression=love");
         return;
     }
 
     jr_face_increment_command_count();
-    set_event("reaction_happy");
-    emit_event("JR_BRAIN event=reaction_happy expression=feliz");
+    set_event("reaction_love");
+    emit_event("JR_BRAIN event=reaction_love expression=love duration_ms=3000 revert=neutral");
 
     jr_voice_status_t voice = {0};
     jr_voice_get_status(&voice);
@@ -75,7 +75,7 @@ static void react_happy(const char *source, const char *keyword, const char *mod
 
 static void voice_wake_detected(const char *keyword, const char *model_name, int wake_index) {
     (void)wake_index;
-    react_happy("voice", keyword, model_name);
+    react_love("voice", keyword, model_name);
 }
 
 const char *jr_brain_state_name(jr_brain_state_t state) {
@@ -202,7 +202,7 @@ esp_err_t jr_brain_trigger_test(void) {
     portENTER_CRITICAL(&brain_lock);
     brain_last_probability = 1.0f;
     portEXIT_CRITICAL(&brain_lock);
-    react_happy("bench", "JrBot", "simulated");
+    react_love("bench", "JrBot", "simulated");
 
     jr_brain_status_t status = {0};
     jr_brain_get_status(&status);
