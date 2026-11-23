@@ -6,6 +6,32 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 22, 2026 — JrBot V2.0 begins: first offline voice milestone
+
+**Owner-confirmed hardware validation and release acceptance.** V2.0 builds on all
+previous V1 capabilities through V1.8.4S and introduces
+**ESP-SR 2.6.2 WakeNet10 `wn10_pt_olaesp`** for Portuguese local wake-word
+detection on the ESP32-S3 HW04.
+
+- The existing panel's **Autonomous** control now activates the validated
+  **“Olá ESP”** model instead of the experimental English MultiNet path.
+- On wake detection, the robot gives a short **880 Hz / 180 ms beep**, then
+  shows **Love** on the OLED for **3 seconds** and automatically returns
+  to **Neutral** without blocking recognition.
+- `jrbot.local` on the phone gains a sliding switch for autonomous on/off,
+  with real state synchronization from the robot.
+- The existing hardware and software functions remain available: OLED,
+  camera, microphone, MAX98357A sound, network management, Wi-Fi roaming,
+  WebRTC Live/Mesa Mix, local control and JrSkill Network.
+- The owner reports that the Portuguese model did not materially burden the
+  project and that the existing features continued working.
+
+**Scope:** this is the first **V2.0** milestone, not continuous speech-to-text,
+free-form Portuguese TTS, voice conversation or custom “Olá JrBot” yet.
+The release is recorded as owner-tested; this entry does not invent new
+independent compile logs, RAM measurements or full regression data.
+[Implementation and testing](../04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md).
+
 ## August 2026 — The project takes shape
 
 ### August 1 — First repository record
@@ -245,7 +271,7 @@ The connected-mode Wi-Fi dashboard from [PR #59](https://github.com/JuniorNarcis
 
 ## Where this history stands
 
-The current source version on `main` is **JrBot V1.8.3S**. V1.8.1S remains the last separately owner-confirmed full physical-and-memory baseline; V1.8.2S added Mesa Mix with a positive headphone audio report and delayed self-voice return still known; V1.8.3S adds the connected Wi-Fi management dashboard, network profile deletion, and confirmed network switching.
+The current source version on `main` is **JrBot V2.0**; prior V1.8 milestones are preserved below. V1.8.1S remains the last separately owner-confirmed full physical-and-memory baseline; V1.8.2S added Mesa Mix with a positive headphone audio report and delayed self-voice return still known; V1.8.3S adds the connected Wi-Fi management dashboard, network profile deletion, and confirmed network switching.
 
 This Changelog preserves **the path already taken**. See the [Roadmap](ROADMAP.md) for the next steps and [Project Status](PROJECT_STATUS.md) for today's verified capabilities.
 
