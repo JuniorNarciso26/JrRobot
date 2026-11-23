@@ -58,6 +58,16 @@ modelos e particoes couberem, selecione develop e rode:
 A gravacao pede confirmacao GRAVAR, porque substitui temporariamente
 o firmware V2.0 do ESP32. A branch main do GitHub nao se altera.
 
+**IMPORTANTE - certificados em clones novos:** o arquivo privado
+firmware/main/jr_https_material_local.h NAO faz parte do Git. Um clone
+limpo pode iniciar somente HTTP, sem HTTPS/Live nem permissao para
+salvar voz. Se ja funciona na instalacao estavel, copie manualmente
+esse arquivo local para o mesmo caminho no novo clone, SEM publicar
+ou enviar o conteudo ao Git. Se nao existir, confira
+docs/04-firmware-development/DEVELOPMENT.md (secao HTTPS) e configure
+o certificado local antes do teste da aba. Nunca exponha POST /voice
+a internet publica; o endpoint e apenas para a rede local.
+
 No painel HTTPS escolha Voz, desligue Autonomo e Live, ative o TTS,
 selecionando inicialmente Lite S, volume 75, gain 6 dB, speed 1.0,
 expression 1.0, debuzz 0. Envie uma frase. Compare depois com M.
