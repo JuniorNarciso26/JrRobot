@@ -252,8 +252,9 @@ bool jr_face_set_temporary_expression(const char *command, uint32_t duration_ms)
     if (duration_ms == 0 || duration_ms > 60000U) return false;
     // Parse the expression through the existing public face command mapping.
     if (!jr_face_set_expression(command)) return false;
+    uint32_t deadline = now_ms() + duration_ms;
     portENTER_CRITICAL(&state_lock);
-    temporary_expression_deadline_ms = now_ms() + duration_ms;
+    temporary_expression_deadline_ms = deadline;
     temporary_expression_active = true;
     portEXIT_CRITICAL(&state_lock);
     return true;
@@ -338,7 +339,6 @@ void jr_face_step(uint32_t ms) {
         (int32_t)(ms - temporary_expression_deadline_ms) >= 0) {
         current_expression=FACE_NEUTRAL;
         temporary_expression_active=false;
-        ESP_LOGI(TAG,"JR_FACE event=temporary_complete expression=neutral");
     }
     if (demo && (uint32_t)(ms-last_demo_ms)>2500) {
         last_demo_ms=ms; current_expression=(face_expression_t)(demo_i++%16);
