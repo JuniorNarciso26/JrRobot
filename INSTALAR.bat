@@ -291,6 +291,13 @@ cd /d "%~dp0"
 set "CURRENT_BRANCH="
 set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+
+if /i "%CURRENT_BRANCH%"=="test/vtts-pt-br-hw04" (
+    rem Dedicated offline Portuguese TTS test: never build the production firmware here.
+    echo [INFO] VTTS HW04: roteando para o teste TTS isolado.
+    call "%~dp0VTTS_HW04.bat" "%ACTION%" "%JR_FLASH_PORT%"
+    exit /b !ERRORLEVEL!
+)
 set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
