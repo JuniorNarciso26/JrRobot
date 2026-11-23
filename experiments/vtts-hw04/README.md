@@ -5,7 +5,7 @@
 
 ## O que vamos testar
 
-Digite uma frase em portugues na **Serial USB do ESP32-S3**, pressione Enter e
+Digite uma frase em portugues na **UART0 do ESP32-S3 (conector USB com CH343/COM8)**, pressione Enter e
 o **vTTS `nu-pt` (portugues brasileiro + ingles)** sintetizara a frase
 **inteiramente no ESP32-S3**, reproduzindo a voz pelo **MAX98357A**.
 
@@ -40,6 +40,47 @@ O overlay de placa em `board/` seleciona o driver
 16-bit mono transmitido em ambos os slots e amostragem do modelo
 22,05 kHz reproduzida a 44,1 kHz (interpolacao 2x).
 Nao usamos o codec ES8311 nem alteramos a pinagem do JrBot.
+
+## Atualizacao de console para CH343 / COM8 (23/11/2026)
+
+O primeiro build do laboratorio foi concluido no Windows com ESP-IDF 6.1.1:
+firmware de cerca de 5,83 MB, cabendo na particao de 8 MB.
+
+**Diagnostico do teste real:** o Windows identificou o adaptador
+`USB-Enhanced-SERIAL CH343 (COM8)`. A configuracao inicial do upstream
+`sdkconfig.defaults.esp32s3` enviava texto e entrada pelo **USB Serial/JTAG
+interno**; por isso a COM8 mostrava mensagens iniciais de boot, mas nao
+mostrava `READY` nem recebia frases. O aviso GDB sobre COMx e o
+`KeyboardInterrupt` ao sair do monitor nao comprovam falha da aplicacao.
+
+**Correcao nesta branch:** `board/sdkconfig.defaults` seleciona
+`CONFIG_ESP_CONSOLE_UART_DEFAULT=y`, desativando a selecao anterior
+de USB Serial/JTAG, e utiliza UART0 / 115200 pela ponte CH343. O
+`run.py` corrige tambem o `sdkconfig.jrbot-hw04` que ficou salvo no
+primeiro build, fazendo backup com sufixo `.before-ch343` antes de
+reconfigurar. A versao V2.0 na `main` continua intocada.
+
+### Para quem ja compilou a primeira revisao
+
+No terminal **IDF_PowerShell v6.1.1**, na raiz do clone
+`JrBot_VTTS_Test`, execute:
+
+```powershell
+git pull --ff-only origin test/vtts-pt-br-hw04
+.\VTTS_HW04.bat build
+.\VTTS_HW04.bat flash COM8
+.\VTTS_HW04.bat monitor COM8
+```
+
+O programa pede `GRAVAR` no momento do flash. **E necessario gravar
+novamente**: so atualizar o branch ou abrir o monitor nao corrige o
+firmware antigo ja gravado. Se o monitor retornar ao PowerShell com
+`KeyboardInterrupt`, use preferencialmente **Ctrl+]** para sair.
+
+Verifique se a linha `READY` aparece na COM8; depois execute
+`model s`, `lang pt` e uma frase livre. Se continuar sem `READY`,
+capture o boot completo da COM8 apos RESET/EN para diagnosticar a
+inicializacao separadamente.
 
 ## Pre-requisitos no Windows
 
