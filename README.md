@@ -55,7 +55,7 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 **Owner validation:** WakeNet, beep, Love expression, local controls and coexistence with the prior features were tested and approved on physical hardware. This release starts V2; **free-form speech recognition, custom “Olá JrBot” wake word and full Portuguese TTS are future work**, not capabilities claimed for V2.0.
 
-See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
+See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
 ### What's new in JrBot V1.8S
 
