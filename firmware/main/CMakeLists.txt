@@ -123,7 +123,10 @@ if(JRBOT_ENABLE_VTTS)
         VTTS_ENABLE_NL=0 VTTS_ENABLE_SV=0 VTTS_ENABLE_NO=0 VTTS_ENABLE_DA=0
         VTTS_ENABLE_LO=0 VTTS_ENABLE_KM=0 VTTS_ENABLE_MY=0
         VTTS_BLOCK=64 VTTS_HEAD_BLOCK=16 VTTS_STREAM_STEP=64)
-    target_compile_options(${COMPONENT_LIB} PRIVATE -O2 -fno-math-errno -Wno-unused-function)
+    # Apply optimization only to vTTS and its wrapper. Do not change compiler
+    # flags for the camera, Wi-Fi, WakeNet, OLED or WebRTC components.
+    set_source_files_properties(${JR_TTS_SOURCES} "../module_tts/jr_tts.c"
+        PROPERTIES COMPILE_OPTIONS "-O2;-fno-math-errno;-Wno-unused-function")
     target_add_binary_data(${COMPONENT_LIB} "${VTTS_ASSETS}/model_s.vtts" BINARY RENAME_TO model_s.vtts)
     target_add_binary_data(${COMPONENT_LIB} "${VTTS_ASSETS}/model_m.vtts" BINARY RENAME_TO model_m.vtts)
     target_add_binary_data(${COMPONENT_LIB} "${VTTS_ASSETS}/lex_en.bin" BINARY RENAME_TO lex_en.bin)
