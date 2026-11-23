@@ -1,8 +1,11 @@
 # JrBot V2.0 - vTTS pt-BR integrado na develop
 
 **Branch:** develop, sincronizado com main; main permanece intacta.
-**Status:** primeira implementacao no GitHub, ainda NAO compilada nem validada
-com o firmware completo. O teste de vTTS isolado funcionou no hardware HW04.
+**Status 23/11/2026:** compilacao COMPLETA com ESP-IDF 6.1.1 confirmada
+no computador do projeto. O boot no HW04, PSRAM 8 MB, Wi-Fi, IP,
+portal HTTP e mDNS foram observados no Serial. O vTTS integrado,
+HTTPS, Live, camera, OLED e WakeNet ainda precisam de testes fisicos
+especificos. O teste de vTTS isolado havia funcionado no HW04.
 
 ## Objetivo e controles
 
@@ -31,17 +34,32 @@ conversacional; WakeNet nao dispara falas automaticamente nesta etapa.
 - Codigo upstream e modelos locais ficam em firmware/vendor/, ignorado pelo Git.
   Sua licenca LICENSE e o arquivo NOTICE acompanham a preparacao local.
 
-## Teste no Windows, usando ESP-IDF 6.1.1
+## Instalacao automatica no Windows, ESP-IDF 6.1.1
 
-Abra um terminal IDF_PowerShell 6.1.1 e use clone separado:
+Depois de instalar ESP-IDF 6.1.1 pelo EIM uma unica vez, abra o arquivo
+**INSTALAR.bat com duplo clique** na pasta local do JrBot. O instalador:
 
-    git clone --branch develop --single-branch https://github.com/JuniorNarciso26/JrRobot.git JrBot_Develop_Voz
-    cd .\JrBot_Develop_Voz
-    idf.py --version
-    python tools\prepare_vtts_develop.py
-    .\INSTALAR.bat build
+1. Consulta branches, atualiza a develop a partir do GitHub sem sobrescrever alteracoes locais.
+2. Ativa e valida o ESP-IDF 6.1.1.
+3. Reutiliza automaticamente o certificado HTTPS local de um clone vizinho,
+   ou gera certificado autoassinado para jrbot.local, sem publicar chave privada.
+4. Prepara os fontes e modelos vTTS S/M (reutiliza o teste isolado quando disponivel).
+5. Aplica as configuracoes mDNS/PSRAM e compila.
+6. Solicita a COM e a confirmacao explicita GRAVAR antes de alterar a flash.
+7. Grava a placa e abre PAINEL.bat: navegador em http://127.0.0.1:8765.
 
-No menu selecione develop. O preparador reutiliza a instalacao local em
+O certificado e autoassinado e pode provocar aviso no navegador. Isso NAO
+instala automaticamente uma autoridade de certificacao confiavel no Windows.
+No dispositivo, o painel web HTTPS usa https://jrbot.local quando mDNS resolve;
+o IP via HTTP e uma opcao de diagnostico, mas nao autoriza comandos HTTPS-only.
+O servidor desktop 127.0.0.1:8765 e distinto do portal embutido no ESP32.
+Nunca exponha a API HTTPS do robo diretamente a internet publica.
+
+**Modos avancados (opcionais):** INSTALAR.bat build apenas compila;
+INSTALAR.bat flash compila e grava, sem abrir painel;
+INSTALAR.bat panel apenas abre o painel de desenvolvimento.
+
+O preparador reutiliza a instalacao local em
 Desktop/JrBot_VTTS_Test/experiments/vtts-hw04/.work/vtts, se encontrada;
 senao obtem o mesmo commit upstream, baixa modelos v0.11.0 e gera
 lex_en.bin. Requer Git, Python e conexao na primeira preparacao.
@@ -50,23 +68,18 @@ A compilacao usa ESP-IDF 6.1 e o parametro
 -D JRBOT_ENABLE_VTTS=ON, com build isolado b-develop-vtts.
 O branch main permanece em ESP-IDF 5.5 e nao recebe alteracoes.
 
-**Nao grave antes de conferir o build.** Se terminar sem erros e ambos os
-modelos e particoes couberem, selecione develop e rode:
+O build full da develop passou no HW04 em 23/11/2026. A gravacao ainda
+pede a confirmacao GRAVAR, porque substitui temporariamente o firmware
+V2.0 no ESP32. A branch main do GitHub nao e alterada.
 
-    .\INSTALAR.bat flash
-
-A gravacao pede confirmacao GRAVAR, porque substitui temporariamente
-o firmware V2.0 do ESP32. A branch main do GitHub nao se altera.
-
-**IMPORTANTE - certificados em clones novos:** o arquivo privado
-firmware/main/jr_https_material_local.h NAO faz parte do Git. Um clone
-limpo pode iniciar somente HTTP, sem HTTPS/Live nem permissao para
-salvar voz. Se ja funciona na instalacao estavel, copie manualmente
-esse arquivo local para o mesmo caminho no novo clone, SEM publicar
-ou enviar o conteudo ao Git. Se nao existir, confira
-docs/04-firmware-development/DEVELOPMENT.md (secao HTTPS) e configure
-o certificado local antes do teste da aba. Nunca exponha POST /voice
-a internet publica; o endpoint e apenas para a rede local.
+**HTTPS privado:** firmware/main/jr_https_material_local.h NAO entra no Git.
+Na primeira execucao, tools/prepare_https_develop.py procura uma copia
+local valida (por exemplo, outro clone no Desktop); se nao achar, cria
+certificado/chave novos apenas neste computador. Nas execucoes seguintes
+reutiliza o arquivo e nao troca a chave. Se o HTTPS nao iniciar, confirme
+JR_HTTPS_READY no Serial e verifique se a compilacao/gravacao ocorreu
+apos a preparacao HTTPS. Nunca publique esse arquivo ou abra POST /voice
+na internet publica.
 
 No painel HTTPS escolha Voz, desligue Autonomo e Live, ative o TTS,
 selecionando inicialmente Lite S, volume 75, gain 6 dB, speed 1.0,
@@ -90,9 +103,10 @@ dados ou manter apenas o S; NAO remover funcoes estaveis da main.
 
 ## Validacao para aprovar merge (pendente)
 
-- [ ] ESP-IDF 6.1.x detectado.
-- [ ] Build concluido, app menor que 11 MiB, esp-sr model menor que 4 MiB.
-- [ ] Inicializacao, OLED, Wi-Fi, camera e WebRTC sem regressao.
+- [x] ESP-IDF 6.1.1 detectado.
+- [x] Build completo concluido em 23/11/2026; particoes geradas e aceitas pelo build.
+- [x] Boot no HW04, PSRAM 8 MB, Wi-Fi conectado, IP e portal HTTP observados.
+- [ ] HTTPS com certificado local, OLED, camera e WebRTC sem regressao.
 - [ ] WakeNet Ola ESP reconhece normalmente quando TTS esta OFF.
 - [ ] Voz fala pelo MAX98357A, com volume e gain e modelos S/M.
 - [ ] Ajustes persistem, ativacao OFF apos boot.
