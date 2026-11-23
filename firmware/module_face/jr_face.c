@@ -51,6 +51,8 @@ typedef enum {
 
 static portMUX_TYPE state_lock = portMUX_INITIALIZER_UNLOCKED;
 static face_expression_t current_expression = FACE_NEUTRAL;
+static bool temporary_expression_active = false;
+static uint32_t temporary_expression_deadline_ms = 0;
 static bool demo_mode;
 static jr_face_status_t status_data = {.state=JR_OLED_UNINITIALIZED,.address=OLED_ADDRESS_PRIMARY,.last_error=ESP_ERR_INVALID_STATE};
 static bool oled_ready;
@@ -241,6 +243,19 @@ bool jr_face_set_expression(const char *c){
     else return false;
     portENTER_CRITICAL(&state_lock);
     current_expression=next; demo_mode=false;
+    temporary_expression_active=false; // An explicit command overrides a pending timed face.
+    portEXIT_CRITICAL(&state_lock);
+    return true;
+}
+
+bool jr_face_set_temporary_expression(const char *command, uint32_t duration_ms) {
+    if (duration_ms == 0 || duration_ms > 60000U) return false;
+    // Parse the expression through the existing public face command mapping.
+    if (!jr_face_set_expression(command)) return false;
+    uint32_t deadline = now_ms() + duration_ms;
+    portENTER_CRITICAL(&state_lock);
+    temporary_expression_deadline_ms = deadline;
+    temporary_expression_active = true;
     portEXIT_CRITICAL(&state_lock);
     return true;
 }
@@ -320,6 +335,11 @@ void jr_face_step(uint32_t ms) {
     if (!oled_ready && (uint32_t)(ms-retry_started_ms)>=retry_delay_ms) jr_face_start();
     portENTER_CRITICAL(&state_lock);
     bool demo=demo_mode;
+    if (temporary_expression_active &&
+        (int32_t)(ms - temporary_expression_deadline_ms) >= 0) {
+        current_expression=FACE_NEUTRAL;
+        temporary_expression_active=false;
+    }
     if (demo && (uint32_t)(ms-last_demo_ms)>2500) {
         last_demo_ms=ms; current_expression=(face_expression_t)(demo_i++%16);
     }
