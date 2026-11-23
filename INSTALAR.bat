@@ -525,6 +525,15 @@ if not defined IDF_PYTHON_ENV_PATH (
     exit /b 1
 )
 if /i "%CURRENT_BRANCH%"=="develop" (
+    rem export.bat may print Activation script failed but return code 0.
+    rem Explicitly verify the same tool-export operation before reporting [OK].
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" export --format key-value >nul
+    if errorlevel 1 (
+        echo [ERRO] ESP-IDF 6.1.x incompleto: uma ou mais ferramentas nao estao instaladas.
+        echo [DICA] Instale as ferramentas exibidas acima usando idf_tools.py install.
+        echo [DICA] Nao grave o firmware antes de corrigir o ambiente.
+        exit /b 1
+    )
     python "%IDF_PATH%\tools\idf.py" --version | findstr /c:"ESP-IDF v6.1" >nul
     if errorlevel 1 (
         echo [ERRO] O branch develop requer ESP-IDF 6.1.x para vTTS.
