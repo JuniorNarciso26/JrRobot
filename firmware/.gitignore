@@ -9,3 +9,4 @@ sdkconfig.*
 main/wifi_config.local.h
 main/jr_https_material_local.h
 certs/local/
+vendor/
