@@ -497,8 +497,13 @@ if /i "%CURRENT_BRANCH%"=="develop" (
     if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
 )
 if not defined IDF_EXPORT (
-    echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
-    echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    if /i "%CURRENT_BRANCH%"=="develop" (
+        echo [ERRO] ESP-IDF 6.1.x nao foi localizado.
+        echo Instale ESP-IDF 6.1.1 pelo EIM uma vez e execute INSTALAR.bat novamente.
+    ) else (
+        echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
+        echo Instale ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    )
     exit /b 1
 )
 echo [INFO] Carregando ambiente ESP-IDF...
@@ -532,6 +537,12 @@ if /i "%CURRENT_BRANCH%"=="develop" (
         echo [ERRO] ESP-IDF 6.1.x incompleto: uma ou mais ferramentas nao estao instaladas.
         echo [DICA] Instale as ferramentas exibidas acima usando idf_tools.py install.
         echo [DICA] Nao grave o firmware antes de corrigir o ambiente.
+        exit /b 1
+    )
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" check-python-dependencies >nul
+    if errorlevel 1 (
+        echo [ERRO] Dependencias Python do ESP-IDF 6.1.x incompletas.
+        echo [DICA] Repare a instalacao pelo ESP-IDF Installation Manager.
         exit /b 1
     )
     python "%IDF_PATH%\tools\idf.py" --version | findstr /c:"ESP-IDF v6.1" >nul
@@ -578,6 +589,9 @@ exit /b 0
 
 :prepare
 if /i "%CURRENT_BRANCH%"=="develop" (
+    echo [INFO] Verificando certificado HTTPS local do JrBot...
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
     echo [INFO] Preparando runtime/modelos vTTS pt-BR a partir do teste aprovado...
     python tools\prepare_vtts_develop.py
     if errorlevel 1 goto failure
