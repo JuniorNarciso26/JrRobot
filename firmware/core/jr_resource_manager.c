@@ -26,6 +26,7 @@ const char *jr_i2s_owner_name(jr_i2s_owner_t owner)
         case JR_I2S_OWNER_MIC: return "mic";
         case JR_I2S_OWNER_PLAYBACK: return "playback";
         case JR_I2S_OWNER_LEGACY_VOICE: return "legacy_voice";
+        case JR_I2S_OWNER_TTS: return "tts";
         default: return "unknown";
     }
 }
