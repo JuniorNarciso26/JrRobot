@@ -96,3 +96,24 @@ testes de som e do Live.
 
 **Status: publicado no branch experimental; a interface móvel ainda requer
 teste em navegador real e no hardware.**
+
+## Nova reação facial após o bip (3 segundos)
+
+No modo autônomo, a sequência de resposta é:
+
+1. O modelo `wn10_pt_olaesp` detecta **Olá ESP**.
+2. O JrBot emite o bip de 180 ms, como antes.
+3. Somente **após a conclusão bem-sucedida do bip**, a expressão OLED muda para **Love**.
+4. A expressão permanece ativa por **3.000 ms**, sem pausar o WakeNet.
+5. O loop normal do OLED restaura **Neutro** automaticamente.
+
+O temporizador é implementado no controlador de expressões do OLED, sem
+criação de outra task ou timers dedicados. Uma seleção manual de rosto pelo
+painel ou JrBotLocal cancela o retorno automático anterior. Novas ativações
+renovam o prazo de 3 segundos. Se o bip falhar, não haverá nova reação.
+
+Log esperado: `JR_BRAIN event=reaction_love expression=love duration_ms=3000 revert=neutral`.
+
+**Validação:** testar no hardware que a expressão Love surge *depois* do bip,
+permanece por aproximadamente três segundos, retorna para Neutro e não impede
+novas ativações ou outros recursos do JrBot.
