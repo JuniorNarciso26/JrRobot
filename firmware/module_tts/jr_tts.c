@@ -364,7 +364,9 @@ esp_err_t jr_tts_say(const char *utf8)
     memcpy(job->text, utf8, length + 1);
     state.busy = true;
     portEXIT_CRITICAL(&state_lock);
-    BaseType_t created = xTaskCreatePinnedToCore(voice_task, "jr_tts", 10240, job, 5, NULL, 1);
+    /* vTTS upstream parallel worker is pinned to core 1; run synthesis caller
+     * on core 0 so its two-core kernels do not contend on the same core. */
+    BaseType_t created = xTaskCreatePinnedToCore(voice_task, "jr_tts", 10240, job, 5, NULL, 0);
     if (created != pdPASS) {
         portENTER_CRITICAL(&state_lock);
         state.busy = false;
