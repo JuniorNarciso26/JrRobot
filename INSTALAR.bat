@@ -581,6 +581,10 @@ if /i "%CURRENT_BRANCH%"=="develop" (
     echo [INFO] Preparando runtime/modelos vTTS pt-BR a partir do teste aprovado...
     python tools\prepare_vtts_develop.py
     if errorlevel 1 goto failure
+    rem Fix existing local sdkconfig: sdkconfig.defaults alone does not override it.
+    rem mDNS 1.14.0 assumes two interface entries when checking duplicate netifs.
+    python tools\ensure_sdkconfig.py "firmware\%SDKCONFIG_FILE%" "CONFIG_MDNS_MAX_INTERFACES" "2"
+    if errorlevel 1 goto failure
 )
 call :check
 if errorlevel 1 goto failure
