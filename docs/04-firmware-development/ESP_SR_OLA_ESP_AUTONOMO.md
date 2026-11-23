@@ -61,8 +61,7 @@ de som audível: confirmar pelo alto-falante.
 - Sem reinícios ou disputa I2S ao desligar Autônomo e entrar em Live.
 - Revisar memoria livre, taxa de falsos acionamentos e logs físicos.
 
-**Status atual: preparado em GitHub para validação. Não compilado nem
-testado no HW04 nesta branch. Não fazer merge em `main` antes do teste.**
+**Status atual: V2.0 validada e aprovada pelo proprietário no HW04; as funcionalidades anteriores continuaram funcionando.**
 
 ## Controle pelo celular (JrBotLocal)
 
@@ -94,8 +93,7 @@ testes de som e do Live.
 7. Executar `node tests/hardware/test_jrbot_local_autonomous.cjs`
    para a verificação estática do HTML e do JavaScript embarcados.
 
-**Status: publicado no branch experimental; a interface móvel ainda requer
-teste em navegador real e no hardware.**
+**Status: chave móvel testada e aprovada pelo proprietário no celular.**
 
 ## Nova reação facial após o bip (3 segundos)
 
@@ -114,6 +112,4 @@ renovam o prazo de 3 segundos. Se o bip falhar, não haverá nova reação.
 
 Log esperado: `JR_BRAIN event=reaction_love expression=love duration_ms=3000 revert=neutral`.
 
-**Validação:** testar no hardware que a expressão Love surge *depois* do bip,
-permanece por aproximadamente três segundos, retorna para Neutro e não impede
-novas ativações ou outros recursos do JrBot.
+**Validação:** a sequência foi testada e aceita pelo proprietário no hardware. A medição exata da duração e os logs de memória permanecem opcionais para testes de regressão futuros.
