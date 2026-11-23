@@ -35,12 +35,13 @@ CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
 CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=8
 
-# ESP-SR: MultiNet6 reconhece o nome JrBot como comando local experimental.
-# WakeNet Hi ESP permanece embarcado como fallback seguro.
+# ESP-SR 2.6.2: Portuguese wake word validated on HW04.
+# The autonomous panel uses only WakeNet10 Ola ESP; no English MultiNet.
 CONFIG_MODEL_IN_FLASH=y
-CONFIG_SR_WN_WN9_HIESP=y
-CONFIG_SR_MN_EN_MULTINET6_QUANT=y
-# CONFIG_SR_MN_EN_NONE is not set
+CONFIG_SR_WN_WN10_PT_OLAESP=y
+CONFIG_SR_MN_EN_NONE=y
+# CONFIG_SR_MN_EN_MULTINET6_QUANT is not set
+# CONFIG_SR_WN_WN9_HIESP is not set
 CONFIG_SR_NSN_WEBRTC=y
 CONFIG_SR_VADN_WEBRTC=y
 

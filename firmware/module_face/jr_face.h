@@ -21,6 +21,8 @@ void jr_face_loop(void);
 void jr_face_get_status(jr_face_status_t *out);
 const char *jr_face_state_name(jr_oled_state_t state);
 bool jr_face_set_expression(const char *command);
+/* Temporary face change without blocking the OLED loop; restores neutral on expiry. */
+bool jr_face_set_temporary_expression(const char *command, uint32_t duration_ms);
 const char *jr_face_expression_name(void);
 void jr_face_set_demo(bool enabled);
 bool jr_face_demo_enabled(void);

@@ -13,9 +13,11 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 | **V1.8S** | Integration of existing robot capabilities with JrSkill Network | Integrated into `main` |
 | **V1.8.1S** — Oct 26, 2026 | Lighter Wi-Fi firmware, phone setup, connection validation and `jrbot.local` recovery | Owner-confirmed physical and memory tests on Oct 26; inherited by V1.8.2S |
 | **V1.8.2S** — Nov 7, 2026 | Mesa Mix for Live audio: volume, microphone gain, echo ducking, noise gate, pre-buffer and diagnostics | Integrated into `main`; headphone audio reported working, delayed voice return remains |
-| **V1.8.3S** — Nov 7, 2026 | Wi-Fi dashboard: SSID, RSSI, IP and channel; manual scan; up to four saved networks; add/select/delete and confirmed reboot to switch | **Current source version on `main`**; owner accepted integration, hardware/memory regression data not separately supplied |
+| **V1.8.3S** — Nov 7, 2026 | Wi-Fi dashboard: SSID, RSSI, IP and channel; manual scan; up to four saved networks; add/select/delete and confirmed reboot to switch | Historical milestone inherited by V2.0; owner accepted integration, hardware/memory regression data not separately supplied |
 
-| **V1.8.4S** — Nov 12, 2026 | Correção experimental: tentativa automática de outros SSIDs já salvos, preferindo última rede conectada | **Candidata em `develop`**, pendente de teste HW04 e aprovação para `main` |
+| **V1.8.4S** — Nov 12, 2026 | Correção experimental: tentativa automática de outros SSIDs já salvos, preferindo última rede conectada | Accepted previous release on `main`; inherited by V2.0 |
+
+| **V2.0** — Nov 22, 2026 | First validated offline voice activation with ESP-SR 2.6.2 / WakeNet10 Portuguese “Olá ESP”, 180 ms beep, 3 s Love/Neutral reaction, and autonomous panel/mobile switch; retains V1.8.4S features | **Owner-tested and approved on HW04; promoted to `main`** |
 
 During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
@@ -24,7 +26,7 @@ During Colosseum 2026, JrSkill's creation, publication, license purchase, and ph
 The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issues/17) was **closed as completed on October 26, 2026**, because its planning and organizational purpose is now maintained in this document. The closing of the Epic **does not** mean all future versions have been delivered.
 
 - **V1 (local browser control)**: accepted within the approved scope; [Issue #14](https://github.com/JuniorNarciso26/JrRobot/issues/14) closed.
-- **V2 (local voice commands)**: future development tracked separately in [Issue #15](https://github.com/JuniorNarciso26/JrRobot/issues/15); revisit that Issue when V2 work actually resumes.
+- **V2 (local voice commands)**: first milestone delivered in V2.0; further development tracked in [Issue #15](https://github.com/JuniorNarciso26/JrRobot/issues/15); revisit that Issue when V2 work actually resumes.
 - **V3 (programmatic control)**: future scope remains in [Issue #16](https://github.com/JuniorNarciso26/JrRobot/issues/16).
 - This roadmap is the single planning overview; open new, scoped implementation Issues when needed instead of keeping a duplicate roadmap Epic open.
 
@@ -36,11 +38,11 @@ The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issue
 | **Remote access / WebRTC — [Issue #26](https://github.com/JuniorNarciso26/JrRobot/issues/26)** | Local full-duplex audio and JPEG DataChannel Live working; current signaling is local only | Prioritize secure access from mobile networks: first prove private VPN reachability, then validate ICE/media; evaluate authenticated Internet signaling and TURN if needed, without exposing ESP32 ports |
 | **JrSkill creator platform** | Initial Creator Studio, Store, licenses, and execution demonstrated on Devnet | Expand development and publishing tools for creators |
 | **Hardware assembly and 3D-printed body** | Electronic assembly documented; mechanical development tracked in [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Gather printable models, document body assembly, and validate the complete build |
-| **JrBot V2** | Local voice-control development line preserved | Develop offline voice recognition and commands |
+| **JrBot V2.0** | WakeNet10 “Olá ESP” detection, beep and OLED Love reaction working with the complete firmware | Expand to Portuguese TTS, custom wake word and voice commands without regressing HW04 resources |
 | **JrBot V3** | Existing Runtime API provides the technical foundation | Define the next programmatic-control product line |
 | **JrBrain** | Long-term concept | Explore memory, context, personality, and AI integration |
 
-Mechanical design and the JrSkill platform can progress in parallel with firmware work. **No confirmed delivery dates** are asserted for V2, V3, JrBrain, or a Mainnet marketplace.
+Mechanical design and the JrSkill platform can progress in parallel with firmware work. **No confirmed delivery dates** are asserted for later V2 milestones, V3, JrBrain, or a Mainnet marketplace.
 
 ## Proposed movement and actuator control
 

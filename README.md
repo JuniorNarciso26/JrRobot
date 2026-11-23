@@ -10,7 +10,7 @@ See. Hear. Speak. Connect. Express.
 <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
 <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
 <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-<img src="https://img.shields.io/badge/version-JrBot__V1.8.4S-brightgreen" alt="Current source version">
+<img src="https://img.shields.io/badge/version-JrBot__V2.0-brightgreen" alt="Current source version">
 <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
 
 [Website](https://jrbot.com.br) ·
@@ -47,6 +47,16 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | **Connect** | Wi-Fi (DHCP, phone setup and up to four saved networks), automatic saved-profile failover and strong-signal AP selection, bounded idle-only low-RSSI roaming, Wi-Fi dashboard (SSID, IP, RSSI and channel), manual network scan, profile selection/deletion, `jrbot.local` on compatible local networks, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
 
+### JrBot V2.0 — Portuguese offline voice recognition (November 22, 2026)
+
+**JrBot V2.0 begins the V2 voice generation while retaining the established V1 functionality**: Wi-Fi provisioning and diagnostics, connected-mode network dashboard, camera OV5640, OLED expressions, microphone and speaker, local browser controls, WebRTC Live and audio Mesa Mix, and the JrSkill Network.
+
+This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **WakeNet10 `wn10_pt_olaesp`** on the ESP32-S3 HW04. After activating **Autonomous** in the main panel or on the mobile web interface at `jrbot.local`, saying **“Olá ESP”** triggers a short local beep; the OLED then shows **Love for 3 seconds**, automatically returning to Neutral. The wake-word detector resumes listening without requiring an internet connection. The mobile page provides a synchronized on/off sliding switch.
+
+**Owner validation:** WakeNet, beep, Love expression, local controls and coexistence with the prior features were tested and approved on physical hardware. This release starts V2; **free-form speech recognition, custom “Olá JrBot” wake word and full Portuguese TTS are future work**, not capabilities claimed for V2.0.
+
+See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
+
 ### What's new in JrBot V1.8S
 
 **JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.
@@ -57,7 +67,7 @@ The initial Creator Studio, Store, licensing and Skill execution flow have been 
 
 **JrBot V1.8.4S** extends Wi-Fi reliability: automatic selection of a compatible access point with stronger signal at connection time; retry/failover across saved profiles; a one-time automatic reboot during startup recovery before opening phone setup; and lightweight Serial diagnostics. An ESP-IDF native low-RSSI event (threshold **-70 dBm**) may trigger a scan of the current SSID **only while idle**, with a controlled reconnection when a different access point offers at least **12 dB more signal** (minimum **90 seconds** between scans). No continuous scan task runs, and preventative roaming is suppressed during Live/recording. These policies were designed for generic customer networks, not tuned to a particular company.
 
-### JrBot V1.8.4S: More reliable Wi-Fi (current main)
+### JrBot V1.8.4S: More reliable Wi-Fi (inherited by V2.0)
 
 - **Better AP selection:** the ESP-IDF driver checks all Wi-Fi channels and prefers the strongest compatible access point for the selected SSID when connecting, including on reconnection; no fixed BSSID.
 - **Recovery across networks:** up to four saved Wi-Fi profiles with bounded retries and automatic fallback, remembering a working alternative. One bounded boot-only restart helps recover when the initial setup times out; captive phone setup remains available.
@@ -125,13 +135,13 @@ That first stage is complete. Work now continues on expanding the Skill developm
 
 ## Project status and roadmap
 
-**JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** added phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026. **V1.8.2S** added the Live audio Mesa Mix, promoted from the tested `AUDIO_LAB_01` branch with the delayed voice return documented as a known limitation. **V1.8.3S** added the connected-mode Wi-Fi dashboard, manual signal/network inspection and saved-network management, including selection and confirmed deletion. **V1.8.4S** adds the stronger-AP selection, saved-profile recovery, limited idle-only roaming and diagnostic logging described above.
+**JrBot V2.0** retains the V1.8S ecosystem and earlier capabilities and adds local offline activation via WakeNet10 in Portuguese. **JrBot V1.8S** integrated the existing robot capabilities with **JrSkill Network**. The earlier Solana Devnet flow for acquiring, licensing and executing Skills was validated on its recorded build. **V1.8.1S** added phone-based Wi-Fi setup and mDNS recovery; the project owner reported physical tests OK and memory testing complete on October 26, 2026. **V1.8.2S** added the Live audio Mesa Mix, promoted from the tested `AUDIO_LAB_01` branch with the delayed voice return documented as a known limitation. **V1.8.3S** added the connected-mode Wi-Fi dashboard, manual signal/network inspection and saved-network management, including selection and confirmed deletion. **V1.8.4S** adds the stronger-AP selection, saved-profile recovery, limited idle-only roaming and diagnostic logging described above.
 
 | Project | Status |
 | --- | --- |
 | **JrBot V1.8S** | Integrated robot and JrSkill capabilities; preparing the official release |
 | **JrSkill development platform** | Expanding tools for creators to develop and publish new Skills |
-| **JrBot V2** | Local voice control — future development |
+| **JrBot V2.0** | First voice milestone delivered: offline “Olá ESP” wake word, beep, Love face for 3s, and autonomous mobile/panel controls |
 | **JrBot V3** | Programmatic control and Runtime API evolution — planned |
 | **JrBrain** | Memory, personality, context and AI — future vision |
 

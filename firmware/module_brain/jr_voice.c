@@ -8,9 +8,6 @@
 #include "driver/i2s_std.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_mn_iface.h"
-#include "esp_mn_models.h"
-#include "esp_mn_speech_commands.h"
 #include "esp_wn_iface.h"
 #include "esp_wn_models.h"
 #include "freertos/FreeRTOS.h"
@@ -19,15 +16,12 @@
 
 #include "jr_audio.h"
 #include "jr_board.h"
-#include "jr_reply_audio.h"
 #include "jr_voice.h"
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
 #define JR_VOICE_READ_TIMEOUT_MS 350U
 #define JR_VOICE_TASK_STACK 10240
-#define JR_MN_DURATION_MS 5000
-#define JR_NAME_COMMAND_ID 1
-#define JR_REPLY_SETTLE_MS 220
+#define JR_REPLY_SETTLE_MS 350
 
 static const char *TAG = "jrbot_voice";
 static portMUX_TYPE voice_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -41,19 +35,13 @@ static const esp_wn_iface_t *wakenet = NULL;
 static model_iface_data_t *wn_data = NULL;
 static char wn_model_name[64] = "not_loaded";
 
-static esp_mn_iface_t *multinet = NULL;
-static model_iface_data_t *mn_data = NULL;
-static bool mn_commands_ready = false;
-static char mn_model_name[64] = "not_loaded";
-
 static int32_t *raw_buffer = NULL;
 static int16_t *pcm_buffer = NULL;
 static jr_voice_wake_cb_t wake_callback = NULL;
 
 typedef enum {
     JR_VOICE_MODE_NONE = 0,
-    JR_VOICE_MODE_MULTINET_NAME,
-    JR_VOICE_MODE_WAKENET_FALLBACK,
+    JR_VOICE_MODE_WAKENET_PT,
 } jr_voice_mode_t;
 
 static jr_voice_mode_t voice_mode = JR_VOICE_MODE_NONE;
@@ -169,16 +157,6 @@ fail:
 static void voice_cleanup(void) {
     close_mic();
 
-    if (mn_commands_ready) {
-        (void)esp_mn_commands_free();
-        mn_commands_ready = false;
-    }
-    if (mn_data && multinet) {
-        multinet->destroy(mn_data);
-        mn_data = NULL;
-    }
-    multinet = NULL;
-
     if (wn_data && wakenet) {
         wakenet->destroy(wn_data);
         wn_data = NULL;
@@ -202,68 +180,14 @@ static void voice_cleanup(void) {
     portEXIT_CRITICAL(&voice_lock);
 }
 
-static int add_name_alias(const char *text) {
-    esp_err_t err = esp_mn_commands_add(JR_NAME_COMMAND_ID, text);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "MultiNet alias accepted: %s", text);
-        return 1;
-    }
-    ESP_LOGW(TAG, "MultiNet alias rejected: %s error=%s", text, esp_err_to_name(err));
-    return 0;
-}
-
-static esp_err_t init_multinet_name(int *chunk, int *sample_rate) {
-    char *model_name = esp_srmodel_filter(models, ESP_MN_PREFIX, ESP_MN_ENGLISH);
-    if (!model_name) return ESP_ERR_NOT_FOUND;
-
-    multinet = esp_mn_handle_from_name(model_name);
-    if (!multinet) return ESP_ERR_NOT_SUPPORTED;
-
-    mn_data = multinet->create(model_name, JR_MN_DURATION_MS);
-    if (!mn_data) return ESP_ERR_NO_MEM;
-    snprintf(mn_model_name, sizeof(mn_model_name), "%s", model_name);
-
-    esp_err_t err = esp_mn_commands_alloc(multinet, mn_data);
-    if (err != ESP_OK) return err;
-    mn_commands_ready = true;
-    (void)esp_mn_commands_clear();
-
-    int accepted = 0;
-    accepted += add_name_alias("JR BOT");
-    accepted += add_name_alias("JUNIOR BOT");
-    accepted += add_name_alias("J R BOT");
-    if (accepted == 0) {
-        ESP_LOGE(TAG, "MultiNet rejected every JrBot alias");
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    esp_mn_error_t *command_errors = esp_mn_commands_update();
-    if (command_errors && command_errors->num >= accepted) {
-        ESP_LOGE(TAG, "MultiNet could not activate JrBot aliases accepted=%d update_errors=%d",
-                 accepted, command_errors->num);
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (command_errors && command_errors->num > 0) {
-        ESP_LOGW(TAG, "MultiNet active with partial aliases accepted=%d update_errors=%d",
-                 accepted, command_errors->num);
-    }
-
-    int mn_chunk = multinet->get_samp_chunksize(mn_data);
-    int mn_rate = multinet->get_samp_rate(mn_data);
-    if (mn_chunk <= 0 || mn_rate <= 0) return ESP_FAIL;
-
-    *chunk = mn_chunk;
-    *sample_rate = mn_rate;
-    voice_mode = JR_VOICE_MODE_MULTINET_NAME;
-    ESP_LOGI(TAG,
-             "direct name recognizer ready model=%s accepted_aliases=%d mode=continuous_experimental rate=%d chunk=%d",
-             mn_model_name, accepted, mn_rate, mn_chunk);
-    return ESP_OK;
-}
-
-static esp_err_t init_wakenet_fallback(int *chunk, int *sample_rate) {
+static esp_err_t init_wakenet_ola_esp(int *chunk, int *sample_rate) {
     char *model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);
     if (!model_name) return ESP_ERR_NOT_FOUND;
+    // Refuse to silently select an older English wake word from stale sdkconfig.
+    if (strcmp(model_name, "wn10_pt_olaesp") != 0) {
+        ESP_LOGE(TAG, "WakeNet mismatch: expected=wn10_pt_olaesp found=%s", model_name);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
     wakenet = esp_wn_handle_from_name(model_name);
     if (!wakenet) return ESP_ERR_NOT_SUPPORTED;
@@ -278,16 +202,14 @@ static esp_err_t init_wakenet_fallback(int *chunk, int *sample_rate) {
 
     *chunk = wn_chunk;
     *sample_rate = wn_rate;
-    voice_mode = JR_VOICE_MODE_WAKENET_FALLBACK;
-    ESP_LOGW(TAG, "JrBot MultiNet unavailable; fallback model=%s wakeword=Hi_ESP rate=%d chunk=%d",
+    voice_mode = JR_VOICE_MODE_WAKENET_PT;
+    ESP_LOGI(TAG, "WakeNet ready model=%s wakeword=Ola_ESP rate=%d chunk=%d",
              wn_model_name, wn_rate, wn_chunk);
     return ESP_OK;
 }
 
 static void clean_detector(void) {
-    if (voice_mode == JR_VOICE_MODE_MULTINET_NAME && multinet && mn_data) {
-        multinet->clean(mn_data);
-    } else if (voice_mode == JR_VOICE_MODE_WAKENET_FALLBACK && wakenet && wn_data) {
+    if (voice_mode == JR_VOICE_MODE_WAKENET_PT && wakenet && wn_data) {
         wakenet->clean(wn_data);
     }
 }
@@ -299,14 +221,14 @@ static esp_err_t reply_and_resume(void) {
     portEXIT_CRITICAL(&voice_lock);
 
     close_mic();
-    ESP_LOGI(TAG, "reply begin type=spoken_oi");
+    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=beep frequency=880Hz duration_ms=180");
 
-    esp_err_t reply_err = jr_reply_play_oi();
-    const char *reply_type = "spoken_oi";
-    if (reply_err != ESP_OK) {
-        ESP_LOGW(TAG, "spoken reply failed: %s; using chirp fallback", esp_err_to_name(reply_err));
-        reply_type = "chirp_fallback";
-        reply_err = jr_audio_test_tone(1040, 180);
+    esp_err_t reply_err = jr_audio_test_tone(880, 180);
+    const char *reply_type = "beep";
+    ESP_LOGI(TAG, "WAKE_REPLY_END result=%s", esp_err_to_name(reply_err));
+    if (reply_err == ESP_OK && !stop_requested && wake_callback) {
+        // The OLED Love reaction begins only AFTER the beep completes.
+        wake_callback("Ola ESP", wn_model_name, 1);
     }
 
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
@@ -319,58 +241,23 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "reply end type=%s result=%s listening_resumed=1",
+    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED type=%s result=%s listening_resumed=1",
              reply_type, esp_err_to_name(reply_err));
     return reply_err;
-}
-
-static bool handle_multinet_frame(void) {
-    esp_mn_state_t state = multinet->detect(mn_data, pcm_buffer);
-    if (state == ESP_MN_STATE_TIMEOUT) {
-        multinet->clean(mn_data);
-        return false;
-    }
-    if (state != ESP_MN_STATE_DETECTED) return false;
-
-    esp_mn_results_t *result = multinet->get_results(mn_data);
-    if (!result || result->num <= 0 || result->command_id[0] != JR_NAME_COMMAND_ID) {
-        multinet->clean(mn_data);
-        return false;
-    }
-
-    jr_voice_wake_cb_t callback;
-    uint32_t count;
-    float probability = result->prob[0];
-    const char *recognized = result->string[0] ? result->string : "JR BOT";
-
-    portENTER_CRITICAL(&voice_lock);
-    voice_status.detections++;
-    count = voice_status.detections;
-    callback = wake_callback;
-    portEXIT_CRITICAL(&voice_lock);
-
-    ESP_LOGI(TAG,
-             "name detected keyword=JrBot recognized=\"%s\" model=%s probability=%.3f count=%lu",
-             recognized, mn_model_name, probability, (unsigned long)count);
-    if (callback) callback("JrBot", mn_model_name, JR_NAME_COMMAND_ID);
-    return true;
 }
 
 static bool handle_wakenet_frame(void) {
     wakenet_state_t detected = wakenet->detect(wn_data, pcm_buffer);
     if (detected != WAKENET_DETECTED) return false;
 
-    jr_voice_wake_cb_t callback;
     uint32_t count;
     portENTER_CRITICAL(&voice_lock);
     voice_status.detections++;
     count = voice_status.detections;
-    callback = wake_callback;
     portEXIT_CRITICAL(&voice_lock);
 
-    ESP_LOGI(TAG, "fallback wake word detected keyword=Hi_ESP model=%s count=%lu",
+    ESP_LOGI(TAG, "WAKEWORD_DETECTED keyword=Ola_ESP model=%s count=%lu",
              wn_model_name, (unsigned long)count);
-    if (callback) callback("Hi ESP", wn_model_name, (int)detected);
     return true;
 }
 
@@ -396,6 +283,7 @@ static void voice_task(void *arg) {
 
         uint64_t level_sum = 0;
         for (int i = 0; i < chunk; ++i) {
+            // Preserve the gain proven by HW04 WakeNet tests; record clipping for tuning.
             int32_t scaled = raw_buffer[i] >> 14;
             if (scaled > 32767) scaled = 32767;
             if (scaled < -32768) scaled = -32768;
@@ -408,12 +296,7 @@ static void voice_task(void *arg) {
         voice_status.last_level = chunk ? (uint32_t)(level_sum / (uint64_t)chunk) : 0;
         portEXIT_CRITICAL(&voice_lock);
 
-        bool detected = false;
-        if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
-            detected = handle_multinet_frame();
-        } else if (voice_mode == JR_VOICE_MODE_WAKENET_FALLBACK) {
-            detected = handle_wakenet_frame();
-        }
+        bool detected = (voice_mode == JR_VOICE_MODE_WAKENET_PT) && handle_wakenet_frame();
 
         if (detected) {
             esp_err_t reply_err = reply_and_resume();
@@ -451,27 +334,17 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
 
     int chunk = 0;
     int sample_rate = 0;
-    esp_err_t err = init_multinet_name(&chunk, &sample_rate);
+    // Initialize only the validated Portuguese wake word.
+    esp_err_t err = init_wakenet_ola_esp(&chunk, &sample_rate);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "direct JrBot recognizer init failed: %s; trying WakeNet fallback",
-                 esp_err_to_name(err));
-
-        if (mn_commands_ready) {
-            (void)esp_mn_commands_free();
-            mn_commands_ready = false;
-        }
-        if (mn_data && multinet) {
-            multinet->destroy(mn_data);
-            mn_data = NULL;
-        }
-        multinet = NULL;
-
-        err = init_wakenet_fallback(&chunk, &sample_rate);
-        if (err != ESP_OK) {
-            status_error(err);
-            voice_cleanup();
-            return err;
-        }
+        status_error(err);
+        voice_cleanup();
+        return err;
+    }
+    if (sample_rate != 16000) {
+        status_error(ESP_ERR_NOT_SUPPORTED);
+        voice_cleanup();
+        return ESP_ERR_NOT_SUPPORTED;
     }
 
     raw_buffer = calloc((size_t)chunk, sizeof(int32_t));
@@ -498,15 +371,9 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     voice_status.sample_rate = sample_rate;
     voice_status.chunk_samples = chunk;
     voice_status.last_error = ESP_OK;
-    if (voice_mode == JR_VOICE_MODE_MULTINET_NAME) {
-        snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-multinet");
-        snprintf(voice_status.model, sizeof(voice_status.model), "%s", mn_model_name);
-        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "JrBot");
-    } else {
-        snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
-        snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
-        snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Hi ESP");
-    }
+    snprintf(voice_status.engine, sizeof(voice_status.engine), "%s", "esp-sr-wakenet");
+    snprintf(voice_status.model, sizeof(voice_status.model), "%s", wn_model_name);
+    snprintf(voice_status.wakeword, sizeof(voice_status.wakeword), "%s", "Ola ESP");
     portEXIT_CRITICAL(&voice_lock);
 
     if (xTaskCreatePinnedToCore(voice_task, "jr_voice", JR_VOICE_TASK_STACK, NULL, 5,
