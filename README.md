@@ -57,13 +57,13 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
-### Development preview: JrBot V2.1D_TTS (develop branch only, November 23, 2026)
+### Development preview: JrBot V2.1.1D_TTS_HTTPS (develop branch only, November 24, 2026)
 
 The `develop` branch is synchronized with approved V2.0 `main` and adds an **experimental offline Brazilian Portuguese speech synthesizer** based on Apache-2.0 `tuanpmt/vtts` v0.11.0. The standalone vTTS was tested on the ESP32-S3 HW04. **The integrated ESP-IDF 6.1.1 firmware built successfully on November 23, 2026, and its boot, 8 MB PSRAM, Wi-Fi, HTTP and mDNS were observed on hardware. Integrated TTS, HTTPS, WebRTC, camera and WakeNet still require regression testing.**
 
 A new **Voice** tab is prepared alongside Control, Memory and Wi-Fi, with selectable Lite/Quality voice models, volume, digital **gain (0–24 dB)**, speed, expressiveness, treble attenuation, status, memory/RTF metrics and a text-to-speech test input. Speech is OFF after every reboot and is intended for idle-only use, with I2S resource ownership respected. The integration uses ESP-IDF 6.1.x on `develop`, while the production `main` stays on 5.5.x.
 
-**One-click Windows installer:** after installing ESP-IDF 6.1.1 once, double-click `INSTALAR.bat` in the local clone. It updates `develop` from GitHub, prepares local HTTPS material (reusing an older private certificate or generating a local self-signed one), compiles, asks for flash confirmation, flashes and launches the existing `PAINEL.bat` desktop panel. `INSTALAR.bat build` and `INSTALAR.bat flash` remain diagnostic modes and do not open the panel. Certificates stay gitignored and must never be published. See [vTTS develop integration and QA checklist](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md).
+**One-click Windows installer:** after installing ESP-IDF 6.1.1 once, double-click `INSTALAR.bat` in the local clone. It updates `develop` from GitHub, prepares local HTTPS material (reusing an older private certificate or generating a local self-signed one), stamps the Git commit into the firmware, compiles, **flashes automatically to the selected COM port without a separate confirmation**, and launches the existing `PAINEL.bat` desktop panel. `INSTALAR.bat build` and `INSTALAR.bat flash` remain diagnostic modes and do not open the panel. The installed version is reported by `version=JrBot_V2.1.1D_TTS_HTTPS git=<8-character SHA>` in Serial `status`, `version` and the boot log. Compare this SHA with the installer commit before assuming an update is installed. Certificates stay gitignored and must never be published. See [vTTS develop integration and QA checklist](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md).
 
 ### What's new in JrBot V1.8S
 
