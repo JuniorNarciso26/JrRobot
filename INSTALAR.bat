@@ -727,16 +727,17 @@ if /i "%ACTION%"=="build" (
 )
 echo.
 if /i "%CURRENT_BRANCH%"=="develop" (
-    echo [ATENCAO] Integracao vTTS experimental, ainda nao testada no JrBot completo.
+    echo [ATENCAO] Integracao vTTS experimental: validar HTTPS, WebRTC e voz no hardware.
     echo [ATENCAO] Substitui temporariamente V2.0 no hardware. Main no GitHub nao muda.
     set "CONFIRM_TTS_FLASH="
     set /p "CONFIRM_TTS_FLASH=Digite GRAVAR para gravar develop no ESP32: "
     if /i not "!CONFIRM_TTS_FLASH!"=="GRAVAR" (
-        echo [CANCELADO] Gravacao nao autorizada.
+        echo [CANCELADO] Gravacao nao autorizada; firmware do ESP32 NAO foi alterado.
         popd
-        goto success
+        goto cancelled
     )
 )
+for /f "delims=" %%G in ('git -C "%~dp0" rev-parse --short HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
 echo Gravando JrBot em %JR_FLASH_PORT%...
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% %JRBOT_TTS_CMAKE_ARGS% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
@@ -744,6 +745,7 @@ if errorlevel 1 (
     goto failure
 )
 popd
+echo [GRAVADO] ESP-IDF confirmou o envio do firmware para %JR_FLASH_PORT%.
 if exist firmware\version.txt (
     set /p "FW_VERSION=" < "firmware\version.txt"
     echo [OK] Versao enviada para ESP32: !FW_VERSION!
@@ -778,6 +780,10 @@ if exist firmware\version.txt (
 )
 if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
 exit /b 0
+
+:cancelled
+echo [CANCELADO] Compilacao concluida; nenhuma gravacao foi executada.
+exit /b 2
 
 :failure
 if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
