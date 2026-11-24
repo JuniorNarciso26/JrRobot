@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — JR_TTS_LONG_01 isolated baseline and integrated comparison
+
+- Owner supplied the fixed-phrase isolated test: 344-byte canonical text/hash matched, Lite S settings confirmed, 17.90 s PCM, 96 ms first block, 170 ms playback start, 0 underruns, effective RTF 0.322, 18,085.1 ms host completion. These are isolated metrics; the video does not show the Enter key for exact acoustic latency.
+- SAID's 14.029 s wall time includes FIFO backpressure; it is not startup latency. Record the net RTF and producer-wait distinction in the benchmark protocol.
+- Add a host HTTPS sender for develop with identical text/settings, Enter trigger, device metrics and local result logs. Validate available/idle state, disable redirects and restrict to local HTTPS origins, and never retry speech POST after uncertain delivery.
+- No firmware algorithm/version or installer changes. Integrated test still needs user installation, HTTPS execution and video. Four sender tests, existing buffered synthesis host test and Python syntax checks pass.
+
 ## November 24, 2026 — Installer branch tracking correction
 
 - Persist the wildcard remote.origin.fetch mapping before fetching all branches. An explicit fetch alone left single-branch clones unable to create tracking branches, producing “starting point origin/test/vtts-pt-br-hw04 is not a branch”.

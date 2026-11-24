@@ -57,6 +57,19 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### Comparative voice test — JR_TTS_LONG_01
+
+The owner-supplied isolated HW04 baseline (November 24, 2026) produced 17.90 s of
+speech, started playback after 170 ms (firmware timing), and reported zero
+underruns with effective RTF 0.322. This is evidence that the isolated engine can
+sustain this phrase on the board; it is not an integrated firmware measurement.
+
+`develop` now includes `python tools/tts_benchmark.py https://jrbot.local --insecure-local`
+to repeat the **same 344-byte phrase and Lite S settings** through the existing
+HTTPS Voice API after Enter. This addition does not change synthesis/playback.
+Film Enter through the end of speech and provide the log. See [results and exact
+comparison protocol](docs/04-firmware-development/TTS_LONG_BENCHMARK.md).
+
 ### Develop correction: V2.1.5D_TTS_BUFFERED (November 24, 2026)
 
 HW04 testing **rejected V2.1.4D progressive playback**: Lite S took 18,729 ms to generate 5,261 ms of audio (RTF 3.559); Quality M took 39,266 ms for 5,099 ms (RTF 7.700). Each logged 14 FIFO starvation episodes, with IDLE0 watchdog warnings. The supplied video also has repeated roughly 2.5-second quiet gaps. Earlier host tests checked sample order, but did not model the real inference/DMA timing.

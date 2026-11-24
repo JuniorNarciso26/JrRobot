@@ -19,3 +19,7 @@ __pycache__/
 
 # Resultado gerado localmente pelos testes de hardware
 tests/hardware/results.json
+
+# Local baseline/comparison logs and retained isolated laboratory build.
+/.tts-benchmark-results/
+/experiments/vtts-hw04/.work/
