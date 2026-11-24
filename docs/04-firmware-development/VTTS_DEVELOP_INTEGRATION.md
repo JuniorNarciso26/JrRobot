@@ -19,7 +19,11 @@ O sintetizador offline e baseado no runtime C do projeto tuanpmt/vtts,
 Apache-2.0, fixado no commit 010cd22fd51f58dfa2414824cb8d6345e70cafc6;
 modelos nu-pt S 1.222.368 bytes e M 2.607.840 bytes da release v0.11.0.
 Funciona com as frases digitadas, sem Internet. Ainda nao e STT nem assistente
-conversacional; WakeNet nao dispara falas automaticamente nesta etapa.
+conversacional. Na develop experimental, detectar Ola ESP aciona o beep de
+880 Hz / 180 ms e o rosto Love por 3 s, depois o sintetizador pronuncia
+"Ola! Eu sou o JrBot." e a escuta WakeNet e retomada. Em caso de erro no
+vTTS, o beep, o rosto e o retorno da escuta sao preservados. A integracao
+desta sequencia ainda precisa de teste fisico no hardware HW04.
 
 ## Seguranca da integracao
 
@@ -27,7 +31,9 @@ conversacional; WakeNet nao dispara falas automaticamente nesta etapa.
 - Runtime e modelos carregados sob demanda na PSRAM, liberados apos falar.
 - Tarefa de audio separada para nao bloquear requisicoes HTTP.
 - Bloqueio JR_I2S_OWNER_TTS compartilha o mesmo gerente de recursos da Live
-  e do microfone. Ao testar, desligar Autonomo/WakeNet e encerrar Live.
+  e do microfone. Para testar o botao manual, desligar Autonomo/WakeNet e Live.
+  Na resposta ao despertar, o microfone e fechado antes do beep e TTS e
+  reaberto apenas depois da reproducao; nunca tocar com I2S do microfone ativo.
 - GET /voice fornece parametros, memoria e RTF.
 - POST /voice requer HTTPS, JSON, cabecalho X-JrBot-Voice: 1.
 - Componentes desenvolvidos em firmware/module_tts/ e firmware/main/voice_panel.js.
@@ -119,7 +125,10 @@ dados ou manter apenas o S; NAO remover funcoes estaveis da main.
 - [x] Build completo concluido em 23/11/2026; particoes geradas e aceitas pelo build.
 - [x] Boot no HW04, PSRAM 8 MB, Wi-Fi conectado, IP e portal HTTP observados.
 - [ ] HTTPS com certificado local, OLED, camera e WebRTC sem regressao.
-- [ ] WakeNet Ola ESP reconhece normalmente quando TTS esta OFF.
+- [ ] WakeNet Ola ESP reconhece, emite beep e mostra Love por 3 s.
+- [ ] vTTS responde "Ola! Eu sou o JrBot." apos o beep, sem reinicio ou eco.
+- [ ] Na falha de TTS, beep, OLED e escuta continuam funcionando.
+- [ ] Microfone I2S e liberado durante fala e retomado apos reproduzir.
 - [ ] Voz fala pelo MAX98357A, com volume e gain e modelos S/M.
 - [ ] Ajustes persistem, ativacao OFF apos boot.
 - [ ] TTS nao executa durante Live, WakeNet ou I2S ocupado.
