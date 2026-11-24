@@ -19,11 +19,19 @@ O sintetizador offline e baseado no runtime C do projeto tuanpmt/vtts,
 Apache-2.0, fixado no commit 010cd22fd51f58dfa2414824cb8d6345e70cafc6;
 modelos nu-pt S 1.222.368 bytes e M 2.607.840 bytes da release v0.11.0.
 Funciona com as frases digitadas, sem Internet. Ainda nao e STT nem assistente
-conversacional. Na develop experimental, detectar Ola ESP aciona o beep de
-880 Hz / 180 ms e o rosto Love por 3 s, depois o sintetizador pronuncia
-"Ola! Eu sou o JrBot." e a escuta WakeNet e retomada. Em caso de erro no
-vTTS, o beep, o rosto e o retorno da escuta sao preservados. A integracao
-desta sequencia ainda precisa de teste fisico no hardware HW04.
+conversacional. Na develop, detectar Ola ESP aciona o beep de 880 Hz / 180 ms e o
+rosto Love por 3 s, depois reproduz "Ola! Eu sou o JrBot." e retoma
+WakeNet. No log do HW04 a resposta funcionou, mas sintetizar 1,678 ms
+de audio levou 5,808 ms (RTF 3,46) e disparou um aviso de watchdog
+IDLE0. V2.1.3D_TTS_FAST adiciona a geracao antecipada do PCM uma vez
+por boot, logo ao ativar Autonomo, usando Lite S (22050 Hz, 1.0x).
+Aproximadamente 74 KB ficam na PSRAM, sem manter modelo/arena na RAM.
+Nas proximas ativacoes de Ola ESP, usa diretamente o PCM em cache,
+aplica volume/ganho/filtro atuais e libera o I2S apos tocar. Mesmo na
+falha da sintese, beep, rosto e retorno da escuta sao preservados.
+A preparacao ocorre numa tarefa separada que cede CPU periodicamente,
+para evitar starvation do IDLE0; eventos USB nao esperam flush de 300 ms.
+Esta otimizacao ainda requer teste fisico no HW04.
 
 ## Seguranca da integracao
 
@@ -126,6 +134,9 @@ dados ou manter apenas o S; NAO remover funcoes estaveis da main.
 - [x] Boot no HW04, PSRAM 8 MB, Wi-Fi conectado, IP e portal HTTP observados.
 - [ ] HTTPS com certificado local, OLED, camera e WebRTC sem regressao.
 - [ ] WakeNet Ola ESP reconhece, emite beep e mostra Love por 3 s.
+- [ ] V2.1.3: log JR_TTS_WAKE_CACHE_PREPARE done=ESP_OK antes do primeiro wake.
+- [ ] V2.1.3: log JR_TTS_WAKE_CACHE_HIT e synth_ms=0 em WakeNet repetido.
+- [ ] V2.1.3: sem task_wdt IDLE0 durante prewarm; Wi-Fi e Live sem regressao.
 - [ ] vTTS responde "Ola! Eu sou o JrBot." apos o beep, sem reinicio ou eco.
 - [ ] Na falha de TTS, beep, OLED e escuta continuam funcionando.
 - [ ] Microfone I2S e liberado durante fala e retomado apos reproduzir.
