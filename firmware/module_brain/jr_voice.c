@@ -402,6 +402,9 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
 
     ESP_LOGI(TAG, "voice engine ready engine=%s model=%s keyword=%s rate=%d chunk=%d",
              voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk);
+    /* Prepare the short fixed acknowledgement while WakeNet listens. No I2S
+     * acquisition or blocking synthesis is performed in this startup path. */
+    jr_tts_prepare_wake_reply();
     return ESP_OK;
 }
 
