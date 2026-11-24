@@ -3,6 +3,29 @@
 **Branch experimental:** `test/vtts-pt-br-hw04` (separado da `main` V2.0).  
 **Estado:** codigo preparatorio publicado, **sem build nem teste fisico nesta branch**.
 
+## Correcao do INSTALAR.bat para troca de branch — 24/11/2026
+
+Se apareceu `starting point origin/test/vtts-pt-br-hw04 is not a branch`, o
+clone ainda tinha remote.origin.fetch limitado a develop. O instalador agora
+salva o mapeamento de todas as branches antes do fetch, troca usando a ref
+completa e ajusta o upstream das branches locais. Continua sem reset automatico
+e preserva a verificacao de alteracoes locais e merge fast-forward-only.
+
+Como o runner antigo e copiado antes da atualizacao, primeiro atualize o clone
+que permaneceu na develop apos a falha:
+
+```powershell
+git pull --ff-only origin develop
+.\INSTALAR.bat
+```
+
+Selecione `test/vtts-pt-br-hw04` no menu. O instalador desta branch ja encaminha
+para VTTS_HW04.bat, mantendo o laboratorio separado do build do firmware completo.
+Para a frase padrao, apos instalar e fechar o monitor com Ctrl+], execute
+`VTTS_HW04.bat benchmark COM8`, ou abra VTTS_HW04.bat e escolha a opcao 7.
+Os testes host reproduzem o erro Git e verificam a correcao; execucao real do
+batch no Windows e compilacao/gravacao ainda devem ser verificadas no computador.
+
 ## Teste comparativo padrao JR_TTS_LONG_01 — 24/11/2026
 
 Este primeiro video mede **Enter no computador → inicio acustico → fim da fala**

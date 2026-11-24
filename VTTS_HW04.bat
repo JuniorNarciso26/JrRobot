@@ -25,6 +25,8 @@ echo 3 - Preparar e COMPILAR (sem gravar)
 echo 4 - Preparar, compilar e GRAVAR na ESP32
 echo 5 - Abrir monitor Serial
 echo 6 - Preparar, compilar, gravar e abrir Serial
+echo 7 - Teste padrao filmado: ENTER inicia a frase fixa
+echo 8 - Mostrar a frase padrao
 echo 0 - Sair
 echo.
 set /p "CHOICE=Escolha: "
@@ -34,6 +36,8 @@ if "%CHOICE%"=="3" set "ACTION=build"
 if "%CHOICE%"=="4" set "ACTION=flash"
 if "%CHOICE%"=="5" set "ACTION=monitor"
 if "%CHOICE%"=="6" set "ACTION=all"
+if "%CHOICE%"=="7" set "ACTION=benchmark"
+if "%CHOICE%"=="8" set "ACTION=phrase"
 if "%CHOICE%"=="0" exit /b 0
 if not defined ACTION goto menu
 goto execute
@@ -57,7 +61,7 @@ if not "%RC%"=="0" echo [ERRO] Teste nao concluido. Consulte a mensagem acima.
 exit /b %RC%
 
 :help
-echo VTTS_HW04.bat [doctor ^| prepare ^| build ^| flash ^| monitor ^| all] [COMx]
+echo VTTS_HW04.bat [doctor ^| prepare ^| build ^| flash ^| monitor ^| all ^| benchmark ^| phrase] [COMx]
 echo Exemplo: VTTS_HW04.bat all COM8
 echo Requer ESP-IDF 6.1 no Windows. O teste nao altera a branch main.
 exit /b 0
