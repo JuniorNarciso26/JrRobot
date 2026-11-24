@@ -35,3 +35,5 @@ esp_err_t jr_tts_configure(const jr_tts_settings_t *settings);
 esp_err_t jr_tts_say(const char *utf8); /* Queues a short phrase, never blocks HTTP. */
 /* Called ONLY by WakeNet's task after releasing I2S; blocks until playback ends. */
 esp_err_t jr_tts_reply_to_wake(const char *utf8);
+/* Asynchronously pre-synthesize the fixed wake reply in PSRAM, at most once per boot. */
+void jr_tts_prepare_wake_reply(void);
