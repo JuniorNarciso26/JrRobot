@@ -36,7 +36,7 @@
     '<div class="voice-actions"><button type="button" id="jr-voice-save" class="primary">Salvar ajustes</button><button type="button" id="jr-voice-refresh">Consultar estado</button></div>' +
     '<label>Frase de teste<textarea id="jr-voice-text" maxlength="180">Olá! Eu sou o JrBot e agora tenho minha própria voz.</textarea></label>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-speak" class="primary">Fazer o JrBot falar</button></div>' +
-    '<p class="voice-help">Para usar o botão Fazer o JrBot falar, desative Autônomo/WakeNet e encerre a Live. No modo Autônomo, Olá ESP já recebe uma resposta falada e a escuta retorna após a reprodução. Ganho alto pode distorcer; comece em 6 dB.</p>' +
+    '<p class="voice-help">Para usar o botão Fazer o JrBot falar, desative Autônomo/WakeNet e encerre a Live. No modo Autônomo, Olá ESP já recebe uma resposta falada e a escuta retorna após a reprodução. A resposta automática usa a voz Lite S (pré-gerada na PSRAM ao ativar Autônomo); o volume, ganho e filtro continuam ajustáveis. Ganho alto pode distorcer; comece em 6 dB.</p>' +
     '<div id="jr-voice-feedback" role="status">Selecione a aba para consultar o sintetizador.</div>' +
     '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
   main.before(panel);
