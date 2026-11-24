@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nvs.h"
 #include "jr_board.h"
@@ -43,6 +44,9 @@ int64_t vtts_now_us(void) { return esp_timer_get_time(); }
 #define JR_TTS_MAX_AUDIO_SECONDS 12
 #define JR_TTS_FRAME_CAP 128
 #define JR_TTS_FIRST_FRAMES 12
+#define JR_WAKE_REPLY_TEXT "Olá! Eu sou o JrBot."
+#define JR_WAKE_CACHE_MAX_SAMPLES (22050U * 3U)
+#define JR_TTS_COOPERATIVE_YIELD_US 150000LL
 
 static const char *TAG = "jrbot_tts";
 static portMUX_TYPE state_lock = portMUX_INITIALIZER_UNLOCKED;
@@ -57,6 +61,9 @@ static jr_tts_status_t state = {
 };
 
 static bool initialized = false;
+#if JRBOT_WITH_VTTS
+static SemaphoreHandle_t synth_mutex;
+#endif
 
 void jr_tts_init(void)
 {
@@ -81,6 +88,9 @@ void jr_tts_init(void)
         state.settings = c; /* Always boot with speech OFF. */
         portEXIT_CRITICAL(&state_lock);
     }
+#if JRBOT_WITH_VTTS
+    if (!synth_mutex) synth_mutex = xSemaphoreCreateMutex();
+#endif
     ESP_LOGI(TAG, "voice=%s enabled=0 model=%c gain_db=%d",
              state.available ? "vtts_ptbr" : "not_compiled",
              state.settings.model, state.settings.gain_db);
@@ -150,7 +160,78 @@ typedef struct {
     uint32_t segments;
     float speed;
     esp_err_t error;
+    int64_t last_yield_us;
 } jr_tts_synth_t;
+
+/* This tiny reply is prepared only when Autonomous is enabled and kept in
+ * PSRAM for subsequent wakewords. Never free a published cache pointer: the
+ * WakeNet voice task may be playing it while the background worker exits. */
+typedef struct {
+    const int16_t *pcm;
+    size_t count;
+    int sample_rate;
+    bool started;
+    bool finished;
+} jr_tts_wake_cache_t;
+static jr_tts_wake_cache_t wake_cache = {0};
+
+static bool cached_reply(const int16_t **pcm, size_t *count, int *sample_rate)
+{
+    bool ready;
+    portENTER_CRITICAL(&state_lock);
+    ready = wake_cache.pcm != NULL && wake_cache.count != 0;
+    if (ready) {
+        *pcm = wake_cache.pcm;
+        *count = wake_cache.count;
+        *sample_rate = wake_cache.sample_rate;
+    }
+    portEXIT_CRITICAL(&state_lock);
+    return ready;
+}
+
+static void cache_reply_pcm(const int16_t *pcm, size_t count, int sample_rate)
+{
+    if (!pcm || !count || count > JR_WAKE_CACHE_MAX_SAMPLES || sample_rate != 22050) return;
+    const size_t bytes = count * sizeof(int16_t);
+    int16_t *copy = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!copy) {
+        ESP_LOGW(TAG, "JR_TTS_WAKE_CACHE alloc_failed bytes=%u", (unsigned)bytes);
+        return;
+    }
+    memcpy(copy, pcm, bytes);
+    portENTER_CRITICAL(&state_lock);
+    bool already_cached = wake_cache.pcm != NULL;
+    if (!already_cached) {
+        wake_cache.pcm = copy;
+        wake_cache.count = count;
+        wake_cache.sample_rate = sample_rate;
+    }
+    portEXIT_CRITICAL(&state_lock);
+    if (already_cached) {
+        heap_caps_free(copy);
+        return;
+    }
+    ESP_LOGI(TAG, "JR_TTS_WAKE_CACHE_READY bytes=%u audio_ms=%u",
+             (unsigned)bytes, (unsigned)(count * 1000 / (size_t)sample_rate));
+}
+
+static bool wait_for_cached_reply(void)
+{
+    /* If a first wake happens while prewarming, reuse the same render rather
+     * than launching a second expensive synthesis. */
+    for (int i = 0; i < 140; ++i) {
+        const int16_t *pcm = NULL;
+        size_t count = 0;
+        int rate = 0;
+        if (cached_reply(&pcm, &count, &rate)) return true;
+        portENTER_CRITICAL(&state_lock);
+        bool pending = wake_cache.started && !wake_cache.finished;
+        portEXIT_CRITICAL(&state_lock);
+        if (!pending) return false;
+        vTaskDelay(pdMS_TO_TICKS(60));
+    }
+    return false;
+}
 
 /* Bound synthesis to 12 seconds / max 180 UTF-8 bytes; no unbounded queues. */
 static int on_pcm(const float *pcm, long n, void *opaque)
@@ -165,6 +246,13 @@ static int on_pcm(const float *pcm, long n, void *opaque)
         if (v > 1.0f) v = 1.0f;
         if (v < -1.0f) v = -1.0f;
         c->pcm[c->count++] = (int16_t)lrintf(v * 32767.0f);
+    }
+    /* The model is CPU-heavy (~5.8 seconds observed on HW04). Periodically
+     * block this worker for one RTOS tick so IDLE0 can feed its watchdog. */
+    int64_t now = esp_timer_get_time();
+    if (!c->last_yield_us || now - c->last_yield_us >= JR_TTS_COOPERATIVE_YIELD_US) {
+        c->last_yield_us = now;
+        vTaskDelay(1);
     }
     return 0;
 }
@@ -196,7 +284,7 @@ static float shape(float v)
     return v < 0.0f ? -y : y;
 }
 
-static esp_err_t play_pcm(const jr_tts_settings_t *opts, const jr_tts_synth_t *c)
+static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count, int sample_rate)
 {
     i2s_chan_handle_t tx = NULL;
     i2s_chan_config_t cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
@@ -205,7 +293,7 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const jr_tts_synth_t *c
     if (err != ESP_OK) return err;
 
     i2s_std_config_t std = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(c->model->sample_rate),
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sample_rate),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {
             .mclk = I2S_GPIO_UNUSED,
@@ -225,14 +313,14 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const jr_tts_synth_t *c
     const float amplitude = (float)opts->volume / 100.0f;
     const float gain = powf(10.0f, (float)opts->gain_db / 20.0f);
     const float hf = powf(10.0f, -(float)opts->debuzz_db / 20.0f);
-    const float alpha = 1.0f - expf(-2.0f * 3.14159265f * 6000.0f / (float)c->model->sample_rate);
+    const float alpha = 1.0f - expf(-2.0f * 3.14159265f * 6000.0f / (float)sample_rate);
     float low = 0.0f;
     int16_t stereo[512];
-    for (size_t pos = 0; pos < c->count && err == ESP_OK;) {
-        size_t frames = c->count - pos;
+    for (size_t pos = 0; pos < count && err == ESP_OK;) {
+        size_t frames = count - pos;
         if (frames > 256) frames = 256;
         for (size_t i = 0; i < frames; ++i) {
-            float v = c->pcm[pos + i] / 32767.0f;
+            float v = pcm[pos + i] / 32767.0f;
             if (opts->debuzz_db > 0) {
                 low += alpha * (v - low);
                 v = low + (v - low) * hf;
