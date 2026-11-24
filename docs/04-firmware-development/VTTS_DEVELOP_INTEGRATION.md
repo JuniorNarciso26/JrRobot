@@ -1,4 +1,4 @@
-# JrBot V2.0 - vTTS pt-BR integrado na develop
+# JrBot V2.1.3S - vTTS pt-BR integrado na main e develop
 
 **Branch:** main (release aceita) e develop (proximos experimentos).
 **Status 24/11/2026:** o usuario aprovou no hardware HW04 o candidato
@@ -21,7 +21,7 @@ O sintetizador offline e baseado no runtime C do projeto tuanpmt/vtts,
 Apache-2.0, fixado no commit 010cd22fd51f58dfa2414824cb8d6345e70cafc6;
 modelos nu-pt S 1.222.368 bytes e M 2.607.840 bytes da release v0.11.0.
 Funciona com as frases digitadas, sem Internet. Ainda nao e STT nem assistente
-conversacional. Na develop, detectar Ola ESP aciona o beep de 880 Hz / 180 ms e o
+conversacional. Na release, detectar Ola ESP aciona o beep de 880 Hz / 180 ms e o
 rosto Love por 3 s, depois reproduz "Ola! Eu sou o JrBot." e retoma
 WakeNet. No log do HW04 a resposta funcionou, mas sintetizar 1,678 ms
 de audio levou 5,808 ms (RTF 3,46) e disparou um aviso de watchdog
@@ -55,7 +55,7 @@ O dono confirmou que as respostas seguintes ao cache ficaram rapidas no HW04.
 Depois de instalar ESP-IDF 6.1.1 pelo EIM uma unica vez, abra o arquivo
 **INSTALAR.bat com duplo clique** na pasta local do JrBot. O instalador:
 
-1. Consulta branches, atualiza a develop a partir do GitHub sem sobrescrever alteracoes locais.
+1. Consulta branches, atualiza a branch selecionada (main ou develop) sem sobrescrever alteracoes locais.
 2. Ativa e valida o ESP-IDF 6.1.1.
 3. Reutiliza automaticamente o certificado HTTPS local de um clone vizinho,
    ou gera certificado autoassinado para jrbot.local, sem publicar chave privada.
@@ -83,10 +83,11 @@ senao obtem o mesmo commit upstream, baixa modelos v0.11.0 e gera
 lex_en.bin. Requer Git, Python e conexao na primeira preparacao.
 
 A compilacao usa ESP-IDF 6.1 e o parametro
--D JRBOT_ENABLE_VTTS=ON, com build isolado b-develop-vtts.
-O branch main permanece em ESP-IDF 5.5 e nao recebe alteracoes.
+-D JRBOT_ENABLE_VTTS=ON, com build isolado b-main-vtts (main) ou
+b-develop-vtts (develop). Ambas usam ESP-IDF 6.1.1.
 
-O build full da develop passou no HW04 em 23/11/2026. O instalador agora
+O build completo da develop passou no HW04 em 23/11/2026 e o teste de
+fala/cache foi aceito pelo usuario em 24/11/2026. O instalador agora
 seleciona a COM e grava automaticamente apos compilar; portanto, executar
 INSTALAR.bat com a placa conectada substitui o firmware no ESP32. Se o
 build falhar, a gravacao NAO sera executada. A branch main recebe a versao aceita; futuras alteracoes experimentais
@@ -96,7 +97,7 @@ ficam somente em develop.
 Na primeira execucao, tools/prepare_https_develop.py procura uma copia
 local valida (por exemplo, outro clone no Desktop); se nao achar, cria
 certificado/chave novos apenas neste computador. Nas execucoes seguintes
-reutiliza o arquivo e nao troca a chave. O build da develop com vTTS agora
+reutiliza o arquivo e nao troca a chave. O build com vTTS em ambas as branches
 EXIGE esse header e falha se ele nao habilitar HTTPS: a compilacao nao deve
 mais produzir silenciosamente um binario sem HTTPS. Ao ligar, procure a
 mensagem JR_HTTPS_MATERIAL_COMPILED e em seguida JR_HTTPS_READY. Se
@@ -119,7 +120,7 @@ ESP32-S3 HW04: flash 16 MiB / PSRAM 8 MiB.
 O teste standalone vTTS gerou app ~5.83 MiB **sem** camera,
 WakeNet nem WebRTC. Nao comprova que tudo cabera junto.
 
-Develop reserva:
+A release reserva:
 - app factory 0x10000 + 0xB00000 (11 MiB);
 - model ESP-SR 0xB10000 + 0x400000 (4 MiB);
 - fim em 0xF10000, dentro dos 16 MiB.
@@ -129,26 +130,26 @@ teste. A particao model continua para WakeNet. Se o firmware final
 nao couber, interrompa e investigue mover modelos para particao de
 dados ou manter apenas o S; NAO remover funcoes estaveis da main.
 
-## Validacao para aprovar merge (pendente)
+## Validacao de release: confirmacoes e pendencias
 
 - [x] ESP-IDF 6.1.1 detectado.
 - [x] Build completo concluido em 23/11/2026; particoes geradas e aceitas pelo build.
 - [x] Boot no HW04, PSRAM 8 MB, Wi-Fi conectado, IP e portal HTTP observados.
 - [ ] HTTPS com certificado local, OLED, camera e WebRTC sem regressao.
-- [ ] WakeNet Ola ESP reconhece, emite beep e mostra Love por 3 s.
-- [ ] V2.1.3: log JR_TTS_WAKE_CACHE_PREPARE done=ESP_OK antes do primeiro wake.
-- [ ] V2.1.3: log JR_TTS_WAKE_CACHE_HIT e synth_ms=0 em WakeNet repetido.
+- [x] WakeNet Ola ESP reconhece, emite beep e mostra Love por 3 s no HW04.
+- [x] V2.1.3: log JR_TTS_WAKE_CACHE_PREPARE done=ESP_OK e cache pronto antes de nova chamada.
+- [x] V2.1.3: JR_TTS_WAKE_CACHE_HIT registrado; usuario confirmou resposta rapida na segunda chamada.
 - [ ] V2.1.3: sem task_wdt IDLE0 durante prewarm; Wi-Fi e Live sem regressao.
-- [ ] vTTS responde "Ola! Eu sou o JrBot." apos o beep, sem reinicio ou eco.
+- [x] vTTS responde "Ola! Eu sou o JrBot." apos beep no HW04 sem reboot nos logs.
 - [ ] Na falha de TTS, beep, OLED e escuta continuam funcionando.
-- [ ] Microfone I2S e liberado durante fala e retomado apos reproduzir.
+- [x] Log confirma microfone/I2S liberado durante fala e retomado apos reproduzir.
 - [ ] Voz fala pelo MAX98357A, com volume e gain e modelos S/M.
 - [ ] Ajustes persistem, ativacao OFF apos boot.
-- [ ] TTS nao executa durante Live, WakeNet ou I2S ocupado.
+- [ ] Fala manual bloqueada durante Live/WakeNet; unica excecao e resposta WakeNet apos fechar microfone.
 - [ ] Medicoes antes/durante/depois de RAM interna e PSRAM.
 - [ ] Sem reboots, WDT, estouro de memoria ou chiados inaceitaveis.
 - [ ] Teste de recuperacao usando main aprovado.
-- [ ] Autorizacao explicita para merge na main.
+- [x] Autorizacao explicita para promocao da versao aprovada para main em 24/11/2026.
 
 Licenca MIT do JrBot e Apache-2.0 do vTTS sao mantidas.
 Para distribuicao comercial de firmware/modelos, confirmar licencas
