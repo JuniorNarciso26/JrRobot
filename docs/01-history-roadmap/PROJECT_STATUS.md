@@ -1,26 +1,40 @@
 # JrBot Project Status
 
-**Last updated: November 12, 2026**
+**Last updated: November 24, 2026**
 
-## Current release — V2.0 (`main`)
+## Current release — JrBot V2.1.3S_TTS_FAST (`main`)
 
-**JrBot V2.0**, approved by the owner on **November 22, 2026**, begins the
-voice generation of the JrBot firmware. It retains the full functionality
-developed through **V1.8.4S** and adds the first validated offline voice
-recognition milestone: ESP-SR 2.6.2 WakeNet10 (`wn10_pt_olaesp`).
+On November 24, 2026, the owner accepted the `develop` candidate
+`JrBot_V2.1.3D_TTS_FAST` (hardware commit `7854de30`) for promotion to
+`main`. The stable release uses the name `JrBot_V2.1.3S_TTS_FAST` and
+**ESP-IDF 6.1.1**. It retains the V2.0 WakeNet10 Portuguese `wn10_pt_olaesp`,
+the 880 Hz / 180 ms beep and 3-second Love/Neutral OLED expression, and
+adds offline vTTS pronunciation **“Olá! Eu sou o JrBot.”** before resuming
+microphone recognition.
 
-With the Autonomous mode turned on from the computer panel or the mobile
-`jrbot.local` sliding switch, saying **"Olá ESP"** produces a short bip
-through MAX98357A. The OLED then displays the **Love** expression for
-3 seconds, automatically reverting to Neutral, while the robot is
-ready for later wake-word detections. The owner confirms that this
-coexists successfully with the prior robot features on HW04 hardware.
+The accepted recording shows the fixed reply synthesized at Autonomous
+startup, stored in PSRAM (74,042 bytes) and played through a cache hit;
+the user confirmed subsequent replies were fast. The `Voz` tab offers
+manual pt-BR TTS with adjustable model, volume, speed and tone parameters
+while the autonomous microphone is off. Manual text remains limited to
+180 UTF-8 bytes, with no continuous STT or long-text streaming yet.
 
-This is **wake-word activation, not general speech transcription**.
-Custom "Olá JrBot", phrase synthesis in Portuguese, and ongoing
-conversation are not included in V2.0.
+**Evidence/known limits:** Logs show `JR_HTTPS_READY` on port 443,
+camera detected, Wi-Fi online, voice playback `ESP_OK`, I2S released
+and `WAKE_LISTENING_RESUMED`. TLS `-0x7780` handshakes occurred on
+several incoming HTTPS connections; full end-to-end TLS/Live regression
+was not established. Earlier vTTS synthesis produced a task-watchdog
+warning; the v2.1.3 HW04 log does not show one, but that is not a full
+stress test. The owner explicitly accepted the scope for the stable
+promotion; future experiments remain on `develop`.
 
-**Previous release:** V1.8.4S retained below for historical evidence.
+**Previous release:** V2.0 added wake-only detection without synthesis.
+
+## Historical release — V2.0
+
+JrBot V2.0 was approved on November 22, 2026 and introduced offline
+WakeNet10 detection, beep and Love expression. The version remains in
+Git history; the current `main` now supersedes it.
 
 ## Previous release — V1.8.4S
 
@@ -53,13 +67,13 @@ promotion despite these remaining validation items.
 
 | Item | Status |
 | --- | --- |
-| **Current version** | `JrBot_V2.0` — V1.8.4S capabilities plus offline Portuguese WakeNet10 voice activation and Love face reaction |
+| **Current version** | `JrBot_V2.1.3S_TTS_FAST` — validated WakeNet10 activation, beep/Love and cached pt-BR spoken acknowledgement; ESP-IDF 6.1.1 on main |
 | **Previous baseline** | `JrBot_V1.8.4S` — Wi-Fi reliability; retains V1.8.3S dashboard and V1.8.2S Mesa Mix |
 | **Live audio** | Mesa Mix with volume, microphone gain, echo ducking, noise gate and pre-buffer; owner reports good communication with headphones |
 | **Wi-Fi management** | Dashboard with SSID/IP/RSSI, scan while idle, up to four profiles, add/select/delete, confirmed restart; same-SSID RSSI-triggered roaming now also available |
 | **Wi-Fi evidence** | Strongest AP used in recent HW04 log; no drops in short window; low-RSSI roaming scenario untested |
-| **Memory and HTTPS** | TLS alerts continue with strong Wi-Fi; Live internal RAM margin and video drops require further improvement |
-| **Current work** | Long-session Wi-Fi/WebRTC regression, memory and TLS diagnosis; Issue #26 secure remote access proof, not yet validated off-LAN |
+| **Memory and HTTPS** | HTTPS server starts on 443, but TLS -0x7780 handshakes are seen; PSRAM cache for wake reply is ~74 KB; long Live/internal memory regression remains open |
+| **Current work** | New long-text progressive speech experiment on develop; TLS/Live regression and Issue #26 remain separate priorities |
 | **Previous milestone** | V1.8S JrSkill integration |
 
 ## What V1.8.1S includes
