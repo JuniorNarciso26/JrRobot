@@ -5,8 +5,9 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-/* JrBot v2 - optional offline vTTS voice. Disabled until the owner enables it.
- * No synthesis is started during boot, Live or autonomous WakeNet operation. */
+/* JrBot v2 - optional offline vTTS voice. Manual speech starts OFF after boot.
+ * An explicitly detected WakeNet keyword may trigger one short acknowledgement,
+ * while the microphone is closed; Live and other autonomous speech remain blocked. */
 typedef struct {
     bool enabled;
     char model;           /* 's' (Lite) or 'm' (Quality). */
@@ -32,3 +33,5 @@ void jr_tts_init(void);
 void jr_tts_get_status(jr_tts_status_t *out);
 esp_err_t jr_tts_configure(const jr_tts_settings_t *settings);
 esp_err_t jr_tts_say(const char *utf8); /* Queues a short phrase, never blocks HTTP. */
+/* Called ONLY by WakeNet's task after releasing I2S; blocks until playback ends. */
+esp_err_t jr_tts_reply_to_wake(const char *utf8);
