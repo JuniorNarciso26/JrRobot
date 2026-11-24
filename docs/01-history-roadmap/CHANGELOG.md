@@ -6,6 +6,18 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — JrBot V2.1.3S_TTS_FAST (owner-approved promotion to main)
+
+**Release identity:** `JrBot_V2.1.3S_TTS_FAST` uses ESP-IDF **6.1.1** and upgrades the previous V2.0 ESP-IDF 5.5.x baseline; source and models from `develop` are promoted together. The exact HW04 candidate was `JrBot_V2.1.3D_TTS_FAST` (commit `7854de30`); the stable suffix and installer selection change the resulting build ID without changing the accepted speech algorithms.
+
+- Offline pt-BR TTS based on vTTS v0.11.0 (Apache-2.0), with manual **Voz** tab, Lite/Quality models and configurable volume/voice tuning.
+- WakeNet10 still detects **“Olá ESP”**, plays **880 Hz / 180 ms** beep, shows **Love** on OLED for 3 seconds, then says **“Olá! Eu sou o JrBot.”** and resumes listening.
+- Fixed wake reply is pre-synthesized at Autonomous activation and cached as approximately **74,042 bytes of PCM in PSRAM**. Owner reports the second invocation was noticeably fast; logs show `JR_TTS_WAKE_CACHE_HIT` and successful mic/I2S recovery.
+- The prior experimental TTS triggered a CPU0 watchdog warning during synthesis (5,808 ms to produce 1,678 ms of audio); the v2.1.3 sample log had no such warning. This is not a claim of exhaustive long-term stability.
+- The one-click installer now uses **ESP-IDF 6.1.1 for both main and develop**, prepares private HTTPS/vTTS resources, stamps Git SHA, and flashes automatically to the selected COM after a successful build.
+
+**Evidence scope and known risks:** The supplied HW04 log confirms server initialization on HTTPS port 443, camera detection, Wi-Fi reconnection and stable wake playback. It also recorded TLS handshake alert `-0x7780` on some client attempts; fully successful browser TLS and comprehensive Live/WebRTC regression were not separately demonstrated in these logs. This was an explicit owner-accepted promotion. **Long-text streaming is not included**; the next implementation will be developed on `develop` and verified independently.
+
 ## November 22, 2026 — JrBot V2.0 begins: first offline voice milestone
 
 **Owner-confirmed hardware validation and release acceptance.** V2.0 builds on all
