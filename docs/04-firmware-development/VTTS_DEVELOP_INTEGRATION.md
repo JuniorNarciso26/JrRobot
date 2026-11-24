@@ -76,10 +76,17 @@ V2.0 no ESP32. A branch main do GitHub nao e alterada.
 Na primeira execucao, tools/prepare_https_develop.py procura uma copia
 local valida (por exemplo, outro clone no Desktop); se nao achar, cria
 certificado/chave novos apenas neste computador. Nas execucoes seguintes
-reutiliza o arquivo e nao troca a chave. Se o HTTPS nao iniciar, confirme
-JR_HTTPS_READY no Serial e verifique se a compilacao/gravacao ocorreu
-apos a preparacao HTTPS. Nunca publique esse arquivo ou abra POST /voice
-na internet publica.
+reutiliza o arquivo e nao troca a chave. O build da develop com vTTS agora
+EXIGE esse header e falha se ele nao habilitar HTTPS: a compilacao nao deve
+mais produzir silenciosamente um binario sem HTTPS. Ao ligar, procure a
+mensagem JR_HTTPS_MATERIAL_COMPILED e em seguida JR_HTTPS_READY. Se
+aparecer https_start ou https_register com erro, investigue o servidor.
+O instalador mostra [GRAVADO] somente apos idf.py flash confirmar sucesso.
+Se o usuario nao digitar GRAVAR, mostra [CANCELADO] sem indicar sucesso
+de gravacao. Compare tambem o Compile time no boot; o nome
+JrBot_V2.1D_TTS e igual antes e depois dessas correcoes, entao o nome
+isolado nao comprova versao nova. Nunca publique esse header nem abra
+POST /voice na internet publica.
 
 No painel HTTPS escolha Voz, desligue Autonomo e Live, ative o TTS,
 selecionando inicialmente Lite S, volume 75, gain 6 dB, speed 1.0,
