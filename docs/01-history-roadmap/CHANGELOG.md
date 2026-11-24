@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — Installer branch tracking correction
+
+- Persist the wildcard remote.origin.fetch mapping before fetching all branches. An explicit fetch alone left single-branch clones unable to create tracking branches, producing “starting point origin/test/vtts-pt-br-hw04 is not a branch”.
+- Switch from the verified full remote ref, repair upstream metadata for existing local branches, and keep fast-forward-only updates/local-change protection. No firmware/version changes.
+- Two tests reproduce the original failure in real local single-branch clones, then verify switching/tracking/pull and existing branches with duplicate fetch mappings. Windows cmd.exe execution still needs user verification.
+- Bootstrap an existing failing develop clone with `git pull --ff-only origin develop`, then reopen INSTALAR.bat. Its old temporary runner cannot pick up its own fix midway through an already running update.
+
 ## November 24, 2026 — V2.1.5D_TTS_BUFFERED (develop correction)
 
 - HW04 log (53) rejects V2.1.4D: S 18,729 ms synthesis / 5,261 ms audio, M 39,266 / 5,099 ms; 14 FIFO starvation episodes per utterance, repeated IDLE0 watchdog warnings. Video audio analysis shows repeated approximately 2.5-second quiet gaps; it does not identify which specific words were lost.

@@ -224,6 +224,14 @@ if errorlevel 1 (
 
 rem O instalador consulta TODAS as branches do GitHub; nao limita o remote a uma branch.
 echo [INFO] Atualizando a versao !TARGET_BRANCH!...
+rem O fetch explicito baixa refs, mas --track tambem consulta remote.origin.fetch.
+rem Clones --single-branch precisam do mapeamento persistente de todas as branches.
+git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel configurar o rastreamento das branches.
+    popd
+    exit /b 1
+)
 git fetch --no-tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel baixar !TARGET_BRANCH!. Consulte a lista novamente.
@@ -243,7 +251,7 @@ if /i "!TARGET_BRANCH!"=="!CURRENT_BRANCH!" goto update_target
 echo [INFO] Trocando !CURRENT_BRANCH! -^> !TARGET_BRANCH!...
 git show-ref --verify --quiet "refs/heads/!TARGET_BRANCH!"
 if errorlevel 1 (
-    git switch --track -c "!TARGET_BRANCH!" "origin/!TARGET_BRANCH!"
+    git switch --track -c "!TARGET_BRANCH!" "refs/remotes/origin/!TARGET_BRANCH!"
 ) else (
     git switch "!TARGET_BRANCH!"
 )
@@ -254,7 +262,14 @@ if errorlevel 1 (
 )
 
 :update_target
-git merge --ff-only "origin/!TARGET_BRANCH!"
+rem Configura tambem branches locais que ja existiam sem upstream correto.
+git branch --set-upstream-to="origin/!TARGET_BRANCH!" "!TARGET_BRANCH!"
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel vincular a branch local ao GitHub.
+    popd
+    exit /b 1
+)
+git merge --ff-only "refs/remotes/origin/!TARGET_BRANCH!"
 if errorlevel 1 (
     echo [ERRO] A branch local divergiu do GitHub.
     echo Nenhum reset automatico sera realizado.
