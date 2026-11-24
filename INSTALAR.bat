@@ -557,11 +557,6 @@ if not exist "%IDF_PATH%\tools\idf.py" (
     echo [ERRO] idf.py nao encontrado em %IDF_PATH%\tools.
     exit /b 1
 )
-where cmake.exe >nul 2>&1
-if errorlevel 1 (
-    echo [ERRO] CMake nao foi adicionado ao PATH pelo export.bat.
-    exit /b 1
-)
 if not defined IDF_PYTHON_ENV_PATH (
     echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
     exit /b 1
@@ -588,6 +583,11 @@ if /i "%CURRENT_BRANCH%"=="develop" (
         echo Abra o terminal IDF_PowerShell 6.1.1 ou instale a versao pelo EIM.
         exit /b 1
     )
+)
+where cmake.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERRO] CMake nao foi adicionado ao PATH pelo export.bat.
+    exit /b 1
 )
 echo [OK] ESP-IDF: %IDF_PATH%
 echo [OK] Python env: %IDF_PYTHON_ENV_PATH%
