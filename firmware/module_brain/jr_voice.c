@@ -16,6 +16,7 @@
 
 #include "jr_audio.h"
 #include "jr_board.h"
+#include "jr_tts.h"
 #include "jr_voice.h"
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
@@ -220,14 +221,24 @@ static esp_err_t reply_and_resume(void) {
     sample_rate = voice_status.sample_rate;
     portEXIT_CRITICAL(&voice_lock);
 
+    /*
+     * WakeNet's microphone holds the same I2S pins as the speaker.
+     * Release the microphone before vTTS; the TTS task runs on core 0,
+     * while this task waits on core 1 and resumes the mic only afterwards.
+     * The recognized keyword itself is the authorization for one reply.
+     */
     close_mic();
-    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=beep frequency=880Hz duration_ms=180");
-
-    esp_err_t reply_err = jr_audio_test_tone(880, 180);
-    const char *reply_type = "beep";
-    ESP_LOGI(TAG, "WAKE_REPLY_END result=%s", esp_err_to_name(reply_err));
+    const char *reply_type = "vtts";
+    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=vtts phrase=ola_sou_o_jrbot");
+    esp_err_t reply_err = jr_tts_reply_to_wake("Olá! Eu sou o JrBot.");
+    if (reply_err != ESP_OK) {
+        ESP_LOGW(TAG, "WAKE_REPLY_FALLBACK type=beep vtts_error=%s", esp_err_to_name(reply_err));
+        reply_type = "beep";
+        if (!stop_requested) reply_err = jr_audio_test_tone(880, 180);
+    }
+    ESP_LOGI(TAG, "WAKE_REPLY_END type=%s result=%s", reply_type, esp_err_to_name(reply_err));
     if (reply_err == ESP_OK && !stop_requested && wake_callback) {
-        // The OLED Love reaction begins only AFTER the beep completes.
+        // Keep the OLED Love reaction after the spoken reply (or fallback beep).
         wake_callback("Ola ESP", wn_model_name, 1);
     }
 
