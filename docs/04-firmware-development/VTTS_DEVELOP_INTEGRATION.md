@@ -47,7 +47,7 @@ Depois de instalar ESP-IDF 6.1.1 pelo EIM uma unica vez, abra o arquivo
 5. Grava o SHA Git atual no firmware (cabecalho local ignorado pelo Git),
    aplica as configuracoes mDNS/PSRAM e compila.
 6. Solicita a selecao da porta COM; apos o build bem-sucedido, grava
-   automaticamente nessa porta, sem pedir a palavra GRAVAR.
+   automaticamente nessa porta, sem solicitar uma confirmacao adicional.
 7. Abre PAINEL.bat apos a gravacao: navegador em http://127.0.0.1:8765.
 
 O certificado e autoassinado e pode provocar aviso no navegador. Isso NAO
