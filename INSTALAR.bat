@@ -626,6 +626,9 @@ exit /b 0
 
 :prepare
 if /i "%CURRENT_BRANCH%"=="develop" (
+    echo [INFO] Registrando a versao e o commit Git na imagem do firmware...
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
     echo [INFO] Verificando certificado HTTPS local do JrBot...
     python tools\prepare_https_develop.py
     if errorlevel 1 goto failure
@@ -727,15 +730,8 @@ if /i "%ACTION%"=="build" (
 )
 echo.
 if /i "%CURRENT_BRANCH%"=="develop" (
-    echo [ATENCAO] Integracao vTTS experimental: validar HTTPS, WebRTC e voz no hardware.
-    echo [ATENCAO] Substitui temporariamente V2.0 no hardware. Main no GitHub nao muda.
-    set "CONFIRM_TTS_FLASH="
-    set /p "CONFIRM_TTS_FLASH=Digite GRAVAR para gravar develop no ESP32: "
-    if /i not "!CONFIRM_TTS_FLASH!"=="GRAVAR" (
-        echo [CANCELADO] Gravacao nao autorizada; firmware do ESP32 NAO foi alterado.
-        popd
-        goto cancelled
-    )
+    echo [AUTO] Build concluido; iniciando a gravacao automatica na porta %JR_FLASH_PORT%.
+    echo [ATENCAO] Firmware de testes develop substituira a imagem atual na placa.
 )
 for /f "delims=" %%G in ('git -C "%~dp0" rev-parse --short HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
 echo Gravando JrBot em %JR_FLASH_PORT%...
@@ -780,10 +776,6 @@ if exist firmware\version.txt (
 )
 if defined JR_FLASH_PORT echo Porta: %JR_FLASH_PORT%
 exit /b 0
-
-:cancelled
-echo [CANCELADO] Compilacao concluida; nenhuma gravacao foi executada.
-exit /b 2
 
 :failure
 if exist "%PORT_FILE%" del /q "%PORT_FILE%" >nul 2>&1
