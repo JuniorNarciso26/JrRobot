@@ -18,6 +18,7 @@ This roadmap summarizes **what has been delivered and what comes next**. For ver
 | **V1.8.4S** — Nov 12, 2026 | Correção experimental: tentativa automática de outros SSIDs já salvos, preferindo última rede conectada | Accepted previous release on `main`; inherited by V2.0 |
 
 | **V2.0** — Nov 22, 2026 | First validated offline voice activation with ESP-SR 2.6.2 / WakeNet10 Portuguese “Olá ESP”, 180 ms beep, 3 s Love/Neutral reaction, and autonomous panel/mobile switch; retains V1.8.4S features | **Owner-tested and approved on HW04; promoted to `main`** |
+| **V2.1.3S_TTS_FAST** — Nov 24, 2026 | Offline pt-BR vTTS manual Voice tab, cached response after “Olá ESP” with original beep/Love retained, HTTPS boot with local cert; ESP-IDF 6.1.1 now used on main | **Accepted by owner on HW04; promotion to `main`** — long-text streaming pending on `develop`; TLS handshake/Live regression noted |
 
 During Colosseum 2026, JrSkill's creation, publication, license purchase, and physical execution flow was validated on **Solana Devnet**. The firmware used for that milestone identifies itself as `JrBot_V1S_APP_03`. V1.8S was later integrated into `main`; V1.8.1S adds the Wi-Fi and mDNS improvements described in the [Changelog](CHANGELOG.md). The original code promotion did not itself demonstrate acceptance. On October 26, 2026, the owner separately confirmed physical tests OK and memory tests complete; individual scenario logs and new measurements are not part of this note.
 
@@ -38,7 +39,7 @@ The original [roadmap Epic #17](https://github.com/JuniorNarciso26/JrRobot/issue
 | **Remote access / WebRTC — [Issue #26](https://github.com/JuniorNarciso26/JrRobot/issues/26)** | Local full-duplex audio and JPEG DataChannel Live working; current signaling is local only | Prioritize secure access from mobile networks: first prove private VPN reachability, then validate ICE/media; evaluate authenticated Internet signaling and TURN if needed, without exposing ESP32 ports |
 | **JrSkill creator platform** | Initial Creator Studio, Store, licenses, and execution demonstrated on Devnet | Expand development and publishing tools for creators |
 | **Hardware assembly and 3D-printed body** | Electronic assembly documented; mechanical development tracked in [Issue #22](https://github.com/JuniorNarciso26/JrRobot/issues/22) | Gather printable models, document body assembly, and validate the complete build |
-| **JrBot V2.0** | WakeNet10 “Olá ESP” detection, beep and OLED Love reaction working with the complete firmware | Expand to Portuguese TTS, custom wake word and voice commands without regressing HW04 resources |
+| **JrBot V2.1.3S** | WakeNet10, beep, Love, fast cached pt-BR acknowledgement and manual vTTS owner-validated | Develop long-text chunking and incremental PCM playback on `develop`; keep approved `main` immutable until tested |
 | **JrBot V3** | Existing Runtime API provides the technical foundation | Define the next programmatic-control product line |
 | **JrBrain** | Long-term concept | Explore memory, context, personality, and AI integration |
 
