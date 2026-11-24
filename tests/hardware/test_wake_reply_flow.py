@@ -43,5 +43,35 @@ class WakeReplyFlowTest(unittest.TestCase):
         self.assertIn('jr_face_set_temporary_expression("love", 3000U)', brain)
 
 
+    def test_fast_wake_cache_keeps_original_feedback(self):
+        self.assertIn("jr_tts_prepare_wake_reply();", VOICE)
+        self.assertIn("xTaskCreatePinnedToCore(wake_cache_task", TTS)
+        self.assertIn("JR_TTS_WAKE_CACHE_READY", TTS)
+        self.assertIn("JR_TTS_WAKE_CACHE_HIT", TTS)
+        self.assertIn("JR_TTS_WAKE_CACHE_PREPARE", TTS)
+        self.assertIn('JR_WAKE_REPLY_TEXT "Olá! Eu sou o JrBot."', TTS)
+        self.assertIn("cache_reply_pcm(c.pcm, c.count, model->sample_rate);", TTS)
+        self.assertIn("jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, \"tts_wake_cached\")", TTS)
+        self.assertIn("jr_resource_i2s_release(JR_I2S_OWNER_TTS, \"tts_wake_cached_done\")", TTS)
+
+    def test_cache_prewarm_never_uses_mic_audio_bus(self):
+        start = TTS.index("static esp_err_t synth_and_play(")
+        end = TTS.index("static void wake_cache_task(", start)
+        body = TTS[start:end]
+        self.assertIn("if (!cache_only) {", body)
+        self.assertIn("jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, \"tts_speak\")", body)
+        self.assertIn("if (cache_only || job->wake_reply)", body)
+        self.assertIn("wake_cache.finished = true", TTS)
+
+    def test_tts_yields_and_usb_events_do_not_block_audio(self):
+        self.assertIn("JR_TTS_COOPERATIVE_YIELD_US", TTS)
+        self.assertIn("vTaskDelay(1);", TTS)
+        usb = (ROOT / "firmware/core/jr_usb_terminal.c").read_text(encoding="utf-8")
+        event = usb.split("void jr_usb_terminal_emit(const char *text) {", 1)[1]
+        event = event.split("static bool brain_command(", 1)[0]
+        self.assertIn("usb_serial_jtag_write_bytes(wire, len, pdMS_TO_TICKS(20))", event)
+        self.assertNotIn("usb_serial_jtag_wait_tx_done", event)
+
+
 if __name__ == "__main__":
     unittest.main()
