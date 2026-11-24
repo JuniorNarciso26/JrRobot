@@ -506,6 +506,43 @@ if not defined IDF_EXPORT (
     )
     exit /b 1
 )
+rem The Windows shortcut may inherit the EIM default idf6.1_py3.13_env,
+rem while this PC's working IDF 6.1 Python is in tools\python\release-v6.1\venv.
+rem Resolve an EXISTING Python environment before export.bat, without installing
+rem anything or changing the globally configured Windows environment.
+if /i "%CURRENT_BRANCH%"=="develop" (
+    if exist "C:\Espressif\tools\python\release-v6.1\venv\Scripts\python.exe" (
+        set "IDF_TOOLS_PATH=C:\Espressif"
+        set "IDF_PYTHON_ENV_PATH=C:\Espressif\tools\python\release-v6.1\venv"
+    ) else (
+        rem Reject a stale inherited path; keep valid EIM installations.
+        if defined IDF_PYTHON_ENV_PATH if not exist "!IDF_PYTHON_ENV_PATH!\Scripts\python.exe" set "IDF_PYTHON_ENV_PATH="
+        if not defined IDF_PYTHON_ENV_PATH (
+            for /d %%D in ("C:\Espressif\python_env\idf6.1_py*_env") do if exist "%%~fD\Scripts\python.exe" (
+                set "IDF_TOOLS_PATH=C:\Espressif"
+                set "IDF_PYTHON_ENV_PATH=%%~fD"
+            )
+        )
+        if not defined IDF_PYTHON_ENV_PATH (
+            for /d %%D in ("%USERPROFILE%\.espressif\python_env\idf6.1_py*_env") do if exist "%%~fD\Scripts\python.exe" (
+                set "IDF_TOOLS_PATH=%USERPROFILE%\.espressif"
+                set "IDF_PYTHON_ENV_PATH=%%~fD"
+            )
+        )
+    )
+    if not defined IDF_PYTHON_ENV_PATH (
+        echo [ERRO] Python do ESP-IDF 6.1 nao encontrado.
+        echo [DICA] Execute a instalacao do ESP-IDF 6.1.1 pelo EIM uma unica vez.
+        exit /b 1
+    )
+    if not exist "!IDF_PYTHON_ENV_PATH!\Scripts\python.exe" (
+        echo [ERRO] Ambiente Python invalido: !IDF_PYTHON_ENV_PATH!
+        exit /b 1
+    )
+    echo [INFO] Python ESP-IDF 6.1 encontrado: !IDF_PYTHON_ENV_PATH!
+    rem Ensure python.exe used by export.bat belongs to the selected environment.
+    set "PATH=!IDF_PYTHON_ENV_PATH!\Scripts;!PATH!"
+)
 echo [INFO] Carregando ambiente ESP-IDF...
 call "%IDF_EXPORT%"
 if errorlevel 1 (
