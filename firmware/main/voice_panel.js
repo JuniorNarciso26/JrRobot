@@ -34,11 +34,11 @@
       '<label>Suavizar agudos <span id="jr-voice-debuzz-value">0 dB</span><input id="jr-voice-debuzz" type="range" min="0" max="12" step="1" value="0"></label>' +
     '</div>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-save" class="primary">Salvar ajustes</button><button type="button" id="jr-voice-refresh">Consultar estado</button></div>' +
-    '<label>Frase de teste<textarea id="jr-voice-text" maxlength="180">Olá! Eu sou o JrBot e agora tenho minha própria voz.</textarea></label>' +
+    '<label>Texto de teste (até 1.200 bytes)<textarea id="jr-voice-text" maxlength="1200">Olá! Eu sou o JrBot e agora tenho minha própria voz.</textarea></label>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-speak" class="primary">Fazer o JrBot falar</button></div>' +
     '<p class="voice-help">Para usar o botão Fazer o JrBot falar, desative Autônomo/WakeNet e encerre a Live. No modo Autônomo, Olá ESP já recebe uma resposta falada e a escuta retorna após a reprodução. A resposta automática usa a voz Lite S (pré-gerada na PSRAM ao ativar Autônomo); o volume, ganho e filtro continuam ajustáveis. Ganho alto pode distorcer; comece em 6 dB.</p>' +
     '<div id="jr-voice-feedback" role="status">Selecione a aba para consultar o sintetizador.</div>' +
-    '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
+    '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-latency">Início da fala: —</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
   main.before(panel);
   const get = name => document.getElementById('jr-voice-' + name);
   const settingsKeys = ['enabled', 'model', 'vol', 'gain', 'speed', 'expr', 'debuzz'];
@@ -98,6 +98,7 @@
     get('engine').textContent = 'Motor: ' + (available ? 'vTTS disponível' : 'não incluído nesta compilação');
     get('busy').textContent = 'Estado: ' + (speaking ? 'falando…' : data.enabled ? 'ligado' : 'desligado');
     get('rtf').textContent = 'RTF: ' + (data.utterances ? Number(data.last_rtf).toFixed(2) : '—');
+    get('latency').textContent = 'Início da fala: ' + (data.last_first_audio_ms ? data.last_first_audio_ms + ' ms' : '—');
     get('psram').textContent = 'PSRAM livre: ' + (data.psram_free / 1024 / 1024).toFixed(1) + ' MiB';
     if (!available) feedback('O painel está disponível, mas o firmware ainda não tem os modelos vTTS. Prepare o build de integração antes de ativar.', true);
     else if (speaking) feedback('O JrBot está sintetizando ou reproduzindo a frase.');
@@ -120,7 +121,7 @@
       const result = await request(payload);
       if (result.queued) {
         speaking = true;
-        feedback('Frase recebida. O JrBot vai falar quando terminar de sintetizar.');
+        feedback('Frase recebida. O JrBot começará a falar pelos primeiros trechos.');
       } else feedback(message);
       await refreshOnce(result.queued ? false : true);
     } catch (error) { feedback('Não foi possível aplicar: ' + error.message, true); }
@@ -139,7 +140,7 @@
         const wasSpeaking = speaking;
         apply(data, false);
         if (wasSpeaking && !data.busy && data.last_error === 'ESP_OK')
-          feedback('Fala concluída. RTF ' + Number(data.last_rtf).toFixed(2) + ', duração ' + data.last_audio_ms + ' ms.');
+          feedback('Fala concluída. RTF ' + Number(data.last_rtf).toFixed(2) + ', início ' + data.last_first_audio_ms + ' ms, pausas de geração ' + data.last_underruns + ', áudio ' + data.last_audio_ms + ' ms.');
       } catch (error) { feedback('Falha ao consultar o estado: ' + error.message, true); }
       if (!speaking && timer) { clearInterval(timer); timer = null; }
     }, 1200);
@@ -170,8 +171,8 @@
   get('save').onclick = async () => write({action:'configure', ...readSettings()}, 'Configuração de voz atualizada.');
   get('speak').onclick = async () => {
     const phrase = get('text').value.trim();
-    if (!phrase || new TextEncoder().encode(phrase).length > 180) {
-      feedback('Digite uma frase de até 180 bytes UTF-8.', true);
+    if (!phrase || new TextEncoder().encode(phrase).length > 1200) {
+      feedback('Digite um texto de até 1.200 bytes UTF-8.', true);
       return;
     }
     await write({action:'speak', text:phrase}, 'Frase enviada.');

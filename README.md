@@ -57,6 +57,14 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### Develop experiment: V2.1.4D_TTS_STREAM (November 24, 2026)
+
+`develop` now tests progressive manual speech: up to **1,200 UTF-8 bytes**, a shorter first text part, then word-boundary parts, with PCM playback running while the next blocks are synthesized. A fixed **32 KiB PSRAM FIFO** replaces the full manual utterance buffer; model/arena are reused across text parts and released afterwards. The approved wake cache, beep and Love sequence remain in place. `main` stays at `bab09039`, V2.1.3S.
+
+Run **INSTALAR.bat**, choose **develop**, then open **https://jrbot.local → Voz**. Stop Live and Autonomous, enable/save TTS, select Lite S, and send a short phrase followed by a multi-sentence text. Compare `JR_TTS_FIRST_AUDIO latency_ms` and `JR_TTS_STREAM_DONE underruns` for the same text/model/settings. This measures first I2S submission, not acoustic latency. Synthesis slower than playback may still cause gaps; streaming does not promise real-time inference.
+
+**Validation:** host C tests exercise actual firmware streaming/player callbacks with simulated FreeRTOS/I2S (early playback, FIFO wrap/order, final drain and failures). C syntax was checked against the pinned vTTS headers, with/without vTTS, and existing wake/installer checks pass. **ESP-IDF 6.1.1 is unavailable in the development environment: full firmware build and HW04 timing/audio/Live regression remain pending.** See [test details](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md#experimento-develop-v214d-tts-stream).
+
 ### JrBot V2.1.3S_TTS_FAST — approved firmware on `main` (November 24, 2026)
 
 **Owner acceptance:** The ESP32-S3 HW04 ran `JrBot_V2.1.3D_TTS_FAST` (Git `7854de30`) with the offline Brazilian Portuguese vTTS engine (Apache-2.0 `tuanpmt/vtts` v0.11.0), WakeNet10 `wn10_pt_olaesp`, 180 ms beep, Love OLED for 3 seconds, and the short acknowledgement **“Olá! Eu sou o JrBot.”** The user confirmed the second wake reply was fast after caching. Serial evidence shows 74,042 bytes of PCM stored in PSRAM, `JR_TTS_WAKE_CACHE_HIT`, `JR_TTS done source=wake result=ESP_OK`, I2S release and WakeNet listening resumed. The earlier v2.1.2 watchdog alert was not seen in the supplied v2.1.3 log.
@@ -67,7 +75,7 @@ The **Voz** tab allows manual offline TTS in idle mode (Lite S / Quality M, volu
 
 **One-click Windows installer:** run `INSTALAR.bat` and choose **main** to update from GitHub, prepare private HTTPS materials (never committed), prepare pinned vTTS model assets, stamp the Git SHA, compile, flash automatically to the selected COM port and launch `PAINEL.bat`. The selected ESP-IDF 6.1.1 environment must already be installed. `INSTALAR.bat build` and `INSTALAR.bat flash` retain their diagnostic modes. Boot / `version` / `status` report `version=JrBot_V2.1.3S_TTS_FAST git=<8-character SHA>`; compare the SHA to the installer after compiling.
 
-**Known limitations:** The supplied HW04 log verified that the HTTPS server started on port 443, but recorded TLS handshake alert `-0x7780`; end-to-end browser access and a fresh full WebRTC/Live regression were not established by that log. Other long-session regression scenarios are not newly claimed. This release does **not** include continuous speech-to-text, full conversation or long-text streaming. The next `develop` experiment is incremental long-text synthesis/playback without changing this accepted main baseline. See [vTTS integration and QA](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md) and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
+**Known limitations:** The supplied HW04 log verified that the HTTPS server started on port 443, but recorded TLS handshake alert `-0x7780`; end-to-end browser access and a fresh full WebRTC/Live regression were not established by that log. Other long-session regression scenarios are not newly claimed. This release does **not** include continuous speech-to-text, full conversation or long-text streaming. The `develop` V2.1.4D experiment adds incremental long-text synthesis/playback without changing this accepted main baseline. See [vTTS integration and QA](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md) and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
 ### What's new in JrBot V1.8S
 

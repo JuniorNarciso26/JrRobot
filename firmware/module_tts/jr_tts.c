@@ -13,11 +13,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "freertos/stream_buffer.h"
 #include "nvs.h"
 #include "jr_board.h"
 #include "jr_brain.h"
 #include "jr_resource_manager.h"
 #include "jr_tts.h"
+#include "jr_tts_chunks.h"
 
 #ifndef JRBOT_WITH_VTTS
 #define JRBOT_WITH_VTTS 0
@@ -40,10 +42,11 @@ extern const uint8_t lex_en_end[] asm("_binary_lex_en_bin_end");
 int64_t vtts_now_us(void) { return esp_timer_get_time(); }
 #endif
 
-#define JR_TTS_MAX_TEXT_BYTES 180U
+#define JR_TTS_STREAM_BYTES 32768U
 #define JR_TTS_MAX_AUDIO_SECONDS 12
 #define JR_TTS_FRAME_CAP 128
 #define JR_TTS_FIRST_FRAMES 12
+#define JR_TTS_STREAM_FRAMES 32
 #define JR_WAKE_REPLY_TEXT "Olá! Eu sou o JrBot."
 #define JR_WAKE_CACHE_MAX_SAMPLES (22050U * 3U)
 #define JR_TTS_COOPERATIVE_YIELD_US 150000LL
@@ -147,11 +150,30 @@ typedef struct {
     jr_tts_settings_t opts;
     char text[JR_TTS_MAX_TEXT_BYTES + 1];
     bool wake_reply;              /* Authorized only after WakeNet detected a user wakeword. */
+    int64_t requested_us;
     TaskHandle_t wake_waiter;     /* WakeNet task: wait while microphone pins are released. */
 } jr_tts_job_t;
 
+/* One producer (inference) and one consumer (I2S). Only PCM storage lives in
+ * PSRAM; FreeRTOS control objects remain in internal memory. Bounded independently
+ * of text length. done/error are shared under state_lock. */
+typedef struct {
+    StreamBufferHandle_t buffer;
+    StaticStreamBuffer_t control;
+    uint8_t *storage;
+    SemaphoreHandle_t finished;
+    jr_tts_settings_t opts;
+    int sample_rate;
+    int64_t requested_us;
+    bool done;
+    esp_err_t error;
+    uint32_t underruns;
+    int64_t wait_us;
+} jr_tts_stream_t;
+
 typedef struct {
     vtts_model *model;
+    jr_tts_stream_t *stream;
     void *arena;
     size_t arena_bytes;
     int16_t *pcm;
@@ -233,22 +255,52 @@ static bool wait_for_cached_reply(void)
     return false;
 }
 
-/* Bound synthesis to 12 seconds / max 180 UTF-8 bytes; no unbounded queues. */
+static esp_err_t stream_send(jr_tts_stream_t *s, const int16_t *pcm, size_t count)
+{
+    const uint8_t *bytes = (const uint8_t *)pcm;
+    size_t left = count * sizeof(*pcm);
+    while (left) {
+        portENTER_CRITICAL(&state_lock);
+        esp_err_t err = s->error;
+        portEXIT_CRITICAL(&state_lock);
+        if (err != ESP_OK) return err;
+        int64_t before = esp_timer_get_time();
+        size_t sent = xStreamBufferSend(s->buffer, bytes, left, pdMS_TO_TICKS(100));
+        s->wait_us += esp_timer_get_time() - before;
+        bytes += sent;
+        left -= sent;
+    }
+    return ESP_OK;
+}
+
+/* Cached wake clips keep the accepted full-buffer renderer. Manual speech
+ * publishes each callback immediately; no whole-utterance PCM allocation. */
 static int on_pcm(const float *pcm, long n, void *opaque)
 {
     jr_tts_synth_t *c = (jr_tts_synth_t *)opaque;
-    if (n < 0 || c->count + (size_t)n > c->cap) {
+    if (n < 0 || (size_t)n > c->cap - c->count) {
         c->error = ESP_ERR_INVALID_SIZE;
         return 1;
     }
-    for (long i = 0; i < n; ++i) {
-        float v = pcm[i];
-        if (v > 1.0f) v = 1.0f;
-        if (v < -1.0f) v = -1.0f;
-        c->pcm[c->count++] = (int16_t)lrintf(v * 32767.0f);
+    int16_t block[256];
+    for (long pos = 0; pos < n;) {
+        size_t frames = (size_t)(n - pos);
+        if (frames > 256) frames = 256;
+        for (size_t i = 0; i < frames; ++i) {
+            float v = pcm[pos + (long)i];
+            if (v > 1.0f) v = 1.0f;
+            if (v < -1.0f) v = -1.0f;
+            block[i] = (int16_t)lrintf(v * 32767.0f);
+        }
+        if (c->stream) {
+            c->error = stream_send(c->stream, block, frames);
+            if (c->error != ESP_OK) return 1;
+        } else {
+            memcpy(c->pcm + c->count, block, frames * sizeof(*block));
+        }
+        c->count += frames;
+        pos += (long)frames;
     }
-    /* The model is CPU-heavy (~5.8 seconds observed on HW04). Periodically
-     * block this worker for one RTOS tick so IDLE0 can feed its watchdog. */
     int64_t now = esp_timer_get_time();
     if (!c->last_yield_us || now - c->last_yield_us >= JR_TTS_COOPERATIVE_YIELD_US) {
         c->last_yield_us = now;
@@ -263,14 +315,27 @@ static int on_ids(const int32_t *ids, int n, void *opaque)
     if (c->segments++) {
         size_t gap = ((size_t)c->model->sample_rate * 100) / 1000;
         if (c->count + gap > c->cap) { c->error = ESP_ERR_INVALID_SIZE; return 1; }
-        memset(c->pcm + c->count, 0, gap * sizeof(int16_t));
+        if (c->stream) {
+            const int16_t silence[128] = {0};
+            for (size_t left = gap; left;) {
+                size_t take = left > 128 ? 128 : left;
+                c->error = stream_send(c->stream, silence, take);
+                if (c->error != ESP_OK) return 1;
+                left -= take;
+            }
+        } else {
+            memset(c->pcm + c->count, 0, gap * sizeof(int16_t));
+        }
         c->count += gap;
     }
-    const int first = c->segments == 1 ? JR_TTS_FIRST_FRAMES : JR_TTS_FRAME_CAP;
+    const int first = (c->stream || c->segments == 1) ? JR_TTS_FIRST_FRAMES : JR_TTS_FRAME_CAP;
+    /* Smaller steady blocks trade throughput for earlier incremental playback.
+     * Leave the approved cache renderer at its original frame cap. */
+    const int step = c->stream ? JR_TTS_STREAM_FRAMES : JR_TTS_FRAME_CAP;
     long produced = vtts_synthesize_stream_ex(c->model, ids, n, c->speed,
-                                               first, JR_TTS_FRAME_CAP,
+                                               first, step,
                                                on_pcm, c, c->arena, c->arena_bytes);
-    if (produced < 0) { c->error = ESP_FAIL; return 1; }
+    if (produced < 0) { if (c->error == ESP_OK) c->error = ESP_FAIL; return 1; }
     return c->error == ESP_OK ? 0 : 1;
 }
 
@@ -284,11 +349,16 @@ static float shape(float v)
     return v < 0.0f ? -y : y;
 }
 
-static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count, int sample_rate)
+static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count, int sample_rate,
+                          jr_tts_stream_t *stream, int64_t requested_us)
 {
     i2s_chan_handle_t tx = NULL;
     i2s_chan_config_t cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     cfg.auto_clear = true;
+    if (stream) {
+        cfg.dma_desc_num = 4;
+        cfg.dma_frame_num = 256;
+    }
     esp_err_t err = i2s_new_channel(&cfg, &tx, NULL);
     if (err != ESP_OK) return err;
 
@@ -316,11 +386,35 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
     const float alpha = 1.0f - expf(-2.0f * 3.14159265f * 6000.0f / (float)sample_rate);
     float low = 0.0f;
     int16_t stereo[512];
-    for (size_t pos = 0; pos < count && err == ESP_OK;) {
-        size_t frames = count - pos;
-        if (frames > 256) frames = 256;
+    bool first_audio = true;
+    bool starved = false;
+    int16_t mono[256];
+    for (size_t pos = 0; err == ESP_OK && (stream || pos < count);) {
+        size_t frames;
+        const int16_t *source;
+        if (stream) {
+            /* Read done BEFORE receive: observing done also observes the final
+             * producer send. Never discard a last block racing with this read. */
+            portENTER_CRITICAL(&state_lock);
+            bool done = stream->done;
+            portEXIT_CRITICAL(&state_lock);
+            size_t received = xStreamBufferReceive(stream->buffer, mono, sizeof(mono), pdMS_TO_TICKS(40));
+            if (!received) {
+                if (done) break;
+                if (!first_audio && !starved) stream->underruns++;
+                starved = true;
+                continue; /* auto_clear prevents DMA replay when inference is slower. */
+            }
+            starved = false;
+            frames = received / sizeof(*mono);
+            source = mono;
+        } else {
+            frames = count - pos;
+            if (frames > 256) frames = 256;
+            source = pcm + pos;
+        }
         for (size_t i = 0; i < frames; ++i) {
-            float v = pcm[pos + i] / 32767.0f;
+            float v = source[i] / 32767.0f;
             if (opts->debuzz_db > 0) {
                 low += alpha * (v - low);
                 v = low + (v - low) * hf;
@@ -335,12 +429,23 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
         size_t bytes = frames * 2 * sizeof(int16_t);
         err = i2s_channel_write(tx, stereo, bytes, &sent, pdMS_TO_TICKS(1500));
         if (err == ESP_OK && sent != bytes) err = ESP_ERR_INVALID_SIZE;
+        if (err == ESP_OK && first_audio) {
+            uint32_t elapsed = (uint32_t)((esp_timer_get_time() - requested_us) / 1000);
+            portENTER_CRITICAL(&state_lock);
+            state.last_first_audio_ms = elapsed;
+            portEXIT_CRITICAL(&state_lock);
+            ESP_LOGI(TAG, "JR_TTS_FIRST_AUDIO latency_ms=%lu progressive=%d",
+                     (unsigned long)elapsed, stream != NULL);
+            first_audio = false;
+        }
         pos += frames;
     }
     if (err == ESP_OK) {
         memset(stereo, 0, sizeof(stereo));
         size_t discarded = 0;
-        (void)i2s_channel_write(tx, stereo, sizeof(stereo), &discarded, pdMS_TO_TICKS(300));
+        for (int i = 0; i < (stream ? 5 : 1) && err == ESP_OK; ++i) {
+            err = i2s_channel_write(tx, stereo, sizeof(stereo), &discarded, pdMS_TO_TICKS(300));
+        }
     }
     (void)i2s_channel_disable(tx);
     (void)i2s_del_channel(tx);
@@ -349,6 +454,45 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
     (void)gpio_set_direction((gpio_num_t)JR_AUDIO_DIN_GPIO, GPIO_MODE_OUTPUT);
     (void)gpio_set_level((gpio_num_t)JR_AUDIO_DIN_GPIO, 0);
     return err;
+}
+
+static void stream_player_task(void *opaque)
+{
+    jr_tts_stream_t *s = opaque;
+    esp_err_t err = play_pcm(&s->opts, NULL, 0, s->sample_rate, s, s->requested_us);
+    portENTER_CRITICAL(&state_lock);
+    s->error = err;
+    portEXIT_CRITICAL(&state_lock);
+    xSemaphoreGive(s->finished);
+    /* Do not access s after signalling: the producer may now free it. */
+    vTaskDelete(NULL);
+}
+
+static void stream_destroy(jr_tts_stream_t *s)
+{
+    if (!s) return;
+    if (s->buffer) vStreamBufferDelete(s->buffer);
+    if (s->finished) vSemaphoreDelete(s->finished);
+    if (s->storage) heap_caps_free(s->storage);
+    heap_caps_free(s);
+}
+
+static jr_tts_stream_t *stream_start(const jr_tts_job_t *job, int sample_rate)
+{
+    jr_tts_stream_t *s = heap_caps_calloc(1, sizeof(*s), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (!s) return NULL;
+    s->opts = job->opts;
+    s->sample_rate = sample_rate;
+    s->requested_us = job->requested_us;
+    s->storage = heap_caps_malloc(JR_TTS_STREAM_BYTES + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    s->finished = xSemaphoreCreateBinary();
+    if (s->storage) s->buffer = xStreamBufferCreateStatic(JR_TTS_STREAM_BYTES + 1, 1, s->storage, &s->control);
+    if (!s->buffer || !s->finished ||
+        xTaskCreatePinnedToCore(stream_player_task, "jr_tts_play", 6144, s, 5, NULL, 1) != pdPASS) {
+        stream_destroy(s);
+        return NULL;
+    }
+    return s;
 }
 
 static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
@@ -375,7 +519,7 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
             ESP_LOGI(TAG, "JR_TTS_WAKE_CACHE_HIT audio_ms=%lu bytes=%lu",
                      (unsigned long)*audio_ms,
                      (unsigned long)(ready_count * sizeof(int16_t)));
-            esp_err_t played = play_pcm(&job->opts, ready_pcm, ready_count, ready_rate);
+            esp_err_t played = play_pcm(&job->opts, ready_pcm, ready_count, ready_rate, NULL, job->requested_us);
             jr_resource_i2s_release(JR_I2S_OWNER_TTS, "tts_wake_cached_done");
             return played;
         }
@@ -398,6 +542,8 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
     void *arena = NULL;
     vtts_text_ws *ws = NULL;
     int16_t *pcm = NULL;
+    jr_tts_stream_t *stream = NULL;
+    bool progressive = !cache_only && !job->wake_reply;
     if (!cache_only) {
         if (!jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, "tts_speak"))
             return ESP_ERR_INVALID_STATE;
@@ -421,22 +567,44 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
     if (vtts_init(model, blob, bytes) != 0) { err = ESP_FAIL; goto cleanup; }
     if (model->sample_rate != 22050) { err = ESP_ERR_NOT_SUPPORTED; goto cleanup; }
     vtts_set_expressiveness(model, job->opts.expression);
-    size_t arena_bytes = vtts_stream_arena_bytes(model, VTTS_TEXT_MAX_IDS, JR_TTS_FRAME_CAP);
+    size_t arena_bytes = vtts_stream_arena_bytes(model, VTTS_TEXT_MAX_IDS, progressive ? JR_TTS_STREAM_FRAMES : JR_TTS_FRAME_CAP);
     arena = heap_caps_aligned_alloc(16, arena_bytes, MALLOC_CAP_SPIRAM);
     ws = heap_caps_malloc(sizeof(*ws), MALLOC_CAP_SPIRAM);
-    size_t cap = (size_t)model->sample_rate * JR_TTS_MAX_AUDIO_SECONDS;
-    pcm = heap_caps_malloc(cap * sizeof(int16_t), MALLOC_CAP_SPIRAM);
-    if (!arena || !ws || !pcm) goto cleanup;
+    /* Manual text may run longer than 12s; a fixed 32 KiB FIFO bounds memory.
+     * The cached wake fallback retains its original 12s clip limit. */
+    size_t cap = (size_t)model->sample_rate * (progressive ? 300 : JR_TTS_MAX_AUDIO_SECONDS);
+    if (!progressive) pcm = heap_caps_malloc(cap * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+    if (!arena || !ws || (!progressive && !pcm)) goto cleanup;
+    if (progressive) {
+        stream = stream_start(job, model->sample_rate);
+        if (!stream) goto cleanup;
+    }
 
     vtts_lex lex;
     bool has_lex = vtts_lex_init(&lex, lex_en_start, (size_t)(lex_en_end - lex_en_start)) == 0;
     vtts_text_opts opts = {.lang = VTTS_LANG_PT, .lex = has_lex ? &lex : NULL};
     jr_tts_synth_t c = {.model=model, .arena=arena, .arena_bytes=arena_bytes,
-                         .pcm=pcm, .count=0, .cap=cap, .speed=job->opts.speed,
+                         .stream=stream, .pcm=pcm, .count=0, .cap=cap, .speed=job->opts.speed,
                          .error=ESP_OK, .last_yield_us=esp_timer_get_time()};
     int64_t started_us = esp_timer_get_time();
-    int chunks = vtts_text_to_ids_ex(job->text, ws, &opts, on_ids, &c);
-    int64_t synth_us = esp_timer_get_time() - started_us;
+    int chunks = 0;
+    if (progressive) {
+        /* Short first phrase reduces encoder work before the first PCM block.
+         * Reuse model/arena/lexicon across subsequent text parts. */
+        char part[JR_TTS_MAX_TEXT_BYTES + 1];
+        for (size_t pos = 0; job->text[pos] && c.error == ESP_OK;) {
+            size_t length = jr_tts_chunk_bytes(job->text + pos, pos ? 128 : 64);
+            memcpy(part, job->text + pos, length);
+            part[length] = '\0';
+            int emitted = vtts_text_to_ids_ex(part, ws, &opts, on_ids, &c);
+            if (emitted < 0) { if (c.error == ESP_OK) c.error = ESP_FAIL; break; }
+            chunks += emitted;
+            pos += length;
+        }
+    } else {
+        chunks = vtts_text_to_ids_ex(job->text, ws, &opts, on_ids, &c);
+    }
+    int64_t synth_us = esp_timer_get_time() - started_us - (stream ? stream->wait_us : 0);
     if (c.error != ESP_OK || chunks <= 0 || c.count == 0) {
         err = c.error != ESP_OK ? c.error : ESP_FAIL;
         goto cleanup;
@@ -457,11 +625,27 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
         size_t ready_count = 0;
         int ready_rate = 0;
         err = cached_reply(&ready_pcm, &ready_count, &ready_rate) ? ESP_OK : ESP_ERR_NO_MEM;
+    } else if (stream) {
+        err = ESP_OK; /* Consumer is already playing. Cleanup joins it. */
     } else {
-        err = play_pcm(&job->opts, c.pcm, c.count, model->sample_rate);
+        err = play_pcm(&job->opts, c.pcm, c.count, model->sample_rate, NULL, job->requested_us);
     }
 
 cleanup:
+    if (stream) {
+        portENTER_CRITICAL(&state_lock);
+        stream->done = true;
+        portEXIT_CRITICAL(&state_lock);
+        /* Join before releasing I2S, busy or any consumer-owned memory. */
+        (void)xSemaphoreTake(stream->finished, portMAX_DELAY);
+        if (err == ESP_OK) err = stream->error;
+        portENTER_CRITICAL(&state_lock);
+        state.last_underruns = stream->underruns;
+        portEXIT_CRITICAL(&state_lock);
+        ESP_LOGI(TAG, "JR_TTS_STREAM_DONE underruns=%lu result=%s",
+                 (unsigned long)stream->underruns, esp_err_to_name(err));
+        stream_destroy(stream);
+    }
     if (pcm) heap_caps_free(pcm);
     if (ws) heap_caps_free(ws);
     if (arena) heap_caps_free(arena);
@@ -508,6 +692,7 @@ static void voice_task(void *opaque)
     state.last_audio_ms = audio_ms;
     state.last_synth_ms = synth_ms;
     state.last_rtf = rtf;
+    state.last_total_ms = (uint32_t)((esp_timer_get_time() - job->requested_us) / 1000);
     if (err == ESP_OK) state.utterances++;
     portEXIT_CRITICAL(&state_lock);
     ESP_LOGI(TAG, "JR_TTS done source=%s result=%s",
@@ -521,7 +706,7 @@ static void voice_task(void *opaque)
 
 static esp_err_t start_speech(const char *utf8, bool from_wake)
 {
-    size_t length = utf8 ? strlen(utf8) : 0;
+    size_t length = utf8 ? strnlen(utf8, JR_TTS_MAX_TEXT_BYTES + 1) : 0;
     if (!length || length > JR_TTS_MAX_TEXT_BYTES) return ESP_ERR_INVALID_ARG;
     for (size_t i = 0; i < length; ++i) {
         unsigned char c = (unsigned char)utf8[i];
@@ -540,10 +725,14 @@ static esp_err_t start_speech(const char *utf8, bool from_wake)
         return ESP_ERR_INVALID_STATE;
     }
     job->opts = state.settings;
+    job->requested_us = esp_timer_get_time();
     job->wake_reply = from_wake;
     job->wake_waiter = from_wake ? xTaskGetCurrentTaskHandle() : NULL;
     memcpy(job->text, utf8, length + 1);
     state.busy = true;
+    state.last_first_audio_ms = 0;
+    state.last_total_ms = 0;
+    state.last_underruns = 0;
     portEXIT_CRITICAL(&state_lock);
     /* vTTS upstream parallel worker is pinned to core 1; run synthesis caller
      * on core 0 so its two-core kernels do not contend on the same core. */

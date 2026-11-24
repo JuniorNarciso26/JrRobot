@@ -6,6 +6,16 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — V2.1.4D_TTS_STREAM (develop experiment)
+
+- Manual input increases from 180 to 1,200 UTF-8 bytes. Text parts target 64 bytes initially, then 128 bytes, retaining word boundaries and complete UTF-8 characters; a longer single word stays intact.
+- Manual PCM is consumed by a separate I2S task while inference continues, through a fixed 32 KiB PSRAM FIFO. Decoder first block is 12 frames, later blocks grow up to 32; the model and smaller streaming arena are reused across parts.
+- Manual audio is bounded to 300 seconds of generated samples; errors may follow an already played prefix. Busy/I2S ownership persists until the player finishes and releases its physical channel.
+- `/voice` adds `last_first_audio_ms`, `last_total_ms`, `last_underruns`; the panel shows startup time and generation pauses. Synthesis time/RTF exclude time spent sending to the FIFO. First-audio time is request-to-first-successful-I2S-write, not measured acoustic onset; underruns count FIFO receive timeouts after playback starts.
+- HTTPS JSON body limit accommodates escaped long text, allocated on heap; speech's decoded limit remains enforced in firmware. The wake cache renderer retains its original 12/128 frame settings and 12-second clip bound, and beep/Love/wake ordering is retained.
+- Host tests cover actual player/FIFO code, Unicode boundaries, playback before end-of-input, ordered samples across FIFO wrap, final drain, I2S failure, allocation/task failure and cached PCM bounds. Existing wake/installer tests and JS syntax checks pass; C syntax checked with pinned vTTS headers and vTTS disabled. Full ESP-IDF build and HW04 measurements remain pending (toolchain unavailable here). No speedup or Live regression result claimed yet.
+- Only `develop` changes; stable `main` remains V2.1.3S at `bab09039`.
+
 ## November 24, 2026 — JrBot V2.1.3S_TTS_FAST (owner-approved promotion to main)
 
 **Release identity:** `JrBot_V2.1.3S_TTS_FAST` uses ESP-IDF **6.1.1** and upgrades the previous V2.0 ESP-IDF 5.5.x baseline; source and models from `develop` are promoted together. The exact HW04 candidate was `JrBot_V2.1.3D_TTS_FAST` (commit `7854de30`); the stable suffix and installer selection change the resulting build ID without changing the accepted speech algorithms.

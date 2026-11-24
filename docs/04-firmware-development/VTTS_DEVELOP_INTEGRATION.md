@@ -9,6 +9,53 @@ usam ESP-IDF 6.1.1. O log confirma HTTPS escutando na porta 443,
 mas tambem erros TLS -0x7780. Live/WebRTC nao teve nova regressao completa
 registrada; leitura longa com streaming nao faz parte desta release.
 
+## Experimento develop V2.1.4D TTS STREAM
+
+A partir de 24/11/2026, a develop identifica-se como **JrBot_V2.1.4D_TTS_STREAM**.
+A main permanece na versao estavel acima. Os limites de 180 bytes e PCM completo
+nas secoes historicas abaixo descrevem a release V2.1.3S.
+
+- Fala manual aceita ate **1.200 bytes UTF-8**. Divide o texto em palavras,
+  mirando 64 bytes na primeira parte e 128 nas seguintes; palavras maiores ficam
+  inteiras. A frontend nativa mantem sua divisao em fonemas/sentencas.
+- O callback PCM envia amostras para FIFO de **32 KiB em PSRAM**; tarefa I2S
+  separada consome durante a inferencia. O primeiro bloco tem 12 frames e os
+  seguintes crescem ate 32. Modelo, lexico e arena sao reutilizados entre partes;
+  nao se guarda a fala inteira. Limite de 300 segundos de amostras por pedido.
+- O player mantem um canal I2S durante toda a fala, drena o final antes de fechar
+  e sinaliza conclusao antes de liberar memoria, busy e dono logico do I2S.
+  Falhas podem deixar um prefixo ja reproduzido, com last_error reportado.
+- Cache do despertar continua no caminho aprovado, com 12/128 frames e clipe
+  de ate 12 s; preparacao nao abre I2S. Beep, Love e retorno do WakeNet mantidos.
+- JSON HTTPS agora tem limite de 7.456 bytes para aceitar escapes; buffer no heap
+  evita aumentar a pilha HTTP. Texto decodificado continua limitado a 1.200 bytes.
+- `JR_TTS_FIRST_AUDIO latency_ms` e `/voice.last_first_audio_ms`: desde a fila do
+  pedido ate a primeira escrita I2S bem-sucedida. Nao mede som no alto-falante.
+- `last_synth_ms` e `last_rtf` excluem tempo de envio/bloqueio da FIFO;
+  `last_total_ms` cobre a execucao ate o player terminar.
+- `JR_TTS_STREAM_DONE underruns` / `last_underruns`: episodios de timeout de 40 ms
+  aguardando PCM depois que a reproducao comecou; aproximacao de falta de audio,
+  nao contagem exata de underruns fisicos do DMA.
+
+**Validacao feita aqui:** `python -m unittest discover -s tests/tts` compila o
+codigo real de callbacks/player com doubles pthread/FreeRTOS/I2S e verifica
+inicio antes do fim do produtor, ordem sem perdas na volta da FIFO, drenagem,
+erros I2S, falhas de alocacao/tarefa, limites do cache e fronteiras UTF-8/palavras.
+Checks de sintaxe C com headers vTTS pinados e com TTS desabilitado, sintaxe JS,
+6 testes de wake e 9 de instalacao tambem passaram. Nao e build ESP-IDF.
+**Pendente:** compilacao completa com ESP-IDF 6.1.1 (ausente neste ambiente),
+teste fisico HW04, medidas comparativas e regressao Live/TLS.
+
+**Teste no robo:** INSTALAR.bat → develop. Confirmar a versao e o SHA no boot.
+Desligar Autonomo e Live, abrir HTTPS → Voz, ativar e salvar TTS com Lite S,
+speed 1.0 e mesmos ajustes anteriores. Enviar primeiro frase curta, depois texto
+com varios periodos, acentos e mais de 180 bytes. Guardar log de primeiro audio,
+RTF, pausas, resultado e memoria; repetir em M apenas depois do teste S.
+Testar Olá ESP separadamente com Autonomo ligado e confirmar cache hit, beep,
+Love e retorno da escuta. Comparar com main usando o mesmo texto curto e ajustes.
+A geracao medida anteriormente tinha RTF > 1: o streaming antecipa o inicio,
+mas pausas ainda sao possiveis e blocos menores podem reduzir a vazao de sintese.
+
 ## Objetivo e controles
 
 Nova aba Voz em https://jrbot.local, ao lado de Controle, Memoria e Wi-Fi.

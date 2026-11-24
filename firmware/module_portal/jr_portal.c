@@ -149,12 +149,13 @@ static esp_err_t web_voice_get_handler(httpd_req_t *req) {
     jr_tts_get_status(&st);
     jr_i2s_resource_status_t audio = {0};
     jr_resource_i2s_get_status(&audio);
-    char json[600];
+    char json[768];
     snprintf(json, sizeof(json),
              "{\"ok\":true,\"available\":%s,\"busy\":%s,\"enabled\":%s,"
              "\"model\":\"%c\",\"volume\":%d,\"gain_db\":%d,\"debuzz_db\":%d,"
              "\"speed\":%.2f,\"expression\":%.2f,\"utterances\":%lu,"
              "\"last_audio_ms\":%lu,\"last_synth_ms\":%lu,\"last_rtf\":%.3f,"
+             "\"last_first_audio_ms\":%lu,\"last_total_ms\":%lu,\"last_underruns\":%lu,"
              "\"last_error\":\"%s\",\"psram_free\":%u,\"i2s_owner\":\"%s\"}",
              st.available ? "true" : "false", st.busy ? "true" : "false",
              st.settings.enabled ? "true" : "false", st.settings.model,
@@ -162,7 +163,8 @@ static esp_err_t web_voice_get_handler(httpd_req_t *req) {
              (double)st.settings.speed, (double)st.settings.expression,
              (unsigned long)st.utterances, (unsigned long)st.last_audio_ms,
              (unsigned long)st.last_synth_ms, (double)st.last_rtf,
-             esp_err_to_name(st.last_error),
+             (unsigned long)st.last_first_audio_ms, (unsigned long)st.last_total_ms,
+             (unsigned long)st.last_underruns, esp_err_to_name(st.last_error),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
              jr_i2s_owner_name(audio.owner));
     httpd_resp_set_type(req, "application/json; charset=utf-8");
@@ -185,19 +187,29 @@ static esp_err_t web_voice_post_handler(httpd_req_t *req) {
     char header[4];
     if (httpd_req_get_hdr_value_str(req, "X-JrBot-Voice", header, sizeof(header)) != ESP_OK || strcmp(header, "1"))
         return voice_error(req, "required_header", "403 Forbidden");
-    if (req->content_len == 0 || req->content_len > 512)
+    if (req->content_len == 0 || req->content_len > JR_TTS_MAX_TEXT_BYTES * 6U + 256U)
         return voice_error(req, "payload_too_large", "413 Payload Too Large");
 
-    char body[513];
+    /* JSON may encode each text byte as \uXXXX. Keep larger payloads off the
+     * HTTP task stack, and retain the decoded byte limit in jr_tts_say. */
+    char *body = malloc(req->content_len + 1);
+    if (!body) return voice_error(req, "no_memory", "503 Service Unavailable");
     size_t read = 0;
     while (read < req->content_len) {
         int n = httpd_req_recv(req, body + read, req->content_len - read);
-        if (n <= 0) return voice_error(req, "incomplete_request", "408 Request Timeout");
+        if (n <= 0) {
+            free(body);
+            return voice_error(req, "incomplete_request", "408 Request Timeout");
+        }
         read += (size_t)n;
     }
-    if (memchr(body, '\0', read)) return voice_error(req, "invalid_input", "400 Bad Request");
+    if (memchr(body, '\0', read)) {
+        free(body);
+        return voice_error(req, "invalid_input", "400 Bad Request");
+    }
     body[read] = '\0';
     cJSON *root = cJSON_Parse(body);
+    free(body);
     if (!root) return voice_error(req, "invalid_json", "400 Bad Request");
     const cJSON *action = cJSON_GetObjectItemCaseSensitive(root, "action");
     esp_err_t err = ESP_ERR_INVALID_ARG;
