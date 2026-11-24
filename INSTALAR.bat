@@ -733,7 +733,7 @@ if /i "%CURRENT_BRANCH%"=="develop" (
     echo [AUTO] Build concluido; iniciando a gravacao automatica na porta %JR_FLASH_PORT%.
     echo [ATENCAO] Firmware de testes develop substituira a imagem atual na placa.
 )
-for /f "delims=" %%G in ('git -C "%~dp0" rev-parse --short HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
+for /f "delims=" %%G in ('git -C "%~dp0" rev-parse --short=8 HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
 echo Gravando JrBot em %JR_FLASH_PORT%...
 python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% %JRBOT_TTS_CMAKE_ARGS% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
