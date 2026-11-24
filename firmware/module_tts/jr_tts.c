@@ -136,6 +136,8 @@ esp_err_t jr_tts_configure(const jr_tts_settings_t *settings)
 typedef struct {
     jr_tts_settings_t opts;
     char text[JR_TTS_MAX_TEXT_BYTES + 1];
+    bool wake_reply;              /* Authorized only after WakeNet detected a user wakeword. */
+    TaskHandle_t wake_waiter;     /* WakeNet task: wait while microphone pins are released. */
 } jr_tts_job_t;
 
 typedef struct {
@@ -263,7 +265,9 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const jr_tts_synth_t *c
 
 static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms, uint32_t *synth_ms, float *rtf)
 {
-    if (jr_brain_enabled()) return ESP_ERR_INVALID_STATE;
+    /* A detected wakeword is the only autonomous path allowed to speak.
+     * jr_voice.c closes and releases the microphone before calling this path. */
+    if (jr_brain_enabled() && !job->wake_reply) return ESP_ERR_INVALID_STATE;
     if (!jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, "tts_speak")) return ESP_ERR_INVALID_STATE;
 
     esp_err_t err = ESP_ERR_NO_MEM;
@@ -336,13 +340,16 @@ static void voice_task(void *opaque)
     state.last_rtf = rtf;
     if (err == ESP_OK) state.utterances++;
     portEXIT_CRITICAL(&state_lock);
-    ESP_LOGI(TAG, "JR_TTS done result=%s", esp_err_to_name(err));
+    ESP_LOGI(TAG, "JR_TTS done source=%s result=%s",
+             job->wake_reply ? "wake" : "manual", esp_err_to_name(err));
+    TaskHandle_t wake_waiter = job->wake_waiter;
     free(job);
+    if (wake_waiter) xTaskNotifyGive(wake_waiter);  /* I2S has been released. */
     vTaskDelete(NULL);
 }
 #endif
 
-esp_err_t jr_tts_say(const char *utf8)
+static esp_err_t start_speech(const char *utf8, bool from_wake)
 {
     size_t length = utf8 ? strlen(utf8) : 0;
     if (!length || length > JR_TTS_MAX_TEXT_BYTES) return ESP_ERR_INVALID_ARG;
@@ -351,16 +358,20 @@ esp_err_t jr_tts_say(const char *utf8)
         if (c < 32 && c != '\n' && c != '\t') return ESP_ERR_INVALID_ARG;
     }
 #if JRBOT_WITH_VTTS
-    if (jr_brain_enabled()) return ESP_ERR_INVALID_STATE;
+    if (jr_brain_enabled() && !from_wake) return ESP_ERR_INVALID_STATE;
     jr_tts_job_t *job = malloc(sizeof(*job));
     if (!job) return ESP_ERR_NO_MEM;
     portENTER_CRITICAL(&state_lock);
-    if (!state.settings.enabled || state.busy) {
+    /* Manual TTS still boots OFF. A physical WakeNet trigger explicitly
+     * authorizes this one short reply, independently of the manual switch. */
+    if ((!state.settings.enabled && !from_wake) || state.busy) {
         portEXIT_CRITICAL(&state_lock);
         free(job);
         return ESP_ERR_INVALID_STATE;
     }
     job->opts = state.settings;
+    job->wake_reply = from_wake;
+    job->wake_waiter = from_wake ? xTaskGetCurrentTaskHandle() : NULL;
     memcpy(job->text, utf8, length + 1);
     state.busy = true;
     portEXIT_CRITICAL(&state_lock);
@@ -374,9 +385,28 @@ esp_err_t jr_tts_say(const char *utf8)
         free(job);
         return ESP_ERR_NO_MEM;
     }
+    if (from_wake) {
+        /* Only jr_voice's core-1 task uses this path. The vTTS worker runs on
+         * core 0, allowing the upstream core-1 inference worker to run.
+         * Keep the microphone closed until synthesis and playback complete. */
+        (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        jr_tts_status_t result = {0};
+        jr_tts_get_status(&result);
+        return result.last_error;
+    }
     return ESP_OK;
 #else
-    (void)utf8;
+    (void)from_wake;
     return ESP_ERR_NOT_SUPPORTED;
 #endif
+}
+
+esp_err_t jr_tts_say(const char *utf8)
+{
+    return start_speech(utf8, false);
+}
+
+esp_err_t jr_tts_reply_to_wake(const char *utf8)
+{
+    return start_speech(utf8, true);
 }
