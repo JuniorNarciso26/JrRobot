@@ -1,4 +1,4 @@
-# Integration develop: 11 MiB app for ESP-IDF 6.1 + two embedded vTTS models;
+# Stable V2.1.3S (main/develop): 11 MiB app for ESP-IDF 6.1 + two embedded vTTS models;
 # 4 MiB dedicated ESP-SR WakeNet model data; end=0xF10000 < 16 MiB flash.
 # Build must still verify app image and generated speech model fit before flashing.
 # Name,   Type, SubType, Offset,    Size,       Flags
