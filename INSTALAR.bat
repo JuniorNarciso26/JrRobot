@@ -292,13 +292,18 @@ set "CURRENT_BRANCH="
 set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 set "JRBOT_TTS_CMAKE_ARGS="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS.
+set "JRBOT_VTTS_BRANCH="
+if /i "%CURRENT_BRANCH%"=="main" set "JRBOT_VTTS_BRANCH=1"
+if /i "%CURRENT_BRANCH%"=="develop" set "JRBOT_VTTS_BRANCH=1"
 set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
-if /i "%CURRENT_BRANCH%"=="develop" (
-    rem ESP-IDF 6.1, vTTS pt-BR experimental + JrBot V2.0; preserve main stable.
+if defined JRBOT_VTTS_BRANCH (
+    rem Main and develop: ESP-IDF 6.1.1 + offline vTTS + HTTPS + WakeNet10.
     set "BUILD_DIR=b-develop-vtts"
+    if /i "%CURRENT_BRANCH%"=="main" set "BUILD_DIR=b-main-vtts"
     set "SDKCONFIG_FILE=sdkconfig.develop_vtts"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
     set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON"
@@ -325,22 +330,6 @@ if /i "%CURRENT_BRANCH%"=="develop" (
 ) else if /i "%CURRENT_BRANCH%"=="feature/wifi-dashboard" (
     rem V1.8.3S Wi-Fi dashboard test; reuse the stable V1.8.2S RAM-light build profile.
     set "BUILD_DIR=b-wifi-tab"
-    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
-    set "JRBOT_WIFI_MEMORY_BUILD=1"
-    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
-) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Usa o perfil RAM-light e isola o build pela versao publicada.
-    set "JRBOT_MAIN_VERSION="
-    if not exist "firmware\version.txt" (
-        echo [ERRO] firmware\version.txt nao encontrado.
-        goto failure
-    )
-    set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
-    if not defined JRBOT_MAIN_VERSION (
-        echo [ERRO] Versao do firmware vazia.
-        goto failure
-    )
-    set "BUILD_DIR=b-!JRBOT_MAIN_VERSION:~-8!"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
@@ -445,10 +434,6 @@ if /i "%CURRENT_BRANCH%"=="develop" (
             echo [INFO] Ajustes locais da main copiados para develop_wifi.
         )
     )
-) else if /i "%CURRENT_BRANCH%"=="develop" (
-    rem Integracao baseada na release oficial JrBot_V1.7.04.
-    set "BUILD_DIR=build-v1.7.04-develop"
-    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v1.7-v2" (
     rem Branch historica da derivacao experimental que originou a V1.7.04.
     set "BUILD_DIR=build-v1.7-v2"
@@ -485,7 +470,7 @@ goto help
 
 :ensure_idf
 set "IDF_EXPORT="
-if /i "%CURRENT_BRANCH%"=="develop" (
+if defined JRBOT_VTTS_BRANCH (
     rem vTTS target: official EIM installation at C:\esp6\release-v6.1\esp-idf.
     if exist "C:\esp6\release-v6.1\esp-idf\export.bat" set "IDF_EXPORT=C:\esp6\release-v6.1\esp-idf\export.bat"
     if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v6.1*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
@@ -497,7 +482,7 @@ if /i "%CURRENT_BRANCH%"=="develop" (
     if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
 )
 if not defined IDF_EXPORT (
-    if /i "%CURRENT_BRANCH%"=="develop" (
+    if defined JRBOT_VTTS_BRANCH (
         echo [ERRO] ESP-IDF 6.1.x nao foi localizado.
         echo Instale ESP-IDF 6.1.1 pelo EIM uma vez e execute INSTALAR.bat novamente.
     ) else (
@@ -510,7 +495,7 @@ rem The Windows shortcut may inherit the EIM default idf6.1_py3.13_env,
 rem while this PC's working IDF 6.1 Python is in tools\python\release-v6.1\venv.
 rem Resolve an EXISTING Python environment before export.bat, without installing
 rem anything or changing the globally configured Windows environment.
-if /i "%CURRENT_BRANCH%"=="develop" (
+if defined JRBOT_VTTS_BRANCH (
     if exist "C:\Espressif\tools\python\release-v6.1\venv\Scripts\python.exe" (
         set "IDF_TOOLS_PATH=C:\Espressif"
         set "IDF_PYTHON_ENV_PATH=C:\Espressif\tools\python\release-v6.1\venv"
@@ -561,7 +546,7 @@ if not defined IDF_PYTHON_ENV_PATH (
     echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
     exit /b 1
 )
-if /i "%CURRENT_BRANCH%"=="develop" (
+if defined JRBOT_VTTS_BRANCH (
     rem export.bat may print Activation script failed but return code 0.
     rem Explicitly verify the same tool-export operation before reporting [OK].
     "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" export --format key-value >nul
@@ -579,7 +564,7 @@ if /i "%CURRENT_BRANCH%"=="develop" (
     )
     python "%IDF_PATH%\tools\idf.py" --version | findstr /c:"ESP-IDF v6.1" >nul
     if errorlevel 1 (
-        echo [ERRO] O branch develop requer ESP-IDF 6.1.x para vTTS.
+        echo [ERRO] Esta versao do JrBot requer ESP-IDF 6.1.x para vTTS.
         echo Abra o terminal IDF_PowerShell 6.1.1 ou instale a versao pelo EIM.
         exit /b 1
     )
@@ -625,7 +610,7 @@ if errorlevel 1 exit /b 1
 exit /b 0
 
 :prepare
-if /i "%CURRENT_BRANCH%"=="develop" (
+if defined JRBOT_VTTS_BRANCH (
     echo [INFO] Registrando a versao e o commit Git na imagem do firmware...
     python tools\stamp_firmware_revision.py
     if errorlevel 1 goto failure
@@ -729,9 +714,9 @@ if /i "%ACTION%"=="build" (
     goto success
 )
 echo.
-if /i "%CURRENT_BRANCH%"=="develop" (
+if defined JRBOT_VTTS_BRANCH (
     echo [AUTO] Build concluido; iniciando a gravacao automatica na porta %JR_FLASH_PORT%.
-    echo [ATENCAO] Firmware de testes develop substituira a imagem atual na placa.
+    echo [INFO] Firmware vTTS/HTTPS da branch %CURRENT_BRANCH% sera instalado na placa.
 )
 for /f "delims=" %%G in ('git rev-parse --short=8 HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
 echo Gravando JrBot em %JR_FLASH_PORT%...
