@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — Integrated long-text measurement and read-only build diagnostics
+
+- Owner's V2.1.5D/b0749963 logs confirm 133,291 ms first I2S write, 133,097 ms synthesis for 17,597 ms PCM (RTF 7.564), 1,427.4 ms HTTPS ACK and 153,051.8 ms host completion. Another panel run took 134,456 ms synthesis; the submitted comparison was the second utterance, not a cold first utterance.
+- Memory snapshots show ~2.86 MiB PSRAM free during synthesis and ~7.90 MiB after; no allocation failure/reset in these samples. Record exact comparison and limitations in TTS_LONG_BENCHMARK.md.
+- Add tools/tts_build_diagnostics.py to inspect the existing ELF's strong/weak vTTS symbols, selected effective configuration, optimization flags and local Git/vendor stamps without compiling or touching the device. Only whitelisted fields are exported, not full configuration/certificates.
+- Three parser/filtering tests and five existing TTS tests pass. Real build collection pending. Firmware algorithms/settings, installer and version remain unchanged.
+
 ## November 24, 2026 — JR_TTS_LONG_01 isolated baseline and integrated comparison
 
 - Owner supplied the fixed-phrase isolated test: 344-byte canonical text/hash matched, Lite S settings confirmed, 17.90 s PCM, 96 ms first block, 170 ms playback start, 0 underruns, effective RTF 0.322, 18,085.1 ms host completion. These are isolated metrics; the video does not show the Enter key for exact acoustic latency.

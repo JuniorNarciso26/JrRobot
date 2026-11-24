@@ -94,3 +94,83 @@ recusa de audio ocupado, destino HTTPS local e ausencia de reenvio na entrega
 incerta. O teste existente de sintese bufferizada tambem passou. Sintaxe Python
 verificada. Isso nao substitui teste no HTTPS real/ESP32. Nao foi realizada nova
 compilacao, gravacao ou medicao acustica da develop nesta etapa.
+
+## Resultado integrado recebido em 24/11/2026, 15:38 (SP)
+
+Fontes: `JR_TTS_LONG_01_develop_20261124T183433482983Z.txt`,
+`JrBot-painel-log (54).txt`, `JrBot-memoria-1795545446554.json` e
+`WhatsApp Video 2026-11-24 at 15.38.14.mp4`.
+Boot/painel confirmam V2.1.5D_TTS_BUFFERED, git b0749963. Frase/hash e ajustes
+coincidem com a referencia isolada. O log integrado e a segunda fala do painel
+(utterances=2); a primeira tambem levou aproximadamente 134 s para gerar audio.
+Portanto esta amostra integrada nao e primeira fala apos boot, como o protocolo
+propunha; mesmo assim a lentidao se repetiu, sem melhora relevante na segunda.
+
+| Medida | Isolado | Integrado |
+| --- | ---: | ---: |
+| Inicio interno da reproducao | 170 ms | 133.291 ms |
+| Duracao PCM | 17,900 s | 17,597 s |
+| RTF efetivo de geracao | 0,322 | 7,564 |
+| Sintese, sem espera da fila isolada | ~5,76 s | 133,097 s |
+| Conclusao observada no host | 18,085 s | 153,052 s |
+
+No integrado, ACK HTTPS veio em 1.427,4 ms. A demora principal esta no intervalo
+medido pela sintese e nao na confirmacao do envio. Geracao integrada ficou
+aproximadamente 23,5 vezes mais lenta por segundo de audio nesta comparacao,
+com transportes/estados de memoria diferentes ja documentados. A primeira
+fala registrada no painel gerou 17,597 s em 134,456 s (RTF 7,641), repetindo
+praticamente o comportamento da segunda (133,097 s, RTF 7,564).
+
+Os sete segmentos e a diferenca de aproximadamente 0,3 s de PCM sao compativeis
+com o intervalo entre segmentos: 100 ms no wrapper integrado contra 150 ms no
+upstream, seis separacoes. Isso nao e evidencia de perda de palavras.
+
+Durante a sintese, a memoria registra ~2,86 MiB de PSRAM livre e ~129 KiB de
+RAM interna livre, maior bloco interno 58 KiB. Apos liberar a fala, PSRAM livre
+retorna a ~7,90 MiB, estavel nas consultas seguintes. Nao houve falha de alocacao
+ou reset nestas amostras; os valores nao demonstram um vazamento acumulativo.
+DMA sobrepoe RAM interna: nao somar os dois totais. Alguns pontos rotulados
+`antes` no JSON foram coletados durante a fala; usar timestamps/uptime para
+classificar as fases, nao apenas esse rotulo.
+
+### Diferencas identificadas e limites da conclusao
+
+- O wrapper nao chama vtts_set_fast_scratch, ao contrario do laboratorio.
+- A sintese manual da V2.1.5D foi colocada em tskIDLE_PRIORITY para permitir
+  IDLE0 executar entre chamadas longas do motor. Isso pode contribuir para a
+  lentidao; nao atribuir os 133 s somente a prioridade sem medicao por fase.
+- O projeto nao explicita as mesmas opcoes de cache do laboratorio nos defaults.
+  A configuracao efetiva pode vir de sdkconfig antigo: ler o build existente.
+- Estao listadas fontes SIMD/FreeRTOS no CMake, mas isso nao prova quais simbolos
+  strong/weak acabaram selecionados no ELF instalado nem quais flags foram usadas.
+- Falta perfil por etapa no integrado. Nao concluir que a placa e incapaz nem
+  alterar varias configuracoes simultaneamente sem identificar essas diferencas.
+
+### Diagnostico do build existente, sem regravar
+
+Foi adicionado tools/tts_build_diagnostics.py, somente leitura, sem dependencia
+externa e sem executar compilador, linker ou comandos na placa. Atualize apenas
+o Git local e execute no diretorio do projeto:
+
+```powershell
+git pull --ff-only origin develop
+python tools/tts_build_diagnostics.py
+```
+
+**Nao execute INSTALAR.bat para esta coleta.** Queremos o ELF que ja gerou o
+firmware instalado, e nao um build novo. O padrao procura firmware/b-develop-vtts;
+se a pasta for diferente, use `--build-dir caminho-da-pasta`.
+Envie o JSON indicado em `.tts-benchmark-results/tts-build-*.json`.
+
+O relatorio extrai bindings GLOBAL/WEAK e tamanhos dos simbolos relevantes,
+opcoes selecionadas de config/sdkconfig.h e sdkconfig, flags -O e defines VTTS
+por unidade compilada, hash do ELF e stamp Git local. Filtra os campos em vez de
+exportar sdkconfig/headers completos, que podem conter dados locais. GLOBAL
+comprova definicao forte incluida, mas nao comprova ganho, chamadas SIMD em todos
+os caminhos ou que o ELF ainda corresponde a placa. Conferir stamp e boot b0749963.
+Simbolos ausentes podem ser removidos pelo linker e nao provam falha sozinhos.
+
+Tres testes de estrutura ELF32, bindings e filtragem passaram, junto aos cinco
+testes existentes de sintese/emissor. A coleta ainda precisa rodar no build real.
+Nenhum algoritmo de firmware, prioridade, memoria ou reproducao foi alterado
+nesta etapa de diagnostico.
