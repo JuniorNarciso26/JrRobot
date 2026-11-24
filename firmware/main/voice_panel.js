@@ -22,7 +22,7 @@
   panel.hidden = true;
   panel.innerHTML =
     '<h2>Voz do JrBot · vTTS pt-BR offline</h2>' +
-    '<p class="voice-help">Personalize a voz sintetizada pelo ESP32-S3, sem internet. A configuração fica salva no robô; por segurança a voz inicia desligada após reiniciar.</p>' +
+    '<p class="voice-help">Personalize a voz sintetizada pelo ESP32-S3, sem internet. Os ajustes ficam salvos; a fala manual inicia desligada após reiniciar. No modo Autônomo, o comando Olá ESP recebe uma resposta de voz curta.</p>' +
     '<label><input type="checkbox" id="jr-voice-enabled"> Ativar sintetizador de voz</label>' +
     '<div class="voice-grid" style="margin-top:15px">' +
       '<label>Modelo<select id="jr-voice-model"><option value="s">Lite (S) · menor consumo</option><option value="m">Quality (M) · melhor qualidade</option></select></label>' +
@@ -36,7 +36,7 @@
     '<div class="voice-actions"><button type="button" id="jr-voice-save" class="primary">Salvar ajustes</button><button type="button" id="jr-voice-refresh">Consultar estado</button></div>' +
     '<label>Frase de teste<textarea id="jr-voice-text" maxlength="180">Olá! Eu sou o JrBot e agora tenho minha própria voz.</textarea></label>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-speak" class="primary">Fazer o JrBot falar</button></div>' +
-    '<p class="voice-help">A fala é manual nesta etapa. Desative Autônomo/WakeNet e encerre a Live antes de testar: o alto-falante e o microfone compartilham recursos I2S. Ganho alto pode distorcer; comece em 6 dB.</p>' +
+    '<p class="voice-help">Para usar o botão Fazer o JrBot falar, desative Autônomo/WakeNet e encerre a Live. No modo Autônomo, Olá ESP já recebe uma resposta falada e a escuta retorna após a reprodução. Ganho alto pode distorcer; comece em 6 dB.</p>' +
     '<div id="jr-voice-feedback" role="status">Selecione a aba para consultar o sintetizador.</div>' +
     '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
   main.before(panel);
