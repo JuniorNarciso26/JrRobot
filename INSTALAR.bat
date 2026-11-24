@@ -290,12 +290,24 @@ cd /d "%~dp0"
 
 set "CURRENT_BRANCH="
 set "JRBOT_WIFI_RAM_LIGHT_BUILD="
+set "JRBOT_TTS_CMAKE_ARGS="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS.
+set "JRBOT_VTTS_BRANCH="
+if /i "%CURRENT_BRANCH%"=="main" set "JRBOT_VTTS_BRANCH=1"
+if /i "%CURRENT_BRANCH%"=="develop" set "JRBOT_VTTS_BRANCH=1"
 set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
-if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
+if defined JRBOT_VTTS_BRANCH (
+    rem Main and develop: ESP-IDF 6.1.1 + offline vTTS + HTTPS + WakeNet10.
+    set "BUILD_DIR=b-develop-vtts"
+    if /i "%CURRENT_BRANCH%"=="main" set "BUILD_DIR=b-main-vtts"
+    set "SDKCONFIG_FILE=sdkconfig.develop_vtts"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON"
+) else if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
     rem WakeNet10 portugues + sistema principal; build isolado do firmware aprovado.
     set "BUILD_DIR=b-ola-esp"
     set "SDKCONFIG_FILE=sdkconfig.ola-esp-autonomo"
@@ -318,22 +330,6 @@ if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
 ) else if /i "%CURRENT_BRANCH%"=="feature/wifi-dashboard" (
     rem V1.8.3S Wi-Fi dashboard test; reuse the stable V1.8.2S RAM-light build profile.
     set "BUILD_DIR=b-wifi-tab"
-    set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
-    set "JRBOT_WIFI_MEMORY_BUILD=1"
-    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
-) else if /i "%CURRENT_BRANCH%"=="main" (
-    rem Usa o perfil RAM-light e isola o build pela versao publicada.
-    set "JRBOT_MAIN_VERSION="
-    if not exist "firmware\version.txt" (
-        echo [ERRO] firmware\version.txt nao encontrado.
-        goto failure
-    )
-    set /p "JRBOT_MAIN_VERSION=" < "firmware\version.txt"
-    if not defined JRBOT_MAIN_VERSION (
-        echo [ERRO] Versao do firmware vazia.
-        goto failure
-    )
-    set "BUILD_DIR=b-!JRBOT_MAIN_VERSION:~-8!"
     set "SDKCONFIG_FILE=sdkconfig.develop_wifi_ram_light"
     set "JRBOT_WIFI_MEMORY_BUILD=1"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
@@ -438,10 +434,6 @@ if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
             echo [INFO] Ajustes locais da main copiados para develop_wifi.
         )
     )
-) else if /i "%CURRENT_BRANCH%"=="develop" (
-    rem Integracao baseada na release oficial JrBot_V1.7.04.
-    set "BUILD_DIR=build-v1.7.04-develop"
-    set "SDKCONFIG_FILE=sdkconfig.develop-v1.6.3"
 ) else if /i "%CURRENT_BRANCH%"=="v1.7-v2" (
     rem Branch historica da derivacao experimental que originou a V1.7.04.
     set "BUILD_DIR=build-v1.7-v2"
@@ -478,13 +470,63 @@ goto help
 
 :ensure_idf
 set "IDF_EXPORT="
-if defined IDF_PATH if exist "%IDF_PATH%\export.bat" set "IDF_EXPORT=%IDF_PATH%\export.bat"
-if not defined IDF_EXPORT for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
-if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+if defined JRBOT_VTTS_BRANCH (
+    rem vTTS target: official EIM installation at C:\esp6\release-v6.1\esp-idf.
+    if exist "C:\esp6\release-v6.1\esp-idf\export.bat" set "IDF_EXPORT=C:\esp6\release-v6.1\esp-idf\export.bat"
+    if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v6.1*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+    if not defined IDF_EXPORT for /d %%D in ("%USERPROFILE%\esp\v6.1*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+    if not defined IDF_EXPORT if defined IDF_PATH if exist "%IDF_PATH%\export.bat" set "IDF_EXPORT=%IDF_PATH%\export.bat"
+) else (
+    if defined IDF_PATH if exist "%IDF_PATH%\export.bat" set "IDF_EXPORT=%IDF_PATH%\export.bat"
+    if not defined IDF_EXPORT for /d %%D in ("%USERPROFILE%\esp\v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+    if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
+)
 if not defined IDF_EXPORT (
-    echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
-    echo Instale o ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    if defined JRBOT_VTTS_BRANCH (
+        echo [ERRO] ESP-IDF 6.1.x nao foi localizado.
+        echo Instale ESP-IDF 6.1.1 pelo EIM uma vez e execute INSTALAR.bat novamente.
+    ) else (
+        echo [ERRO] ESP-IDF 5.5.x nao foi localizado.
+        echo Instale ESP-IDF 5.5.x uma vez e execute INSTALAR.bat novamente.
+    )
     exit /b 1
+)
+rem The Windows shortcut may inherit the EIM default idf6.1_py3.13_env,
+rem while this PC's working IDF 6.1 Python is in tools\python\release-v6.1\venv.
+rem Resolve an EXISTING Python environment before export.bat, without installing
+rem anything or changing the globally configured Windows environment.
+if defined JRBOT_VTTS_BRANCH (
+    if exist "C:\Espressif\tools\python\release-v6.1\venv\Scripts\python.exe" (
+        set "IDF_TOOLS_PATH=C:\Espressif"
+        set "IDF_PYTHON_ENV_PATH=C:\Espressif\tools\python\release-v6.1\venv"
+    ) else (
+        rem Reject a stale inherited path; keep valid EIM installations.
+        if defined IDF_PYTHON_ENV_PATH if not exist "!IDF_PYTHON_ENV_PATH!\Scripts\python.exe" set "IDF_PYTHON_ENV_PATH="
+        if not defined IDF_PYTHON_ENV_PATH (
+            for /d %%D in ("C:\Espressif\python_env\idf6.1_py*_env") do if exist "%%~fD\Scripts\python.exe" (
+                set "IDF_TOOLS_PATH=C:\Espressif"
+                set "IDF_PYTHON_ENV_PATH=%%~fD"
+            )
+        )
+        if not defined IDF_PYTHON_ENV_PATH (
+            for /d %%D in ("%USERPROFILE%\.espressif\python_env\idf6.1_py*_env") do if exist "%%~fD\Scripts\python.exe" (
+                set "IDF_TOOLS_PATH=%USERPROFILE%\.espressif"
+                set "IDF_PYTHON_ENV_PATH=%%~fD"
+            )
+        )
+    )
+    if not defined IDF_PYTHON_ENV_PATH (
+        echo [ERRO] Python do ESP-IDF 6.1 nao encontrado.
+        echo [DICA] Execute a instalacao do ESP-IDF 6.1.1 pelo EIM uma unica vez.
+        exit /b 1
+    )
+    if not exist "!IDF_PYTHON_ENV_PATH!\Scripts\python.exe" (
+        echo [ERRO] Ambiente Python invalido: !IDF_PYTHON_ENV_PATH!
+        exit /b 1
+    )
+    echo [INFO] Python ESP-IDF 6.1 encontrado: !IDF_PYTHON_ENV_PATH!
+    rem Ensure python.exe used by export.bat belongs to the selected environment.
+    set "PATH=!IDF_PYTHON_ENV_PATH!\Scripts;!PATH!"
 )
 echo [INFO] Carregando ambiente ESP-IDF...
 call "%IDF_EXPORT%"
@@ -500,13 +542,36 @@ if not exist "%IDF_PATH%\tools\idf.py" (
     echo [ERRO] idf.py nao encontrado em %IDF_PATH%\tools.
     exit /b 1
 )
+if not defined IDF_PYTHON_ENV_PATH (
+    echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
+    exit /b 1
+)
+if defined JRBOT_VTTS_BRANCH (
+    rem export.bat may print Activation script failed but return code 0.
+    rem Explicitly verify the same tool-export operation before reporting [OK].
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" export --format key-value >nul
+    if errorlevel 1 (
+        echo [ERRO] ESP-IDF 6.1.x incompleto: uma ou mais ferramentas nao estao instaladas.
+        echo [DICA] Instale as ferramentas exibidas acima usando idf_tools.py install.
+        echo [DICA] Nao grave o firmware antes de corrigir o ambiente.
+        exit /b 1
+    )
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" check-python-dependencies >nul
+    if errorlevel 1 (
+        echo [ERRO] Dependencias Python do ESP-IDF 6.1.x incompletas.
+        echo [DICA] Repare a instalacao pelo ESP-IDF Installation Manager.
+        exit /b 1
+    )
+    python "%IDF_PATH%\tools\idf.py" --version | findstr /c:"ESP-IDF v6.1" >nul
+    if errorlevel 1 (
+        echo [ERRO] Esta versao do JrBot requer ESP-IDF 6.1.x para vTTS.
+        echo Abra o terminal IDF_PowerShell 6.1.1 ou instale a versao pelo EIM.
+        exit /b 1
+    )
+)
 where cmake.exe >nul 2>&1
 if errorlevel 1 (
     echo [ERRO] CMake nao foi adicionado ao PATH pelo export.bat.
-    exit /b 1
-)
-if not defined IDF_PYTHON_ENV_PATH (
-    echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
     exit /b 1
 )
 echo [OK] ESP-IDF: %IDF_PATH%
@@ -545,6 +610,21 @@ if errorlevel 1 exit /b 1
 exit /b 0
 
 :prepare
+if defined JRBOT_VTTS_BRANCH (
+    echo [INFO] Registrando a versao e o commit Git na imagem do firmware...
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
+    echo [INFO] Verificando certificado HTTPS local do JrBot...
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
+    echo [INFO] Preparando runtime/modelos vTTS pt-BR a partir do teste aprovado...
+    python tools\prepare_vtts_develop.py
+    if errorlevel 1 goto failure
+    rem Fix existing local sdkconfig: sdkconfig.defaults alone does not override it.
+    rem mDNS 1.14.0 assumes two interface entries when checking duplicate netifs.
+    python tools\ensure_sdkconfig.py "firmware\%SDKCONFIG_FILE%" "CONFIG_MDNS_MAX_INTERFACES" "2"
+    if errorlevel 1 goto failure
+)
 call :check
 if errorlevel 1 goto failure
 pushd firmware
@@ -616,7 +696,7 @@ if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
         )
     )
 )
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% build
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% %JRBOT_TTS_CMAKE_ARGS% build
 if errorlevel 1 (
     popd
     goto failure
@@ -634,13 +714,19 @@ if /i "%ACTION%"=="build" (
     goto success
 )
 echo.
+if defined JRBOT_VTTS_BRANCH (
+    echo [AUTO] Build concluido; iniciando a gravacao automatica na porta %JR_FLASH_PORT%.
+    echo [INFO] Firmware vTTS/HTTPS da branch %CURRENT_BRANCH% sera instalado na placa.
+)
+for /f "delims=" %%G in ('git rev-parse --short=8 HEAD') do echo [INFO] Gravando codigo GitHub commit %%G em %JR_FLASH_PORT%.
 echo Gravando JrBot em %JR_FLASH_PORT%...
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% -p "%JR_FLASH_PORT%" flash
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% %JRBOT_TTS_CMAKE_ARGS% -p "%JR_FLASH_PORT%" flash
 if errorlevel 1 (
     popd
     goto failure
 )
 popd
+echo [GRAVADO] ESP-IDF confirmou o envio do firmware para %JR_FLASH_PORT%.
 if exist firmware\version.txt (
     set /p "FW_VERSION=" < "firmware\version.txt"
     echo [OK] Versao enviada para ESP32: !FW_VERSION!
@@ -653,7 +739,7 @@ goto panel
 call :check
 if errorlevel 1 goto failure
 pushd firmware
-python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% menuconfig
+python "%IDF_PATH%\tools\idf.py" -B %BUILD_DIR% -D SDKCONFIG=%SDKCONFIG_FILE% %JRBOT_TTS_CMAKE_ARGS% menuconfig
 set "RC=%errorlevel%"
 popd
 if not "%RC%"=="0" goto failure

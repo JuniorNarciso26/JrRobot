@@ -8,4 +8,6 @@ sdkconfig.*
 !sdkconfig.defaults.*
 main/wifi_config.local.h
 main/jr_https_material_local.h
+core/jr_firmware_revision_local.h
 certs/local/
+vendor/

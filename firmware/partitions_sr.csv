@@ -1,5 +1,8 @@
+# Stable V2.1.3S (main/develop): 11 MiB app for ESP-IDF 6.1 + two embedded vTTS models;
+# 4 MiB dedicated ESP-SR WakeNet model data; end=0xF10000 < 16 MiB flash.
+# Build must still verify app image and generated speech model fit before flashing.
 # Name,   Type, SubType, Offset,    Size,       Flags
 nvs,      data, nvs,     0x9000,    0x6000,
 phy_init, data, phy,     0xf000,    0x1000,
-factory,  app,  factory, 0x10000,   0x500000,
-model,    data, spiffs,  0x510000,  0x800000,
+factory,  app,  factory, 0x10000,   0xB00000,
+model,    data, spiffs,  0xB10000,  0x400000,

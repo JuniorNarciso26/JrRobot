@@ -57,6 +57,18 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### JrBot V2.1.3S_TTS_FAST — approved firmware on `main` (November 24, 2026)
+
+**Owner acceptance:** The ESP32-S3 HW04 ran `JrBot_V2.1.3D_TTS_FAST` (Git `7854de30`) with the offline Brazilian Portuguese vTTS engine (Apache-2.0 `tuanpmt/vtts` v0.11.0), WakeNet10 `wn10_pt_olaesp`, 180 ms beep, Love OLED for 3 seconds, and the short acknowledgement **“Olá! Eu sou o JrBot.”** The user confirmed the second wake reply was fast after caching. Serial evidence shows 74,042 bytes of PCM stored in PSRAM, `JR_TTS_WAKE_CACHE_HIT`, `JR_TTS done source=wake result=ESP_OK`, I2S release and WakeNet listening resumed. The earlier v2.1.2 watchdog alert was not seen in the supplied v2.1.3 log.
+
+**Stable promotion:** The accepted code is promoted to `main` as `JrBot_V2.1.3S_TTS_FAST`. The S name and Git SHA differ from the hardware-tested D candidate only because of release metadata and the branch-specific installer path. `main` and `develop` now build this release with **ESP-IDF 6.1.1**, not the previous 5.5.x toolchain. The old V2.0 source remains in Git history, not the current main.
+
+The **Voz** tab allows manual offline TTS in idle mode (Lite S / Quality M, volume, gain, speed, expression and high-frequency attenuation). Manual speech is OFF after reboot, and the current text input limit is **180 UTF-8 bytes**. When Autonomous is enabled, the fixed wake acknowledgement is prepared asynchronously and cached in PSRAM. Beep and Love are preserved, then the cached phrase is played and microphone listening resumes; on synthesis failure the original beep/face behavior is retained.
+
+**One-click Windows installer:** run `INSTALAR.bat` and choose **main** to update from GitHub, prepare private HTTPS materials (never committed), prepare pinned vTTS model assets, stamp the Git SHA, compile, flash automatically to the selected COM port and launch `PAINEL.bat`. The selected ESP-IDF 6.1.1 environment must already be installed. `INSTALAR.bat build` and `INSTALAR.bat flash` retain their diagnostic modes. Boot / `version` / `status` report `version=JrBot_V2.1.3S_TTS_FAST git=<8-character SHA>`; compare the SHA to the installer after compiling.
+
+**Known limitations:** The supplied HW04 log verified that the HTTPS server started on port 443, but recorded TLS handshake alert `-0x7780`; end-to-end browser access and a fresh full WebRTC/Live regression were not established by that log. Other long-session regression scenarios are not newly claimed. This release does **not** include continuous speech-to-text, full conversation or long-text streaming. The next `develop` experiment is incremental long-text synthesis/playback without changing this accepted main baseline. See [vTTS integration and QA](docs/04-firmware-development/VTTS_DEVELOP_INTEGRATION.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md) and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
+
 ### What's new in JrBot V1.8S
 
 **JrBot V1.8S** retains all the capabilities listed above and introduces **JrSkill Network** integration. Users can acquire Skills through the platform, manage their licenses and execute them directly on JrBot.

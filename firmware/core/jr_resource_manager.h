@@ -10,6 +10,7 @@ typedef enum {
     JR_I2S_OWNER_MIC,
     JR_I2S_OWNER_PLAYBACK,
     JR_I2S_OWNER_LEGACY_VOICE,
+    JR_I2S_OWNER_TTS,
 } jr_i2s_owner_t;
 
 typedef struct {

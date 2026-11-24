@@ -1,7 +1,14 @@
 #pragma once
 
-#define JR_APP_VERSION "JrBot_V2.0"
-#define JR_BUILD_STAMP_SP "2026-11-22_JrBot_V2.0_WAKE_OLAESP"
+#define JR_APP_VERSION "JrBot_V2.1.3S_TTS_FAST"
+#define JR_BUILD_STAMP_SP "2026-11-24_STABLE_TTS_FAST_WAKE_CACHE"
+
+/* Generated locally on every installer build to identify the actual Git commit. */
+#if __has_include("jr_firmware_revision_local.h")
+#include "jr_firmware_revision_local.h"
+#else
+#define JR_FIRMWARE_GIT_COMMIT "unknown"
+#endif
 
 #if __has_include("wifi_config.local.h")
 #include "wifi_config.local.h"

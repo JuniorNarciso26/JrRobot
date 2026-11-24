@@ -35,7 +35,17 @@ static void usb_write_all(const char *text) {
 }
 
 void jr_usb_terminal_emit(const char *text) {
-    usb_write_all(text);
+    /* Unsolicited WakeNet events must never delay a physical voice reply.
+     * Keep the original blocking/flush behavior for command responses, but
+     * enqueue event lines in one short, bounded USB write without waiting
+     * up to 300 ms for the USB host to drain every event. */
+    if (!text || !usb_serial_jtag_is_driver_installed()) return;
+    char wire[JR_SERIAL_LINE_MAX_BYTES + 2];
+    size_t len = strlen(text);
+    if (len == 0 || len > sizeof(wire) - 2) return;
+    memcpy(wire, text, len);
+    wire[len++] = '\n';
+    (void)usb_serial_jtag_write_bytes(wire, len, pdMS_TO_TICKS(20));
 }
 
 static bool brain_command(const char *cmd, char *response, size_t cap) {

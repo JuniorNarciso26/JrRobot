@@ -238,6 +238,7 @@
     refresh();
     syncTimer();
   }
+  nav.addEventListener('jrbot:voice-selected', () => { active = false; panel.hidden = true; stopTimer(); });
   wifiTab.addEventListener('click', selectWiFi);
   for (const button of nav.querySelectorAll('button')) {
     if (button !== wifiTab)

@@ -13,6 +13,9 @@
 #include "jr_portal.h"
 #include "jr_audio_receive.h"
 #include "jr_webrtc_audio.h"
+#include "jr_tts.h"
+#include "jr_resource_manager.h"
+#include "cJSON.h"
 #include "jr_wifi_web.h"
 #include "jr_memory.h"
 #include "jr_memory_tasks.h"
@@ -22,7 +25,18 @@
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
-#if __has_include("jr_https_material_local.h")
+/*
+ * The experimental develop/vTTS firmware must never be released with HTTP only.
+ * The installer prepares this gitignored header BEFORE compiling. A missing or
+ * disabled header is now a build failure, not a silent loss of HTTPS/WebRTC.
+ * Existing production and non-vTTS branch behavior remains unchanged.
+ */
+#if defined(JRBOT_WITH_VTTS) && JRBOT_WITH_VTTS
+#include "jr_https_material_local.h"
+#if !defined(JR_HTTPS_LOCAL_MATERIAL_AVAILABLE) || JR_HTTPS_LOCAL_MATERIAL_AVAILABLE != 1
+#error "Develop vTTS HTTPS material is not enabled; run INSTALAR.bat again."
+#endif
+#elif __has_include("jr_https_material_local.h")
 #include "jr_https_material_local.h"
 #else
 #define JR_HTTPS_LOCAL_MATERIAL_AVAILABLE 0
@@ -32,6 +46,7 @@ extern const char jrskill_app_js_start[] asm("_binary_jrskill_app_js_start");
 extern const char jrskill_app_js_end[] asm("_binary_jrskill_app_js_end");
 extern const char memory_panel_js_start[] asm("_binary_memory_panel_js_start");
 extern const char wifi_panel_js_start[] asm("_binary_wifi_panel_js_start");
+extern const char voice_panel_js_start[] asm("_binary_voice_panel_js_start");
 extern const char memory_build_json_start[] asm("_binary_jr_memory_build_json_start");
 
 static httpd_handle_t web_server;
@@ -50,7 +65,7 @@ static esp_err_t web_root_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
     const char *marker=strstr(JRBOT_WEB_V1_HTML,"</body>");
     if (!marker) return httpd_resp_send(req,JRBOT_WEB_V1_HTML,HTTPD_RESP_USE_STRLEN);
-    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script><script src='/memory-panel.js'></script><script src='/wifi-panel.js'></script>";
+    static const char inject[]="<script src='/v16.js'></script><script src='/jrskill-app.js'></script><script src='/memory-panel.js'></script><script src='/wifi-panel.js'></script><script src='/voice-panel.js'></script>";
     esp_err_t err=httpd_resp_send_chunk(req,JRBOT_WEB_V1_HTML,(ssize_t)(marker-JRBOT_WEB_V1_HTML));
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,inject,HTTPD_RESP_USE_STRLEN);
     if (err==ESP_OK) err=httpd_resp_send_chunk(req,marker,HTTPD_RESP_USE_STRLEN);
@@ -121,6 +136,113 @@ static esp_err_t web_memory_js_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/javascript; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_send(req, memory_panel_js_start, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t web_voice_js_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/javascript; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, voice_panel_js_start, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t web_voice_get_handler(httpd_req_t *req) {
+    jr_tts_status_t st = {0};
+    jr_tts_get_status(&st);
+    jr_i2s_resource_status_t audio = {0};
+    jr_resource_i2s_get_status(&audio);
+    char json[600];
+    snprintf(json, sizeof(json),
+             "{\"ok\":true,\"available\":%s,\"busy\":%s,\"enabled\":%s,"
+             "\"model\":\"%c\",\"volume\":%d,\"gain_db\":%d,\"debuzz_db\":%d,"
+             "\"speed\":%.2f,\"expression\":%.2f,\"utterances\":%lu,"
+             "\"last_audio_ms\":%lu,\"last_synth_ms\":%lu,\"last_rtf\":%.3f,"
+             "\"last_error\":\"%s\",\"psram_free\":%u,\"i2s_owner\":\"%s\"}",
+             st.available ? "true" : "false", st.busy ? "true" : "false",
+             st.settings.enabled ? "true" : "false", st.settings.model,
+             st.settings.volume, st.settings.gain_db, st.settings.debuzz_db,
+             (double)st.settings.speed, (double)st.settings.expression,
+             (unsigned long)st.utterances, (unsigned long)st.last_audio_ms,
+             (unsigned long)st.last_synth_ms, (double)st.last_rtf,
+             esp_err_to_name(st.last_error),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             jr_i2s_owner_name(audio.owner));
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t voice_error(httpd_req_t *req, const char *code, const char *status) {
+    char json[160];
+    snprintf(json, sizeof(json), "{\"ok\":false,\"error\":\"%s\"}", code);
+    httpd_resp_set_status(req, status);
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    return httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t web_voice_post_handler(httpd_req_t *req) {
+    /* Speech controls must not be exposed over plaintext HTTP on a LAN. */
+    if (!https_server || req->handle != https_server)
+        return voice_error(req, "use_https", "403 Forbidden");
+    char header[4];
+    if (httpd_req_get_hdr_value_str(req, "X-JrBot-Voice", header, sizeof(header)) != ESP_OK || strcmp(header, "1"))
+        return voice_error(req, "required_header", "403 Forbidden");
+    if (req->content_len == 0 || req->content_len > 512)
+        return voice_error(req, "payload_too_large", "413 Payload Too Large");
+
+    char body[513];
+    size_t read = 0;
+    while (read < req->content_len) {
+        int n = httpd_req_recv(req, body + read, req->content_len - read);
+        if (n <= 0) return voice_error(req, "incomplete_request", "408 Request Timeout");
+        read += (size_t)n;
+    }
+    if (memchr(body, '\0', read)) return voice_error(req, "invalid_input", "400 Bad Request");
+    body[read] = '\0';
+    cJSON *root = cJSON_Parse(body);
+    if (!root) return voice_error(req, "invalid_json", "400 Bad Request");
+    const cJSON *action = cJSON_GetObjectItemCaseSensitive(root, "action");
+    esp_err_t err = ESP_ERR_INVALID_ARG;
+    bool queued = false;
+    if (cJSON_IsString(action) && !strcmp(action->valuestring, "configure")) {
+        const cJSON *enabled = cJSON_GetObjectItemCaseSensitive(root, "enabled");
+        const cJSON *model = cJSON_GetObjectItemCaseSensitive(root, "model");
+        const cJSON *volume = cJSON_GetObjectItemCaseSensitive(root, "volume");
+        const cJSON *gain = cJSON_GetObjectItemCaseSensitive(root, "gain_db");
+        const cJSON *debuzz = cJSON_GetObjectItemCaseSensitive(root, "debuzz_db");
+        const cJSON *speed = cJSON_GetObjectItemCaseSensitive(root, "speed");
+        const cJSON *expression = cJSON_GetObjectItemCaseSensitive(root, "expression");
+        if (cJSON_IsBool(enabled) && cJSON_IsString(model) && strlen(model->valuestring) == 1 &&
+            cJSON_IsNumber(volume) && cJSON_IsNumber(gain) && cJSON_IsNumber(debuzz) &&
+            cJSON_IsNumber(speed) && cJSON_IsNumber(expression)) {
+            jr_tts_settings_t settings = {
+                .enabled = cJSON_IsTrue(enabled),
+                .model = model->valuestring[0],
+                .volume = volume->valueint,
+                .gain_db = gain->valueint,
+                .debuzz_db = debuzz->valueint,
+                .speed = (float)speed->valuedouble,
+                .expression = (float)expression->valuedouble,
+            };
+            err = jr_tts_configure(&settings);
+        }
+    } else if (cJSON_IsString(action) && !strcmp(action->valuestring, "speak")) {
+        const cJSON *text = cJSON_GetObjectItemCaseSensitive(root, "text");
+        if (cJSON_IsString(text) && text->valuestring) {
+            err = jr_tts_say(text->valuestring);
+            queued = err == ESP_OK;
+        }
+    }
+    cJSON_Delete(root);
+    if (err != ESP_OK) {
+        return voice_error(req, err == ESP_ERR_INVALID_STATE ? "voice_busy_or_autonomous" :
+                                err == ESP_ERR_NOT_SUPPORTED ? "vtts_not_compiled" :
+                                err == ESP_ERR_INVALID_ARG ? "invalid_voice_settings" :
+                                esp_err_to_name(err),
+                           err == ESP_ERR_NOT_SUPPORTED ? "503 Service Unavailable" : "400 Bad Request");
+    }
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, queued ? "{\"ok\":true,\"queued\":true}" :
+                                        "{\"ok\":true,\"saved\":true}", HTTPD_RESP_USE_STRLEN);
 }
 
 static void camera_request_options(httpd_req_t *req,jr_camera_size_t *size,int *quality,bool *live) {
@@ -277,6 +399,9 @@ JR_MONITOR_HTTP_HANDLER(web_status_handler)
 JR_MONITOR_HTTP_HANDLER(web_memory_handler)
 JR_MONITOR_HTTP_HANDLER(web_memory_js_handler)
 JR_MONITOR_HTTP_HANDLER(web_wifi_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_voice_js_handler)
+JR_MONITOR_HTTP_HANDLER(web_voice_get_handler)
+JR_MONITOR_HTTP_HANDLER(web_voice_post_handler)
 JR_MONITOR_HTTP_HANDLER(web_cmd_handler)
 JR_MONITOR_HTTP_HANDLER(legacy_get_handler)
 JR_MONITOR_HTTP_HANDLER(web_capture_handler)
@@ -299,6 +424,9 @@ static esp_err_t register_routes(httpd_handle_t server) {
         {.uri="/memory",.method=HTTP_GET,.handler=web_memory_handler_monitored},
         {.uri="/memory-panel.js",.method=HTTP_GET,.handler=web_memory_js_handler_monitored},
         {.uri="/wifi-panel.js",.method=HTTP_GET,.handler=web_wifi_js_handler_monitored},
+        {.uri="/voice-panel.js",.method=HTTP_GET,.handler=web_voice_js_handler_monitored},
+        {.uri="/voice",.method=HTTP_GET,.handler=web_voice_get_handler_monitored},
+        {.uri="/voice",.method=HTTP_POST,.handler=web_voice_post_handler_monitored},
         {.uri="/cmd",.method=HTTP_POST,.handler=web_cmd_handler_monitored},
         {.uri="/cmd",.method=HTTP_GET,.handler=legacy_get_handler_monitored},
         {.uri="/capture",.method=HTTP_GET,.handler=web_capture_handler_monitored},
@@ -322,7 +450,7 @@ static void start_http(void) {
     httpd_config_t config=HTTPD_DEFAULT_CONFIG();
     config.server_port=80;
     config.stack_size=12288;
-    config.max_uri_handlers=18;
+    config.max_uri_handlers=21;
     config.lru_purge_enable=true;
     esp_err_t err=httpd_start(&web_server,&config);
     if (err!=ESP_OK) { web_server=NULL; ESP_LOGE("jrbot_portal","httpd_start=%s",esp_err_to_name(err)); return; }
@@ -333,11 +461,12 @@ static void start_http(void) {
 
 static void start_https(void) {
 #if JR_HTTPS_LOCAL_MATERIAL_AVAILABLE
+    ESP_LOGI("jrbot_portal","JR_HTTPS_MATERIAL_COMPILED local=1 starting=443");
     httpd_ssl_config_t config=HTTPD_SSL_CONFIG_DEFAULT();
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
     config.httpd.stack_size=16384;
-    config.httpd.max_uri_handlers=26; /* 17 portal routes + 6 WebRTC/audio lab routes */
+    config.httpd.max_uri_handlers=29; /* 17 portal routes + 6 WebRTC/audio lab routes */
     config.httpd.max_open_sockets=7;
     config.httpd.lru_purge_enable=true;
     config.servercert=(const uint8_t *)JR_HTTPS_CERT_PEM;

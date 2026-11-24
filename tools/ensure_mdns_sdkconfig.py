@@ -12,7 +12,9 @@ OPTIONS = {
     "CONFIG_MDNS_TASK_CREATE_FROM_SPIRAM": "n",
     "CONFIG_MDNS_MEMORY_CUSTOM_IMPL": "n",
     "CONFIG_MDNS_TASK_STACK_SIZE": "4096",
-    "CONFIG_MDNS_MAX_INTERFACES": "1",
+    # The Espressif mdns v1.14 duplicate-interface check uses a two-element
+    # array even when only STA is enabled; 1 fails compilation under GCC -Werror.
+    "CONFIG_MDNS_MAX_INTERFACES": "2",
     "CONFIG_MDNS_MAX_SERVICES": "1",
     "CONFIG_MDNS_PREDEF_NETIF_STA": "y",
     "CONFIG_MDNS_PREDEF_NETIF_AP": "n",

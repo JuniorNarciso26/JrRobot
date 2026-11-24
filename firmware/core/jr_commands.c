@@ -123,7 +123,7 @@ bool jr_format_status(char *response, size_t cap) {
     const char *mic_state = mic_present ? "available" : "unavailable";
     const char *audio_last = a.tests ? esp_err_to_name(a.last_error) : "not_run";
     int n = snprintf(response, cap,
-        "JR_STATUS protocol=2 version=%s build_sp=%s hardware=%s profile=%s mode=%s mode_previous=%s mode_transitions=%lu "
+        "JR_STATUS protocol=2 version=%s build_sp=%s git=%s hardware=%s profile=%s mode=%s mode_previous=%s mode_transitions=%lu "
         "i2s_owner=%s i2s_acquisitions=%lu i2s_releases=%lu i2s_busy=%lu i2s_release_mismatch=%lu expression=%s demo=%d "
         "wifi_config=%d wifi=%d pending_restart=%d ip=%s audio=on_demand volume=%d "
         "audio_bclk=%d audio_ws=%d audio_dout=%d amplifier_presence=not_detectable "
@@ -133,7 +133,7 @@ bool jr_format_status(char *response, size_t cap) {
         "mic_recording=%d mic_has_recording=%d mic_record_seconds=%u mic_record_samples=%u mic_record_level=%d mic_record_peak=%d "
         "oled=%s oled_presence=%s oled_addr=0x%02X sda=1 scl=2 hz=%d commands=%lu rendered=%lu tx_ok=%lu "
         "tx_fail=%lu skipped=%lu init_fail=%lu consecutive_fail=%lu recoveries=%lu last_success_ms=%lu last_error=%s",
-        JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME,
+        JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_FIRMWARE_GIT_COMMIT,JR_PINMAP_REVISION,JR_PROFILE_NAME,
         jr_mode_name(mode.current),jr_mode_name(mode.previous),(unsigned long)mode.transitions,
         jr_i2s_owner_name(i2s.owner),(unsigned long)i2s.acquisitions,(unsigned long)i2s.releases,
         (unsigned long)i2s.busy_count,(unsigned long)i2s.release_mismatch_count,f.expression,f.demo,
@@ -224,7 +224,7 @@ static bool execute_command(const char *cmd, char *response, size_t cap) {
     if (!strcmp(verb,"memoria")) return jr_memory_format(response,cap);
     if (!strcmp(verb,"tarefas")) return jr_memory_tasks_format(response,cap);
     if (!strcmp(verb,"version")) {
-        snprintf(response,cap,"JR_OK version=%s build_sp=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
+        snprintf(response,cap,"JR_OK version=%s build_sp=%s git=%s hardware=%s profile=%s",JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_FIRMWARE_GIT_COMMIT,JR_PINMAP_REVISION,JR_PROFILE_NAME);
         return true;
     }
     if (!strcmp(verb,"camera_test")) return jr_camera_test_once(response,cap);
