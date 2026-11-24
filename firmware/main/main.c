@@ -23,8 +23,8 @@ static uint32_t now_ms(void) {
 }
 
 void app_main(void) {
-    ESP_LOGI("jrbot_main", "BOOT %s build_sp=%s hardware=%s profile=%s",
-             JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_PINMAP_REVISION,JR_PROFILE_NAME);
+    ESP_LOGI("jrbot_main", "BOOT %s build_sp=%s git=%s hardware=%s profile=%s",
+             JR_APP_VERSION,JR_BUILD_STAMP_SP,JR_FIRMWARE_GIT_COMMIT,JR_PINMAP_REVISION,JR_PROFILE_NAME);
     ESP_LOGI("jrbot_main", "OLED SSD1306 enabled SDA=%d SCL=%d",JR_OLED_SDA_GPIO,JR_OLED_SCL_GPIO);
     ESP_LOGI("jrbot_main", "MAX98357A enabled BCLK=%d WS=%d DIN=%d",JR_AUDIO_BCLK_GPIO,JR_AUDIO_LRC_GPIO,JR_AUDIO_DIN_GPIO);
     ESP_LOGI("jrbot_main", "MS3625 enabled SCK=%d WS=%d SD=%d",JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
