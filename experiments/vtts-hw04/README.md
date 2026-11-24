@@ -3,6 +3,81 @@
 **Branch experimental:** `test/vtts-pt-br-hw04` (separado da `main` V2.0).  
 **Estado:** codigo preparatorio publicado, **sem build nem teste fisico nesta branch**.
 
+## Teste comparativo padrao JR_TTS_LONG_01 — 24/11/2026
+
+Este primeiro video mede **Enter no computador → inicio acustico → fim da fala**
+no laboratorio isolado. So depois de analisar esse resultado adaptaremos a develop
+para repetir o mesmo texto e ajustes no JrBot completo. Nenhuma otimizacao do motor,
+cache, memoria, taxa de audio ou reproducao foi aplicada nesta etapa.
+
+**Frase canonica:** [frase_padrao.txt](frase_padrao.txt), uma unica linha UTF-8:
+
+> Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor. Posso ajudar com perguntas, compartilhar informações e participar das suas ideias. Este é o nosso teste padrão de voz: vou falar esta mensagem inteira, do começo ao fim. Como posso ajudar você hoje?
+
+Identificador: `JR_TTS_LONG_01`. Texto: **344 bytes UTF-8**.
+SHA-256 do texto sem quebra de linha final: `69686839186ec4318b1f0acbc08b50f79d73206f70a29183fd09081a95c7ea82`.
+Este arquivo sera a fonte da mesma frase na develop; nao redigitar nem simplificar.
+
+### Executar e filmar
+
+No clone que usa **test/vtts-pt-br-hw04**, abra o terminal ESP-IDF 6.1.1.
+Se o robo ainda executa o firmware completo, grave o laboratorio e abra o monitor:
+
+```powershell
+python experiments/vtts-hw04/run.py all COM8
+```
+
+Aguarde `READY`; saia do monitor com **Ctrl+]** para liberar a COM8.
+Se o laboratorio ja esta instalado, nao e necessario recompilar para usar o novo
+comando no computador. Antes do video, reinicie o robo, aguarde `READY` e feche
+qualquer monitor que esteja segurando a porta. Nao fale outras frases nem execute
+bench antes desta primeira medicao apos boot.
+
+```powershell
+python experiments/vtts-hw04/run.py benchmark COM8
+```
+
+O comando consulta o console pt-en e aplica/confirma **Lite S, pt, volume 75,
+ganho 6 dB, speed 1.0, expressividade 1.0, debuzz 0, dois nucleos, chunk 128 e
+primeiro bloco 12**. Limpa os contadores de `prof`, sem sintetizar uma fala de
+aquecimento, e mostra **PRONTO**. Entao:
+
+1. Comece a filmar o teclado/tela e o robo, com o alto-falante audivel.
+2. Pressione **Enter uma unica vez**. Aparece `JR_TTS_BENCH_BEGIN` e o programa
+   envia o texto fixo completo, sem copiar/colar manualmente.
+3. Filme ate acabar a ultima palavra e mantenha mais dois segundos de gravacao.
+4. Envie o video e o log salvo em `.work/results/JR_TTS_LONG_01_*.txt`.
+
+Se houver timeout, escrita incompleta, erro de sintese, watchdog ou reinicio,
+o comando encerra e preserva o log. Nao reenvia a frase automaticamente.
+O terminal Serial upstream nao faz eco do texto digitado; o marcador do programa
+ajuda a localizar o disparo no video. O instante da tecla no video e a referencia
+principal, e nao a hora em que o log ficou visivel na tela.
+
+### O que os tempos significam
+
+- **Video:** Enter → primeiro som, duracao da fala, pausas e palavras audiveis.
+- **SAID/RTF/PROF:** diagnosticos do motor, preservados para descobrir gargalos.
+- **HOST_SEND_COMPLETE:** tempo ate enviar a frase pela Serial; nao e inicio do som.
+- **JR_TTS_BENCH_DONE:** tempo ate receber DONE; nao certifica o instante acustico final.
+
+O script nao altera nem gera firmware e nao precisa de `idf.py` para a acao
+benchmark; requer o `pyserial` do ambiente ESP-IDF. A placa precisa estar com o
+laboratorio gravado. Para apenas exibir o texto: `python experiments/vtts-hw04/run.py phrase`.
+
+**Comparabilidade:** o laboratorio original carrega os modelos no boot e usa
+`BSP_DAC_UPSAMPLE=2` (22,05 kHz do modelo → saida de 44,1 kHz); o firmware integrado
+carrega o modelo sob demanda e reproduz a 22,05 kHz. Essas diferencas ficam
+registradas, sem corrigi-las antes da referencia. Mesmo texto/ajustes permitem
+comparar o comportamento percebido, mas nao tornam os dois caminhos identicos.
+Repetir no mesmo robo/alto-falante, com a mesma alimentacao e primeira fala apos
+boot; nao comparar este S com um video M. A main e a develop ficam intactas nesta etapa.
+
+**Checks do novo comando:** quatro testes host validam bytes/ajustes e envio unico
+apos Enter, recusa de console diferente, timeout sem reenvio, erro/watchdog e
+leitura fragmentada UTF-8; sintaxe Python verificada. A nova acao ainda precisa
+ser executada na COM real. Nao foi realizado novo build/flash ou teste acustico aqui.
+
 ## O que vamos testar
 
 Digite uma frase em portugues na **UART0 do ESP32-S3 (conector USB com CH343/COM8)**, pressione Enter e

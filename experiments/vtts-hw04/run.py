@@ -2,7 +2,7 @@
 """Isolated vTTS nu-pt / JrBot HW04 test. Never modifies JrBot production firmware.
 
 Run on Windows from an ESP-IDF 6.1 activated terminal:
-    python experiments/vtts-hw04/run.py prepare|build|flash|monitor|all [COMx]
+    python experiments/vtts-hw04/run.py prepare|build|flash|monitor|all|benchmark|phrase [COMx]
 
 All external source, model weights and build artifacts are under .work/ (gitignored).
 The pinned vTTS upstream and its Apache-2.0 license are kept intact in .work/vtts.
@@ -222,9 +222,17 @@ def monitor(script: Path, port: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="JrBot HW04 / vTTS nu-pt test (isolated)")
-    parser.add_argument("action", choices=["prepare", "build", "flash", "monitor", "all", "doctor"])
+    parser.add_argument("action", choices=["prepare", "build", "flash", "monitor", "all", "doctor", "benchmark", "phrase"])
     parser.add_argument("port", nargs="?", help="Windows COM port, e.g. COM8")
     args = parser.parse_args()
+    if args.action == "phrase":
+        from benchmark import standard_phrase
+        print(standard_phrase())
+        return
+    if args.action == "benchmark":
+        from benchmark import run as run_benchmark
+        run_benchmark(serial_port(args.port))
+        return
     if args.action == "doctor":
         print("Python:", sys.version.split()[0])
         print("Git:", shutil.which("git") or "nao encontrado")
