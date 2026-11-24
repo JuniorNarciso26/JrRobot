@@ -351,19 +351,63 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
     return err;
 }
 
-static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms, uint32_t *synth_ms, float *rtf)
+static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
+                                uint32_t *synth_ms, float *rtf, bool cache_only)
 {
-    /* A detected wakeword is the only autonomous path allowed to speak.
-     * jr_voice.c closes and releases the microphone before calling this path. */
     if (jr_brain_enabled() && !job->wake_reply) return ESP_ERR_INVALID_STATE;
-    if (!jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, "tts_speak")) return ESP_ERR_INVALID_STATE;
 
+    if (job->wake_reply && !cache_only) {
+        /* The normal path uses an immutable PCM clip, generated earlier when
+         * Autonomous was turned on. No model load, PSRAM arena or TTS inference
+         * is needed at wake time. If prewarm is still running, reuse its work. */
+        const int16_t *ready_pcm = NULL;
+        size_t ready_count = 0;
+        int ready_rate = 0;
+        if (!cached_reply(&ready_pcm, &ready_count, &ready_rate)) {
+            (void)wait_for_cached_reply();
+        }
+        if (cached_reply(&ready_pcm, &ready_count, &ready_rate)) {
+            if (!jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, "tts_wake_cached"))
+                return ESP_ERR_INVALID_STATE;
+            *audio_ms = (uint32_t)(ready_count * 1000U / (size_t)ready_rate);
+            *synth_ms = 0;
+            *rtf = 0.0f;
+            ESP_LOGI(TAG, "JR_TTS_WAKE_CACHE_HIT audio_ms=%lu bytes=%lu",
+                     (unsigned long)*audio_ms,
+                     (unsigned long)(ready_count * sizeof(int16_t)));
+            esp_err_t played = play_pcm(&job->opts, ready_pcm, ready_count, ready_rate);
+            jr_resource_i2s_release(JR_I2S_OWNER_TTS, "tts_wake_cached_done");
+            return played;
+        }
+        portENTER_CRITICAL(&state_lock);
+        bool still_preparing = wake_cache.started && !wake_cache.finished;
+        portEXIT_CRITICAL(&state_lock);
+        if (still_preparing) {
+            ESP_LOGW(TAG, "JR_TTS_WAKE_CACHE not_ready_timeout; preserve beep_and_face");
+            return ESP_ERR_TIMEOUT;
+        }
+        /* Prewarm could not start or failed; retain the existing lazy vTTS
+         * synthesis as a fallback, and opportunistically populate the cache. */
+    }
+
+    bool i2s_owned = false;
+    bool synth_locked = false;
     esp_err_t err = ESP_ERR_NO_MEM;
     void *weights = NULL;
     vtts_model *model = NULL;
     void *arena = NULL;
     vtts_text_ws *ws = NULL;
     int16_t *pcm = NULL;
+    if (!cache_only) {
+        if (!jr_resource_i2s_acquire(JR_I2S_OWNER_TTS, 0, "tts_speak"))
+            return ESP_ERR_INVALID_STATE;
+        i2s_owned = true;
+    }
+    if (!synth_mutex || xSemaphoreTake(synth_mutex, pdMS_TO_TICKS(15000)) != pdTRUE) {
+        err = ESP_ERR_TIMEOUT;
+        goto cleanup;
+    }
+    synth_locked = true;
 
     const uint8_t *start = job->opts.model == 'm' ? model_m_start : model_s_start;
     const uint8_t *end = job->opts.model == 'm' ? model_m_end : model_s_end;
@@ -388,7 +432,8 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms, uin
     bool has_lex = vtts_lex_init(&lex, lex_en_start, (size_t)(lex_en_end - lex_en_start)) == 0;
     vtts_text_opts opts = {.lang = VTTS_LANG_PT, .lex = has_lex ? &lex : NULL};
     jr_tts_synth_t c = {.model=model, .arena=arena, .arena_bytes=arena_bytes,
-                         .pcm=pcm, .count=0, .cap=cap, .speed=job->opts.speed, .error=ESP_OK};
+                         .pcm=pcm, .count=0, .cap=cap, .speed=job->opts.speed,
+                         .error=ESP_OK, .last_yield_us=esp_timer_get_time()};
     int64_t started_us = esp_timer_get_time();
     int chunks = vtts_text_to_ids_ex(job->text, ws, &opts, on_ids, &c);
     int64_t synth_us = esp_timer_get_time() - started_us;
@@ -396,13 +441,25 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms, uin
         err = c.error != ESP_OK ? c.error : ESP_FAIL;
         goto cleanup;
     }
-    *audio_ms = (uint32_t)(c.count * 1000 / model->sample_rate);
+    *audio_ms = (uint32_t)(c.count * 1000U / (size_t)model->sample_rate);
     *synth_ms = (uint32_t)(synth_us / 1000);
     *rtf = (float)synth_us * model->sample_rate / (1000000.0f * (float)c.count);
-    ESP_LOGI(TAG, "model=%c chunks=%d audio_ms=%lu synth_ms=%lu rtf=%.3f psram_free=%u",
-             job->opts.model, chunks, (unsigned long)*audio_ms, (unsigned long)*synth_ms, (double)*rtf,
-             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-    err = play_pcm(&job->opts, &c);
+    ESP_LOGI(TAG, "model=%c chunks=%d audio_ms=%lu synth_ms=%lu rtf=%.3f psram_free=%u cache_only=%d",
+             job->opts.model, chunks, (unsigned long)*audio_ms, (unsigned long)*synth_ms,
+             (double)*rtf, (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             cache_only ? 1 : 0);
+
+    if (cache_only || job->wake_reply) {
+        cache_reply_pcm(c.pcm, c.count, model->sample_rate);
+    }
+    if (cache_only) {
+        const int16_t *ready_pcm = NULL;
+        size_t ready_count = 0;
+        int ready_rate = 0;
+        err = cached_reply(&ready_pcm, &ready_count, &ready_rate) ? ESP_OK : ESP_ERR_NO_MEM;
+    } else {
+        err = play_pcm(&job->opts, c.pcm, c.count, model->sample_rate);
+    }
 
 cleanup:
     if (pcm) heap_caps_free(pcm);
@@ -410,8 +467,33 @@ cleanup:
     if (arena) heap_caps_free(arena);
     if (model) heap_caps_free(model);
     if (weights) heap_caps_free(weights);
-    jr_resource_i2s_release(JR_I2S_OWNER_TTS, "tts_speak_done");
+    if (synth_locked) xSemaphoreGive(synth_mutex);
+    if (i2s_owned) jr_resource_i2s_release(JR_I2S_OWNER_TTS, "tts_speak_done");
     return err;
+}
+
+static void wake_cache_task(void *opaque)
+{
+    (void)opaque;
+    /* Lightweight acknowledgement: always use Lite S, speed 1.0, expression
+     * 1.0. Playback still respects the user's current volume/gain/filter. */
+    jr_tts_status_t snapshot = {0};
+    jr_tts_get_status(&snapshot);
+    jr_tts_job_t job = {.opts=snapshot.settings, .wake_reply=true};
+    job.opts.model = 's';
+    job.opts.speed = 1.0f;
+    job.opts.expression = 1.0f;
+    snprintf(job.text, sizeof(job.text), "%s", JR_WAKE_REPLY_TEXT);
+    uint32_t audio_ms = 0, synth_ms = 0;
+    float rtf = 0.0f;
+    ESP_LOGI(TAG, "JR_TTS_WAKE_CACHE_PREPARE start model=s");
+    esp_err_t err = synth_and_play(&job, &audio_ms, &synth_ms, &rtf, true);
+    portENTER_CRITICAL(&state_lock);
+    wake_cache.finished = true;
+    portEXIT_CRITICAL(&state_lock);
+    ESP_LOGI(TAG, "JR_TTS_WAKE_CACHE_PREPARE done=%s synth_ms=%lu rtf=%.3f",
+             esp_err_to_name(err), (unsigned long)synth_ms, (double)rtf);
+    vTaskDelete(NULL);
 }
 
 static void voice_task(void *opaque)
@@ -419,7 +501,7 @@ static void voice_task(void *opaque)
     jr_tts_job_t *job = (jr_tts_job_t *)opaque;
     uint32_t audio_ms = 0, synth_ms = 0;
     float rtf = 0.0f;
-    esp_err_t err = synth_and_play(job, &audio_ms, &synth_ms, &rtf);
+    esp_err_t err = synth_and_play(job, &audio_ms, &synth_ms, &rtf, false);
     portENTER_CRITICAL(&state_lock);
     state.busy = false;
     state.last_error = err;
@@ -497,4 +579,26 @@ esp_err_t jr_tts_say(const char *utf8)
 esp_err_t jr_tts_reply_to_wake(const char *utf8)
 {
     return start_speech(utf8, true);
+}
+
+void jr_tts_prepare_wake_reply(void)
+{
+#if JRBOT_WITH_VTTS
+    if (!initialized) jr_tts_init();
+    portENTER_CRITICAL(&state_lock);
+    bool start = !wake_cache.started;
+    if (start) wake_cache.started = true;
+    portEXIT_CRITICAL(&state_lock);
+    if (!start) return;  /* At most one generation per boot. */
+
+    /* Prepare on CPU0 without acquiring I2S. WakeNet listens on CPU1. The
+     * low-priority task yields periodically to keep Wi-Fi and IDLE0 alive. */
+    if (xTaskCreatePinnedToCore(wake_cache_task, "jr_tts_cache", 10240,
+                                NULL, 1, NULL, 0) != pdPASS) {
+        portENTER_CRITICAL(&state_lock);
+        wake_cache.finished = true;
+        portEXIT_CRITICAL(&state_lock);
+        ESP_LOGW(TAG, "JR_TTS_WAKE_CACHE_PREPARE task_create_failed");
+    }
+#endif
 }
