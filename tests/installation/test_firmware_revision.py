@@ -1,4 +1,4 @@
-"""Offline checks for version stamping and the one-click develop installer."""
+"""Offline checks for firmware version stamping and stable main/develop installer."""
 from __future__ import annotations
 
 import importlib.util
@@ -45,6 +45,20 @@ class FirmwareRevisionTests(unittest.TestCase):
         self.assertIn("-p \"%JR_FLASH_PORT%\" flash", installer)
         self.assertNotIn("CONFIRM_TTS_FLASH", installer)
         self.assertIn("[GRAVADO] ESP-IDF confirmou", installer)
+
+    def test_main_and_develop_use_same_vtts_https_idf6_profile(self):
+        installer = (ROOT / "INSTALAR.bat").read_text()
+        self.assertIn('if /i "%CURRENT_BRANCH%"=="main" set "JRBOT_VTTS_BRANCH=1"', installer)
+        self.assertIn('if /i "%CURRENT_BRANCH%"=="develop" set "JRBOT_VTTS_BRANCH=1"', installer)
+        self.assertIn('set "SDKCONFIG_FILE=sdkconfig.develop_vtts"', installer)
+        self.assertIn('set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON"', installer)
+        self.assertIn('set "BUILD_DIR=b-main-vtts"', installer)
+        self.assertIn('python tools\\prepare_https_develop.py', installer)
+        self.assertIn('python tools\\prepare_vtts_develop.py', installer)
+        self.assertIn('python tools\\stamp_firmware_revision.py', installer)
+        self.assertNotIn("Digite GRAVAR", installer)
+        deps = (ROOT / "firmware/main/idf_component.yml").read_text()
+        self.assertIn('>=6.1.0,<6.2.0', deps)
 
     def test_runtime_reports_commit_in_boot_and_status(self):
         boot = (ROOT / "firmware" / "main" / "main.c").read_text()
