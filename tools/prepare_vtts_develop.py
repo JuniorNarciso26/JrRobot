@@ -144,7 +144,7 @@ def prepare() -> None:
     print("[OK] Models: S", (ASSETS / "model_s.vtts").stat().st_size,
           "M", (ASSETS / "model_m.vtts").stat().st_size,
           "Lex", lex.stat().st_size)
-    print("[INFO] Nenhum firmware foi gravado. Execute INSTALAR.bat build para verificar o tamanho.")
+    print("[INFO] Modelos preparados. O INSTALAR.bat continuara com compilacao e gravacao se autorizada.")
 
 
 if __name__ == "__main__":
