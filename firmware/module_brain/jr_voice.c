@@ -222,28 +222,34 @@ static esp_err_t reply_and_resume(void) {
     portEXIT_CRITICAL(&voice_lock);
 
     /*
-     * WakeNet's microphone holds the same I2S pins as the speaker.
-     * Release the microphone before vTTS; the TTS task runs on core 0,
-     * while this task waits on core 1 and resumes the mic only afterwards.
-     * The recognized keyword itself is the authorization for one reply.
+     * Preserve the hardware-validated feedback: beep first, then OLED Love
+     * for 3 seconds. WakeNet's microphone and speaker share I2S pins,
+     * so close the microphone before both audio outputs.
      */
     close_mic();
-    const char *reply_type = "vtts";
-    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=vtts phrase=ola_sou_o_jrbot");
-    esp_err_t reply_err = jr_tts_reply_to_wake("Olá! Eu sou o JrBot.");
-    if (reply_err != ESP_OK) {
-        ESP_LOGW(TAG, "WAKE_REPLY_FALLBACK type=beep vtts_error=%s", esp_err_to_name(reply_err));
-        reply_type = "beep";
-        if (!stop_requested) reply_err = jr_audio_test_tone(880, 180);
-    }
-    ESP_LOGI(TAG, "WAKE_REPLY_END type=%s result=%s", reply_type, esp_err_to_name(reply_err));
-    if (reply_err == ESP_OK && !stop_requested && wake_callback) {
-        // Keep the OLED Love reaction after the spoken reply (or fallback beep).
+    ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=beep frequency=880Hz duration_ms=180");
+    esp_err_t beep_err = jr_audio_test_tone(880, 180);
+    ESP_LOGI(TAG, "WAKE_REPLY_END type=beep result=%s", esp_err_to_name(beep_err));
+
+    if (beep_err == ESP_OK && !stop_requested && wake_callback) {
+        /* Existing OLED Love reaction runs after beep, independently of vTTS. */
         wake_callback("Ola ESP", wn_model_name, 1);
     }
 
+    /* Extra acknowledgement only. A failed synthesis must not remove
+     * the beep, face reaction or WakeNet listening recovery. */
+    if (!stop_requested && beep_err == ESP_OK) {
+        ESP_LOGI(TAG, "WAKE_REPLY_BEGIN type=vtts phrase=ola_sou_o_jrbot");
+        esp_err_t tts_err = jr_tts_reply_to_wake("Olá! Eu sou o JrBot.");
+        ESP_LOGI(TAG, "WAKE_REPLY_END type=vtts result=%s", esp_err_to_name(tts_err));
+        if (tts_err != ESP_OK) {
+            ESP_LOGW(TAG, "WAKE_REPLY_VTTS_FAILED beep_and_face_preserved=1 error=%s",
+                     esp_err_to_name(tts_err));
+        }
+    }
+
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
-    if (stop_requested) return reply_err;
+    if (stop_requested) return beep_err;
 
     esp_err_t reopen = open_mic(sample_rate);
     if (reopen != ESP_OK) {
@@ -252,9 +258,9 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED type=%s result=%s listening_resumed=1",
-             reply_type, esp_err_to_name(reply_err));
-    return reply_err;
+    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED type=beep_oled_vtts result=%s listening_resumed=1",
+             esp_err_to_name(beep_err));
+    return beep_err;
 }
 
 static bool handle_wakenet_frame(void) {
