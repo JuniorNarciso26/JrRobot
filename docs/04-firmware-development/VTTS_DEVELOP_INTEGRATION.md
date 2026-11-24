@@ -44,9 +44,11 @@ Depois de instalar ESP-IDF 6.1.1 pelo EIM uma unica vez, abra o arquivo
 3. Reutiliza automaticamente o certificado HTTPS local de um clone vizinho,
    ou gera certificado autoassinado para jrbot.local, sem publicar chave privada.
 4. Prepara os fontes e modelos vTTS S/M (reutiliza o teste isolado quando disponivel).
-5. Aplica as configuracoes mDNS/PSRAM e compila.
-6. Solicita a COM e a confirmacao explicita GRAVAR antes de alterar a flash.
-7. Grava a placa e abre PAINEL.bat: navegador em http://127.0.0.1:8765.
+5. Grava o SHA Git atual no firmware (cabecalho local ignorado pelo Git),
+   aplica as configuracoes mDNS/PSRAM e compila.
+6. Solicita a selecao da porta COM; apos o build bem-sucedido, grava
+   automaticamente nessa porta, sem pedir a palavra GRAVAR.
+7. Abre PAINEL.bat apos a gravacao: navegador em http://127.0.0.1:8765.
 
 O certificado e autoassinado e pode provocar aviso no navegador. Isso NAO
 instala automaticamente uma autoridade de certificacao confiavel no Windows.
@@ -68,9 +70,11 @@ A compilacao usa ESP-IDF 6.1 e o parametro
 -D JRBOT_ENABLE_VTTS=ON, com build isolado b-develop-vtts.
 O branch main permanece em ESP-IDF 5.5 e nao recebe alteracoes.
 
-O build full da develop passou no HW04 em 23/11/2026. A gravacao ainda
-pede a confirmacao GRAVAR, porque substitui temporariamente o firmware
-V2.0 no ESP32. A branch main do GitHub nao e alterada.
+O build full da develop passou no HW04 em 23/11/2026. O instalador agora
+seleciona a COM e grava automaticamente apos compilar; portanto, executar
+INSTALAR.bat com a placa conectada substitui o firmware no ESP32. Se o
+build falhar, a gravacao NAO sera executada. A branch main do GitHub
+nao e alterada.
 
 **HTTPS privado:** firmware/main/jr_https_material_local.h NAO entra no Git.
 Na primeira execucao, tools/prepare_https_develop.py procura uma copia
@@ -82,10 +86,11 @@ mais produzir silenciosamente um binario sem HTTPS. Ao ligar, procure a
 mensagem JR_HTTPS_MATERIAL_COMPILED e em seguida JR_HTTPS_READY. Se
 aparecer https_start ou https_register com erro, investigue o servidor.
 O instalador mostra [GRAVADO] somente apos idf.py flash confirmar sucesso.
-Se o usuario nao digitar GRAVAR, mostra [CANCELADO] sem indicar sucesso
-de gravacao. Compare tambem o Compile time no boot; o nome
-JrBot_V2.1D_TTS e igual antes e depois dessas correcoes, entao o nome
-isolado nao comprova versao nova. Nunca publique esse header nem abra
+A versao foi alterada para JrBot_V2.1.1D_TTS_HTTPS e o build registra
+a revisao exata do GitHub como git=XXXXXXXX em BOOT, no comando
+version e em /status (JR_STATUS). O instalador usa o mesmo SHA curto de
+8 caracteres. Verifique versao, git e Compile time antes de afirmar que
+a atualizacao esta instalada. Nunca publique o header HTTPS nem abra
 POST /voice na internet publica.
 
 No painel HTTPS escolha Voz, desligue Autonomo e Live, ative o TTS,
