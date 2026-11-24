@@ -1,11 +1,13 @@
 # JrBot V2.0 - vTTS pt-BR integrado na develop
 
-**Branch:** develop, sincronizado com main; main permanece intacta.
-**Status 23/11/2026:** compilacao COMPLETA com ESP-IDF 6.1.1 confirmada
-no computador do projeto. O boot no HW04, PSRAM 8 MB, Wi-Fi, IP,
-portal HTTP e mDNS foram observados no Serial. O vTTS integrado,
-HTTPS, Live, camera, OLED e WakeNet ainda precisam de testes fisicos
-especificos. O teste de vTTS isolado havia funcionado no HW04.
+**Branch:** main (release aceita) e develop (proximos experimentos).
+**Status 24/11/2026:** o usuario aprovou no hardware HW04 o candidato
+V2.1.3D_TTS_FAST, commit 7854de30, com beep, OLED Love, voz vTTS
+(espaco PCM em PSRAM 74.042 bytes), cache hit e retomada do microfone.
+A versao principal passa a chamar-se V2.1.3S_TTS_FAST; main e develop
+usam ESP-IDF 6.1.1. O log confirma HTTPS escutando na porta 443,
+mas tambem erros TLS -0x7780. Live/WebRTC nao teve nova regressao completa
+registrada; leitura longa com streaming nao faz parte desta release.
 
 ## Objetivo e controles
 
@@ -23,7 +25,7 @@ conversacional. Na develop, detectar Ola ESP aciona o beep de 880 Hz / 180 ms e 
 rosto Love por 3 s, depois reproduz "Ola! Eu sou o JrBot." e retoma
 WakeNet. No log do HW04 a resposta funcionou, mas sintetizar 1,678 ms
 de audio levou 5,808 ms (RTF 3,46) e disparou um aviso de watchdog
-IDLE0. V2.1.3D_TTS_FAST adiciona a geracao antecipada do PCM uma vez
+IDLE0. V2.1.3S_TTS_FAST inclui a geracao antecipada do PCM uma vez
 por boot, logo ao ativar Autonomo, usando Lite S (22050 Hz, 1.0x).
 Aproximadamente 74 KB ficam na PSRAM, sem manter modelo/arena na RAM.
 Nas proximas ativacoes de Ola ESP, usa diretamente o PCM em cache,
@@ -31,7 +33,7 @@ aplica volume/ganho/filtro atuais e libera o I2S apos tocar. Mesmo na
 falha da sintese, beep, rosto e retorno da escuta sao preservados.
 A preparacao ocorre numa tarefa separada que cede CPU periodicamente,
 para evitar starvation do IDLE0; eventos USB nao esperam flush de 300 ms.
-Esta otimizacao ainda requer teste fisico no HW04.
+O dono confirmou que as respostas seguintes ao cache ficaram rapidas no HW04.
 
 ## Seguranca da integracao
 
@@ -87,8 +89,8 @@ O branch main permanece em ESP-IDF 5.5 e nao recebe alteracoes.
 O build full da develop passou no HW04 em 23/11/2026. O instalador agora
 seleciona a COM e grava automaticamente apos compilar; portanto, executar
 INSTALAR.bat com a placa conectada substitui o firmware no ESP32. Se o
-build falhar, a gravacao NAO sera executada. A branch main do GitHub
-nao e alterada.
+build falhar, a gravacao NAO sera executada. A branch main recebe a versao aceita; futuras alteracoes experimentais
+ficam somente em develop.
 
 **HTTPS privado:** firmware/main/jr_https_material_local.h NAO entra no Git.
 Na primeira execucao, tools/prepare_https_develop.py procura uma copia
@@ -100,7 +102,7 @@ mais produzir silenciosamente um binario sem HTTPS. Ao ligar, procure a
 mensagem JR_HTTPS_MATERIAL_COMPILED e em seguida JR_HTTPS_READY. Se
 aparecer https_start ou https_register com erro, investigue o servidor.
 O instalador mostra [GRAVADO] somente apos idf.py flash confirmar sucesso.
-A versao foi alterada para JrBot_V2.1.1D_TTS_HTTPS e o build registra
+A versao foi alterada para JrBot_V2.1.3S_TTS_FAST e o build registra
 a revisao exata do GitHub como git=XXXXXXXX em BOOT, no comando
 version e em /status (JR_STATUS). O instalador usa o mesmo SHA curto de
 8 caracteres. Verifique versao, git e Compile time antes de afirmar que
