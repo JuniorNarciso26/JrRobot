@@ -6,6 +6,16 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 24, 2026 — V2.1.5D_TTS_BUFFERED (develop correction)
+
+- HW04 log (53) rejects V2.1.4D: S 18,729 ms synthesis / 5,261 ms audio, M 39,266 / 5,099 ms; 14 FIFO starvation episodes per utterance, repeated IDLE0 watchdog warnings. Video audio analysis shows repeated approximately 2.5-second quiet gaps; it does not identify which specific words were lost.
+- Remove sample-level concurrent playback and artificial 64/128-byte text slicing. Restore complete native-frontend input and the accepted 12/128-frame decoder strategy; play only once every PCM sample is ready. This restores the buffered approach at the cost of waiting for complete synthesis.
+- Retain 1,200-byte input limit; PCM capacity is bounded by 60 seconds and largest available PSRAM block minus 256 KiB. If generation exceeds that cap, return ESP_ERR_INVALID_SIZE before any audio, with panel guidance to shorten the text. No partial-prefix playback on synthesis failure.
+- Manual worker runs at idle priority through the text frontend and synthesis, allowing IDLE0 execution even between PCM callbacks; raise to priority 5 only for playback. Keep watchdog enabled and do not claim it fixed until hardware retest.
+- Retain first-audio and total-time metrics, and drain more zero frames than the configured DMA depth before disabling I2S. Wake acknowledgement still uses its cached PCM, beep/Love and microphone hand-back sequence.
+- Host tests now assert full text reaches frontend once, I2S writes start after final synthesis callback, exact PCM/final drain, no output on overflow, allocation and I2S errors, and cached PCM bounds. C syntax with pinned upstream headers/vTTS-disabled, JS syntax and wake guards pass. ESP-IDF build and HW04 verification remain pending.
+- `main` remains unchanged at bab09039. This is a continuity correction, not a proven latency optimization.
+
 ## November 24, 2026 — V2.1.4D_TTS_STREAM (develop experiment)
 
 - Manual input increases from 180 to 1,200 UTF-8 bytes. Text parts target 64 bytes initially, then 128 bytes, retaining word boundaries and complete UTF-8 characters; a longer single word stays intact.

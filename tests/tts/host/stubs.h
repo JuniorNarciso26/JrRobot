@@ -27,6 +27,7 @@ void *heap_caps_calloc(size_t, size_t, int);
 void *heap_caps_aligned_alloc(size_t, size_t, int);
 void heap_caps_free(void *);
 size_t heap_caps_get_free_size(int);
+size_t heap_caps_get_largest_free_block(int);
 int64_t esp_timer_get_time(void);
 static inline void host_log(const char *tag, const char *format, ...) {(void)tag; (void)format;}
 #define ESP_LOGI host_log
@@ -39,6 +40,7 @@ typedef pthread_mutex_t portMUX_TYPE;
 #define portMAX_DELAY UINT32_MAX
 #define pdTRUE 1
 #define pdPASS 1
+#define tskIDLE_PRIORITY 0
 typedef int BaseType_t;
 typedef void *TaskHandle_t;
 typedef struct {pthread_mutex_t lock; pthread_cond_t cv; unsigned count;} *SemaphoreHandle_t;
@@ -50,15 +52,10 @@ void vSemaphoreDelete(SemaphoreHandle_t);
 int xTaskCreatePinnedToCore(void (*)(void *), const char *, unsigned, void *, unsigned, TaskHandle_t *, int);
 void vTaskDelete(void *);
 void vTaskDelay(unsigned);
+void vTaskPrioritySet(TaskHandle_t, unsigned);
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t);
 unsigned ulTaskNotifyTake(int, uint32_t);
-typedef struct {pthread_mutex_t lock; pthread_cond_t cv; uint8_t *data; size_t cap, head, tail, used;} StaticStreamBuffer_t;
-typedef StaticStreamBuffer_t *StreamBufferHandle_t;
-StreamBufferHandle_t xStreamBufferCreateStatic(size_t, size_t, uint8_t *, StaticStreamBuffer_t *);
-size_t xStreamBufferSend(StreamBufferHandle_t, const void *, size_t, uint32_t);
-size_t xStreamBufferReceive(StreamBufferHandle_t, void *, size_t, uint32_t);
-void vStreamBufferDelete(StreamBufferHandle_t);
 typedef int nvs_handle_t;
 #define NVS_READONLY 0
 #define NVS_READWRITE 1

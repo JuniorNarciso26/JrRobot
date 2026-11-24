@@ -79,7 +79,7 @@
       body: JSON.stringify(payload)
     } : {cache: 'no-store'});
     const result = await response.json();
-    if (!response.ok || result.ok === false) throw Error(result.error || 'HTTP ' + response.status);
+    if (!response.ok || result.ok === false) throw Error(result.error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto; nenhuma fala parcial foi reproduzida.' : result.error || 'HTTP ' + response.status);
     return result;
   }
   function apply(data, overwrite) {
@@ -102,7 +102,7 @@
     get('psram').textContent = 'PSRAM livre: ' + (data.psram_free / 1024 / 1024).toFixed(1) + ' MiB';
     if (!available) feedback('O painel está disponível, mas o firmware ainda não tem os modelos vTTS. Prepare o build de integração antes de ativar.', true);
     else if (speaking) feedback('O JrBot está sintetizando ou reproduzindo a frase.');
-    else if (data.last_error && data.last_error !== 'ESP_OK' && data.utterances >= 0) feedback('Último resultado da fala: ' + data.last_error, true);
+    else if (data.last_error && data.last_error !== 'ESP_OK' && data.utterances >= 0) feedback(data.last_error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto; nenhuma fala parcial foi reproduzida.' : 'Último resultado da fala: ' + data.last_error, true);
     controls();
   }
   async function refresh(overwrite) {
@@ -121,7 +121,7 @@
       const result = await request(payload);
       if (result.queued) {
         speaking = true;
-        feedback('Frase recebida. O JrBot começará a falar pelos primeiros trechos.');
+        feedback('Frase recebida. O JrBot está preparando o áudio completo antes de falar.');
       } else feedback(message);
       await refreshOnce(result.queued ? false : true);
     } catch (error) { feedback('Não foi possível aplicar: ' + error.message, true); }
@@ -140,7 +140,7 @@
         const wasSpeaking = speaking;
         apply(data, false);
         if (wasSpeaking && !data.busy && data.last_error === 'ESP_OK')
-          feedback('Fala concluída. RTF ' + Number(data.last_rtf).toFixed(2) + ', início ' + data.last_first_audio_ms + ' ms, pausas de geração ' + data.last_underruns + ', áudio ' + data.last_audio_ms + ' ms.');
+          feedback('Fala concluída. RTF ' + Number(data.last_rtf).toFixed(2) + ', preparo ' + data.last_first_audio_ms + ' ms, áudio ' + data.last_audio_ms + ' ms.');
       } catch (error) { feedback('Falha ao consultar o estado: ' + error.message, true); }
       if (!speaking && timer) { clearInterval(timer); timer = null; }
     }, 1200);

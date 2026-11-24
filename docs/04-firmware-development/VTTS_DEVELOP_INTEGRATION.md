@@ -9,7 +9,54 @@ usam ESP-IDF 6.1.1. O log confirma HTTPS escutando na porta 443,
 mas tambem erros TLS -0x7780. Live/WebRTC nao teve nova regressao completa
 registrada; leitura longa com streaming nao faz parte desta release.
 
-## Experimento develop V2.1.4D TTS STREAM
+## Correcao develop V2.1.5D TTS BUFFERED
+
+**Atual:** JrBot_V2.1.5D_TTS_BUFFERED. A main continua V2.1.3S em bab09039.
+O teste fisico V2.1.4D falhou em continuidade: log (53) S RTF 3.559, M RTF
+7.700, ambos com 14 episodios de FIFO vazia e avisos task_wdt IDLE0. A analise
+de silencio do video (limiar -35 dB, minimo 0.4 s) mostra pausas repetidas de
+aproximadamente 2.5 s; nao permite atribuir quais palavras foram perdidas.
+
+A V2.1.5D remove o player concorrente e os cortes de texto 64/128 bytes.
+Passa o texto completo para vtts_text_to_ids_ex, preservando normalizacao e
+segmentacao nativas. Gera todo o PCM antes de abrir o canal fisico de reproducao;
+reserva logica I2S continua bloqueando outras fontes durante o trabalho.
+Ajustes do decoder voltam a 12 frames iniciais / 128 seguintes, como na release.
+
+Aceita ate 1.200 bytes de texto; PCM limitado a 60 s ou maior bloco PSRAM livre
+menos 256 KiB, o menor dos dois. Alocacao pode falhar por memoria/concorrencia;
+nesse caso nenhum prefixo e tocado. Exceder capacidade gera ESP_ERR_INVALID_SIZE
+antes de abrir o canal fisico: o painel pede para reduzir o texto. Modelo/arena
+sao liberados ao terminar. O cache de despertar mantem seu limite de 12 s e o
+caminho separado aceito. Beep/Love e devolucao I2S ao microfone permanecem.
+
+Sintese manual inicia em tskIDLE_PRIORITY no CPU0, para que IDLE0 tenha chance
+de executar mesmo durante frontend/inferencia sem callbacks PCM; antes da
+reproducao sobe a prioridade para 5. Watchdog nao e desativado nem tem timeout
+ampliado. Isso precisa de teste fisico. Referencias:
+[FreeRTOS IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/freertos_idf.html),
+[Watchdogs](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/wdts.html).
+
+GET /voice mantem last_first_audio_ms (pedido ate primeira escrita I2S),
+last_synth_ms, last_rtf e last_total_ms. last_underruns fica zero no caminho
+bufferizado; zero nao e evidencia de ausencia de falha fisica de DMA.
+O player drena 5 blocos de 256 frames silenciosos num DMA de 4x256 antes de fechar.
+
+**Teste:** INSTALAR.bat → develop, confirmar versao e SHA, desligar Live e
+Autonomo, ativar/salvar Voz com Lite S e repetir a frase do video. Verificar fala
+completa/sem interrupcoes, inicio depois da preparacao e ausencia de task_wdt.
+Depois testar texto maior e overflow, falha de memoria, WakeNet/cache/beep/Love,
+retorno do microfone, camera e Live. Espera inicial maior e prevista: esta
+correcao prioriza continuidade e nao promete reduzir o tempo de geracao.
+
+**Verificado aqui:** host C com codigo real de synth_and_play/on_pcm/player e
+doubles de frontend/inferencia/FreeRTOS/I2S: texto inteiro entregue uma unica
+vez, nenhuma escrita antes de gerar tudo, amostras completas em ordem, final
+drenado, overflow sem tocar prefixo, falhas de alocacao/I2S e limites de cache.
+Sintaxe C com headers upstream pinados e sem vTTS, JS e guardas de wake passaram.
+**Pendente:** build completo ESP-IDF 6.1.1 (ausente neste ambiente) e HW04.
+
+## Historico rejeitado: develop V2.1.4D TTS STREAM
 
 A partir de 24/11/2026, a develop identifica-se como **JrBot_V2.1.4D_TTS_STREAM**.
 A main permanece na versao estavel acima. Os limites de 180 bytes e PCM completo
