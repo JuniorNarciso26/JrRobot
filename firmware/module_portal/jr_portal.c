@@ -25,7 +25,18 @@
 #include "jr_portal_web_v1.h"
 #include "jr_portal_v16.h"
 
-#if __has_include("jr_https_material_local.h")
+/*
+ * The experimental develop/vTTS firmware must never be released with HTTP only.
+ * The installer prepares this gitignored header BEFORE compiling. A missing or
+ * disabled header is now a build failure, not a silent loss of HTTPS/WebRTC.
+ * Existing production and non-vTTS branch behavior remains unchanged.
+ */
+#if defined(JRBOT_WITH_VTTS) && JRBOT_WITH_VTTS
+#include "jr_https_material_local.h"
+#if !defined(JR_HTTPS_LOCAL_MATERIAL_AVAILABLE) || JR_HTTPS_LOCAL_MATERIAL_AVAILABLE != 1
+#error "Develop vTTS HTTPS material is not enabled; run INSTALAR.bat again."
+#endif
+#elif __has_include("jr_https_material_local.h")
 #include "jr_https_material_local.h"
 #else
 #define JR_HTTPS_LOCAL_MATERIAL_AVAILABLE 0
@@ -450,6 +461,7 @@ static void start_http(void) {
 
 static void start_https(void) {
 #if JR_HTTPS_LOCAL_MATERIAL_AVAILABLE
+    ESP_LOGI("jrbot_portal","JR_HTTPS_MATERIAL_COMPILED local=1 starting=443");
     httpd_ssl_config_t config=HTTPD_SSL_CONFIG_DEFAULT();
     config.port_secure=443;
     config.httpd.ctrl_port=32769;
