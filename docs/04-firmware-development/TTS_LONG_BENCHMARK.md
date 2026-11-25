@@ -174,3 +174,39 @@ Tres testes de estrutura ELF32, bindings e filtragem passaram, junto aos cinco
 testes existentes de sintese/emissor. A coleta ainda precisa rodar no build real.
 Nenhum algoritmo de firmware, prioridade, memoria ou reproducao foi alterado
 nesta etapa de diagnostico.
+
+
+## ELF inspecionado em 25/11/2026 e correcao V2.1.6D
+
+O usuario executou o leitor no build antigo em Desktop/JrBot_Develop_Voz e
+forneceu a saida: dot WEAK/FUNC/45 bytes, dots WEAK/FUNC/35 bytes,
+par_run WEAK/FUNC/14 bytes, s3_kernel ausente. O JSON completo ainda nao foi
+fornecido. Isso confirma que **esse ELF** selecionou os fallbacks genericos;
+nao determina sozinho todas as configuracoes, identidade do flash nem a parcela
+exata dos 133 s atribuivel a cada diferenca.
+
+A develop agora identifica-se como V2.1.6D_TTS_ACCEL e exclui o arquivo de tres
+fallbacks weak da lista de fontes. O link deve selecionar as implementacoes
+fortes do port ESP32-S3 e FreeRTOS; se faltar uma, deve falhar. O verificador
+check_tts_acceleration.py rejeita no pos-link um ELF nao Xtensa, funcoes weak,
+ausentes, sem tamanho ou sem tipo FUNC, e ausencia do objeto vtts_s3_kernel.
+O instalador tambem verifica depois do build/inventario, antes de anunciar
+sucesso ou gravar. Isso cobre um ELF incremental preexistente que nao foi
+relinkado. Arquivos upstream nao foram modificados.
+
+Nesta rodada nao mudar prioridade, fast scratch, cache, divisao de texto nem
+politica bufferizada. Queremos medir uma causa confirmada de cada vez.
+Portanto nao esperar que essa versao ja use o inicio por streaming do laboratorio.
+
+**Proximo teste autorizado:** atualizar/instalar develop por INSTALAR.bat,
+confirmar V2.1.6D_TTS_ACCEL e SHA no boot, e verificar a linha
+`JR_TTS_ACCELERATION_CHECK` com sucesso no instalador. Repetir a mesma frase
+com tools/tts_benchmark.py, mesmos ajustes e video. Depois executar
+`python tools/tts_build_diagnostics.py` **na pasta onde este novo build foi feito**
+e enviar seu JSON. Agora esperamos GLOBAL nas tres funcoes e kernel presente.
+Se o build/checagem falhar, nao gravar manualmente para contornar a verificacao.
+
+Verificacoes host de archive/link e politica do guard passaram, bem como as
+regressoes existentes. Nao houve build ESP-IDF/CMake nem teste fisico aqui;
+o ambiente nao possui essa toolchain nem CMake. O uso do target EXECUTABLE
+apos project() foi conferido no fonte oficial ESP-IDF v6.1.1.

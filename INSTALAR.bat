@@ -724,6 +724,14 @@ if defined JRBOT_WIFI_MEMORY_BUILD (
         goto failure
     )
 )
+rem Revalidar tambem builds incrementais antes de anunciar sucesso ou gravar.
+if defined JRBOT_VTTS_BRANCH (
+    python "..\tools\check_tts_acceleration.py" --elf "%BUILD_DIR%\jrbot_v2.elf"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
 if /i "%ACTION%"=="build" (
     popd
     goto success

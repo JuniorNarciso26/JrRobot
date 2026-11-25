@@ -57,6 +57,28 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### Develop V2.1.6D_TTS_ACCEL — optimized implementation selection (November 25, 2026)
+
+The owner's existing ELF selected **WEAK** `vtts_dot_s8s8`, `vtts_dots_s8s8` and
+`vtts_par_run`, with no `vtts_s3_kernel`: the portable scalar/single-core defaults
+were linked instead of the available optimized S3/FreeRTOS implementations.
+
+The S3 build now omits `vtts_kernels_ref.c`, so missing optimized implementations
+fail linkage. A final ELF check requires all three functions to be GLOBAL/FUNC
+and confirms the S3 kernel object. The installer repeats this check before
+success/flash, including incremental builds. Expected output:
+`[OK] JR_TTS_ACCELERATION_CHECK: SIMD S3 + parallel GLOBAL`.
+
+**This round changes implementation selection only.** Complete buffered playback,
+manual task priority, cache and memory policies remain as in V2.1.5D to measure
+this cause separately. It does not yet restore streaming or promise 170 ms
+startup. Host archive-selection/guard tests and existing TTS/wake/installer tests
+pass; full ESP-IDF build, the new ELF check on S3 and physical timing remain pending.
+
+Update/install **develop** with INSTALAR.bat, confirm V2.1.6D_TTS_ACCEL and Git SHA,
+then rerun the same JR_TTS_LONG_01 command/video. Share the new benchmark log and
+build diagnostics JSON. Stable main and the isolated lab are unchanged.
+
 ### Comparative voice test — JR_TTS_LONG_01
 
 The owner-supplied isolated HW04 baseline (November 24, 2026) produced 17.90 s of

@@ -11,6 +11,7 @@ if(JRBOT_ENABLE_VTTS)
             "${VTTS_ROOT}/include/vtts.h"
             "${VTTS_ROOT}/src/vtts_model.c"
             "${VTTS_ROOT}/ports/esp32s3/vtts_port_s3.c"
+            "${VTTS_ROOT}/ports/freertos/vtts_par_freertos.c"
             "${VTTS_ASSETS}/model_s.vtts"
             "${VTTS_ASSETS}/model_m.vtts"
             "${VTTS_ASSETS}/lex_en.bin")
@@ -18,12 +19,16 @@ if(JRBOT_ENABLE_VTTS)
             message(FATAL_ERROR "vTTS assets missing: ${required}; run python tools/prepare_vtts_develop.py first")
         endif()
     endforeach()
+    # ESP32-S3 is the only supported target. Do NOT add vtts_kernels_ref.c:
+    # its three weak defaults can satisfy unresolved symbols from this static
+    # archive before the S3/FreeRTOS objects are extracted. Without the defaults,
+    # missing optimized implementations must fail the link instead of silently
+    # producing a scalar/single-core firmware. Upstream files stay unmodified.
     set(JR_TTS_SOURCES
         "${VTTS_ROOT}/ports/esp32s3/vtts_port_s3.c"
         "${VTTS_ROOT}/ports/freertos/vtts_par_freertos.c"
         "${VTTS_ROOT}/src/vtts_model.c"
         "${VTTS_ROOT}/src/vtts_synth.c"
-        "${VTTS_ROOT}/src/vtts_kernels_ref.c"
         "${VTTS_ROOT}/src/vtts_text.c"
         "${VTTS_ROOT}/src/vtts_text_en.c"
         "${VTTS_ROOT}/src/vtts_text_zh.c"
