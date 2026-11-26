@@ -1,5 +1,45 @@
 # JR_TTS_LONG_01 — referencia isolada e comparacao integrada
 
+## Teste pelo app — V2.1.9D_TTS_APP_STREAM
+
+A implementacao manual passa a usar os callbacks PCM nativos do vTTS para
+qualquer texto; os testes de duas metades abaixo ficam como historico.
+Frontend original separa/normaliza frases; nenhum corte fixo por caracteres ou
+comparacao com a frase canonica e usado agora. O painel Voz abre com a frase
+padrao de 344 bytes para facilitar a primeira comparacao.
+
+Instalar develop pelo fluxo normal INSTALAR.bat (build + flash), conferir versao
+V2.1.9D e abrir o painel HTTPS do robo, preferindo o IP atual se jrbot.local
+estiver lento. A aba Voz pertence ao painel HTTPS do robo, nao ao endereco
+127.0.0.1 do servidor desktop. Desativar Live/Autonomo, ativar TTS e salvar Lite S,
+volume 75, ganho 6, velocidade/expressividade 1 e debuzz 0. Enviar o texto padrao
+pelo botao, depois variar o texto com pontuacao e tamanho maior. Nao e necessario
+rodar o benchmark Python nesta rodada. Coletar video com audio e Serial pelo
+painel desktop para validar watchdog, inicio, continuidade e nivel da voz.
+
+O produtor escreve somente apos o prefixo ja publicado e publica a contagem
+sob lock. Uma tarefa de reproducao espera >=8000 ms de PCM gerado e mais 2000 ms
+enquanto o produtor continua; para texto curto ja concluido, nao ha hold extra.
+O canal I2S, ganho, filtro e drenagem final permanecem os mesmos ao longo da fala.
+O leitor nunca ultrapassa o prefixo publicado. Caso alcance o produtor, espera
+novos dados e registra JR_TTS_STREAM_STARVED / last_underruns. A geracao termina
+com JR_TTS_STREAM_GENERATED contendo segmentos, PCM, tempo e RTF.
+
+A politica usa uma reserva fixa conservadora para este teste, nao copia o
+prebuffer adaptativo original. A fila e um prefixo crescente da alocacao PCM
+existente (nao um ring buffer que reutiliza amostras consumidas). Por isso o
+limite continua 1200 bytes UTF-8 e no maximo 60 segundos de PCM, ou menos se a
+memoria contigua for menor. Nao anunciar reproducao de duracao ilimitada.
+Em erro de memoria/geracao, pode ja ter sido reproduzido um prefixo; o erro e
+exibido, e o worker sempre aguarda o player terminar antes de liberar buffers,
+modelo, semaforos e posse I2S. Resposta WakeNet em cache nao usa esta fila.
+
+Validacao no host: PCM em ordem, silencio entre segmentos, inicio antes de
+terminar a geracao de texto variado, atraso do produtor, texto curto, erros de
+memoria/overflow/inferencia/I2S/criacao da tarefa, preparacao/cache hit WakeNet;
+checks de endereco/comportamento indefinido e contadores de recursos. Isso nao
+substitui compilacao ESP-IDF, watchdog, audio real e regressao Live/Autonomo.
+
 ## Investigacao HTTPS — medicao por etapa, sem mudar o firmware
 
 A biblioteca urllib fecha cada conexao apos a resposta (Connection: close).

@@ -6,6 +6,14 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — V2.1.9D_TTS_APP_STREAM (develop experiment)
+
+- Enable native PCM-window streaming for all manual text submitted through /voice and the app's Voz tab. Remove canonical-text comparison and two predetermined halves. Keep upstream text normalization/segmentation, first/cap window sizes, 100-ms sentence gap, voice processing and HTTPS unchanged.
+- A single inference producer publishes a fully written immutable prefix of the existing bounded PCM allocation; a separate player waits for 8 seconds of generated audio plus a 2-second initial hold, then consumes published samples through one I2S session. Short complete utterances skip the extra hold. This is fixed prebuffering, not upstream's adaptive RTF policy or unbounded-duration streaming. Keep 1200-byte input and at most 60 seconds of PCM, retaining the PSRAM reserve.
+- Synchronize availability/completion/error publication, count software starvation episodes, stop inference at the next PCM callback after playback failure, and join the player before freeing any resources. Keep cached wake response and uncached wake fallback separate.
+- Update the app with streaming feedback, starvation count, completion metrics and accurate partial-playback error wording. Serialize timer polls to avoid overlapping requests.
+- Host regression covers arbitrary UTF-8 text, early playback before inference completion, native segment gaps/sample order, short utterances, late producer, allocation/overflow/inference/I2S/task failures, and real wake cache preparation/hit. C host and JS syntax validation pass. Full ESP-IDF build, watchdog, acoustic continuity/volume and Live/Autonomous coexistence require HW04 testing. Main remains unchanged.
+
 ## November 26, 2026 — HTTPS phase diagnostics (develop host tools)
 
 - Investigation confirms urllib's AbstractHTTPHandler.do_open forces Connection: close. Existing benchmark polls therefore open a fresh TCP/TLS connection each time; repeated ESP HTTPS handshake logs are consistent with that behavior. This alone does not identify whether DNS/mDNS, TCP, TLS or HTTP response handling caused the measured 14853.2/5138.0-ms ACKs.

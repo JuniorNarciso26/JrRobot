@@ -57,6 +57,25 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### Develop V2.1.9D_TTS_APP_STREAM — text from the app (November 26, 2026)
+
+Install **develop** with INSTALAR.bat (normal build/flash). In the robot's HTTPS
+panel, open **Voz**, enable the synthesizer, save Lite S / speed 1.0 / volume 75 /
+gain 6 dB, paste a text and press **Fazer o JrBot falar**. Stop Live and Autonomous
+for manual speech. Test the standard phrase first, then a longer multi-sentence
+text (up to 1200 UTF-8 bytes / 60 seconds of audio, subject to available memory).
+
+All manual texts now use upstream normalization/sentence splitting and native
+PCM callbacks. A producer publishes audio to a bounded PSRAM buffer while a
+separate player feeds one I2S channel. Start after about 8 seconds of generated
+audio plus a 2-second hold, or after generation finishes for a short utterance.
+No hard-coded text split remains. This experiment uses fixed prebuffering, not
+the reference firmware's adaptive RTF policy or a reusable ring for unlimited
+speech. Initial buffering may change start latency; hardware measurements are
+still required. The panel displays **Esperas de áudio**, plus duration/RTF.
+If memory or generation fails after playback starts, a prefix may already have
+played and the panel reports the failure. Wake reply caching remains separate.
+
 ### HTTPS timing investigation (develop, November 26, 2026)
 
 The same benchmark command now logs `HTTPS_PHASES` for every request: DNS/name

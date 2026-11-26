@@ -34,11 +34,12 @@
       '<label>Suavizar agudos <span id="jr-voice-debuzz-value">0 dB</span><input id="jr-voice-debuzz" type="range" min="0" max="12" step="1" value="0"></label>' +
     '</div>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-save" class="primary">Salvar ajustes</button><button type="button" id="jr-voice-refresh">Consultar estado</button></div>' +
-    '<label>Texto de teste (até 1.200 bytes)<textarea id="jr-voice-text" maxlength="1200">Olá! Eu sou o JrBot e agora tenho minha própria voz.</textarea></label>' +
+    '<label>Texto para falar (até 1.200 bytes)<textarea id="jr-voice-text" maxlength="1200">Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor. Posso ajudar com perguntas, compartilhar informações e participar das suas ideias. Este é o nosso teste padrão de voz: vou falar esta mensagem inteira, do começo ao fim. Como posso ajudar você hoje?</textarea></label>' +
     '<div class="voice-actions"><button type="button" id="jr-voice-speak" class="primary">Fazer o JrBot falar</button></div>' +
     '<p class="voice-help">Para usar o botão Fazer o JrBot falar, desative Autônomo/WakeNet e encerre a Live. No modo Autônomo, Olá ESP já recebe uma resposta falada e a escuta retorna após a reprodução. A resposta automática usa a voz Lite S (pré-gerada na PSRAM ao ativar Autônomo); o volume, ganho e filtro continuam ajustáveis. Ganho alto pode distorcer; comece em 6 dB.</p>' +
+    '<p class="voice-help">Textos são divididos automaticamente pelo motor. Neste teste, a fala usa uma reserva inicial de áudio e dura até 60 segundos, conforme a memória disponível. Se a geração ficar para trás, o painel registra a espera.</p>' +
     '<div id="jr-voice-feedback" role="status">Selecione a aba para consultar o sintetizador.</div>' +
-    '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-latency">Início da fala: —</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
+    '<div class="voice-indicators"><span id="jr-voice-engine">Motor: aguardando</span><span id="jr-voice-busy">Estado: aguardando</span><span id="jr-voice-latency">Início da fala: —</span><span id="jr-voice-rtf">RTF: —</span><span id="jr-voice-waits">Esperas de áudio: —</span><span id="jr-voice-psram">PSRAM livre: —</span></div>';
   main.before(panel);
   const get = name => document.getElementById('jr-voice-' + name);
   const settingsKeys = ['enabled', 'model', 'vol', 'gain', 'speed', 'expr', 'debuzz'];
@@ -51,7 +52,7 @@
     speed: +get('speed').value,
     expression: +get('expr').value
   });
-  let active = false, busy = false, available = false, speaking = false, timer = null;
+  let active = false, busy = false, available = false, speaking = false, timer = null, polling = false;
   function feedback(message, error) {
     get('feedback').textContent = message;
     get('feedback').className = error ? 'error' : '';
@@ -79,7 +80,7 @@
       body: JSON.stringify(payload)
     } : {cache: 'no-store'});
     const result = await response.json();
-    if (!response.ok || result.ok === false) throw Error(result.error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto; nenhuma fala parcial foi reproduzida.' : result.error || 'HTTP ' + response.status);
+    if (!response.ok || result.ok === false) throw Error(result.error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto. A fala pode ter sido interrompida após um trecho já reproduzido.' : result.error || 'HTTP ' + response.status);
     return result;
   }
   function apply(data, overwrite) {
@@ -99,10 +100,11 @@
     get('busy').textContent = 'Estado: ' + (speaking ? 'falando…' : data.enabled ? 'ligado' : 'desligado');
     get('rtf').textContent = 'RTF: ' + (data.utterances ? Number(data.last_rtf).toFixed(2) : '—');
     get('latency').textContent = 'Início da fala: ' + (data.last_first_audio_ms ? data.last_first_audio_ms + ' ms' : '—');
+    get('waits').textContent = 'Esperas de áudio: ' + (data.last_underruns || 0);
     get('psram').textContent = 'PSRAM livre: ' + (data.psram_free / 1024 / 1024).toFixed(1) + ' MiB';
     if (!available) feedback('O painel está disponível, mas o firmware ainda não tem os modelos vTTS. Prepare o build de integração antes de ativar.', true);
     else if (speaking) feedback('O JrBot está sintetizando ou reproduzindo a frase.');
-    else if (data.last_error && data.last_error !== 'ESP_OK' && data.utterances >= 0) feedback(data.last_error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto; nenhuma fala parcial foi reproduzida.' : 'Último resultado da fala: ' + data.last_error, true);
+    else if (data.last_error && data.last_error !== 'ESP_OK' && data.utterances >= 0) feedback(data.last_error === 'ESP_ERR_INVALID_SIZE' ? 'O áudio excedeu a memória disponível. Reduza o texto. A fala pode ter sido interrompida após um trecho já reproduzido.' : 'Último resultado da fala: ' + data.last_error, true);
     controls();
   }
   async function refresh(overwrite) {
@@ -121,7 +123,7 @@
       const result = await request(payload);
       if (result.queued) {
         speaking = true;
-        feedback('Frase recebida. O JrBot está preparando o áudio completo antes de falar.');
+        feedback('Texto recebido. O JrBot prepara a reserva inicial e continua gerando áudio durante a fala.');
       } else feedback(message);
       await refreshOnce(result.queued ? false : true);
     } catch (error) { feedback('Não foi possível aplicar: ' + error.message, true); }
@@ -134,7 +136,8 @@
   function startTimer() {
     if (timer) clearInterval(timer);
     timer = setInterval(async () => {
-      if (!active || busy) return;
+      if (!active || busy || polling) return;
+      polling = true;
       try {
         const data = await request();
         const wasSpeaking = speaking;
@@ -142,6 +145,7 @@
         if (wasSpeaking && !data.busy && data.last_error === 'ESP_OK')
           feedback('Fala concluída. RTF ' + Number(data.last_rtf).toFixed(2) + ', preparo ' + data.last_first_audio_ms + ' ms, áudio ' + data.last_audio_ms + ' ms.');
       } catch (error) { feedback('Falha ao consultar o estado: ' + error.message, true); }
+      finally { polling = false; }
       if (!speaking && timer) { clearInterval(timer); timer = null; }
     }, 1200);
   }

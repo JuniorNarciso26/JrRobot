@@ -29,7 +29,7 @@ typedef struct {
     uint32_t last_synth_ms;
     uint32_t last_first_audio_ms; /* Request to first successful I2S write; not acoustic timing. */
     uint32_t last_total_ms;
-    uint32_t last_underruns; /* Legacy metric; zero for complete buffered playback. */
+    uint32_t last_underruns; /* Software starvation episodes; not a direct acoustic measurement. */
     float last_rtf;
     esp_err_t last_error;
 } jr_tts_status_t;
