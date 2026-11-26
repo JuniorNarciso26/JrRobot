@@ -178,6 +178,62 @@ def prepare(source: Path, project: Path) -> None:
     replace_once(main / "main.cc",
                  '  xTaskCreate((TaskFunction_t)&tf_main, "tensorflow", 8 * 1024, NULL, 8, NULL);',
                  '  if (xTaskCreate((TaskFunction_t)&tf_main, "tensorflow", 8 * 1024, NULL, 8, NULL) != pdPASS) abort();')
+    # RX and TX share the same I2S peripheral, clocks and 32-bit stereo slots.
+    # Select the left microphone sample from each stereo frame for the original model.
+    shutil.copy2(ROOT / "experiments/tflite-yes-no/yes_beep.h", main / "yes_beep.h")
+    replace_once(main / "i2s_setup.cc", '#include "i2s_setup.h"',
+                 '#include "i2s_setup.h"\n#include "yes_beep.h"\n#include "esp_log.h"\n'
+                 '#include "esp_timer.h"\nstatic i2s_chan_handle_t beep_tx = nullptr;')
+    replace_once(main / "i2s_setup.cc",
+                 'I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO);',
+                 'I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO);')
+    replace_once(main / "i2s_setup.cc", 'slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;',
+                 'slot_cfg.slot_mask = I2S_STD_SLOT_BOTH;')
+    replace_once(main / "i2s_setup.cc", '.dout = I2S_GPIO_UNUSED,', '.dout = GPIO_NUM_42,')
+    replace_once(main / "i2s_setup.cc", 'ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, NULL, &rx_handle));',
+                 'chan_cfg.auto_clear = true;\n'
+                 '    ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &beep_tx, &rx_handle));')
+    replace_once(main / "i2s_setup.cc", 'ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));',
+                 'ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));\n'
+                 '    ESP_ERROR_CHECK(i2s_channel_init_std_mode(beep_tx, &std_cfg));\n'
+                 '    ESP_ERROR_CHECK(i2s_channel_enable(beep_tx));')
+    replace_once(main / "audio_provider.cc", 'i < bytes_read / 4;', 'i < bytes_read / 8;')
+    replace_once(main / "audio_provider.cc", '((int32_t *) g_i2s_read_buffer)[i] >> 14;',
+                 '((int32_t *) g_i2s_read_buffer)[i * 2] >> 14;')
+    replace_once(main / "audio_provider.cc", 'bytes_read = bytes_read / 2;',
+                 'bytes_read = bytes_read / 4;')
+    with (main / "i2s_setup.cc").open("a", encoding="utf-8") as out:
+        out.write('''
+
+// Called after inference; capture continues in its own task.
+void JrMaybeBeep(const char* word, float score) {
+    static jr_yes_no::BeepGate gate;
+    if (!beep_tx || !gate.accept(word, score, esp_timer_get_time() / 1000)) return;
+    int32_t stereo[128 * 2] = {};
+    // Queue the complete tone followed by silence (same 32-bit sample in both slots).
+    for (int offset = 0; offset < jr_yes_no::kBeepFrames + 128; offset += 128) {
+        int frames = jr_yes_no::kBeepFrames + 128 - offset;
+        if (frames > 128) frames = 128;
+        for (int j = 0; j < frames; ++j) {
+            stereo[j * 2] = stereo[j * 2 + 1] = jr_yes_no::beep_sample(offset + j);
+        }
+        size_t written = 0;
+        const size_t bytes = frames * 2 * sizeof(int32_t);
+        esp_err_t error = i2s_channel_write(beep_tx, stereo, bytes, &written, 1000);
+        if (error != ESP_OK || written != bytes) {
+            ESP_LOGE("JR_YES_BEEP", "Falha TX: err=%d bytes=%u/%u", (int)error,
+                     (unsigned)written, (unsigned)bytes);
+            return;
+        }
+    }
+    ESP_LOGI("JR_YES_BEEP", "yes reconhecido | bip 880Hz 120ms enviado ao I2S");
+}
+''')
+    replace_once(main / "main_functions.cc", '#include <cstdlib>',
+                 '#include <cstdlib>\nvoid JrMaybeBeep(const char* word, float score);')
+    replace_once(main / "main_functions.cc", '  if (max_result > 0.8f) {',
+                 '  JrMaybeBeep(kCategoryLabels[max_idx], max_result);\n'
+                 '  if (max_result > 0.8f) {')
     (project / "UPSTREAM_REVISION.txt").write_text(UPSTREAM + "\n" + REVISION + "\n", encoding="utf-8")
     print(f"[OK] TensorFlow oficial {REVISION[:8]} preparado em {project}", flush=True)
 
