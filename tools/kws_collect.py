@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
-import os
 from pathlib import Path
 import queue
 import re
@@ -269,7 +268,7 @@ def interactive(monitor: SerialMonitor, output: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", help="Porta COM; se omitida, mostra a lista")
-    default = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "JrBot" / "voice-dataset"
+    default = Path(__file__).resolve().parents[1] / "voice-dataset"
     parser.add_argument("--output", type=Path, default=default)
     args = parser.parse_args()
     try:

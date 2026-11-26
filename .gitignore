@@ -26,3 +26,6 @@ tests/hardware/results.json
 
 # Official TensorFlow yes/no checkout, generated project and isolated build
 /.tflite-yes-no/
+
+# Local microphone recordings for keyword training (not committed)
+/voice-dataset/

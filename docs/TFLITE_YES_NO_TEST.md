@@ -53,8 +53,9 @@ O coletor é também o monitor: não abra o IDF Monitor ou o painel na mesma COM
    no menu para encerrar. Comece com algumas gravações e ouça-as antes de ampliar
    a coleta; ainda não foi estabelecida uma quantidade suficiente para treinar.
 
-Os arquivos ficam em `%LOCALAPPDATA%\JrBot\voice-dataset\<classe>\` no Windows,
-fora da pasta Git e dos builds. Cada WAV é mono PCM16 a 16 kHz, com 16000 amostras;
+Os arquivos ficam em `voice-dataset\<classe>\` na raiz do projeto (por exemplo,
+`C:\Projetos\JrRobot\voice-dataset\sim\`). Essa pasta está no `.gitignore`,
+separada dos builds. Cada WAV é mono PCM16 a 16 kHz, com 16000 amostras;
 um JSON acompanha o arquivo com pessoa, classe, formato, hash e níveis do áudio.
 O usuário escolhe as classes: a pontuação do modelo yes/no não rotula os WAVs.
 Os exemplos de pessoas/classes diferentes são preservados sem sobrescrita.
@@ -79,6 +80,8 @@ python tools/kws_collect.py --port COM8
 
 O nome da porta é somente um exemplo. Sem `--port`, o script lista as disponíveis.
 `--output` permite escolher outra pasta de destino.
+Gravações feitas anteriormente em `%LOCALAPPDATA%\JrBot\voice-dataset` continuam
+nesse destino anterior; esta mudança não move nem apaga arquivos existentes.
 
 **Coletar ainda não treina o modelo.** O exemplo instalado continua reconhecendo
 yes/no. O treinamento com os WAVs, incluindo separação de treino/validação/teste
