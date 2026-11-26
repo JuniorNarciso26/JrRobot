@@ -31,7 +31,8 @@ No PowerShell, a forma explícita é `.\INSTALAR.bat`. As ações `build`, `flas
 - Repositório: https://github.com/espressif/esp-tflite-micro
 - Commit fixado: `3d0b4610fffffbf211d6042824d5d4c408266d93`.
 - Exemplo: `examples/micro_speech`; licenças originais preservadas.
-- O instalador clona a biblioteca oficial em `.tflite-yes-no/upstream` e prepara
+- O instalador clona a biblioteca oficial em
+  `.tflite-yes-no/espressif__esp-tflite-micro` e prepara
   uma cópia do exemplo em `.tflite-yes-no/project`. Tudo isso fica fora do Git.
 - O modelo yes/no, o modelo de pré-processamento e a extração de características
   são copiados sem alteração. Não há treinamento novo nem dependência de nuvem
@@ -51,6 +52,12 @@ No PowerShell, a forma explícita é `.\INSTALAR.bat`. As ações `build`, `flas
   O gerenciador IDF resolve a dependência ESP-NN exigida pelo upstream e guarda
   o resultado em `dependencies.lock` local; essa dependência transitiva não está
   fixada neste repositório. O build/config ficam preservados para recompilações.
+- Correção da resolução de componentes: o diretório da biblioteca usa o nome
+  exigido pelo ESP-IDF. Instalações anteriores com a pasta `upstream` são migradas
+  automaticamente após validar origem, revisão e ausência de alterações. Apenas
+  o build e o lock de dependências gerados deste teste são renovados quando muda
+  o caminho do componente; o `sdkconfig` local é preservado. Não é preciso apagar
+  pastas nem clonar novamente à mão.
 
 ## Validação disponível
 

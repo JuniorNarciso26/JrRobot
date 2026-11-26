@@ -17,29 +17,41 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = "https://github.com/espressif/esp-tflite-micro.git"
 REVISION = "3d0b4610fffffbf211d6042824d5d4c408266d93"
 WORK = ROOT / ".tflite-yes-no"
+COMPONENT_DIR = "espressif__esp-tflite-micro"
 
 
 def git(path: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(path), *args], text=True).strip()
 
 
-def ensure_source() -> Path:
-    source = WORK / "upstream"
-    WORK.mkdir(exist_ok=True)
-    fresh = not source.exists()
-    if fresh:
-        subprocess.run(["git", "clone", "--no-checkout", "--depth", "1",
-                        UPSTREAM, str(source)], check=True)
+def validate_source(source: Path) -> None:
     if not (source / ".git").is_dir():
         raise RuntimeError(f"Diretorio sem Git: {source}; nada foi apagado.")
     if git(source, "remote", "get-url", "origin") != UPSTREAM:
         raise RuntimeError("Origem do TensorFlow diferente da oficial; nada foi sobrescrito.")
+    if git(source, "rev-parse", "HEAD") != REVISION or git(source, "status", "--porcelain"):
+        raise RuntimeError("Checkout TensorFlow alterado ou revisao diferente; nada foi sobrescrito.")
+
+
+def ensure_source() -> Path:
+    source = WORK / COMPONENT_DIR
+    WORK.mkdir(exist_ok=True)
+    legacy = WORK / "upstream"
+    if not source.exists() and legacy.exists():
+        # ESP-IDF derives the component identity from the directory basename.
+        # Reuse the existing download only after verifying its origin and contents.
+        validate_source(legacy)
+        legacy.rename(source)
+        print(f"[OK] Nome do componente corrigido: {COMPONENT_DIR}", flush=True)
+    fresh = not source.exists()
+    if fresh:
+        subprocess.run(["git", "clone", "--no-checkout", "--depth", "1",
+                        UPSTREAM, str(source)], check=True)
     # Never reset edits. A fresh --no-checkout clone has staged deletions until checkout.
     if fresh:
         subprocess.run(["git", "-C", str(source), "fetch", "--depth", "1", "origin", REVISION], check=True)
         subprocess.run(["git", "-C", str(source), "checkout", "--detach", REVISION], check=True)
-    if git(source, "rev-parse", "HEAD") != REVISION or git(source, "status", "--porcelain"):
-        raise RuntimeError("Checkout TensorFlow alterado ou revisao diferente; nada foi sobrescrito.")
+    validate_source(source)
     return source
 
 
@@ -51,8 +63,22 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 def prepare(source: Path, project: Path) -> None:
-    if git(source, "rev-parse", "HEAD") != REVISION or git(source, "status", "--porcelain"):
-        raise RuntimeError("Fonte deve ser o checkout oficial limpo e fixado.")
+    validate_source(source)
+    if source.name not in ("esp-tflite-micro", COMPONENT_DIR):
+        raise RuntimeError("A pasta da biblioteca deve se chamar esp-tflite-micro "
+                           f"ou {COMPONENT_DIR} para o ESP-IDF resolver o componente.")
+    manifest = project / "main" / "idf_component.yml"
+    source_path = os.path.relpath(source, manifest.parent).replace("\\", "/")
+    manifest_text = ('dependencies:\n  espressif/esp-tflite-micro:\n'
+                     '    version: "*"\n    override_path: ' + json.dumps(source_path) + '\n')
+    if manifest.exists() and manifest.read_text(encoding="utf-8") != manifest_text:
+        # Only generated artifacts of this isolated experiment: cached requirements
+        # and the IDF dependency lock can still reference the former /upstream path.
+        build = project / "build"
+        if build.exists():
+            shutil.rmtree(build)
+        (project / "dependencies.lock").unlink(missing_ok=True)
+        print("[OK] Cache de build/dependencias do teste renovado; sdkconfig preservado.", flush=True)
     # Copy source files only, retaining the isolated build/config/dependency lock on repeat.
     example = source / "examples" / "micro_speech"
     for name in ("main", "test_data"):
@@ -77,10 +103,7 @@ def prepare(source: Path, project: Path) -> None:
         'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"\n'
         'CONFIG_ESP_CONSOLE_UART_DEFAULT=y\n', encoding="utf-8")
     # The layout fits in 4 MB even on the larger JrBot module; no erase_flash needed.
-    manifest = project / "main" / "idf_component.yml"
-    source_path = os.path.relpath(source, manifest.parent).replace("\\", "/")
-    manifest.write_text('dependencies:\n  espressif/esp-tflite-micro:\n'
-                        '    version: "*"\n    override_path: ' + json.dumps(source_path) + '\n', encoding="utf-8")
+    manifest.write_text(manifest_text, encoding="utf-8")
     main = project / "main"
     replace_once(main / "audio_provider.cc", 'static Microphone mic;',
                  'static Microphone mic(GPIO_NUM_21, GPIO_NUM_47, GPIO_NUM_41);')
