@@ -6,6 +6,12 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — JrBot pronunciation experiment (develop)
+
+- Add a pronunciation-only whole-name alias for case-insensitive JrBot/JRBot/jrbot: djêi ár bót, targeting the owner's English-letter Jay Ar Bot pronunciation while retaining the pt-BR frontend. The exact sound requires hardware listening; the visible name and JrBot_V2.1 label stay unchanged.
+- Apply immediately before native text normalization for both app/manual speech and wake cache preparation/uncached fallback. Cached wake playback remains unchanged and is regenerated at boot. No upstream files, gain, streaming or buffering changes.
+- Preserve UTF-8 text and embedded names such as meuJrBot, JrBotão, JrBot2 and JrBot_nome. Bound the expanded spoken text to the existing 1200-byte limit; fail on overflow/allocation error rather than silently truncating. Tests exercise manual synthesis input, unchanged visible job text, wake cache preparation/hit, whole-word/case/UTF-8 boundaries and capacity limits.
+
 ## November 26, 2026 — JrBot_V2.1 display name and owner approval
 
 - Simplify firmware/version.txt and JR_APP_VERSION to JrBot_V2.1 as requested. Preserve the build stamp and generated Git commit for precise build identification. No inference, playback, installer or settings changes; main is unchanged.

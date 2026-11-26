@@ -57,6 +57,16 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### JrBot name pronunciation test (develop)
+
+The synthesizer reads the standalone name JrBot (any capitalization) using a
+pt-BR phonetic alias targeting “Jay Ar Bot”. Written input stays unchanged.
+This applies to manual app text and the greeting prepared when Autonomous is
+enabled. Install develop and test “Olá ESP” after the greeting cache is ready,
+then send “Olá! Eu sou o JrBot. O JRBot está pronto para ajudar.” through Voz.
+Listen to confirm the name: this is a pronunciation experiment, not an acoustic
+result established by the host tests. Firmware display label remains JrBot_V2.1.
+
 ### Develop JrBot_V2.1 — text from the app (November 26, 2026)
 
 Install **develop** with INSTALAR.bat (normal build/flash). In the robot's HTTPS

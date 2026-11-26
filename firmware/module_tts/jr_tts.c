@@ -316,6 +316,63 @@ static int on_ids(const int32_t *ids, int n, void *opaque)
     return c->error == ESP_OK ? 0 : 1;
 }
 
+/* Pronunciation-only alias: never change displayed/stored input or upstream.
+ * Accented spelling keeps these sounds on the Portuguese frontend. Final
+ * pronunciation still needs listening on HW04. Match whole names only. */
+#define JR_TTS_BRAND_SPOKEN "djêi ár bót"
+static bool brand_word_byte(unsigned char ch)
+{
+    return ch >= 128 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+           (ch >= '0' && ch <= '9') || ch == '_';
+}
+
+static bool brand_at(const char *text, size_t at)
+{
+    static const char name[] = "jrbot";
+    if (at && brand_word_byte((unsigned char)text[at - 1])) return false;
+    for (size_t j = 0; j < sizeof(name) - 1; ++j) {
+        unsigned char ch = (unsigned char)text[at + j];
+        if (ch >= 'A' && ch <= 'Z') ch += 'a' - 'A';
+        if (ch != (unsigned char)name[j]) return false;
+    }
+    return !brand_word_byte((unsigned char)text[at + sizeof(name) - 1]);
+}
+
+static bool brand_pronunciation(const char *input, char *output, size_t capacity)
+{
+    size_t used = 0;
+    if (!capacity) return false;
+    for (size_t i = 0; input[i];) {
+        const bool brand = brand_at(input, i);
+        const char *piece = brand ? JR_TTS_BRAND_SPOKEN : input + i;
+        size_t bytes = brand ? strlen(JR_TTS_BRAND_SPOKEN) : 1;
+        if (bytes >= capacity - used) return false;
+        memcpy(output + used, piece, bytes);
+        used += bytes;
+        i += brand ? 5 : 1;
+    }
+    output[used] = '\0';
+    return true;
+}
+
+static int pronounced_text_to_ids(const char *text, vtts_text_ws *ws,
+                                  const vtts_text_opts *opts, jr_tts_synth_t *c)
+{
+    bool found = false;
+    for (size_t i = 0; text[i] && !found; ++i) found = brand_at(text, i);
+    if (!found) return vtts_text_to_ids_ex(text, ws, opts, on_ids, c);
+    char *spoken = heap_caps_malloc(JR_TTS_MAX_TEXT_BYTES + 1, MALLOC_CAP_SPIRAM);
+    if (!spoken) { c->error = ESP_ERR_NO_MEM; return -1; }
+    int result = -1;
+    if (!brand_pronunciation(text, spoken, JR_TTS_MAX_TEXT_BYTES + 1)) {
+        c->error = ESP_ERR_INVALID_SIZE;
+    } else {
+        result = vtts_text_to_ids_ex(spoken, ws, opts, on_ids, c);
+    }
+    heap_caps_free(spoken);
+    return result;
+}
+
 /* Relative to 0 dB: linear below -3 dBFS, soft saturation above. */
 static float shape(float v)
 {
@@ -475,7 +532,7 @@ static esp_err_t synth_stream(const jr_tts_job_t *job, jr_tts_synth_t *c,
     c->stream = &stream;
     int64_t start = esp_timer_get_time();
     /* Let upstream split/normalize text and emit its native PCM windows. */
-    int chunks = vtts_text_to_ids_ex(job->text, ws, opts, on_ids, c);
+    int chunks = pronounced_text_to_ids(job->text, ws, opts, c);
     int64_t elapsed = esp_timer_get_time() - start;
     result = c->error != ESP_OK ? c->error : (chunks > 0 && c->count ? ESP_OK : ESP_FAIL);
     portENTER_CRITICAL(&state_lock);
@@ -600,7 +657,7 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
         goto cleanup;
     }
     int64_t started_us = esp_timer_get_time();
-    int chunks = vtts_text_to_ids_ex(job->text, ws, &opts, on_ids, &c);
+    int chunks = pronounced_text_to_ids(job->text, ws, &opts, &c);
     int64_t synth_us = esp_timer_get_time() - started_us;
     if (c.error != ESP_OK || chunks <= 0 || c.count == 0) {
         err = c.error != ESP_OK ? c.error : ESP_FAIL;

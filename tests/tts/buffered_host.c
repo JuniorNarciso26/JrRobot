@@ -120,10 +120,10 @@ static void run_pipeline(bool late, bool fail_synth, bool fail_io, bool fail_spa
 static void run_wake_cache_regression(void) {
     pipeline_mode=false;fail_alloc=0;fail_write=0;fail_task=0;
     writes=0;captured_count=0;text_calls=0;inference_calls=0;engine_done=false;
-    largest_block=4*1024*1024;expected_text=JR_WAKE_REPLY_TEXT;
+    largest_block=4*1024*1024;expected_text="Olá! Eu sou o " JR_TTS_BRAND_SPOKEN ".";
     jr_tts_job_t job={.opts={.volume=100,.model='s',.speed=1.0f},
                        .wake_reply=true,.requested_us=esp_timer_get_time()};
-    strcpy(job.text,expected_text);uint32_t audio=0,synth=0;float rtf=0;
+    strcpy(job.text,JR_WAKE_REPLY_TEXT);uint32_t audio=0,synth=0;float rtf=0;
     assert(synth_and_play(&job,&audio,&synth,&rtf,true)==ESP_OK);
     assert(writes==0 && text_calls==1 && wake_cache.pcm && allocations==1);
     text_calls=0;
@@ -133,6 +133,28 @@ static void run_wake_cache_regression(void) {
     heap_caps_free((void *)wake_cache.pcm);
     wake_cache=(jr_tts_wake_cache_t){0};
     assert(allocations==0);
+}
+static void run_brand_regression(void) {
+    char out[JR_TTS_MAX_TEXT_BYTES+1];
+    assert(brand_pronunciation("JrBot, JRBot e jrbot!",out,sizeof(out)));
+    assert(!strcmp(out,JR_TTS_BRAND_SPOKEN ", " JR_TTS_BRAND_SPOKEN " e " JR_TTS_BRAND_SPOKEN "!"));
+    assert(brand_pronunciation("meuJrBot JrBotão JrBot2 JrBot_nome JuniorBot J",out,sizeof(out)));
+    assert(!strcmp(out,"meuJrBot JrBotão JrBot2 JrBot_nome JuniorBot J"));
+    assert(brand_pronunciation("Olá, (JRBOT)!",out,sizeof(out)));
+    assert(!strcmp(out,"Olá, (" JR_TTS_BRAND_SPOKEN ")!"));
+    assert(!brand_pronunciation("JrBot",out,5));
+    assert(!brand_pronunciation("JrBot",out,0));
+    writes=0;captured_count=0;text_calls=0;inference_calls=0;engine_done=false;
+    expected_text="O " JR_TTS_BRAND_SPOKEN " fala.";
+    jr_tts_job_t job={.opts={.volume=100,.model='s',.speed=1.0f},.requested_us=esp_timer_get_time()};
+    strcpy(job.text,"O JRBot fala.");uint32_t audio=0,synth=0;float rtf=0;
+    assert(synth_and_play(&job,&audio,&synth,&rtf,false)==ESP_OK);
+    assert(text_calls==1 && !strcmp(job.text,"O JRBot fala."));
+    assert(allocations==0 && channels==0);
+    char dense[JR_TTS_MAX_TEXT_BYTES+1];
+    for(size_t i=0;i<JR_TTS_MAX_TEXT_BYTES;i+=6)memcpy(dense+i,"JrBot ",6);
+    dense[JR_TTS_MAX_TEXT_BYTES]=0;
+    assert(!brand_pronunciation(dense,out,sizeof(out)));
 }
 int main(void) {
     synth_mutex=xSemaphoreCreateBinary();xSemaphoreGive(synth_mutex);
@@ -146,6 +168,7 @@ int main(void) {
     run_pipeline(false,false,true,false);
     run_pipeline(false,false,false,true);
     run_wake_cache_regression();
+    run_brand_regression();
     vSemaphoreDelete(synth_mutex);
     float raw[]={-2,-0.5f,0,0.5f,2};int16_t clip[5]={0};
     jr_tts_synth_t c={.pcm=clip,.cap=5};assert(on_pcm(raw,5,&c)==0);assert(clip[0]==-32767 && clip[4]==32767 && c.count==5);assert(on_pcm(raw,1,&c)==1 && c.error==ESP_ERR_INVALID_SIZE);
