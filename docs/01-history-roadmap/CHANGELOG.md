@@ -6,6 +6,11 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — JrBot_V2.1 display name and owner approval
+
+- Simplify firmware/version.txt and JR_APP_VERSION to JrBot_V2.1 as requested. Preserve the build stamp and generated Git commit for precise build identification. No inference, playback, installer or settings changes; main is unchanged.
+- Owner approved the app streaming result. Supplied JrBot-painel-log (58).txt records two manual utterances completing ESP_OK: 344-byte/7-segment text, 17,597 ms PCM, 14,225 ms synthesis, first I2S at 9760 ms; then 141-byte/4-segment text, 7173 ms PCM, 5914 ms synthesis, first I2S at 6120 ms. No STREAM_STARVED entries appear in this supplied log. This validates these speech samples, not all other hardware functions.
+
 ## November 26, 2026 — V2.1.9D_TTS_APP_STREAM (develop experiment)
 
 - Enable native PCM-window streaming for all manual text submitted through /voice and the app's Voz tab. Remove canonical-text comparison and two predetermined halves. Keep upstream text normalization/segmentation, first/cap window sizes, 100-ms sentence gap, voice processing and HTTPS unchanged.

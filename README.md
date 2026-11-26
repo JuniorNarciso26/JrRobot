@@ -57,7 +57,7 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
-### Develop V2.1.9D_TTS_APP_STREAM — text from the app (November 26, 2026)
+### Develop JrBot_V2.1 — text from the app (November 26, 2026)
 
 Install **develop** with INSTALAR.bat (normal build/flash). In the robot's HTTPS
 panel, open **Voz**, enable the synthesizer, save Lite S / speed 1.0 / volume 75 /
