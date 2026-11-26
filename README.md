@@ -10,7 +10,7 @@ See. Hear. Speak. Connect. Express.
 <img src="https://img.shields.io/github/license/JuniorNarciso26/JrRobot" alt="MIT License">
 <img src="https://img.shields.io/badge/ESP32--S3-ESP--IDF-red" alt="ESP32-S3">
 <img src="https://img.shields.io/badge/WebRTC-local%20live-blue" alt="WebRTC">
-<img src="https://img.shields.io/badge/version-JrBot__V2.0-brightgreen" alt="Current source version">
+<img src="https://img.shields.io/badge/version-JrBot__V2.1-brightgreen" alt="Current source version">
 <img src="https://img.shields.io/github/stars/JuniorNarciso26/JrRobot?style=social" alt="GitHub stars">
 
 [Website](https://jrbot.com.br) ·
@@ -42,10 +42,34 @@ JrBot is an open-source ESP32-S3 robot with a camera, microphone, speaker, expre
 | --- | --- |
 | **See** | OV5640 photos, browser preview and Live JPEG video; QVGA/VGA/SVGA, image quality and FPS controls |
 | **Hear** | MS3625 I2S recording, selectable duration, WAV playback/download and bidirectional WebRTC audio |
-| **Speak** | MAX98357A output, speaker playback, audio received from phone/computer, volume and diagnostics |
+| **Speak** | Offline pt-BR vTTS with native-block playback from the Voz tab, cached wake greeting, MAX98357A output, audio received from phone/computer, volume and diagnostics |
 | **Express** | SSD1306 OLED face with selectable expressions and active-expression status |
 | **Connect** | Wi-Fi (DHCP, phone setup and up to four saved networks), automatic saved-profile failover and strong-signal AP selection, bounded idle-only low-RSSI roaming, Wi-Fi dashboard (SSID, IP, RSSI and channel), manual network scan, profile selection/deletion, `jrbot.local` on compatible local networks, local HTTPS and WebRTC |
 | **Interact** | Direct browser control on the local network, including Live with independent audio-direction mute |
+
+### Current release — JrBot_V2.1 (November 26, 2026)
+
+**Promoted from the owner-approved develop to main.** This release adds
+continuous manual speech from the **Voz** app tab using native vTTS text/PCM
+segmentation, optimized ESP32-S3 kernels and concurrent generation/playback.
+Input is limited to 1200 UTF-8 bytes and at most 60 seconds of audio, depending
+on available PSRAM. Playback starts after an approximately 8-second audio
+reserve plus a 2-second hold; short completed utterances skip the extra hold.
+This is fixed prebuffering, not adaptive or unlimited-duration streaming.
+
+The owner approved the speech result on HW04 and the **Jay Ar Bot** pronunciation
+for the written name JrBot in both app text and the cached “Olá ESP” greeting.
+The display name is simply **JrBot_V2.1**; the Git/build stamp identifies the exact
+build. Install **main** with INSTALAR.bat, then use the robot's HTTPS **Voz** tab
+with Live/Autonomous off for manual speech. Use the current IP if local hostname
+resolution is slow. ESP-IDF 6.1.1 and the existing hardware pinmap remain in use.
+
+Wi-Fi, camera, OLED, microphone, WebRTC/Mesa Mix and JrSkill code are inherited;
+this voice approval is not a new complete regression certification for all those
+features. See [Project Status](docs/01-history-roadmap/PROJECT_STATUS.md),
+[Changelog](docs/01-history-roadmap/CHANGELOG.md) and
+[voice measurements](docs/04-firmware-development/TTS_LONG_BENCHMARK.md).
+The experiments documented below describe how this release was developed.
 
 ### JrBot V2.0 — Portuguese offline voice recognition (November 22, 2026)
 
@@ -57,7 +81,7 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
-### JrBot name pronunciation test (develop)
+### Accepted pronunciation experiment (development history)
 
 The synthesizer reads the standalone name JrBot (any capitalization) using a
 pt-BR phonetic alias targeting “Jay Ar Bot”. Written input stays unchanged.
@@ -67,7 +91,7 @@ then send “Olá! Eu sou o JrBot. O JRBot está pronto para ajudar.” through 
 Listen to confirm the name: this is a pronunciation experiment, not an acoustic
 result established by the host tests. Firmware display label remains JrBot_V2.1.
 
-### Develop JrBot_V2.1 — text from the app (November 26, 2026)
+### Accepted app-stream experiment — development history (November 26, 2026)
 
 Install **develop** with INSTALAR.bat (normal build/flash). In the robot's HTTPS
 panel, open **Voz**, enable the synthesizer, save Lite S / speed 1.0 / volume 75 /

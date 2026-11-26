@@ -13,6 +13,14 @@ This documentation is organized by **primary topic**, so readers can understand 
 
 ## Version status
 
-**JrBot V2.0** is the current source version on `main`. It retains the features developed through V1.8.4S (Wi-Fi reliability and dashboard, Mesa Mix, local WebRTC, camera, OLED and JrSkill Network) and introduces offline Portuguese wake-word detection using WakeNet10 `wn10_pt_olaesp`. In autonomous mode, “Olá ESP” causes a beep, followed by the **Love** face for three seconds and automatic return to Neutral. The existing panel and mobile `jrbot.local` page can both switch autonomous mode on or off. The owner tested and approved the V2.0 scope on real HW04 hardware; free-form speech and TTS remain upcoming work. See [V2 integration](04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md) and [Project Status](01-history-roadmap/PROJECT_STATUS.md).
+**JrBot_V2.1** is the current release on `main`, approved by the owner on HW04.
+It retains the established robot functions and adds offline pt-BR speech from
+the HTTPS **Voz** tab with concurrent generation/playback of native vTTS blocks,
+a cached “Olá ESP” greeting and the approved “Jay Ar Bot” name pronunciation.
+Manual speech accepts up to 1200 UTF-8 bytes / 60 seconds of audio, depending on
+memory; it uses fixed initial buffering, not unlimited-duration streaming.
+See [Project Status](01-history-roadmap/PROJECT_STATUS.md),
+[voice measurements](04-firmware-development/TTS_LONG_BENCHMARK.md) and
+[Changelog](01-history-roadmap/CHANGELOG.md) for validation scope and limits.
 
 This documentation follows the [MIT-licensed repository](../LICENSE). Historical material remains preserved in [trash/](../trash/README.md) for review; archived records are not necessarily up to date.

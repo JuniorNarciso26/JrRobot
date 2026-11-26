@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — JrBot_V2.1 promoted to main
+
+- Owner explicitly approved app speech and the greeting/app name pronunciation, then requested promotion of develop to main. Promote the approved runtime unchanged from bbc9e3e; preserve the simple JrBot_V2.1 display label and Git/build identification.
+- Release native-block manual speech with concurrent producer/player, fixed initial reserve/hold, bounded input/PCM, optimized S3 kernels, cached wake greeting, whole-name pronunciation alias and updated Voz feedback. Include the tested installer/update and SDK validation corrections and diagnostic tools.
+- Update README/version badge, documentation index, Project Status, Roadmap and integration guide. Record measured HW04 speech evidence and owner pronunciation approval without claiming a new complete regression of inherited functions.
+- Keep future development on develop. No new implementation is started as part of this release; the next phase's scope remains to be selected.
+
 ## November 26, 2026 — JrBot pronunciation experiment (develop)
 
 - Add a pronunciation-only whole-name alias for case-insensitive JrBot/JRBot/jrbot: djêi ár bót, targeting the owner's English-letter Jay Ar Bot pronunciation while retaining the pt-BR frontend. The exact sound requires hardware listening; the visible name and JrBot_V2.1 label stay unchanged.

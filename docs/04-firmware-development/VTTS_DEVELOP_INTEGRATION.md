@@ -1,3 +1,18 @@
+# JrBot_V2.1 — current offline voice integration
+
+**November 26, 2026: owner-approved develop promoted to main.** Current behavior
+is native PCM-block streaming for manual text in Voz (<=1200 UTF-8 bytes,
+<=60 seconds of audio subject to PSRAM), a fixed ~8-second audio reserve plus
+2-second hold (short completed utterances skip the hold), and the cached wake
+greeting. The JrBot name pronunciation is approved as “Jay Ar Bot”. Install
+main using INSTALAR.bat; main and develop share the ESP-IDF 6.1.1/vTTS profile.
+See [benchmark and app test details](TTS_LONG_BENCHMARK.md) and
+[Project Status](../01-history-roadmap/PROJECT_STATUS.md) for current evidence,
+limits and remaining work. The dated notes below preserve development history;
+their old 180-byte/fully buffered limits do not describe the current release.
+
+## Historical integration notes (superseded by the release above)
+
 # JrBot V2.1.3S - vTTS pt-BR integrado na main e develop
 
 **Branch:** main (release aceita) e develop (proximos experimentos).

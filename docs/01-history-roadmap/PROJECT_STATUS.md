@@ -1,8 +1,45 @@
 # JrBot Project Status
 
-**Last updated: November 24, 2026**
+**Last updated: November 26, 2026**
 
-## Current release — JrBot V2.1.3S_TTS_FAST (`main`)
+## Current release — JrBot_V2.1 (`main`)
+
+On November 26, the owner approved the develop speech implementation and its
+name pronunciation, then requested promotion to main. Accepted source commits:
+4ac3f61 (app streaming), c9bff69 (simple version label) and bbc9e3e (pronunciation).
+The release preserves the tested runtime code; this promotion updates documentation.
+
+- Manual text from the HTTPS **Voz** tab uses upstream normalization/segmentation
+  and native PCM callbacks. A producer and player run concurrently on one I2S
+  session. Input limit is 1200 UTF-8 bytes and at most 60 seconds of PCM, bounded
+  by contiguous PSRAM with a reserve for other work.
+- A fixed ~8-second generated-audio reserve plus 2-second hold gates startup;
+  short complete utterances skip the hold. This is not upstream's adaptive RTF
+  prebuffer or a ring buffer for indefinitely long speech. Underflow/error and
+  partial-playback diagnostics are exposed in the panel/log.
+- Written JrBot/JRBot/jrbot receives a pronunciation-only alias targeting English
+  letters “Jay Ar Bot”. The owner confirmed the result. The cached wake greeting,
+  beep, Love expression and recognition resume path are retained.
+- Display/version label is JrBot_V2.1. Git and build stamp remain available for
+  precise identification. Main/develop use ESP-IDF 6.1.1 and the shared vTTS profile.
+- The installer retains dynamic branch selection/update/flash and now backs up
+  local edits automatically, handles single-branch Git clones, validates SDK/Python
+  metadata and checks optimized TTS implementations before flashing.
+
+**Physical evidence:** JrBot-painel-log (58).txt records the standard 344-byte
+text (7 segments, 17,597 ms audio, 14,225 ms synthesis, 9760 ms first I2S) and a
+141-byte text (4 segments, 7173 ms audio, 5914 ms synthesis, 6120 ms first I2S).
+Both finish ESP_OK with no STREAM_STARVED entry in that log. The owner separately
+confirmed pronunciation after bbc9e3e. Earlier tests isolated an OS/local-name
+lookup delay (~13.77 s for jrbot.local vs ~0 ms for the IP); connection discovery
+and repeated TLS handshakes remain separate future optimization work.
+
+**Limits:** Audio/first-I2S timing is not an exact acoustic measurement. Broad new
+Live/camera/Wi-Fi/JrSkill regression has not been supplied for this release;
+those implementations are inherited. Free-form STT, a custom “Olá JrBot” wake
+word and full AI conversation are future work. No such features are claimed.
+
+## Historical release — JrBot V2.1.3S_TTS_FAST
 
 On November 24, 2026, the owner accepted the `develop` candidate
 `JrBot_V2.1.3D_TTS_FAST` (hardware commit `7854de30`) for promotion to
