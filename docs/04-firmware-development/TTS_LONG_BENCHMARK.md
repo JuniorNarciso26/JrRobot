@@ -1,5 +1,27 @@
 # JR_TTS_LONG_01 — referencia isolada e comparacao integrada
 
+## Segunda rodada — V2.1.8D, reserva inicial de 2 segundos
+
+Atualizar develop por INSTALAR.bat e confirmar `JrBot_V2.1.8D_TTS_TWO_BLOCK_2S`.
+Usar o mesmo tools/tts_benchmark.py, texto, ajustes e coleta de video com audio
+mais log Serial/painel. Enviar uma unica vez, com Live/Autonomo desligados.
+Somente `JR_TTS_TWO_BLOCK_HOLD_MS` muda de 4000 para 2000; nenhuma mudanca HTTPS.
+
+Base enviada em 26/11: JR_TTS_LONG_01_develop_20261126T144030957641Z.txt,
+JrBot-painel-log (56).txt e IMG_0414.mp4. Versao V2.1.7D, git 04737ccf.
+Primeiro bloco: geracao 6065 ms, PCM 7382 ms. Segundo: geracao 8128 ms,
+PCM 10214 ms. Margem na fronteira 3255 ms, waited=0. API: synth=14194 ms,
+first_i2s=10259 ms, total=27908 ms, RTF=0.807, ESP_OK, utterances=1.
+O Wi-Fi tinha uma desconexao historica AUTH_FAIL; o contador permaneceu em 1
+no periodo da fala. Nao atribuir esse evento anterior como causa da latencia.
+
+A margem esperada com hold menor e ~1255 ms se os tempos se repetirem.
+Aceitar o teste pelo resultado medido: hold_ms=2000, waited=0, margem positiva,
+ESP_OK e continuidade sonora confirmada pelo usuario/video. Caso haja espera,
+registrar o atraso sem reduzir mais a reserva. O ACK HTTPS de 15100.7 ms e
+host_observed=45562.6 ms incluem custos externos aos marcadores do dispositivo;
+nao anunciar 10.259 s como tecla-ate-som. Investigar transporte em outra rodada.
+
 ## Teste em duas partes — V2.1.7D, 26/11/2026
 
 Referencia aprovada pelo usuario: V2.1.6D, git 1800282b, geracao 21,390 s,

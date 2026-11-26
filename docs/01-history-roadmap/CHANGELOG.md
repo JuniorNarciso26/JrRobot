@@ -6,6 +6,12 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — V2.1.8D_TTS_TWO_BLOCK_2S (develop experiment)
+
+- Reduce only the canonical two-block benchmark's initial hold from 4000 to 2000 ms. Keep the split, voice settings, inference/player implementation, memory policy, I2S ownership and HTTPS unchanged.
+- Previous HW04 measurement (V2.1.7D, 04737ccf): block 1 generated in 6065 ms for 7382 ms PCM; block 2 generated in 8128 ms for 10214 ms PCM. The second block was ready 3255 ms before the first finished I2S submission, waited=0; command completed ESP_OK. Total synthesis 14194 ms; first I2S 10259 ms; device total 27908 ms.
+- With identical timings, removing 2 seconds would leave about 1255 ms margin. This is an estimate, not a measured result for V2.1.8D. Previous HTTPS ACK took 15100.7 ms; transport investigation is separate from this controlled hold experiment. Physical continuity/watchdog testing remains required.
+
 ## November 26, 2026 — V2.1.7D_TTS_TWO_BLOCK (develop experiment)
 
 - The owner approved audio quality of V2.1.6D, git 1800282b. The supplied benchmark reports 21,390 ms synthesis, 22,194 ms first I2S submission and 17,597 ms PCM; the uploaded video has no audio track. This approval covers long-text sound, not all hardware features.

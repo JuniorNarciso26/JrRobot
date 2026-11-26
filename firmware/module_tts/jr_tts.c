@@ -46,7 +46,7 @@ int64_t vtts_now_us(void) { return esp_timer_get_time(); }
 #define JR_TTS_FRAME_CAP 128
 #define JR_TTS_FIRST_FRAMES 12
 #ifndef JR_TTS_TWO_BLOCK_HOLD_MS
-#define JR_TTS_TWO_BLOCK_HOLD_MS 4000U
+#define JR_TTS_TWO_BLOCK_HOLD_MS 2000U
 #endif
 #define JR_TTS_TEST_PREFIX "Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor."
 #define JR_TTS_TEST_TEXT "Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor. Posso ajudar com perguntas, compartilhar informações e participar das suas ideias. Este é o nosso teste padrão de voz: vou falar esta mensagem inteira, do começo ao fim. Como posso ajudar você hoje?"

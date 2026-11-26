@@ -57,12 +57,12 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
-### Develop V2.1.7D_TTS_TWO_BLOCK — fixed split experiment (November 26, 2026)
+### Develop V2.1.8D_TTS_TWO_BLOCK_2S — fixed split experiment (November 26, 2026)
 
 Install **develop** using INSTALAR.bat, then run the same
 `python tools/tts_benchmark.py https://jrbot.local --insecure-local` command.
 Only the exact canonical benchmark text uses this experiment: split after
-“cada vez melhor.”, render block 1, launch playback with a 4-second initial hold,
+“cada vez melhor.”, render block 1, launch playback with a 2-second initial hold,
 and synthesize block 2 while the player waits/plays. Other texts and the wake
 reply retain their existing paths. One I2S channel stays open across both blocks,
 with the existing 100-ms sentence gap preserved at the split.
@@ -72,7 +72,7 @@ duration; `JR_TTS_TWO_BOUNDARY` records readiness margin (positive = ready early
 and whether the player waited. These are software submission times, not acoustic
 measurements. A late second block waits and is reported, rather than dropping
 text. This is a two-block experiment, not automatic streaming of arbitrary texts.
-The 4-second hold is a test constant, not a guaranteed safe value. Full ESP-IDF
+The 2-second hold is a test constant, not a guaranteed safe value. Full ESP-IDF
 build and physical timing/continuity validation remain pending.
 
 ### Develop V2.1.6D_TTS_ACCEL — optimized implementation selection (November 25, 2026)
