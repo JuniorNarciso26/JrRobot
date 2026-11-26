@@ -23,3 +23,6 @@ tests/hardware/results.json
 # Local baseline/comparison logs and retained isolated laboratory build.
 /.tts-benchmark-results/
 /experiments/vtts-hw04/.work/
+
+# Official TensorFlow yes/no checkout, generated project and isolated build
+/.tflite-yes-no/
