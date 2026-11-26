@@ -45,6 +45,11 @@ int64_t vtts_now_us(void) { return esp_timer_get_time(); }
 #define JR_TTS_PSRAM_RESERVE (256U * 1024U)
 #define JR_TTS_FRAME_CAP 128
 #define JR_TTS_FIRST_FRAMES 12
+#ifndef JR_TTS_TWO_BLOCK_HOLD_MS
+#define JR_TTS_TWO_BLOCK_HOLD_MS 4000U
+#endif
+#define JR_TTS_TEST_PREFIX "Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor."
+#define JR_TTS_TEST_TEXT "Olá! Eu sou o JrBot. Minhas habilidades são ouvir, falar e me expressar. Estou aprendendo a entender você e a responder cada vez melhor. Posso ajudar com perguntas, compartilhar informações e participar das suas ideias. Este é o nosso teste padrão de voz: vou falar esta mensagem inteira, do começo ao fim. Como posso ajudar você hoje?"
 #define JR_WAKE_REPLY_TEXT "Olá! Eu sou o JrBot."
 #define JR_WAKE_CACHE_MAX_SAMPLES (22050U * 3U)
 #define JR_TTS_COOPERATIVE_YIELD_US 150000LL
@@ -287,8 +292,22 @@ static float shape(float v)
     return v < 0.0f ? -y : y;
 }
 
-static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count, int sample_rate,
-                          int64_t requested_us)
+/* Only the canonical manual benchmark uses this two-block experiment.
+ * One model/arena, one I2S channel, immutable first PCM and disjoint second PCM.
+ * Semaphores publish the second clip and join playback before freeing buffers. */
+typedef struct {
+    const jr_tts_job_t *job;
+    const int16_t *first, *second;
+    size_t first_count, second_count;
+    int rate;
+    SemaphoreHandle_t ready, done;
+    esp_err_t synthesis_error, playback_error;
+    int64_t first_submitted_us, second_ready_us;
+    bool waited;
+} jr_tts_two_block_t;
+
+static esp_err_t play_pcm_blocks(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count, int sample_rate,
+                          int64_t requested_us, jr_tts_two_block_t *two)
 {
     i2s_chan_handle_t tx = NULL;
     i2s_chan_config_t cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
@@ -322,33 +341,51 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
     const float alpha = 1.0f - expf(-2.0f * 3.14159265f * 6000.0f / (float)sample_rate);
     float low = 0.0f;
     int16_t stereo[512];
-    for (size_t pos = 0; pos < count && err == ESP_OK;) {
-        size_t frames = count - pos;
-        if (frames > 256) frames = 256;
-        for (size_t i = 0; i < frames; ++i) {
-            float v = pcm[pos + i] / 32767.0f;
-            if (opts->debuzz_db > 0) {
-                low += alpha * (v - low);
-                v = low + (v - low) * hf;
+    for (int block = 0; block < (two ? 2 : 1) && err == ESP_OK; ++block) {
+        if (block == 1) {
+            two->first_submitted_us = esp_timer_get_time();
+            two->waited = xSemaphoreTake(two->ready, 0) != pdTRUE;
+            if (two->waited) {
+                portENTER_CRITICAL(&state_lock);
+                state.last_underruns++;
+                portEXIT_CRITICAL(&state_lock);
+                xSemaphoreTake(two->ready, portMAX_DELAY);
             }
-            v = shape(v * gain) * amplitude;
-            int32_t sample = (int32_t)lrintf(v * 32767.0f);
-            if (sample > 32767) sample = 32767;
-            if (sample < -32768) sample = -32768;
-            stereo[2 * i] = stereo[2 * i + 1] = (int16_t)sample;
+            int64_t margin = two->first_submitted_us - two->second_ready_us;
+            ESP_LOGI(TAG, "JR_TTS_TWO_BOUNDARY ready_margin_ms=%ld waited=%d; submit_timing_not_acoustic",
+                     (long)(margin / 1000), two->waited ? 1 : 0);
+            if (two->synthesis_error != ESP_OK) { err = two->synthesis_error; break; }
+            pcm = two->second;
+            count = two->second_count;
         }
-        size_t sent = 0;
-        size_t bytes = frames * 2 * sizeof(int16_t);
-        err = i2s_channel_write(tx, stereo, bytes, &sent, pdMS_TO_TICKS(1500));
-        if (err == ESP_OK && sent != bytes) err = ESP_ERR_INVALID_SIZE;
-        if (err == ESP_OK && pos == 0) {
-            uint32_t elapsed = (uint32_t)((esp_timer_get_time() - requested_us) / 1000);
-            portENTER_CRITICAL(&state_lock);
-            state.last_first_audio_ms = elapsed;
-            portEXIT_CRITICAL(&state_lock);
-            ESP_LOGI(TAG, "JR_TTS_FIRST_AUDIO latency_ms=%lu progressive=0", (unsigned long)elapsed);
+        for (size_t pos = 0; pos < count && err == ESP_OK;) {
+            size_t frames = count - pos;
+            if (frames > 256) frames = 256;
+            for (size_t i = 0; i < frames; ++i) {
+                float v = pcm[pos + i] / 32767.0f;
+                if (opts->debuzz_db > 0) {
+                    low += alpha * (v - low);
+                    v = low + (v - low) * hf;
+                }
+                v = shape(v * gain) * amplitude;
+                int32_t sample = (int32_t)lrintf(v * 32767.0f);
+                if (sample > 32767) sample = 32767;
+                if (sample < -32768) sample = -32768;
+                stereo[2 * i] = stereo[2 * i + 1] = (int16_t)sample;
+            }
+            size_t sent = 0;
+            size_t bytes = frames * 2 * sizeof(int16_t);
+            err = i2s_channel_write(tx, stereo, bytes, &sent, pdMS_TO_TICKS(1500));
+            if (err == ESP_OK && sent != bytes) err = ESP_ERR_INVALID_SIZE;
+            if (err == ESP_OK && pos == 0 && block == 0) {
+                uint32_t elapsed = (uint32_t)((esp_timer_get_time() - requested_us) / 1000);
+                portENTER_CRITICAL(&state_lock);
+                state.last_first_audio_ms = elapsed;
+                portEXIT_CRITICAL(&state_lock);
+                ESP_LOGI(TAG, "JR_TTS_FIRST_AUDIO latency_ms=%lu progressive=%d", (unsigned long)elapsed, two ? 1 : 0);
+            }
+            pos += frames;
         }
-        pos += frames;
     }
     if (err == ESP_OK) {
         memset(stereo, 0, sizeof(stereo));
@@ -367,6 +404,76 @@ static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, siz
     (void)gpio_set_direction((gpio_num_t)JR_AUDIO_DIN_GPIO, GPIO_MODE_OUTPUT);
     (void)gpio_set_level((gpio_num_t)JR_AUDIO_DIN_GPIO, 0);
     return err;
+}
+
+static esp_err_t play_pcm(const jr_tts_settings_t *opts, const int16_t *pcm, size_t count,
+                          int rate, int64_t requested_us)
+{
+    return play_pcm_blocks(opts, pcm, count, rate, requested_us, NULL);
+}
+
+static void two_block_player(void *opaque)
+{
+    jr_tts_two_block_t *two = opaque;
+    vTaskDelay(pdMS_TO_TICKS(JR_TTS_TWO_BLOCK_HOLD_MS));
+    two->playback_error = play_pcm_blocks(&two->job->opts, two->first, two->first_count,
+                                        two->rate, two->job->requested_us, two);
+    xSemaphoreGive(two->done);
+    vTaskDelete(NULL);
+}
+
+static esp_err_t run_two_blocks(const jr_tts_job_t *job, jr_tts_synth_t *c,
+                                vtts_text_ws *ws, const vtts_text_opts *opts,
+                                uint32_t *audio_ms, uint32_t *synth_ms, float *rtf)
+{
+    jr_tts_two_block_t two = {.job=job, .rate=c->model->sample_rate};
+    two.ready = xSemaphoreCreateBinary();
+    two.done = xSemaphoreCreateBinary();
+    esp_err_t result = ESP_ERR_NO_MEM;
+    if (!two.ready || !two.done) goto finish;
+    int64_t start = esp_timer_get_time();
+    int chunks = vtts_text_to_ids_ex(JR_TTS_TEST_PREFIX, ws, opts, on_ids, c);
+    int64_t first_us = esp_timer_get_time() - start;
+    if (c->error != ESP_OK || chunks <= 0 || !c->count) {
+        result = c->error != ESP_OK ? c->error : ESP_FAIL;
+        goto finish;
+    }
+    two.first = c->pcm;
+    two.first_count = c->count;
+    ESP_LOGI(TAG, "JR_TTS_TWO_BLOCK block=1 synth_ms=%lu audio_ms=%lu hold_ms=%u",
+             (unsigned long)(first_us / 1000),
+             (unsigned long)(c->count * 1000U / (size_t)two.rate), JR_TTS_TWO_BLOCK_HOLD_MS);
+    if (xTaskCreatePinnedToCore(two_block_player, "tts_two_play", 4096, &two, 5, NULL, 0) != pdPASS)
+        goto finish;
+    /* Playback now owns the immutable prefix. Generate the suffix in unused
+     * space of the same bounded PCM allocation, preserving one 100-ms gap. */
+    jr_tts_synth_t second = *c;
+    second.pcm = c->pcm + c->count;
+    second.cap = c->cap - c->count;
+    second.count = 0;
+    second.segments = 1;
+    start = esp_timer_get_time();
+    chunks = vtts_text_to_ids_ex(job->text + strlen(JR_TTS_TEST_PREFIX) + 1,
+                                 ws, opts, on_ids, &second);
+    int64_t second_us = esp_timer_get_time() - start;
+    two.second = second.pcm;
+    two.second_count = second.count;
+    two.synthesis_error = second.error != ESP_OK ? second.error :
+                          (chunks > 0 && second.count ? ESP_OK : ESP_FAIL);
+    two.second_ready_us = esp_timer_get_time();
+    ESP_LOGI(TAG, "JR_TTS_TWO_BLOCK block=2 synth_ms=%lu audio_ms=%lu result=%s",
+             (unsigned long)(second_us / 1000),
+             (unsigned long)(second.count * 1000U / (size_t)two.rate), esp_err_to_name(two.synthesis_error));
+    xSemaphoreGive(two.ready);
+    xSemaphoreTake(two.done, portMAX_DELAY);
+    *audio_ms = (uint32_t)((two.first_count + second.count) * 1000U / (size_t)two.rate);
+    *synth_ms = (uint32_t)((first_us + second_us) / 1000);
+    *rtf = *audio_ms ? (float)(first_us + second_us) / (1000.0f * *audio_ms) : 0.0f;
+    result = two.synthesis_error != ESP_OK ? two.synthesis_error : two.playback_error;
+finish:
+    if (two.ready) vSemaphoreDelete(two.ready);
+    if (two.done) vSemaphoreDelete(two.done);
+    return result;
 }
 
 static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
@@ -464,6 +571,10 @@ static esp_err_t synth_and_play(const jr_tts_job_t *job, uint32_t *audio_ms,
     jr_tts_synth_t c = {.model=model, .arena=arena, .arena_bytes=arena_bytes,
                          .pcm=pcm, .count=0, .cap=cap, .speed=job->opts.speed,
                          .error=ESP_OK, .last_yield_us=esp_timer_get_time()};
+    if (!cache_only && !job->wake_reply && !strcmp(job->text, JR_TTS_TEST_TEXT)) {
+        err = run_two_blocks(job, &c, ws, &opts, audio_ms, synth_ms, rtf);
+        goto cleanup;
+    }
     int64_t started_us = esp_timer_get_time();
     int chunks = vtts_text_to_ids_ex(job->text, ws, &opts, on_ids, &c);
     int64_t synth_us = esp_timer_get_time() - started_us;

@@ -1,5 +1,61 @@
 # JR_TTS_LONG_01 — referencia isolada e comparacao integrada
 
+## Teste em duas partes — V2.1.7D, 26/11/2026
+
+Referencia aprovada pelo usuario: V2.1.6D, git 1800282b, geracao 21,390 s,
+primeiro envio I2S 22,194 s, PCM 17,597 s, ESP_OK. O usuario confirmou audio bom;
+o video enviado nao possui faixa de audio. Os ~3,8 s entre geracao total e PCM
+nao determinam exatamente a reserva de cada metade sob carga concorrente.
+
+O mesmo comando/mesma frase/mesmos ajustes agora ativam, por igualdade exata
+do texto manual, o experimento em duas partes. Corte apos `cada vez melhor.`;
+a segunda comeca com `Posso ajudar`. O tamanho em segundos sera medido, nao
+fixado pelo numero de caracteres. Outras frases e cache WakeNet seguem o caminho
+anterior. A primeira parte fica pronta; uma tarefa de reproducao aguarda 4000 ms
+enquanto o produtor gera a segunda; depois toca a primeira e, quando disponivel,
+a segunda. Uma unica inferencia usa modelo, arena e normalizador por vez.
+
+As partes ocupam regioes disjuntas da mesma alocacao PCM limitada. O player
+mantem I2S, filtro e estado de ganho entre elas. A segunda parte inclui o mesmo
+intervalo de 100 ms usado nas demais separacoes do JrBot. Nao ha drenagem ou
+reabertura de I2S na fronteira; a drenagem final permanece. Se a segunda parte
+falhar, a primeira pode ja ter sido reproduzida: o comando termina em erro,
+sem reproduzir PCM incompleto da segunda. O produtor sempre espera a tarefa
+de reproducao encerrar antes de liberar memoria e a posse I2S.
+
+Coletar benchmark e log Serial. `JR_TTS_TWO_BLOCK` registra geracao/duracao por
+parte. `JR_TTS_TWO_BOUNDARY ready_margin_ms` positivo indica segunda parte pronta
+antes do fim do envio da primeira ao I2S; negativo indica atraso.
+`waited=1` e `last_underruns` contam espera na fronteira. O DMA ainda pode conter
+amostras: essa espera nao e uma medicao exata de silencio no alto-falante.
+O video precisa conter audio para avaliar a continuidade acustica.
+`last_synth_ms` soma as duas geracoes, excluindo a espera final pela reproducao;
+`last_total_ms` inclui hold, geracao e reproducao sobrepostas.
+
+O hold de 4000 ms e um parametro de compilacao (`JR_TTS_TWO_BLOCK_HOLD_MS`),
+nao altera velocidade da voz nem garante ausencia de cortes. Nao equivale a
+prebuffer adaptativo para mensagens arbitrariamente longas. Build ESP-IDF,
+watchdog e desempenho fisico ainda precisam ser validados no HW04.
+
+### Como o vTTS original faz streaming
+
+Fontes primarias no commit pinado 010cd22fd51f58dfa2414824cb8d6345e70cafc6:
+[firmware README](https://github.com/tuanpmt/vtts/blob/010cd22fd51f58dfa2414824cb8d6345e70cafc6/firmware/esp32/README.md),
+[speaker.c](https://github.com/tuanpmt/vtts/blob/010cd22fd51f58dfa2414824cb8d6345e70cafc6/firmware/esp32/main/speaker.c),
+[synth.c](https://github.com/tuanpmt/vtts/blob/010cd22fd51f58dfa2414824cb8d6345e70cafc6/firmware/esp32/main/synth.c),
+[vtts_synth.c](https://github.com/tuanpmt/vtts/blob/010cd22fd51f58dfa2414824cb8d6345e70cafc6/runtime/src/vtts_synth.c).
+
+O frontend divide texto por frases e regras do idioma. `stream_run` calcula
+duracoes e representacao de tokens, depois gera janelas temporais mantendo
+contexto entre elas. O primeiro bloco e pequeno; o tamanho dobra ate o teto
+(`first=12`, `chunk=128` no wrapper atual: 12, 24, 48, 96, 128, ...).
+Quadros sao unidades temporais internas; sua duracao depende de hop/sample_rate.
+O callback PCM alimenta uma fila consumida pela tarefa de audio. O firmware
+original insere 150 ms entre segmentos de texto e calcula prebuffer/bloco pelo
+RTF medido com fator 1,25 e folga de 50 ms na simulacao do agendamento.
+Se a geracao ficar para tras, conta underrun e espera dados; nao garante fala
+infinita sem pausas quando a geracao sustentada e mais lenta que a reproducao.
+
 ## Referencia recebida em 24/11/2026
 
 Fonte: `JR_TTS_LONG_01_20261124T175649130038Z.txt` e

@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — V2.1.7D_TTS_TWO_BLOCK (develop experiment)
+
+- The owner approved audio quality of V2.1.6D, git 1800282b. The supplied benchmark reports 21,390 ms synthesis, 22,194 ms first I2S submission and 17,597 ms PCM; the uploaded video has no audio track. This approval covers long-text sound, not all hardware features.
+- For the canonical benchmark text only, split after “cada vez melhor.” and generate the second half concurrently with a dedicated playback task. Wait 4 seconds after block 1 is generated before playback, allowing block 2 a head start. Preserve the model/arena, bounded PCM allocation, single I2S session, sample order, boundary silence and final DMA drain. No overlap of two neural inference calls.
+- Log per-block synthesis/audio duration and signed readiness margin at the boundary. Count a boundary wait in last_underruns (a software starvation indicator, not an acoustic measurement). Join playback even if generation or I2S fails before releasing PCM, model or I2S ownership.
+- Host tests exercise overlap, exact PCM order/boundary gap, early and late second blocks, second-generation failure, playback failure and task-creation failure, plus prior buffered/wake paths. ESP-IDF build and physical validation remain pending. Main remains unchanged.
+
 ## November 26, 2026 — TTS ELF validation correction (develop)
 
 - Keep the main installer's runner/menu/update/build/flash flow. Before syncing, automatically stash local tracked edits and untracked files instead of requiring manual Git cleanup. Do not reapply that backup over the downloaded firmware. Ignored build/model files are left alone. Existing branch-tracking and pre-flash acceleration checks remain in place.
