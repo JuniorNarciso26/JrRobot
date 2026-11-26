@@ -234,6 +234,22 @@ void JrMaybeBeep(const char* word, float score) {
     replace_once(main / "main_functions.cc", '  if (max_result > 0.8f) {',
                  '  JrMaybeBeep(kCategoryLabels[max_idx], max_result);\n'
                  '  if (max_result > 0.8f) {')
+    for name in ("serial_capture.cc", "serial_capture.h"):
+        shutil.copy2(ROOT / "experiments/tflite-yes-no" / name, main / name)
+    replace_once(main / "CMakeLists.txt", 'SRCS main.cc', 'SRCS serial_capture.cc main.cc')
+    replace_once(main / "audio_provider.cc", '#include "audio_provider.h"',
+                 '#include "audio_provider.h"\n#include "serial_capture.h"')
+    replace_once(main / "audio_provider.cc", 'bytes_read = bytes_read / 4;',
+                 'bytes_read = bytes_read / 4;\n'
+                 '            JrCaptureFeed((const int16_t*)g_i2s_read_buffer, bytes_read / 2);')
+    replace_once(main / "main.cc", '#include "main_functions.h"',
+                 '#include "main_functions.h"\n#include "serial_capture.h"')
+    replace_once(main / "main.cc", 'extern "C" void app_main() {',
+                 'extern "C" void app_main() {\n  JrCaptureStart();')
+    replace_once(main / "i2s_setup.cc", '#include "yes_beep.h"',
+                 '#include "yes_beep.h"\n#include "serial_capture.h"')
+    replace_once(main / "i2s_setup.cc", 'if (!beep_tx || !gate.accept',
+                 'if (JrCaptureActive() || !beep_tx || !gate.accept')
     (project / "UPSTREAM_REVISION.txt").write_text(UPSTREAM + "\n" + REVISION + "\n", encoding="utf-8")
     print(f"[OK] TensorFlow oficial {REVISION[:8]} preparado em {project}", flush=True)
 

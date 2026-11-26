@@ -808,8 +808,8 @@ if errorlevel 1 (
 echo [OK] JrBot_V2.2_TEST_YES_NO gravado. Diga YES ou NO em ingles.
 echo [INFO] Resultado: Detected yes/no, score. Nao ha resposta falada neste teste.
 if /i not "%ACTION%"=="flash" (
-    echo [INFO] Abrindo Serial automaticamente. Ctrl+] encerra o monitor.
-    python "%IDF_PATH%\tools\idf.py" -B build -p "%JR_FLASH_PORT%" monitor
+    echo [INFO] Abrindo coletor Serial. Escolha m para monitor ou uma palavra para gravar.
+    python "%~dp0tools\kws_collect.py" --port "%JR_FLASH_PORT%"
     set "RC=!errorlevel!"
     popd
     if not "!RC!"=="0" goto failure

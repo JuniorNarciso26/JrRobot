@@ -1,6 +1,7 @@
 > **Branch experimental `test/tflite-yes-no`:** teste isolado do exemplo oficial
 > TensorFlow Lite Micro para reconhecer **yes/no** no microfone HW04. Execute
-> `INSTALAR.bat`, escolha esta branch e a porta COM; o Serial abre automaticamente.
+> `INSTALAR.bat`, escolha esta branch e a porta COM; o coletor/monitor Serial abre
+> automaticamente. É possível gravar WAVs de novas palavras, revisar e salvar no PC.
 > Neste teste, as funções completas do robô ficam disponíveis ao reinstalar `main`.
 > [Instruções e limites do teste](docs/TFLITE_YES_NO_TEST.md).
 

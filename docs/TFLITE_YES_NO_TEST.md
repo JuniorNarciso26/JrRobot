@@ -7,8 +7,9 @@ Branch: `test/tflite-yes-no`, criada da V2.1 aprovada (`cb3c0048`).
 1. Feche o painel/qualquer monitor que esteja usando a porta COM do robô.
 2. Execute `INSTALAR.bat` normalmente e escolha `test/tflite-yes-no` no menu.
 3. Escolha a porta COM. O instalador baixa a fonte oficial, prepara o exemplo,
-   compila, grava e abre o monitor Serial automaticamente.
-4. Aguarde `Audio Recording started`. Fale **yes** (iés) e **no** (nôu), em inglês,
+   compila, grava e abre o coletor/monitor Serial automaticamente.
+4. Informe um identificador da pessoa (ex.: `junior`), e escolha `m` para ver
+   o monitor por dez segundos. Fale **yes** (iés) e **no** (nôu), em inglês,
    a cerca de 20–40 cm do microfone, deixando dois segundos entre as palavras.
 5. Procure `Detected yes, score: ...` ou `Detected no, score: ...`.
    Ao reconhecer **yes**, o alto-falante deve emitir um **bip de 880 Hz por 120 ms**.
@@ -18,7 +19,7 @@ Branch: `test/tflite-yes-no`, criada da V2.1 aprovada (`cb3c0048`).
    `silence` e `unknown` também são classes do modelo. O limiar original é 0,8.
 6. Observe também se aparecem reconhecimentos em silêncio ou com outras palavras.
    Copie o log com tentativas corretas/incorretas para avaliarmos o resultado.
-7. Para sair do monitor, use `Ctrl+]`. Para restaurar o robô completo, execute
+7. Para sair do coletor, use `q` no menu de palavras ou `Ctrl+C`. Para restaurar o robô completo, execute
    novamente `INSTALAR.bat` e escolha `main`.
 
 Este teste substitui temporariamente a aplicação gravada na placa. Não inicia
@@ -30,6 +31,58 @@ O painel web do robô não estará disponível durante este teste.
 No PowerShell, a forma explícita é `.\INSTALAR.bat`. As ações `build`, `flash`,
 `menuconfig` e `panel` continuam disponíveis: `flash` grava sem abrir o monitor;
 `panel` abre somente o painel de PC (sem os diagnósticos do firmware completo).
+
+## Coletar novas palavras pela Serial
+
+A coleta usa somente o terminal/USB; não há painel novo nem alteração do app.
+O coletor é também o monitor: não abra o IDF Monitor ou o painel na mesma COM.
+
+1. Reinstale esta branch pelo `INSTALAR.bat`, para gravar o suporte de coleta.
+2. No terminal aberto automaticamente, informe quem está gravando, por exemplo
+   `junior`, `pessoa02`. ENTER usa `pessoa01`.
+3. Digite a classe, por exemplo **sim**, **nao**, **silence** ou **unknown**.
+   Também é possível usar outro nome de palavra. `não` é normalizado para `nao`.
+4. Pressione ENTER, aguarde 3–2–1 e fale quando aparecer **GRAVANDO**. Diga a
+   palavra uma vez, inteira dentro da janela de um segundo. Para `silence`, fique
+   quieto; para `unknown`, use outras palavras/sons que não sejam os comandos.
+5. Aguarde a transferência pela USB (alguns segundos). O coletor verifica os
+   32000 bytes e sua integridade antes de oferecer a revisão.
+6. Digite **o** para ouvir o WAV no computador Windows, **s** para salvar ou ENTER
+   para descartar. Um arquivo ainda não revisado não entra na base permanente.
+7. Repita. Use **v** no aviso de preparar para voltar ao menu de classes e **q**
+   no menu para encerrar. Comece com algumas gravações e ouça-as antes de ampliar
+   a coleta; ainda não foi estabelecida uma quantidade suficiente para treinar.
+
+Os arquivos ficam em `%LOCALAPPDATA%\JrBot\voice-dataset\<classe>\` no Windows,
+fora da pasta Git e dos builds. Cada WAV é mono PCM16 a 16 kHz, com 16000 amostras;
+um JSON acompanha o arquivo com pessoa, classe, formato, hash e níveis do áudio.
+O usuário escolhe as classes: a pontuação do modelo yes/no não rotula os WAVs.
+Os exemplos de pessoas/classes diferentes são preservados sem sobrescrita.
+
+O firmware copia o PCM da mesma captura I2S usada pelo reconhecimento para um
+buffer limitado de 32 KB. O bip é bloqueado durante captura e transferência.
+Evite iniciar a gravação enquanto um bip anterior ainda estiver tocando. Não há
+reprodução pelo robô durante a revisão; a opção ouvir usa o som do computador.
+
+O protocolo é textual e inclui ID, sequência e checksum FNV-1a. Perda de blocos,
+checksum inválido, tempo excedido ou falta de suporte no firmware impedem salvar.
+O checksum serve para detectar corrupção de transporte, não como autenticação.
+
+Para abrir o coletor depois, sem compilar/gravar outra vez, num terminal Python
+com pyserial disponível:
+
+```powershell
+python tools/kws_collect.py
+# Ou, para uma porta já conhecida:
+python tools/kws_collect.py --port COM8
+```
+
+O nome da porta é somente um exemplo. Sem `--port`, o script lista as disponíveis.
+`--output` permite escolher outra pasta de destino.
+
+**Coletar ainda não treina o modelo.** O exemplo instalado continua reconhecendo
+yes/no. O treinamento com os WAVs, incluindo separação de treino/validação/teste
+e compatibilidade do pré-processamento, será a etapa seguinte nesta mesma branch.
 
 ## Origem e alterações
 
@@ -80,5 +133,10 @@ A correspondência das detecções com as palavras pronunciadas não foi medida.
 A alteração posterior do bip ainda precisa ser compilada e testada na placa.
 O código C++ real da forma de onda e do intervalo entre bipes é executado em teste
 de host com UBSan; isso não confirma o funcionamento físico do amplificador.
+O código real de captura/transmissão também é compilado em host com doubles de
+FreeRTOS: 16000 amostras conhecidas passam pelo serializador C++, pelo decodificador
+Python e são verificadas byte a byte. Os testes conferem o WAV, metadados e rejeição
+de perda/duplicação/corrupção de blocos. O fluxo da coleta ainda precisa ser compilado
+no ESP-IDF e validado pela USB no Windows e pelo microfone real.
 O README do exemplo oficial ainda
 contém referências antigas de IDF, embora o código clonado já use o driver I2S novo.
