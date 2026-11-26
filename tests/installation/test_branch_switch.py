@@ -69,6 +69,25 @@ class BranchSwitchTest(unittest.TestCase):
             self.git(clone, *self.installer_command("git merge --ff-only"))
             self.git(clone, "pull", "--ff-only")
 
+    def test_local_edits_are_backed_up_before_installing_remote_branch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            clone = self.fixture(tmp)
+            self.git(clone, "config", "user.name", "Installer Test")
+            self.git(clone, "config", "user.email", "installer@example.invalid")
+            (clone / "version.txt").write_text("manual edit\n")
+            (clone / "local-note.txt").write_text("preserve this note\n")
+            self.git(clone, *self.installer_command("git stash push"))
+            self.assertEqual(self.git(clone, "status", "--porcelain").stdout, "")
+            self.git(clone, *self.installer_command("git config --replace-all remote.origin.fetch"))
+            self.git(clone, *self.installer_command("git fetch --no-tags --prune origin"))
+            self.git(clone, *self.installer_command("git switch --track -c"))
+            self.git(clone, *self.installer_command("git branch --set-upstream-to="))
+            self.git(clone, *self.installer_command("git merge --ff-only"))
+            self.assertEqual((clone / "version.txt").read_text(), "isolated lab\n")
+            self.assertFalse((clone / "local-note.txt").exists())
+            self.assertEqual(self.git(clone, "show", "stash@{0}:version.txt").stdout, "manual edit\n")
+            self.assertEqual(self.git(clone, "show", "stash@{0}^3:local-note.txt").stdout, "preserve this note\n")
+
 
 if __name__ == "__main__":
     unittest.main()

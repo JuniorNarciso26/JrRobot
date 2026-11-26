@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — TTS ELF validation correction (develop)
+
+- Keep the main installer's runner/menu/update/build/flash flow. Before syncing, automatically stash local tracked edits and untracked files instead of requiring manual Git cleanup. Do not reapply that backup over the downloaded firmware. Ignored build/model files are left alone. Existing branch-tracking and pre-flash acceleration checks remain in place.
+- Owner's build 09b64712 contains GLOBAL batched dots (322 bytes), parallel dispatcher (158 bytes) and S3 kernel object (4 bytes), with the single-dot symbol absent. TTS units use -O2 after -Og. The original guard rejected this ELF solely for the absent single-dot symbol.
+- Allow an absent single-dot entry point, which can be eliminated when unused. Still reject a weak or invalid single-dot symbol when present; batched dots, parallel dispatcher, Xtensa target and S3 kernel object remain required. Generic weak fallback sources stay excluded.
+- Firmware algorithms/settings and version remain unchanged. Host validation does not establish physical timing or audio quality.
+
 ## November 25, 2026 — V2.1.6D_TTS_ACCEL (develop)
 
 - Owner's existing build diagnostics returned WEAK/FUNC for vtts_dot_s8s8 (45 bytes), vtts_dots_s8s8 (35 bytes) and vtts_par_run (14 bytes), with vtts_s3_kernel absent. This identifies portable scalar/single-core implementations in that ELF; the full JSON/configuration has not yet been supplied.

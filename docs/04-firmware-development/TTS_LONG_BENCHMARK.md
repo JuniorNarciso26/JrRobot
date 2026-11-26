@@ -189,7 +189,14 @@ A develop agora identifica-se como V2.1.6D_TTS_ACCEL e exclui o arquivo de tres
 fallbacks weak da lista de fontes. O link deve selecionar as implementacoes
 fortes do port ESP32-S3 e FreeRTOS; se faltar uma, deve falhar. O verificador
 check_tts_acceleration.py rejeita no pos-link um ELF nao Xtensa, funcoes weak,
-ausentes, sem tamanho ou sem tipo FUNC, e ausencia do objeto vtts_s3_kernel.
+sem tamanho ou sem tipo FUNC, ausencia de dots/par_run e do objeto vtts_s3_kernel.
+Em 26/11, o JSON do build 09b64712 mostrou dots GLOBAL/FUNC/322 bytes,
+par_run GLOBAL/FUNC/158 bytes e s3_kernel GLOBAL/OBJECT/4 bytes, mas dot ausente.
+Isso e compativel com eliminacao da funcao sem uso por otimizacao/link; nao e
+evidencia de fallback. O verificador foi corrigido para aceitar apenas a ausencia
+de dot, mantendo sua validacao quando presente e todas as outras exigencias.
+O relatorio confirma -O2 apos -Og nos arquivos TTS, CPU 240 MHz e dual-core;
+nao mede desempenho nem confirma qual firmware esta gravado no robo.
 O instalador tambem verifica depois do build/inventario, antes de anunciar
 sucesso ou gravar. Isso cobre um ELF incremental preexistente que nao foi
 relinkado. Arquivos upstream nao foram modificados.

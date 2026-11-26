@@ -64,8 +64,10 @@ The owner's existing ELF selected **WEAK** `vtts_dot_s8s8`, `vtts_dots_s8s8` and
 were linked instead of the available optimized S3/FreeRTOS implementations.
 
 The S3 build now omits `vtts_kernels_ref.c`, so missing optimized implementations
-fail linkage. A final ELF check requires all three functions to be GLOBAL/FUNC
-and confirms the S3 kernel object. The installer repeats this check before
+fail linkage. A final ELF check requires batched dots and the parallel dispatcher
+to be GLOBAL/FUNC and confirms the S3 kernel object. The single-dot function may
+be absent after optimization and unused-section removal; when present, it must
+also be GLOBAL/FUNC. The installer repeats this check before
 success/flash, including incremental builds. Expected output:
 `[OK] JR_TTS_ACCELERATION_CHECK: SIMD S3 + parallel GLOBAL`.
 

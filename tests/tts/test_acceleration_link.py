@@ -47,15 +47,21 @@ class AccelerationLinkTest(unittest.TestCase):
             result = subprocess.run(["cc", str(root / "main.o"), str(archive), "-o", str(root / "missing")], capture_output=True)
             self.assertNotEqual(result.returncode, 0)
 
-    def test_elf_guard_rejects_each_weak_or_missing_implementation(self):
+    def test_elf_guard_rejects_weak_and_missing_required_implementations(self):
         good = {"is_xtensa": True, "symbols": {
             name: {"binding": "GLOBAL", "type": 2, "bytes": 64}
             for name in ("vtts_dot_s8s8", "vtts_dots_s8s8", "vtts_par_run")}}
         good["symbols"]["vtts_s3_kernel"] = {"binding": "GLOBAL", "type": 1, "bytes": 4}
         require_acceleration(good)
         for name in good["symbols"]:
-            for bad in [None, {"binding": "WEAK", "type": 2, "bytes": 14}]:
+            for bad in [None, {"binding": "WEAK", "type": 2, "bytes": 14},
+                        {"binding": "LOCAL", "type": 2, "bytes": 64},
+                        {"binding": "GLOBAL", "type": 2 if name == "vtts_s3_kernel" else 1, "bytes": 64},
+                        {"binding": "GLOBAL", "type": 2, "bytes": 0}]:
                 symbols = dict(good["symbols"], **{name: bad})
+                if name == "vtts_dot_s8s8" and bad is None:
+                    require_acceleration({"is_xtensa": True, "symbols": symbols})
+                    continue
                 with self.subTest(name=name, value=bad), self.assertRaises(ValueError):
                     require_acceleration({"is_xtensa": True, "symbols": symbols})
         with self.assertRaises(ValueError):

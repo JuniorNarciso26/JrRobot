@@ -206,12 +206,24 @@ git status --porcelain > "!STATUS_TMP!"
 findstr /l /v /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" > "!STATUS_FILTERED_TMP!"
 for %%A in ("!STATUS_FILTERED_TMP!") do set "STATUS_SIZE=%%~zA"
 if not "!STATUS_SIZE!"=="0" (
-    echo [ERRO] Existem alteracoes locais. Nada sera sobrescrito.
-    type "!STATUS_FILTERED_TMP!"
-    del "!STATUS_TMP!" >nul 2>&1
-    del "!STATUS_FILTERED_TMP!" >nul 2>&1
-    popd
-    exit /b 1
+    rem Atualizar sempre a partir do GitHub; preservar edicoes fora da instalacao.
+    echo [INFO] Guardando alteracoes locais para atualizar pelo GitHub...
+    git stash push --include-untracked -m "JrBot INSTALAR backup automatico"
+    if errorlevel 1 (
+        echo [ERRO] Nao foi possivel guardar as alteracoes locais. Atualizacao interrompida.
+        popd
+        exit /b 1
+    )
+    rem Nao reaplicar o backup: a instalacao deve usar os arquivos do GitHub.
+    git status --porcelain > "!STATUS_TMP!"
+    findstr /l /v /x /c:"?? firmware/dependencies.lock" "!STATUS_TMP!" > "!STATUS_FILTERED_TMP!"
+    for %%A in ("!STATUS_FILTERED_TMP!") do set "STATUS_SIZE=%%~zA"
+    if not "!STATUS_SIZE!"=="0" (
+        echo [ERRO] Ainda existem arquivos locais impedindo a atualizacao.
+        type "!STATUS_FILTERED_TMP!"
+        popd
+        exit /b 1
+    )
 )
 if exist "!STATUS_TMP!" del "!STATUS_TMP!" >nul 2>&1
 if exist "!STATUS_FILTERED_TMP!" del "!STATUS_FILTERED_TMP!" >nul 2>&1
