@@ -555,6 +555,12 @@ if defined JRBOT_VTTS_BRANCH (
     rem Ensure python.exe used by export.bat belongs to the selected environment.
     set "PATH=!IDF_PYTHON_ENV_PATH!\Scripts;!PATH!"
 )
+rem Validate the selected SDK/venv before export, restoring only missing metadata.
+if defined JRBOT_VTTS_BRANCH (
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%~dp0tools\prepare_idf_environment.py" --export "%IDF_EXPORT%" --python-env "%IDF_PYTHON_ENV_PATH%" --expected 6.1
+    if errorlevel 1 exit /b 1
+)
+
 echo [INFO] Carregando ambiente ESP-IDF...
 call "%IDF_EXPORT%"
 if errorlevel 1 (
@@ -583,13 +589,8 @@ if defined JRBOT_VTTS_BRANCH (
         echo [DICA] Nao grave o firmware antes de corrigir o ambiente.
         exit /b 1
     )
-    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" check-python-dependencies >nul
-    if errorlevel 1 (
-        echo [ERRO] Dependencias Python do ESP-IDF 6.1.x incompletas.
-        echo [DICA] Repare a instalacao pelo ESP-IDF Installation Manager.
-        exit /b 1
-    )
-    python "%IDF_PATH%\tools\idf.py" --version | findstr /c:"ESP-IDF v6.1" >nul
+    rem Use official source metadata, avoiding git describe on tagless SDK installs.
+    "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%~dp0tools\prepare_idf_environment.py" --idf-root "%IDF_PATH%" --expected 6.1 --version-only
     if errorlevel 1 (
         echo [ERRO] Esta versao do JrBot requer ESP-IDF 6.1.x para vTTS.
         echo Abra o terminal IDF_PowerShell 6.1.1 ou instale a versao pelo EIM.

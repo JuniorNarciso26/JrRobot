@@ -6,6 +6,13 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — ESP-IDF environment validation (develop installer)
+
+- Before export.bat, validate the selected ESP-IDF 6.1 SDK using version.cmake and esp_idf_version.h, reject inconsistent version.txt metadata and mismatched Python environment markers, and verify the running interpreter belongs to the selected venv.
+- Use the official offline check-python-dependencies action. Only after it passes, exclusively create a missing venv/idf_version.txt containing the official major.minor family. Existing mismatched identifiers are preserved and rejected; no tools, packages or Git tags are installed/fabricated.
+- Replace the installer's idf.py --version/findstr pipeline with a source-version check whose real exit code is retained. This avoids its noisy git describe failure on tagless SDK distributions. Third-party build commands may still emit their own tag diagnostics; SDK sources/Git metadata are not modified.
+- Seven new offline regression tests cover missing/wrong markers, dependency failure, interpreter mismatch, inconsistent SDK metadata, version CLI exit status and installer integration. Native Windows export/build still needs validation on the user's PC. Firmware/TTS settings remain unchanged.
+
 ## November 26, 2026 — V2.1.8D_TTS_TWO_BLOCK_2S (develop experiment)
 
 - Reduce only the canonical two-block benchmark's initial hold from 4000 to 2000 ms. Keep the split, voice settings, inference/player implementation, memory policy, I2S ownership and HTTPS unchanged.
