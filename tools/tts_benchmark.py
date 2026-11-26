@@ -7,10 +7,12 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import http.client
 import ipaddress
 import json
 from pathlib import Path
 import ssl
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -50,11 +52,77 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class TimedHTTPSConnection(http.client.HTTPSConnection):
+    """Keep urllib's existing fresh-connection transport, but measure its phases.
+    Trying another TCP address happens before any HTTP bytes are sent. Never
+    retry an HTTP request: a lost response may follow successful speech delivery.
+    """
+    def __init__(self, *args, metrics, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.metrics = metrics
+        self._create_connection = self._timed_tcp
+        self.tcp_finished = None
+
+    def _timed_tcp(self, address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+        start = time.perf_counter()
+        try:
+            addresses = socket.getaddrinfo(address[0], address[1], 0, socket.SOCK_STREAM)
+        finally:
+            self.metrics['dns_ms'] = (time.perf_counter() - start) * 1000
+        start = time.perf_counter()
+        error = OSError('Nenhum endereco TCP encontrado.')
+        try:
+            for family, kind, protocol, _, sockaddr in addresses:
+                sock = None
+                try:
+                    sock = socket.socket(family, kind, protocol)
+                    if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                        sock.settimeout(timeout)
+                    if source_address:
+                        sock.bind(source_address)
+                    sock.connect(sockaddr)
+                    self.tcp_finished = time.perf_counter()
+                    return sock
+                except OSError as exc:
+                    if sock is not None:
+                        sock.close()
+                    error = exc
+            raise error
+        finally:
+            self.metrics['tcp_ms'] = (time.perf_counter() - start) * 1000
+
+    def connect(self):
+        start = time.perf_counter()
+        self.metrics['proxy_tunnel'] = bool(self._tunnel_host)
+        try:
+            super().connect()  # preserves SNI, certificate checks and proxy tunneling
+        finally:
+            now = time.perf_counter()
+            self.metrics['connect_ms'] = (now - start) * 1000
+            if self.tcp_finished is not None:
+                key = 'tls_plus_proxy_ms' if self._tunnel_host else 'tls_ms'
+                self.metrics[key] = (now - self.tcp_finished) * 1000
+
+
+class TimedHTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self, context, metrics):
+        super().__init__(context=context)
+        self.metrics = metrics
+
+    def https_open(self, req):
+        def connection(*args, **kwargs):
+            return TimedHTTPSConnection(*args, metrics=self.metrics, **kwargs)
+        return self.do_open(connection, req, context=self._context)
+
+
 class VoiceClient:
     def __init__(self, origin: str, insecure_local: bool):
         self.origin = local_origin(origin)
         context = ssl._create_unverified_context() if insecure_local else ssl.create_default_context()
-        self.opener = urllib.request.build_opener(NoRedirect(), urllib.request.HTTPSHandler(context=context))
+        self.metrics = {}
+        self.trace = None
+        self.sequence = 0
+        self.opener = urllib.request.build_opener(NoRedirect(), TimedHTTPSHandler(context, self.metrics))
 
     def request(self, payload=None):
         body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -63,11 +131,26 @@ class VoiceClient:
             headers.update({"Content-Type": "application/json", "X-JrBot-Voice": "1"})
         req = urllib.request.Request(self.origin + "/voice", data=body, headers=headers)
         # No POST retries: a failed response may follow successful delivery.
-        with self.opener.open(req, timeout=15) as response:
-            result = json.loads(response.read().decode("utf-8"))
-        if not isinstance(result, dict) or result.get("ok") is not True:
-            raise RuntimeError("API de voz retornou erro: " + str(result))
-        return result
+        self.metrics.clear()
+        self.sequence += 1
+        self.metrics.update(sequence=self.sequence, action=payload.get('action', 'status') if payload else 'status',
+                            transport='urllib_fresh_connection', success=False)
+        start = time.perf_counter()
+        try:
+            with self.opener.open(req, timeout=15) as response:
+                headers_at = time.perf_counter()
+                self.metrics['http_headers_ms'] = max(0.0, (headers_at - start) * 1000 - self.metrics.get('connect_ms', 0))
+                result = json.loads(response.read().decode('utf-8'))
+                self.metrics['body_ms'] = (time.perf_counter() - headers_at) * 1000
+            if not isinstance(result, dict) or result.get('ok') is not True:
+                raise RuntimeError('API de voz retornou erro: ' + str(result))
+            self.metrics['success'] = True
+            return result
+        finally:
+            self.metrics['total_ms'] = (time.perf_counter() - start) * 1000
+            if self.trace:
+                self.trace({k: round(v, 2) if isinstance(v, float) else v for k, v in self.metrics.items()})
+
 
 
 def assert_idle(status):
@@ -93,9 +176,12 @@ def run(url: str, insecure_local: bool = False):
         record("SETTINGS=" + json.dumps(SETTINGS, sort_keys=True))
         record(f"TLS_CERT_VERIFICATION={'off_local_test_only' if insecure_local else 'on'}")
         record("TIMING=video_enter_to_acoustic_onset_and_end; firmware_first_audio_is_i2s_write")
+        record("BENCHMARK_PROTOCOL=jr-tts-https-phases-v1")
         sent = False
         try:
             client = VoiceClient(origin, insecure_local)
+            client.trace = lambda metrics: record('HTTPS_PHASES=' + json.dumps(metrics, sort_keys=True))
+            record('HTTPS_TRANSPORT=urllib_fresh_connection; timings_are_host_side_not_acoustic')
             assert_idle(client.request())
             client.request({"action": "configure", **SETTINGS})
             status = client.request()
@@ -110,11 +196,11 @@ def run(url: str, insecure_local: bool = False):
             entered = datetime.now(timezone.utc).isoformat()
             start = time.perf_counter()
             print(f"JR_TTS_BENCH_BEGIN {TEST_ID} -- FRASE ENVIADA", flush=True)
+            record(f"HOST_ENTER_UTC={entered} start=before_https_post")
             sent = True
             result = client.request({"action": "speak", "text": phrase})
             if result.get("queued") is not True:
                 raise RuntimeError("API nao confirmou a fila; nao repetir automaticamente.")
-            record(f"HOST_ENTER_UTC={entered} start=before_https_post")
             record(f"HOST_ACK elapsed_ms={(time.perf_counter() - start) * 1000:.1f}")
             deadline = time.monotonic() + 600
             previous_first = 0
@@ -149,7 +235,7 @@ def main():
     args = parser.parse_args()
     try:
         run(args.url, args.insecure_local)
-    except (OSError, ValueError, RuntimeError, urllib.error.URLError) as exc:
+    except (OSError, ValueError, RuntimeError, urllib.error.URLError, http.client.HTTPException) as exc:
         parser.exit(1, f"[ERRO] {exc}\nLog preservado. Nao reenvie se o robo ja estiver falando.\n")
 
 

@@ -6,6 +6,12 @@ This is the **chronological record of what was built and tested**. Early experim
 
 For upcoming work, see the [Roadmap](ROADMAP.md). For what is available now, see [Project Status](PROJECT_STATUS.md).
 
+## November 26, 2026 — HTTPS phase diagnostics (develop host tools)
+
+- Investigation confirms urllib's AbstractHTTPHandler.do_open forces Connection: close. Existing benchmark polls therefore open a fresh TCP/TLS connection each time; repeated ESP HTTPS handshake logs are consistent with that behavior. This alone does not identify whether DNS/mDNS, TCP, TLS or HTTP response handling caused the measured 14853.2/5138.0-ms ACKs.
+- Add per-request HTTPS_PHASES timing to the same benchmark: OS hostname resolution, TCP address attempts, TLS (or proxy CONNECT plus TLS), HTTP request/response-header interval, body read and total. Log failures as well as successes, plus protocol jr-tts-https-phases-v1 and request action/sequence. Preserve redirects rejection, certificate verification policy, fresh connections and no HTTP/POST retries. No hostname caching, TLS setting changes or keep-alive optimization is introduced in this diagnostic round.
+- Five real local TLS regression tests cover phase reporting, existing Connection: close semantics, uncertain-delivery single submission, redirects rejection, certificate verification and DNS failure. All 15 TTS tests pass. Hardware transport timing awaits the next owner-provided log. Firmware, sound processing and 2-second hold are unchanged; no reflash is required.
+
 ## November 26, 2026 — ESP-IDF environment validation (develop installer)
 
 - Before export.bat, validate the selected ESP-IDF 6.1 SDK using version.cmake and esp_idf_version.h, reject inconsistent version.txt metadata and mismatched Python environment markers, and verify the running interpreter belongs to the selected venv.

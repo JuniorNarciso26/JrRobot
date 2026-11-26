@@ -57,6 +57,18 @@ This first accepted V2.0 milestone integrates **Espressif ESP-SR 2.6.2** and **W
 
 See [V2 voice integration](docs/04-firmware-development/ESP_SR_OLA_ESP_AUTONOMO.md), [future custom “Olá JrBot” WakeNet plan](docs/04-firmware-development/OLA_JRBOT_CUSTOM_WAKENET.md), [Changelog](docs/01-history-roadmap/CHANGELOG.md), and [Roadmap](docs/01-history-roadmap/ROADMAP.md).
 
+### HTTPS timing investigation (develop, November 26, 2026)
+
+The same benchmark command now logs `HTTPS_PHASES` for every request: DNS/name
+resolution, TCP connect, TLS handshake, HTTP request/response-header wait, body
+read and total. It retains urllib's original fresh-connection behavior, HTTPS
+certificate policy and no POST retries. No firmware change/reflash is required
+for this diagnostic; update the host tools before repeating the benchmark.
+The 2-second audio hold remains unchanged. Timing data will distinguish a slow
+local hostname lookup from TLS/connection or request handling; it does not yet
+prove which caused the observed 5–15-second ACK delay. A configured HTTPS proxy
+tunnel is flagged, with TLS and proxy CONNECT time combined in that case.
+
 ### Develop V2.1.8D_TTS_TWO_BLOCK_2S — fixed split experiment (November 26, 2026)
 
 Install **develop** using INSTALAR.bat, then run the same

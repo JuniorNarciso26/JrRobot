@@ -1,5 +1,34 @@
 # JR_TTS_LONG_01 — referencia isolada e comparacao integrada
 
+## Investigacao HTTPS — medicao por etapa, sem mudar o firmware
+
+A biblioteca urllib fecha cada conexao apos a resposta (Connection: close).
+O benchmark original refaz resolucao de endereco, TCP e TLS em cada consulta;
+o log Serial mostra repetidas negociacoes. Isso e um fator confirmado, nao
+uma prova da causa unica dos ACKs variaveis de 5 a 15 segundos.
+
+Atualizar ferramentas usando `INSTALAR.bat panel` (atualiza sem compilar/gravar),
+ou pelo fluxo habitual, e executar o mesmo `python tools/tts_benchmark.py
+https://jrbot.local --insecure-local`. Manter o firmware V2.1.8D instalado,
+mesma frase/modelo/volume/ganho e hold de 2 segundos. Nao e preciso regravar.
+O log novo contem `BENCHMARK_PROTOCOL=jr-tts-https-phases-v1`.
+
+`HTTPS_PHASES` registra cada action (status/configure/speak), sequence, dns_ms,
+tcp_ms, tls_ms, connect_ms, http_headers_ms, body_ms e total_ms. Em erro, campos
+posteriores a etapa com falha podem estar ausentes. proxy_tunnel=true indica
+que tls_plus_proxy_ms inclui CONNECT do proxy. Nao registrar credenciais ou
+configuracao de proxy. O intervalo http_headers_ms inclui envio do pedido e
+espera dos cabecalhos, nao e exclusivamente CPU do handler do robô.
+
+O cliente mantem transporte original, sem reuso de conexao nem cache proprio de
+DNS, para medir a causa antes de modificar comportamento. Tentativas TCP em
+enderecos alternativos acontecem antes de enviar HTTP. Nao seguir redirects,
+nao desativar validacao TLS sem --insecure-local e nunca repetir POSTs apos
+entrega incerta. TLS e medido mantendo SNI/validacao da biblioteca padrao.
+Se DNS dominar, investigar mDNS/enderecos; se TLS dominar, avaliar reuso de
+sessao/conexao; se a espera HTTP dominar, medir handler e agendamento do servidor.
+Nenhuma dessas hipoteses foi demonstrada apenas pelos logs antigos.
+
 ## Segunda rodada — V2.1.8D, reserva inicial de 2 segundos
 
 Atualizar develop por INSTALAR.bat e confirmar `JrBot_V2.1.8D_TTS_TWO_BLOCK_2S`.
