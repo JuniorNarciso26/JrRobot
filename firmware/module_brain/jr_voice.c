@@ -261,13 +261,12 @@ static esp_err_t reply_and_resume(void) {
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     can_capture=can_capture && camera_err==ESP_OK && !stop_requested;
-    ESP_LOGI(TAG,"JR_VOICE_PHASE phase=speak wake_unloaded=1 camera=%s internal=%u largest=%u",
+    ESP_LOGI(TAG,"JR_VOICE_PHASE phase=capture wake_unloaded=1 camera=%s internal=%u largest=%u",
         esp_err_to_name(camera_err),(unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
         (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
     if (can_capture) {
         if (wake_callback) wake_callback("Ola ESP",wn_model_name,1);
-        esp_err_t tts_err=jr_tts_reply_to_wake("Olá! Eu sou o JrBot.");
-        ESP_LOGI(TAG,"JR_VOICE_TTS result=%s",esp_err_to_name(tts_err));
+        /* Wake acknowledgement is beep-only: do not speak before capture. */
     }
 #endif
     if (can_capture && !stop_requested) {

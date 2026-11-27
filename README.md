@@ -1,5 +1,6 @@
 > **Integração V2.2 — `test/voice-unified`:** WakeNet + TTS pt-BR (S/M) + BabyTalk
 > na mesma aplicação, com OLED, Wi-Fi, câmera e painel mantidos no código.
+> Despertar com bip, sem saudação automática; arena BabyTalk com alternativa em PSRAM.
 > Os motores alternam recursos de memória. Execute `INSTALAR.bat`, escolha esta
 > branch e a porta. [Instalação e validação](docs/VOICE_UNIFIED_TEST.md).
 > Firmware experimental `JrBot_V2.2_VOICE_UNIFIED`; integração ainda exige teste físico.

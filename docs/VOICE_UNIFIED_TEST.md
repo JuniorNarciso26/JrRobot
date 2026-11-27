@@ -13,10 +13,9 @@ aprovado (`4c065844`). As branches aprovadas permanecem preservadas.
    aplicação + WakeNet + BabyTalk. Não há cópia manual de modelos.
 3. No painel, conecte Serial USB e confira versão e commit. Com o autônomo
    desligado, teste a fala manual já aprovada, inclusive os modelos Lite e Quality.
-4. Ative o modo autônomo. Fale **“Olá ESP”**. Aguarde o bip **e a saudação falada**
-   “Olá! Eu sou o JrBot.”. A reação Love por 3 s também é preservada.
-   A primeira saudação precisa sintetizar o cache;
-   as seguintes podem aproveitar o PCM gerado.
+4. Ative o modo autônomo. Fale **“Olá ESP”** e aguarde o **bip**.
+   A saudação falada automática foi removida; a reação Love por 3 s é preservada.
+   A síntese TTS permanece disponível no painel com o autônomo desligado.
 5. Depois de **JR_STT_LISTENING: FALE AGORA**, fale em inglês. A janela continua
    fixa de 5 segundos. Procure `JR_STT_TEXT`, `JR_STT_COMMAND` e o retorno ao WakeNet.
 6. Repita algumas vezes. Os aliases happy/sad do teste aprovado continuam ativos.
@@ -62,13 +61,17 @@ a estimativa inicial não substitui essa medição. Nenhum modelo TTS foi removi
   PSRAM, sem seu modelo aberto nem arena SIMD reservada em RAM interna.
 - Após despertar: fecha o microfone, dá o bip, destrói a instância WakeNet e
   suspende a câmera, liberando seus buffers DMA se ela estava inicializada.
-- Executa a saudação TTS com WakeNet/BabyTalk descarregados. O TTS mantém o
-  comportamento aprovado de liberar pesos copiados, arena e buffers temporários;
-  o cache PCM da saudação fica em PSRAM. Não há prewarm concorrente com a escuta.
+- A confirmação do despertar usa apenas bip, sem chamar TTS nem gerar o cache
+  da saudação. O TTS manual mantém seus dois modelos e a liberação de buffers
+  aprovada; não há prewarm concorrente com a escuta.
 - Captura 5 s com ganho 1x. Fecha o microfone antes de abrir/inferir BabyTalk.
 - O pool local usa exatamente `MMRT_S3_BUFFER_BYTES` (**73728 bytes**) e libera
   a alocação ao terminar o motor. Substitui a reserva permanente de 86528 bytes
   do pool upstream, que também atendia outro sintetizador não usado pelo JrBot.
+  Prefere RAM interna quando houver bloco contínuo e margem de 32 KiB; caso
+  contrário usa PSRAM alinhada a 16 bytes, possibilidade também oferecida pelo
+  pool upstream. `JR_STT_ARENA memory=internal/psram bytes=73728` informa a escolha.
+  O custo de latência da PSRAM precisa ser medido no hardware.
 - A instância BabyTalk é fechada após cada inferência, inclusive em falha ou
   cancelamento. O modelo permanece mapeado em flash; o helper de inferência
   do upstream pode manter sua tarefa/semafóros entre interações.
@@ -81,12 +84,13 @@ A configuração experimental usa data cache de 32 KiB em vez de 64 KiB para
 disponibilizar mais SRAM. Isso pode aumentar o tempo de inferência e precisa
 ser medido. O watchdog de tarefas continua desativado neste experimento como
 no teste BabyTalk; o build está isolado de sdkconfig/build da `main`.
-Antes da inferência, exige arena contígua mais margem de 16 KiB para recursos
-internos. Sem espaço, registra `JR_STT_ERROR stage=memory` e retoma WakeNet.
+Antes da inferência, exige ao menos 32 KiB internos livres e um bloco de 8 KiB
+para recursos internos. A arena maior pode usar PSRAM. Sem a margem mínima,
+registra `JR_STT_ERROR stage=memory` e retoma WakeNet.
 
-`JR_VOICE_PHASE` informa as transições e memória livre na fase de fala;
-`JR_VOICE_TTS` informa o resultado da saudação. Falha de TTS não impede o teste
-STT; falha de captura não é transcrita. Sem recuperação de WakeNet/microfone,
+`JR_VOICE_PHASE` informa as transições e memória livre antes da captura;
+a saudação automática não é mais executada. Falha de captura não é transcrita.
+Sem recuperação de WakeNet/microfone,
 a tarefa encerra com erro visível em status, em vez de anunciar escuta ativa.
 
 ## Validação local e limites
@@ -105,3 +109,14 @@ Esses testes não executam os kernels Xtensa, os drivers da placa ou os motores
 juntos. Ainda é necessário confirmar tamanho final da aplicação, inicialização,
 latência, memória após várias interações, recuperação da câmera e funcionamento
 Live no hardware. Não é promoção para `main` nem declaração de estabilidade.
+
+### Resultado físico e ajuste após o log 62
+
+O firmware integrado foi instalado e executou WakeNet, bip, saudação TTS e
+captura, mas o BabyTalk não chegou à inferência: `internal=96047`,
+`largest=31744`, `need=73728`. Isso comprova fragmentação/limitação do bloco
+contínuo, sem comprovar interferência acústica da saudação, que terminou antes
+da captura. A saudação foi retirada a pedido do usuário. O pool agora pode
+usar PSRAM nessa situação, mantendo TTS no firmware. Os testes C reproduzem
+os valores desse log, confirmam a escolha da PSRAM e asseguram que o ciclo
+não chama a saudação. A correção ainda precisa ser validada na placa.

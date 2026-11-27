@@ -143,8 +143,8 @@ static int engine_opens,engine_closes;
 int stt_engine_open(void){++engine_opens;return 0;}
 void stt_engine_close(void){++engine_closes;}
 void mmrt_s3_deinit(void){}
-size_t heap_caps_get_free_size(int caps){(void)caps;return 256*1024;}
-size_t heap_caps_get_largest_free_block(int caps){(void)caps;return 128*1024;}
+size_t heap_caps_get_free_size(int caps){(void)caps;return 96047;}
+size_t heap_caps_get_largest_free_block(int caps){(void)caps;return 31744;}
 void *heap_caps_malloc(size_t n,int caps){(void)caps;return malloc(n);}
 int64_t esp_timer_get_time(void){return reads*16000LL;}
 void jr_usb_terminal_emit(const char*line){

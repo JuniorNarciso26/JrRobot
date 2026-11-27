@@ -35,15 +35,20 @@ class UnifiedTest(unittest.TestCase):
         if not source.exists():self.skipTest('upstream headers required')
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
-            (folder/'esp_heap_caps.h').write_text('#include <stddef.h>\n#define MALLOC_CAP_INTERNAL 1\n#define MALLOC_CAP_8BIT 2\nvoid *heap_caps_aligned_alloc(size_t,size_t,int);\nvoid heap_caps_free(void*);\n')
+            (folder/'esp_heap_caps.h').write_text('#include <stddef.h>\n#define MALLOC_CAP_INTERNAL 1\n#define MALLOC_CAP_8BIT 2\n#define MALLOC_CAP_SPIRAM 4\nsize_t heap_caps_get_free_size(int);\nsize_t heap_caps_get_largest_free_block(int);\nvoid *heap_caps_aligned_alloc(size_t,size_t,int);\nvoid heap_caps_free(void*);\n')
+            (folder/'esp_log.h').write_text('#define ESP_LOGI(...) ((void)0)\n')
             (folder/'test.c').write_text(r'''
 #include <assert.h>
 #include <stdlib.h>
 #include "sram_pool.h"
 #include "mmrt_s3.h"
-static int allocated,freed,deny;
+static int allocated,freed,deny,last_caps,deny_internal;
+static size_t largest=128*1024,free_internal=256*1024;
+size_t heap_caps_get_free_size(int c){(void)c;return free_internal;}
+size_t heap_caps_get_largest_free_block(int c){(void)c;return largest;}
 void *heap_caps_aligned_alloc(size_t align,size_t size,int caps){
- assert(align==16 && size==73728 && caps==3);++allocated;return deny?NULL:malloc(size);
+ assert(align==16 && size==73728 && (caps==3 || caps==6));
+ last_caps=caps;++allocated;return (deny || (deny_internal && caps==3))?NULL:malloc(size);
 }
 void heap_caps_free(void *p){assert(p);++freed;free(p);}
 int main(void){
@@ -55,6 +60,12 @@ int main(void){
  sram_pool_release(1);assert(freed==1);
  assert(sram_pool_acquire(1,NULL) && allocated==2);
  sram_pool_release(1);assert(freed==2);
+ deny_internal=1;
+ assert(sram_pool_acquire(1,NULL) && last_caps==6);sram_pool_release(1);
+ deny_internal=0;largest=31744;free_internal=96047;
+ int before=allocated;
+ assert(sram_pool_acquire(1,NULL) && allocated==before+1 && last_caps==6);
+ sram_pool_release(1);
  deny=1;assert(!sram_pool_acquire(1,NULL));
 }
 ''')
@@ -169,7 +180,7 @@ void jr_audio_stop(void){}
 int jr_audio_test_tone(int hz,int ms){assert(hz==880 && ms==180 && !rx_chan);mark('B');return ESP_OK;}
 int jr_camera_voice_begin(void){assert(!wn_data);camera_reserved=true;mark('K');return ESP_OK;}
 void jr_camera_voice_end(void){camera_reserved=false;mark('E');}
-int jr_tts_reply_to_wake(const char *text){assert(text && !wn_data && !rx_chan && camera_reserved);mark('T');return ESP_OK;}
+int jr_tts_reply_to_wake(const char *text){(void)text;assert(!"automatic greeting must not run");return ESP_FAIL;}
 int jr_stt_capture(i2s_chan_handle_t rx,const volatile bool *cancel){assert(rx && !wn_data && !*cancel && camera_reserved);mark('C');return fail_capture?ESP_FAIL:ESP_OK;}
 void jr_stt_transcribe(const volatile bool *cancel){assert(!rx_chan && !wn_data && !*cancel);mark('S');}
 void jr_stt_close(void){}
@@ -194,11 +205,11 @@ int main(void){
  wakenet=&iface;wn_data=(void*)1;rx_chan=(void*)2;bus_owned=true;
  wake_callback=on_wake;voice_status.sample_rate=16000;voice_status.chunk_samples=512;
  assert(reply_and_resume()==ESP_OK);
- assert(!strcmp(trace,"RBDKLTACRSWAE"));
+ assert(!strcmp(trace,"RBDKLACRSWAE"));
  assert(wn_data && rx_chan && bus_owned && !camera_reserved);
  pos=0;trace[0]=0;fail_capture=1;
  assert(reply_and_resume()==ESP_OK);
- assert(!strcmp(trace,"RBDKLTACRWAE"));
+ assert(!strcmp(trace,"RBDKLACRWAE"));
  assert(wn_data && rx_chan && !camera_reserved);
 }
 '''

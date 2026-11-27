@@ -84,10 +84,10 @@ void jr_stt_transcribe(const volatile bool *cancel) {
 #if JRBOT_WITH_VOICE_UNIFIED
     size_t internal=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     size_t largest=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
-    if (internal<MMRT_S3_BUFFER_BYTES+16384 || largest<MMRT_S3_BUFFER_BYTES) {
+    if (internal<32768 || largest<8192) {
         char budget[128];
-        snprintf(budget,sizeof(budget),"JR_STT_ERROR stage=memory internal=%u largest=%u need=%u",
-                 (unsigned)internal,(unsigned)largest,(unsigned)MMRT_S3_BUFFER_BYTES);
+        snprintf(budget,sizeof(budget),"JR_STT_ERROR stage=memory internal=%u largest=%u need_internal=32768",
+                 (unsigned)internal,(unsigned)largest);
         emit(budget);
         return;
     }
