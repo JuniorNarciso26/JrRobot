@@ -37,7 +37,7 @@ class BabyTalkTest(unittest.TestCase):
             self.assertFalse((Path(tmp)/'project').exists())
 
     @unittest.skipUnless(shutil.which('gcc'),'C compiler required')
-    def test_actual_capture_exact_samples_clipping_and_error_cleanup(self):
+    def test_actual_capture_pause_enter_timeout_gain_and_error_cleanup(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
             shim=r'''
@@ -102,9 +102,10 @@ int gpio_set_pull_mode(int,int);
                          'freertos/FreeRTOS.h','freertos/task.h'):
                 p=folder/name;p.parent.mkdir(exist_ok=True);p.write_text('#include "shim.h"\n')
             app=(ROOT/'experiments/babytalk-hw04/main/main.c').as_posix()
-            harness='#include "'+app+'"\n'+r'''
+            harness='int fake_getchar(void);\n#define getchar fake_getchar\n#include "'+app+'"\n'+r'''
 #include <assert.h>
-static int reads,disabled,deleted,fail_at;
+static int reads,disabled,deleted,fail_at,scenario;
+int fake_getchar(void){return scenario==3 && reads==40 ? '\n' : EOF;}
 int i2s_new_channel(const i2s_chan_config_t*c,void*t,i2s_chan_handle_t*r){(void)c;(void)t;*r=(void*)1;return 0;}
 int i2s_channel_init_std_mode(i2s_chan_handle_t r,const i2s_std_config_t*c){(void)r;assert(c->gpio_cfg.bclk==21 && c->gpio_cfg.ws==47 && c->gpio_cfg.din==41);assert(c->clk_cfg.sample_rate==16000);return 0;}
 int i2s_channel_enable(i2s_chan_handle_t r){(void)r;return 0;}
@@ -112,15 +113,41 @@ int i2s_channel_disable(i2s_chan_handle_t r){(void)r;++disabled;return 0;}
 int i2s_del_channel(i2s_chan_handle_t r){(void)r;++deleted;return 0;}
 int i2s_channel_read(i2s_chan_handle_t r,void*dst,size_t n,size_t*b,int ms){
  (void)r;(void)ms;++reads;if(reads==fail_at)return -1;
- int32_t*p=dst;for(size_t j=0;j<n/4;++j)p[j]=((int)(j%4)-2)*20000*16384;
+ int32_t*p=dst;
+ for(size_t j=0;j<n/4;++j){
+   int amplitude=((int)(j%4)-2)*10000;
+   if(scenario==2 || (scenario==1 && reads>28) || (scenario==4 && (reads<=48 || reads>68)))amplitude=0;
+   p[j]=amplitude*65536;
+ }
  *b=n;return 0;
 }
 int64_t esp_timer_get_time(void){return reads*16000LL;}
 int main(void){
- int16_t pcm[SAMPLES];assert(capture(pcm)==0);
- for(int i=0;i<SAMPLES;++i){int v=(i%4-2)*20000;if(v< -32768)v=-32768;assert(pcm[i]==v);}
- assert(reads==196 && disabled==1 && deleted==1);
- reads=disabled=deleted=0;fail_at=12;assert(capture(pcm)!=0);assert(disabled==1 && deleted==1);
+ int16_t pcm[SAMPLES];int n=-1;
+ assert(capture(pcm,&n)==0 && n==SAMPLES);
+ for(int i=0;i<n;++i)assert(pcm[i]==(i%4-2)*10000);
+ assert(reads==633 && disabled==1 && deleted==1);
+ reads=disabled=deleted=0;scenario=1;
+ assert(capture(pcm,&n)==0 && n==(20+50)*256);
+ assert(reads==78 && disabled==1 && deleted==1);
+ reads=disabled=deleted=0;scenario=2;
+ assert(capture(pcm,&n)==0 && n==0);
+ assert(reads==321 && disabled==1 && deleted==1);
+ reads=disabled=deleted=0;scenario=3;
+ assert(capture(pcm,&n)==0 && n==32*256);
+ assert(reads==40 && disabled==1 && deleted==1);
+ reads=disabled=deleted=0;scenario=4;
+ assert(capture(pcm,&n)==0 && n==20608);
+ assert(pcm[0]==0 && pcm[n-1]==0 && reads==118);
+ bool found=false;for(int i=0;i<n;++i)if(pcm[i])found=true;assert(found);
+ reads=disabled=deleted=0;scenario=0;speech_threshold=30000;
+ assert(capture(pcm,&n)==0 && n==0 && reads==321);
+ speech_threshold=300;
+ reads=disabled=deleted=0;scenario=0;mic_gain=4;
+ assert(capture(pcm,&n)==0 && n==SAMPLES);
+ for(int i=0;i<n;++i){int v=(i%4-2)*40000;if(v< -32768)v=-32768;if(v>32767)v=32767;assert(pcm[i]==v);}
+ reads=disabled=deleted=0;fail_at=12;
+ assert(capture(pcm,&n)!=0 && n==0);assert(disabled==1 && deleted==1);
 }
 '''
             (folder/'test.c').write_text(harness)

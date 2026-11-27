@@ -13,7 +13,11 @@
 #include "stt_engine.h"
 
 #define RATE 16000
-#define SAMPLES (RATE * 3)
+#define SAMPLES (RATE * 10)
+#define PREROLL (RATE / 5)
+static int mic_gain = 1;
+static int speech_threshold = 300;
+static int pause_ms = 800;
 static const char *TAG = "JR_BABYTALK";
 
 static void memory(void) {
@@ -23,7 +27,19 @@ static void memory(void) {
         (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 }
 
-static esp_err_t capture(int16_t *pcm) {
+static bool enter_pressed(void) {
+    bool enter = false;
+    for (int i=0; i<64; ++i) {
+        int ch=getchar();
+        if (ch==EOF) { clearerr(stdin); break; }
+        if (ch=='\n') enter=true;
+    }
+    return enter;
+}
+
+static esp_err_t capture(int16_t *pcm, int *samples) {
+    *samples=0;
+    (void)enter_pressed(); // discard pending CR/LF from the start command
     i2s_chan_handle_t rx = NULL;
     i2s_chan_config_t channel = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     esp_err_t err = i2s_new_channel(&channel, NULL, &rx);
@@ -50,25 +66,56 @@ static esp_err_t capture(int16_t *pcm) {
         err = i2s_channel_read(rx, raw, sizeof(raw), &bytes, 500);
         if (err != ESP_OK || bytes != sizeof(raw)) { err = ESP_FAIL; goto done; }
     }
-    ESP_LOGI(TAG, "FALE AGORA: 3 segundos, ingles (happy, hello robot, turn on the light)");
-    const int64_t deadline = esp_timer_get_time() + 6000000;
+    ESP_LOGI(TAG, "FALE AGORA: ENTER encerra | pausa=%dms | limiar_RMS=%d | ganho=%dx | max=10s",
+        pause_ms, speech_threshold, mic_gain);
+    bool voice=false;
+    unsigned attack=0, silence=0, waited=0;
+    const char *reason="limite";
+    const int64_t started=esp_timer_get_time();
     while (count < SAMPLES) {
+        if (enter_pressed() && esp_timer_get_time()-started>200000) { reason="enter"; break; }
         size_t bytes = 0;
         err = i2s_channel_read(rx, raw, sizeof(raw), &bytes, 500);
-        if (err != ESP_OK || !bytes || bytes % sizeof(int32_t) || esp_timer_get_time() > deadline) {
+        if (err != ESP_OK || !bytes || bytes % sizeof(int32_t) || esp_timer_get_time()-started>17000000) {
             err = ESP_FAIL;
             goto done;
         }
-        for (size_t j=0; j<bytes/sizeof(int32_t) && count<SAMPLES; ++j) {
-            int32_t value = raw[j] >> 14; // same x4 scaling as validated HW04 microphone
+        const size_t frames=bytes/sizeof(int32_t);
+        int16_t block[256];
+        if (frames>256) { err=ESP_FAIL; goto done; }
+        uint64_t energy=0;
+        for (size_t j=0; j<frames; ++j) {
+            int32_t value = (raw[j] >> 16) * mic_gain;
             if (value > 32767) { value=32767; ++clipped; }
             if (value < -32768) { value=-32768; ++clipped; }
-            pcm[count++] = (int16_t)value;
+            block[j] = (int16_t)value;
+            energy += (int64_t)value*value;
             int magnitude = value < 0 ? -value : value;
             if (magnitude > peak) peak = magnitude;
         }
+        bool loud=energy > (uint64_t)speech_threshold*speech_threshold*frames;
+        attack=loud ? attack+1 : 0;
+        if (!voice && attack>=3) { voice=true; ESP_LOGI(TAG,"FALA_DETECTADA"); }
+        if (!voice && count+frames>PREROLL) {
+            const size_t drop=count+frames-PREROLL;
+            memmove(pcm,pcm+drop,(count-drop)*sizeof(int16_t));
+            count-=drop;
+        }
+        size_t take=frames < SAMPLES-count ? frames : SAMPLES-count;
+        memcpy(pcm+count,block,take*sizeof(int16_t));
+        count+=take;
+        if (!voice) {
+            waited+=frames;
+            if (waited>=RATE*5) { reason="sem_fala"; break; }
+        } else {
+            silence=loud ? 0 : silence+frames;
+            if (silence >= (unsigned)(RATE*pause_ms/1000)) { reason="pausa"; break; }
+        }
     }
-    ESP_LOGI(TAG, "CAPTURADO samples=%u peak=%d clipped=%d", (unsigned)count, peak, clipped);
+    *samples=voice ? (int)count : 0;
+    ESP_LOGI(TAG, "CAPTURADO samples=%u peak=%d clipped=%d motivo=%s fala=%d",
+        (unsigned)*samples,peak,clipped,reason,(int)voice);
+
 done:
     if (enabled) (void)i2s_channel_disable(rx);
     (void)i2s_del_channel(rx);
@@ -90,7 +137,8 @@ static void listen_task(void *unused) {
     size_t used = 0;
     bool discard = false;
     memory();
-    puts("JR_STT_READY: digite ouvir e ENTER para capturar 3s. ajuda mostra instrucoes.");
+    int64_t ignore_enter_until=0;
+    puts("JR_STT_READY: ENTER inicia; outro ENTER ou uma pausa encerra. ajuda mostra controles.");
     fflush(stdout);
     while (true) {
         int ch = getchar();
@@ -102,13 +150,15 @@ static void listen_task(void *unused) {
             continue;
         }
         line[used]=0;
-        if (!discard && (!strcmp(line,"ouvir") || !strcmp(line,"listen"))) {
-            if (capture(pcm) != ESP_OK) ESP_LOGE(TAG,"Captura incompleta; nao transcrita");
+        if (!discard && (!strcmp(line,"ouvir") || !strcmp(line,"listen") || (!line[0] && esp_timer_get_time()>=ignore_enter_until))) {
+            int n_samples=0;
+            if (capture(pcm, &n_samples) != ESP_OK) ESP_LOGE(TAG,"Captura incompleta; nao transcrita");
+            else if (n_samples < RATE/5) { puts("JR_STT_NO_SPEECH: sem fala suficiente; ajuste sensibilidade se necessario."); }
             else {
                 puts("JR_STT_PROCESSING: processando no ESP32..."); fflush(stdout);
                 stt_result_t result;
                 const int64_t start = esp_timer_get_time();
-                rc = stt_engine_run(pcm, SAMPLES, &result);
+                rc = stt_engine_run(pcm, n_samples, &result);
                 const float ms = (esp_timer_get_time()-start)/1000.0f;
                 if (rc) ESP_LOGE(TAG,"Falha transcricao rc=%d",rc);
                 else {
@@ -118,9 +168,16 @@ static void listen_task(void *unused) {
                 }
                 memory();
             }
-            puts("JR_STT_READY: digite ouvir e ENTER para nova tentativa."); fflush(stdout);
-        } else if (!discard && (!strcmp(line,"ajuda") || !strcmp(line,"help") || !line[0])) {
-            puts("ouvir + ENTER -> aguarde FALE AGORA -> fale em ingles -> leia JR_STT_TEXT.");
+            ignore_enter_until=esp_timer_get_time()+300000;
+            puts("JR_STT_READY: ENTER inicia nova escuta; ajuda mostra controles."); fflush(stdout);
+        } else if (!discard && line[0]) {
+            int value=0;
+            char extra=0;
+            if (sscanf(line,"ganho %d %c",&value,&extra)==1 && (value==1 || value==2 || value==4 || value==8)) mic_gain=value;
+            else if (sscanf(line,"sensibilidade %d %c",&value,&extra)==1 && value>=50 && value<=5000) speech_threshold=value;
+            else if (sscanf(line,"pausa %d %c",&value,&extra)==1 && value>=400 && value<=3000) pause_ms=value;
+            else puts("ENTER: iniciar/parar | ganho 1/2/4/8 | sensibilidade 50..5000 (MENOR=mais sensivel) | pausa 400..3000 (ms)");
+            printf("JR_STT_CONFIG ganho=%d limiar_RMS=%d pausa_ms=%d\n",mic_gain,speech_threshold,pause_ms);
             fflush(stdout);
         }
         used=0; discard=false;

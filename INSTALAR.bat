@@ -808,7 +808,7 @@ if errorlevel 1 (
     goto failure
 )
 echo [OK] JrBot_V2.2_BABYTALK_TEST e modelo instalados.
-echo [TESTE] Aguarde JR_STT_READY. Digite ouvir e ENTER, aguarde FALE AGORA e fale ingles.
+echo [TESTE] Aguarde JR_STT_READY. ENTER inicia; aguarde FALE AGORA. Outro ENTER ou uma pausa encerra.
 if /i not "%ACTION%"=="flash" (
     python "%IDF_PATH%\tools\idf.py" -B build -p "%JR_FLASH_PORT%" monitor
     set "RC=!errorlevel!"
