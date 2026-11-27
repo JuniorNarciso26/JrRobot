@@ -31,6 +31,9 @@
     '</div>' +
     '<div class="wifi-tools"><button type="button" id="jr-wifi-refresh">Atualizar status</button><label><input type="checkbox" id="jr-wifi-auto"> Atualizar sinal a cada 10 segundos</label></div>' +
     '<div id="jr-wifi-feedback" class="wifi-feedback" role="status">Selecione Wi-Fi para consultar o robô.</div>' +
+    '<h3>Conexão direta</h3><p class="wifi-note">Controle o JrBot sem roteador. Ao ativar, conecte o celular à rede JrBot-XXXXXX e abra https://192.168.4.1 no navegador.</p>' +
+    '<label>Senha da rede JrBot (8 a 63 caracteres)<input id="jr-wifi-direct-password" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Escolha uma senha para ativar"></label>' +
+    '<div class="wifi-tools"><button type="button" id="jr-wifi-direct" role="switch" aria-checked="false">Conexão direta: OFF</button></div>' +
     '<h3>Redes salvas</h3><p class="wifi-note">Até quatro redes. Selecione uma rede salva para usá-la na próxima inicialização. A rede atual continua ativa até o reinício.</p>' +
     '<div class="wifi-tools"><button type="button" id="jr-wifi-profiles-refresh">Atualizar redes salvas</button></div>' +
     '<div id="jr-wifi-profiles" class="wifi-list"></div>' +
@@ -88,7 +91,7 @@
       const data = await request('', {method:'POST', headers:{'Content-Type':'application/json','X-JrBot-WiFi':'1'}, body:JSON.stringify(json)});
       if (data.restarting) {
         restarting = true;
-        feedback('Reinício solicitado. Aguarde a nova conexão e abra https://jrbot.local na nova rede.');
+        feedback(json.action === 'direct' && json.enabled ? 'Reiniciando. Conecte-se à rede JrBot-XXXXXX com a senha escolhida, mantenha a conexão sem internet e abra https://192.168.4.1 no navegador.' : 'Reinício solicitado. Conecte o celular à rede salva e abra https://jrbot.local. Sem rede disponível, conecte-se ao JrBot-Setup.');
       } else if (data.deleted) {
         feedback(json.selected
           ? 'Rede selecionada excluída. A conexão atual permanece ativa; no próximo reinício o JrBot poderá entrar na configuração inicial.'
@@ -114,7 +117,13 @@
   async function status() {
     try {
       const data = await request('status');
-      statusEl('state').textContent = data.connected ? 'Conectado' : 'Desconectado';
+      statusEl('state').textContent = data.direct ? 'Conexão direta ativa' : data.connected ? 'Conectado' : 'Desconectado';
+      el('direct').dataset.active = data.direct ? '1' : '';
+      el('direct').setAttribute('aria-checked', String(!!data.direct));
+      el('direct').textContent = 'Conexão direta: ' + (data.direct ? 'ON — desativar' : 'OFF — ativar');
+      el('direct').disabled = busy || data.mode !== 'idle';
+      el('scan').disabled = busy || !!data.direct || data.mode !== 'idle';
+      el('direct-password').hidden = !!data.direct;
       statusEl('ssid').textContent = decodeSSID(data.ssid_pct);
       statusEl('ip').textContent = data.ip || '—';
       statusEl('signal').textContent = data.rssi_valid ? data.rssi + ' dBm · ' + signalText(data.rssi) : 'Sem leitura';
@@ -125,6 +134,7 @@
         : 'Nenhuma troca pendente.';
       el('restart').dataset.pending = data.pending_restart ? '1' : '';
       el('restart').disabled = !data.pending_restart || busy || data.mode !== 'idle';
+      if (data.direct) el('pending').textContent += ' Para usar uma rede salva, desative Conexão direta. Para procurar redes, desative ou use BOOT por 3 segundos.';
       if (data.mode !== 'idle') el('pending').textContent += ' Pare a Live/autônomo para alterar Wi-Fi.';
       return data;
     } catch (error) {
@@ -259,6 +269,17 @@
     el('input-password').value = '';
     await write({action:'save', ssid, password, use_static:false});
   });
+  el('direct').onclick = async () => {
+    const enabled = !el('direct').dataset.active;
+    const password = enabled ? el('direct-password').value : '';
+    if (enabled && !/^[\x20-\x7e]{8,63}$/.test(password)) {
+      feedback('Escolha uma senha de 8 a 63 caracteres, sem acentos.', true);
+      return;
+    }
+    if (!confirm(enabled ? 'Ativar conexão direta e reiniciar? Depois conecte-se à rede JrBot-XXXXXX.' : 'Desativar conexão direta e reiniciar nas redes salvas? Sem rede disponível, o JrBot abrirá a configuração inicial.')) return;
+    el('direct-password').value = '';
+    await write({action:'direct', enabled, password});
+  };
   el('restart').onclick = async () => {
     if (!el('restart').dataset.pending) return;
     if (!confirm('O JrBot irá reiniciar e poderá mudar de IP. Confirmar troca da rede Wi-Fi?')) return;

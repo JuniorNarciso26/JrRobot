@@ -50,7 +50,8 @@ class RecoveryGuardTests(unittest.TestCase):
 #define ESP_LOGW(...) ((void)0)
 typedef int esp_reset_reason_t;
 static esp_reset_reason_t reason;
-static bool configured = true;
+static bool configured = true, direct_enabled;
+static bool jr_wifi_direct_enabled(void) { return direct_enabled; }
 static esp_reset_reason_t esp_reset_reason(void) { return reason; }
 static bool jr_wifi_is_configured(void) { return configured; }
 static uint32_t setup_request, setup_request_inverse;
@@ -80,6 +81,11 @@ int main(void) {
 
     configured = false; /* unconfigured still starts captive portal */
     assert(jr_wifi_provisioning_boot_requested());
+    direct_enabled = true; /* no stored router needed in direct mode */
+    assert(!jr_wifi_provisioning_boot_requested());
+    reason = ESP_RST_SW;
+    setup_request = JR_SETUP_MAGIC; setup_request_inverse = ~JR_SETUP_MAGIC;
+    assert(jr_wifi_provisioning_boot_requested()); /* BOOT overrides direct */
     return 0;
 }
 """

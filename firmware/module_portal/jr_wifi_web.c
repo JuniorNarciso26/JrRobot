@@ -12,6 +12,7 @@
 #include "esp_wifi.h"
 #include "jr_mode_manager.h"
 #include "jr_wifi.h"
+#include "jr_wifi_direct.h"
 #include "jr_wifi_web.h"
 
 /* This control interface is registered ONLY on the existing HTTPS server.
@@ -65,25 +66,28 @@ static esp_err_t wifi_status(httpd_req_t *req)
     else
         encode_ssid((const uint8_t *)jr_wifi_ssid(), ssid);
 
-    char json[400];
+    char json[480];
     snprintf(json, sizeof(json),
              "{\"ok\":true,\"connected\":%s,\"network_ready\":%s,"
              "\"pending_restart\":%s,\"ssid_pct\":\"%s\",\"ip\":\"%s\","
              "\"rssi\":%d,\"rssi_valid\":%s,\"channel\":%u,\"authmode\":%u,"
-             "\"mode\":\"%s\"}",
+             "\"direct\":%s,\"mode\":\"%s\"}",
              status.connected ? "true" : "false",
              status.network_ready ? "true" : "false",
              status.pending_restart ? "true" : "false",
              ssid, status.ip,
              associated ? (int)ap.rssi : 0, associated ? "true" : "false",
-             associated ? (unsigned)ap.primary : 0U,
-             associated ? (unsigned)ap.authmode : 0U,
+             associated ? (unsigned)ap.primary : jr_wifi_direct_active() ? 1U : 0U,
+             associated ? (unsigned)ap.authmode : jr_wifi_direct_active() ? (unsigned)WIFI_AUTH_WPA2_PSK : 0U,
+             jr_wifi_direct_active() ? "true" : "false",
              jr_mode_name(jr_mode_get()));
     return json_reply(req, "200 OK", json);
 }
 
 static esp_err_t wifi_list(httpd_req_t *req, bool scan)
 {
+    if (scan && jr_wifi_direct_active())
+        return json_error(req, "409 Conflict", "Desative a conexao direta ou use BOOT para procurar redes");
     if (scan && jr_mode_get() != JR_MODE_IDLE)
         return json_error(req, "409 Conflict", "Pare a Live e o modo autonomo para buscar redes");
 
@@ -202,7 +206,15 @@ static esp_err_t wifi_post(httpd_req_t *req)
     bool success = false;
     bool schedule = false;
     char result[180] = {0};
-    if (!strcmp(action, "save")) {
+    if (!strcmp(action, "direct")) {
+        const cJSON *enabled = cJSON_GetObjectItemCaseSensitive(json,"enabled");
+        const char *password = optional_string(json,"password");
+        if (cJSON_IsBool(enabled) &&
+            jr_wifi_direct_configure(cJSON_IsTrue(enabled),password) == ESP_OK) {
+            success = schedule_restart() == ESP_OK;
+            schedule = success;
+        }
+    } else if (!strcmp(action, "save")) {
         const char *ssid = "", *password = "";
         const cJSON *static_item = cJSON_GetObjectItemCaseSensitive(json, "use_static");
         if (json_string(json, "ssid", &ssid) && json_string(json, "password", &password) &&

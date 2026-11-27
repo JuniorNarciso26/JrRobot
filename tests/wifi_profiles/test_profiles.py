@@ -88,6 +88,7 @@ uint32_t ipaddr_addr(const char *);
 HARNESS = r'''
 #include <assert.h>
 #include "jr_wifi.c"
+bool jr_wifi_direct_active(void) { return false; }
 typedef struct { char key[16]; size_t size; unsigned char bytes[512]; } blob_t;
 static blob_t blobs[8];
 static bool fail_write,fail_commit;

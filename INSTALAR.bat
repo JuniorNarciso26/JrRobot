@@ -323,6 +323,7 @@ rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS
 set "JRBOT_VTTS_BRANCH="
 if /i "%CURRENT_BRANCH%"=="main" set "JRBOT_VTTS_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="develop" set "JRBOT_VTTS_BRANCH=1"
+if /i "%CURRENT_BRANCH%"=="test/wifi-direct" set "JRBOT_VTTS_BRANCH=1"
 set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
@@ -331,6 +332,7 @@ if defined JRBOT_VTTS_BRANCH (
     rem Main and develop: ESP-IDF 6.1.1 + offline vTTS + HTTPS + WakeNet10.
     set "BUILD_DIR=b-develop-vtts"
     if /i "%CURRENT_BRANCH%"=="main" set "BUILD_DIR=b-main-vtts"
+    if /i "%CURRENT_BRANCH%"=="test/wifi-direct" set "BUILD_DIR=b-wifi-direct-vtts"
     set "SDKCONFIG_FILE=sdkconfig.develop_vtts"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
     set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON"

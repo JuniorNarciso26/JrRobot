@@ -29,6 +29,14 @@
       <h1>Configurar Wi-Fi do JrBot</h1>
       <p class="muted">Escolha uma rede de 2,4 GHz. O JrBot testará a conexão antes de salvar a configuração.</p>
     </section>
+    <section class="card">
+      <h2>Conexão direta</h2>
+      <p class="muted">Use o JrBot pelo celular sem roteador. Crie uma senha para a rede do robô.</p>
+      <label for="direct-password">Senha da rede JrBot (8 a 63 caracteres)</label>
+      <input id="direct-password" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Escolha uma senha">
+      <button type="button" id="direct-on" class="primary" role="switch" aria-checked="false">Conexão direta: OFF — ativar</button>
+      <p id="direct-status" class="muted small" role="status"></p>
+    </section>
     <form id="wifi-form" method="post" action="/test">
       <section class="card">
         <div class="step"><span class="number">1</span><h2>Localizar redes</h2></div>
@@ -63,7 +71,7 @@
     const networks=document.getElementById('networks');
     const scanStatus=document.getElementById('scan-status');
     function message(text,kind){feedback.textContent=text;feedback.className='feedback show'+(kind?' '+kind:'')}
-    function busy(active){submit.disabled=active;scanButton.disabled=active;submit.textContent=active?'Testando conexão...':'Testar conexão e salvar'}
+    function busy(active){document.getElementById('direct-on').disabled=active;submit.disabled=active;scanButton.disabled=active;submit.textContent=active?'Testando conexão...':'Testar conexão e salvar'}
     async function request(url,options){const response=await fetch(url,options);let data={};try{data=await response.json()}catch(e){}return{ok:response.ok,data}}
     function selectNetwork(name,button,open){if(ssid.value!==name)pass.value='';ssid.value=name;networks.querySelectorAll('button').forEach(item=>item.classList.remove('selected'));button.classList.add('selected');document.getElementById('security-hint').textContent=open?'Esta rede é aberta; deixe a senha vazia.':'Digite a senha da rede '+name+'.';pass.focus()}
     async function scan(){scanButton.disabled=true;scanStatus.textContent='Buscando redes próximas...';try{const result=await request('/scan');if(!result.ok)throw Error('scan');networks.replaceChildren();const seen=new Set();for(const ap of result.data.aps||[]){if(!ap.ssid||seen.has(ap.ssid))continue;seen.add(ap.ssid);const button=document.createElement('button');button.type='button';button.className='network';const title=document.createElement('strong');title.textContent=ap.ssid;const detail=document.createElement('small');detail.textContent=(ap.open?'Aberta':'Protegida')+' · '+ap.rssi+' dBm';button.append(title,detail);button.onclick=()=>selectNetwork(ap.ssid,button,ap.open);networks.append(button)}scanStatus.textContent=seen.size?seen.size+' rede(s) encontrada(s).':'Nenhuma rede encontrada. Digite o nome manualmente.'}catch(e){scanStatus.textContent='Busca indisponível. Digite o nome da rede manualmente.'}finally{scanButton.disabled=false}}
@@ -75,6 +83,21 @@
     async function refreshProfiles(){const list=document.getElementById('profiles');try{const result=await request('/profiles',{cache:'no-store'});if(!result.ok||!Array.isArray(result.data.profiles))throw Error('profiles');list.replaceChildren();for(const profile of result.data.profiles){let name;try{name=decodeURIComponent(profile.ssid_pct||'')}catch(e){name=profile.ssid_pct||''}const row=document.createElement('div');row.className='saved-item';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=name;const details=document.createElement('p');details.textContent=profile.mode+(profile.selected?' · Rede selecionada':'');info.append(title,details);const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Apagar';del.onclick=()=>deleteProfile(profile.id,name);row.append(info,del);list.append(row)}if(!result.data.profiles.length){const empty=document.createElement('p');empty.className='muted small';empty.textContent='Nenhuma rede salva.';list.append(empty)}}catch(e){list.textContent='Não foi possível consultar as redes salvas.'}}
     async function deleteProfile(id,name){if(!confirm('Apagar a rede '+name+' da memória do JrBot?'))return;try{const result=await request('/profiles?id='+encodeURIComponent(id),{method:'DELETE'});if(!result.ok)throw Error('delete');await refreshProfiles();message('Rede '+name+' apagada.','ok')}catch(e){message('Não foi possível apagar a rede. Tente novamente.','error')}}
     document.getElementById('refresh-profiles').onclick=refreshProfiles;
+    document.getElementById('direct-on').onclick=async function(){
+      const input=document.getElementById('direct-password');
+      const note=document.getElementById('direct-status');
+      const password=input.value;
+      if(!/^[\x20-\x7e]{8,63}$/.test(password)){note.textContent='Escolha uma senha de 8 a 63 caracteres, sem acentos.';input.focus();return}
+      if(!confirm('Ativar conexão direta e reiniciar o JrBot?'))return;
+      this.disabled=true;
+      try{
+        const result=await request('/direct',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-JrBot-WiFi':'1'},body:new URLSearchParams({ssid:'direct',pass:password})});
+        if(!result.ok)throw Error('Não foi possível ativar. Aguarde o teste de rede terminar ou tente novamente.');
+        input.value='';this.setAttribute('aria-checked','true');this.textContent='Conexão direta: ON';
+        submit.disabled=true;scanButton.disabled=true;
+        note.textContent='Reiniciando. Conecte o celular à rede JrBot-XXXXXX usando sua senha. Mantenha a conexão mesmo sem internet e abra https://192.168.4.1 no Safari ou Chrome.';
+      }catch(e){note.textContent=e.message;this.disabled=false}
+    };
     scan();refreshProfiles();
   </script>
 </body>

@@ -15,6 +15,7 @@
 #include "freertos/FreeRTOS.h"
 #include "jr_config.h"
 #include "jr_wifi.h"
+#include "jr_wifi_direct.h"
 
 #define CFG_SCHEMA 0x4a520201U
 /* One versioned NVS value avoids mixed old/new fields after a failed write. */
@@ -155,13 +156,23 @@ void jr_wifi_prepare(void) {
     state.configured=active.ssid[0]!=0; state.last_error=err;
     portEXIT_CRITICAL(&state_lock);
 }
-void jr_wifi_get_status(jr_wifi_status_t *out) { if (!out) return; portENTER_CRITICAL(&state_lock); *out=state; portEXIT_CRITICAL(&state_lock); }
+void jr_wifi_get_status(jr_wifi_status_t *out) {
+    if (!out) return;
+    portENTER_CRITICAL(&state_lock);
+    *out=state;
+    portEXIT_CRITICAL(&state_lock);
+    if (jr_wifi_direct_active()) {
+        out->network_ready=true;
+        /* connected continues to mean a station associated to a router. */
+        strcpy(out->ip,JR_WIFI_DIRECT_IP);
+    }
+}
 bool jr_wifi_is_configured(void) { jr_wifi_status_t s; jr_wifi_get_status(&s); return s.configured; }
 bool jr_wifi_is_connected(void) { jr_wifi_status_t s; jr_wifi_get_status(&s); return s.connected; }
 bool jr_wifi_network_ready(void) { jr_wifi_status_t s; jr_wifi_get_status(&s); return s.network_ready; }
 /* Retained legacy API; the synchronized status snapshot is preferred. */
-const char *jr_wifi_ip(void) { return state.ip; }
-const char *jr_wifi_ssid(void) { return active.ssid; }
+const char *jr_wifi_ip(void) { return jr_wifi_direct_active()?JR_WIFI_DIRECT_IP:state.ip; }
+const char *jr_wifi_ssid(void) { return jr_wifi_direct_active()?jr_wifi_direct_ssid():active.ssid; }
 
 /* Apply IP mode before connecting another saved profile. */
 static esp_err_t wifi_addressing(const wifi_settings_t *config) {
@@ -480,6 +491,7 @@ fail:
     printf("JR_WIFI_ERROR start=%s diagnostico_serial_disponivel\n",esp_err_to_name(err));
 }
 void jr_wifi_stop(void) {
+    jr_wifi_direct_stop();
     wifi_retry_pending=false; wifi_got_ip_pending=false; wifi_fallback_active=false;
     roam_low_pending=false; roam_scan_inflight=false; roam_scan_done=false;
     roam_switch_requested=false; roam_reconnect_pending=false; roam_rearm_pending=false;

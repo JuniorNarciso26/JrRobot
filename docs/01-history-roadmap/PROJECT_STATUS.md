@@ -1,3 +1,9 @@
+> **Branch experimental `test/wifi-direct` — 27/11/2026.** Base: `main`
+> V2.1 em `cb3c0048`. Acrescenta operação local por SoftAP com WPA2, seleção
+> pela configuração inicial/aba Wi-Fi e retorno às redes salvas após reinício.
+> Testes host aprovados; compilação ESP-IDF e validação HW04/celular/Live pendentes.
+> [Instruções](../04-firmware-development/WIFI_DIRECT_TEST.md).
+
 # JrBot Project Status
 
 **Last updated: November 26, 2026**

@@ -22,6 +22,7 @@
 #include "lwip/sockets.h"
 #include "jr_mode_manager.h"
 #include "jr_wifi.h"
+#include "jr_wifi_direct.h"
 #include "jr_wifi_provisioning.h"
 
 #define JR_SETUP_MAGIC 0x4a525750u
@@ -67,6 +68,8 @@ static bool setup_ip_handler_set;
 static int setup_dns_socket = -1;
 static uint32_t setup_dns_ip;
 static bool setup_running;
+static bool direct_restart_pending;
+static uint32_t direct_restart_ms;
 static bool button_ready;
 static bool button_armed;
 static uint32_t button_down_ms;
@@ -101,7 +104,7 @@ bool jr_wifi_provisioning_boot_requested(void) {
                      setup_request_inverse == ~JR_SETUP_MAGIC;
     setup_request = 0;
     setup_request_inverse = 0;
-    return requested || !jr_wifi_is_configured();
+    return requested || (!jr_wifi_direct_enabled() && !jr_wifi_is_configured());
 }
 
 /* Called only when no IP was obtained within the initial connection window.
@@ -178,7 +181,7 @@ static uint32_t setup_now_ms(void) {
 
 static bool setup_test_busy(void) {
     portENTER_CRITICAL(&setup_test_lock);
-    bool busy = setup_candidate || setup_test_cleanup_busy ||
+    bool busy = direct_restart_pending || setup_candidate || setup_test_cleanup_busy ||
                 setup_test_state == JR_SETUP_TEST_SAVING ||
                 setup_test_state == JR_SETUP_TEST_SAVED;
     portEXIT_CRITICAL(&setup_test_lock);
@@ -268,6 +271,7 @@ static void setup_test_poll(void) {
         bool saved = connected && jr_wifi_configure(candidate->ssid, candidate->password,
                                                      "jrbot", false, NULL, NULL, NULL,
                                                      NULL, NULL, result, sizeof(result));
+        if (saved && jr_wifi_direct_configure(false, NULL) != ESP_OK) saved = false;
         memset(candidate, 0, sizeof(*candidate));
         free(candidate);
         if (!saved) {
@@ -461,6 +465,11 @@ static size_t setup_dns_reply(uint8_t *packet, size_t length) {
 
 void jr_wifi_provisioning_poll(void) {
     if (setup_running) setup_test_poll();
+    portENTER_CRITICAL(&setup_test_lock);
+    bool direct_restart = direct_restart_pending &&
+        (uint32_t)(setup_now_ms() - direct_restart_ms) >= 2500u;
+    portEXIT_CRITICAL(&setup_test_lock);
+    if (direct_restart) esp_restart();
     if (setup_dns_socket < 0) return;
     for (int i = 0; i < 4; i++) {
         uint8_t packet[512];
@@ -591,6 +600,42 @@ static esp_err_t setup_test_start(httpd_req_t *req) {
     return httpd_resp_sendstr(req, "{\"state\":\"testing\"}");
 }
 
+/* Called only by the setup HTTP server; cross-origin requests cannot supply
+ * the custom header without an unsupported CORS preflight. */
+static esp_err_t setup_direct_start(httpd_req_t *req) {
+    char marker[4], type[64];
+    if (httpd_req_get_hdr_value_str(req,"X-JrBot-WiFi",marker,sizeof(marker)) != ESP_OK ||
+        strcmp(marker,"1") ||
+        httpd_req_get_hdr_value_str(req,"Content-Type",type,sizeof(type)) != ESP_OK ||
+        strncmp(type,"application/x-www-form-urlencoded",33))
+        return httpd_resp_send_err(req,HTTPD_403_FORBIDDEN,"Use a pagina de configuracao");
+    if (setup_test_busy() || jr_mode_get() != JR_MODE_IDLE)
+        return httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Pare Live/autonomo e aguarde o teste ou reinicio");
+    if (req->content_len < 1 || req->content_len > 256)
+        return httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Senha invalida");
+    char form[257] = {0}, password[65] = {0}, unused[33] = {0};
+    size_t used = 0;
+    while (used < (size_t)req->content_len) {
+        int n = httpd_req_recv(req,form+used,req->content_len-used);
+        if (n <= 0) { memset(form,0,sizeof(form)); return ESP_FAIL; }
+        used += n;
+    }
+    /* Reuse the strict form decoder: the UI supplies ssid=direct and pass. */
+    bool valid = parse_form(form,unused,password);
+    esp_err_t err = valid ? jr_wifi_direct_configure(true,password) : ESP_ERR_INVALID_ARG;
+    memset(form,0,sizeof(form));
+    memset(password,0,sizeof(password));
+    if (err != ESP_OK)
+        return httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Senha: 8 a 63 caracteres ASCII");
+    portENTER_CRITICAL(&setup_test_lock);
+    direct_restart_ms = setup_now_ms();
+    direct_restart_pending = true;
+    portEXIT_CRITICAL(&setup_test_lock);
+    httpd_resp_set_type(req,"application/json; charset=utf-8");
+    httpd_resp_set_hdr(req,"Cache-Control","no-store");
+    return httpd_resp_sendstr(req,"{\"ok\":true,\"restarting\":true}");
+}
+
 esp_err_t jr_wifi_provisioning_start(void) {
     if (setup_running) return ESP_OK;
     setup_memory("before");
@@ -662,7 +707,7 @@ esp_err_t jr_wifi_provisioning_start(void) {
     if (err != ESP_OK) goto fail_driver;
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
-    http_config.max_uri_handlers = 6;
+    http_config.max_uri_handlers = 7;
     http_config.lru_purge_enable = true;
     err = httpd_start(&setup_http, &http_config);
     if (err != ESP_OK) goto fail_started;
@@ -672,7 +717,9 @@ esp_err_t jr_wifi_provisioning_start(void) {
     httpd_uri_t scan_route = {.uri = "/scan", .method = HTTP_GET, .handler = setup_scan};
     httpd_uri_t profiles = {.uri = "/profiles", .method = HTTP_GET, .handler = setup_profiles};
     httpd_uri_t profile_delete = {.uri = "/profiles", .method = HTTP_DELETE, .handler = setup_profile_delete};
-    err = httpd_register_uri_handler(setup_http, &index);
+    httpd_uri_t direct = {.uri = "/direct", .method = HTTP_POST, .handler = setup_direct_start};
+    err = httpd_register_uri_handler(setup_http, &direct);
+    if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &index);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &test_start);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &test_status);
     if (err == ESP_OK) err = httpd_register_uri_handler(setup_http, &scan_route);

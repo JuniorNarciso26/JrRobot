@@ -17,7 +17,7 @@ OPTIONS = {
     "CONFIG_MDNS_MAX_INTERFACES": "2",
     "CONFIG_MDNS_MAX_SERVICES": "1",
     "CONFIG_MDNS_PREDEF_NETIF_STA": "y",
-    "CONFIG_MDNS_PREDEF_NETIF_AP": "n",
+    "CONFIG_MDNS_PREDEF_NETIF_AP": "y",
     "CONFIG_MDNS_PREDEF_NETIF_ETH": "n",
     "CONFIG_MDNS_NETWORKING_SOCKET": "n",
     "CONFIG_MDNS_ENABLE_BROWSE": "n",
@@ -42,7 +42,7 @@ def apply(path: Path) -> None:
     for option, value in OPTIONS.items():
         result.append(f"# {option} is not set" if value == "n" else f"{option}={value}")
     path.write_text("\n".join(result).rstrip() + "\n", encoding="utf-8")
-    print("[OK] mDNS: buffers PSRAM, stack interna, somente STA/HTTPS; demais ajustes preservados.")
+    print("[OK] mDNS: buffers PSRAM, stack interna, STA ou AP/HTTPS; demais ajustes preservados.")
 
 
 def main() -> int:

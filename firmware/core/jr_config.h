@@ -1,7 +1,7 @@
 #pragma once
 
-#define JR_APP_VERSION "JrBot_V2.1"
-#define JR_BUILD_STAMP_SP "2026-11-26_DEVELOP_TTS_APP_STREAM"
+#define JR_APP_VERSION "JrBot_V2.1_WIFI_DIRECT_TEST"
+#define JR_BUILD_STAMP_SP "2026-11-27_WIFI_DIRECT_TEST"
 
 /* Generated locally on every installer build to identify the actual Git commit. */
 #if __has_include("jr_firmware_revision_local.h")

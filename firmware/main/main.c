@@ -11,6 +11,7 @@
 #include "jr_portal.h"
 #include "jr_tts.h"
 #include "jr_wifi.h"
+#include "jr_wifi_direct.h"
 #include "jr_wifi_provisioning.h"
 #include "jr_mdns.h"
 #include "jr_net_diag.h"
@@ -43,7 +44,11 @@ void app_main(void) {
     jr_wifi_provisioning_button_init();
     bool setup_mode = jr_wifi_provisioning_boot_requested();
     if (setup_mode && jr_wifi_provisioning_start() != ESP_OK) setup_mode = false;
-    if (!setup_mode) {
+    if (!setup_mode && jr_wifi_direct_enabled()) {
+        if (jr_wifi_direct_start() != ESP_OK)
+            setup_mode = jr_wifi_provisioning_start() == ESP_OK;
+    }
+    if (!setup_mode && !jr_wifi_direct_active()) {
         jr_wifi_start();
         if (jr_wifi_network_ready()) jr_net_diag_watch();
     }
@@ -58,12 +63,12 @@ void app_main(void) {
             jr_net_diag_poll(ms);
             jr_wifi_provisioning_button_poll(ms);
             jr_wifi_poll();
-            if (!portal_started && jr_wifi_is_connected()) {
+            if (!portal_started && (jr_wifi_is_connected() || jr_wifi_direct_active())) {
                 jr_wifi_provisioning_recovery_connected();
                 jr_portal_start();
                 portal_started = true;
             }
-            if (!portal_started && !jr_wifi_is_connected() &&
+            if (!portal_started && !jr_wifi_direct_active() && !jr_wifi_is_connected() &&
                 (uint32_t)(ms - wifi_start_ms) >= JR_WIFI_SETUP_TIMEOUT_MS) {
                 /* Boot recovery is automatic exactly once: no human reset needed. */
                 if (jr_wifi_provisioning_auto_restart_once()) {

@@ -48,7 +48,8 @@ HARNESS = r'''
 #include <assert.h>
 #include <string.h>
 #include "jr_mdns.c"
-static bool connected,missing_netif;
+static bool connected,missing_netif,direct;
+bool jr_wifi_direct_active(void) { return direct; }
 static jr_mode_t mode;
 static int fail_stage;
 static unsigned inits,frees,services,actions;
@@ -60,7 +61,7 @@ size_t heap_caps_get_largest_free_block(unsigned caps) { assert(caps);return 320
 bool jr_wifi_is_connected(void) { return connected; }
 void jr_wifi_get_status(jr_wifi_status_t *s) { memset(s,0,sizeof(*s));strcpy(s->ip,"192.168.0.123"); }
 jr_mode_t jr_mode_get(void) { return mode; }
-esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key) { assert(!strcmp(key,"WIFI_STA_DEF"));return missing_netif?NULL:&sta; }
+esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key) { assert(!strcmp(key,direct?"WIFI_AP_DEF":"WIFI_STA_DEF"));return missing_netif?NULL:&sta; }
 int64_t esp_timer_get_time(void) { return now_us; }
 esp_err_t mdns_init(void) { inits++;actions=0;return fail_stage==1?ESP_FAIL:ESP_OK; }
 void mdns_free(void) { frees++; }
@@ -75,7 +76,7 @@ esp_err_t mdns_netif_action(esp_netif_t *p,int action) {
     return fail_stage==(actions==1?4:5)?ESP_FAIL:ESP_OK;
 }
 static void reset(void) {
-    ready=false;next_attempt_ms=0;connected=true;missing_netif=false;mode=JR_MODE_IDLE;
+    direct=false;ready=false;next_attempt_ms=0;connected=true;missing_netif=false;mode=JR_MODE_IDLE;
     inits=frees=services=actions=0;fail_stage=0;now_us=1000000;
 }
 int main(void) {
@@ -91,6 +92,7 @@ int main(void) {
     reset();missing_netif=true;jr_mdns_poll();assert(!inits);
     missing_netif=false;jr_mdns_poll();assert(!inits);
     now_us+=10000000;jr_mdns_poll();assert(inits==1&&ready);
+    reset();connected=false;direct=true;jr_mdns_poll();assert(inits==1&&ready);
     return 0;
 }
 '''

@@ -1,3 +1,10 @@
+> **Teste de conexão direta — `test/wifi-direct`**, derivado da `main` V2.1
+> (`cb3c0048`). Execute `INSTALAR.bat`, escolha esta branch e, na aba Wi-Fi
+> ou na configuração inicial, ative **Conexão direta** com uma senha própria.
+> Após reiniciar, conecte-se a `JrBot-XXXXXX` e abra `https://192.168.4.1`.
+> [Roteiro e limites do teste](docs/04-firmware-development/WIFI_DIRECT_TEST.md).
+> Implementado e verificado em host; build ESP-IDF e teste físico pendentes.
+
 <div align="center">
 
 <img src="docs/assets/readme/jrbot-logo.svg" alt="JrBot logo" width="360">
