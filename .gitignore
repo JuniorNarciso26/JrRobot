@@ -34,3 +34,6 @@ tests/hardware/results.json
 /firmware/vendor/babytalk/
 /firmware/b-babytalk-panel/
 /firmware/sdkconfig.babytalk-panel*
+
+/firmware/b-voice-unified/
+/firmware/sdkconfig.voice-unified*

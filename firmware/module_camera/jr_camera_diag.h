@@ -30,3 +30,7 @@ const char *jr_camera_size_name(jr_camera_size_t size);
 esp_err_t jr_camera_capture_jpeg(jr_camera_jpeg_t *out);
 esp_err_t jr_camera_capture_jpeg_ex(jr_camera_jpeg_t *out,jr_camera_size_t size,int jpeg_quality);
 void jr_camera_jpeg_release(jr_camera_jpeg_t *frame);
+
+/* Unified voice temporarily releases camera DMA; new captures report busy. */
+esp_err_t jr_camera_voice_begin(void);
+void jr_camera_voice_end(void);

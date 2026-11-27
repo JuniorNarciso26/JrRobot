@@ -118,7 +118,7 @@ int main(void) {
             headers={
                 'esp_err.h':'typedef int esp_err_t;\n#define ESP_OK 0\n#define ESP_FAIL -1\n#define ESP_ERR_NO_MEM 2\n#define ESP_ERR_INVALID_STATE 3\n',
                 'driver/i2s_std.h':'#include <stddef.h>\n#include "esp_err.h"\ntypedef void* i2s_chan_handle_t;\nint i2s_channel_read(i2s_chan_handle_t,void*,size_t,size_t*,int);',
-                'esp_heap_caps.h':'#include <stddef.h>\n#define MALLOC_CAP_SPIRAM 1\n#define MALLOC_CAP_8BIT 2\nvoid *heap_caps_malloc(size_t,int);',
+                'esp_heap_caps.h':'#include <stddef.h>\n#define MALLOC_CAP_SPIRAM 1\n#define MALLOC_CAP_8BIT 2\n#define MALLOC_CAP_INTERNAL 4\nvoid *heap_caps_malloc(size_t,int);\nsize_t heap_caps_get_free_size(int);\nsize_t heap_caps_get_largest_free_block(int);',
                 'esp_timer.h':'#include <stdint.h>\nint64_t esp_timer_get_time(void);',
                 'esp_log.h':'#define ESP_LOGI(...) ((void)0)\n',
             }
@@ -139,8 +139,12 @@ static char expression[16];
 bool jr_face_set_expression(const char *face){++face_calls;if(face_fail)return false;strcpy(expression,face);return true;}
 void jr_face_increment_command_count(void){++command_count;}
 int sram_pool_reserve(void){return 0;}
-int stt_engine_open(void){return 0;}
-void stt_engine_close(void){}
+static int engine_opens,engine_closes;
+int stt_engine_open(void){++engine_opens;return 0;}
+void stt_engine_close(void){++engine_closes;}
+void mmrt_s3_deinit(void){}
+size_t heap_caps_get_free_size(int caps){(void)caps;return 256*1024;}
+size_t heap_caps_get_largest_free_block(int caps){(void)caps;return 128*1024;}
 void *heap_caps_malloc(size_t n,int caps){(void)caps;return malloc(n);}
 int64_t esp_timer_get_time(void){return reads*16000LL;}
 void jr_usb_terminal_emit(const char*line){
@@ -165,7 +169,14 @@ int stt_engine_run(const int16_t *pcm,int n,stt_result_t *r){
 int main(void){
  assert(jr_stt_reserve()==ESP_OK && jr_stt_open()==ESP_OK);
  assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);
- assert(calls==0);jr_stt_transcribe(&cancel);assert(calls==1 && text_events==1 && face_calls==1 && command_count==1 && !strcmp(expression,"happy"));
+#if JRBOT_WITH_VOICE_UNIFIED
+ assert(engine_opens==0 && engine_closes==0);
+#endif
+ assert(calls==0);jr_stt_transcribe(&cancel);
+#if JRBOT_WITH_VOICE_UNIFIED
+ assert(engine_opens==1 && engine_closes==1);
+#endif
+assert(calls==1 && text_events==1 && face_calls==1 && command_count==1 && !strcmp(expression,"happy"));
  jr_stt_transcribe(&cancel);assert(calls==1);
  reads=0;fail_at=12;
  assert(jr_stt_capture((void*)1,&cancel)!=ESP_OK);
@@ -190,12 +201,13 @@ int main(void){
 }
 '''
             (folder/'test.c').write_text(harness)
-            result=subprocess.run(['gcc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
-                '-I',str(folder),'-I',str(ROOT/'firmware/module_brain'),'-I',str(ROOT/'firmware/core'),'-I',str(ROOT/'firmware/module_face'),
-                '-I',str(SOURCE/'components/stt_engine'),'-I',str(SOURCE/'components/sram_pool'),
-                str(ROOT/'firmware/module_brain/jr_stt.c'),str(ROOT/'firmware/module_brain/jr_stt_aliases.c'),str(folder/'test.c'),'-o',str(folder/'test')],capture_output=True,text=True)
-            self.assertEqual(result.returncode,0,result.stderr)
-            result=subprocess.run([str(folder/'test')],capture_output=True,text=True,timeout=10)
-            self.assertEqual(result.returncode,0,result.stderr)
+            for unified in (0,1):
+                result=subprocess.run(['gcc',f'-DJRBOT_WITH_VOICE_UNIFIED={unified}','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
+                    '-I',str(folder),'-I',str(ROOT/'firmware/module_brain'),'-I',str(ROOT/'firmware/core'),'-I',str(ROOT/'firmware/module_face'),
+                    '-I',str(SOURCE/'mmrt'),'-I',str(SOURCE/'components/stt_engine'),'-I',str(SOURCE/'components/sram_pool'),
+                    str(ROOT/'firmware/module_brain/jr_stt.c'),str(ROOT/'firmware/module_brain/jr_stt_aliases.c'),str(folder/'test.c'),'-o',str(folder/'test')],capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                result=subprocess.run([str(folder/'test')],capture_output=True,text=True,timeout=10)
+                self.assertEqual(result.returncode,0,result.stderr)
 
 if __name__=='__main__':unittest.main()

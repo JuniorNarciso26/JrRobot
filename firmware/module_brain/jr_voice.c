@@ -21,6 +21,10 @@
 #if JRBOT_WITH_BABYTALK
 #include "jr_stt.h"
 #include "jr_usb_terminal.h"
+#if JRBOT_WITH_VOICE_UNIFIED
+#include "jr_camera_diag.h"
+#include "esp_heap_caps.h"
+#endif
 #endif
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
@@ -167,6 +171,9 @@ static void voice_cleanup(void) {
     close_mic();
 #if JRBOT_WITH_BABYTALK
     jr_stt_close();
+#if JRBOT_WITH_VOICE_UNIFIED
+    jr_camera_voice_end();
+#endif
 #endif
 
     if (wn_data && wakenet) {
@@ -243,8 +250,27 @@ static esp_err_t reply_and_resume(void) {
     ESP_LOGI(TAG, "WAKE_REPLY_END type=beep result=%s", esp_err_to_name(beep_err));
 
 #if JRBOT_WITH_BABYTALK
-    /* This experiment logs text only: no wake greeting, face command or action. */
-    if (beep_err == ESP_OK && !stop_requested) {
+    /* Unified build alternates engines; their internal arenas never overlap. */
+    bool can_capture=beep_err==ESP_OK && !stop_requested;
+#if JRBOT_WITH_VOICE_UNIFIED
+    if (wn_data && wakenet) { wakenet->destroy(wn_data); wn_data=NULL; }
+    esp_err_t camera_err=ESP_ERR_INVALID_STATE;
+    for(int attempt=0;attempt<10 && !stop_requested;++attempt) {
+        camera_err=jr_camera_voice_begin();
+        if(camera_err==ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    can_capture=can_capture && camera_err==ESP_OK && !stop_requested;
+    ESP_LOGI(TAG,"JR_VOICE_PHASE phase=speak wake_unloaded=1 camera=%s internal=%u largest=%u",
+        esp_err_to_name(camera_err),(unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    if (can_capture) {
+        if (wake_callback) wake_callback("Ola ESP",wn_model_name,1);
+        esp_err_t tts_err=jr_tts_reply_to_wake("Olá! Eu sou o JrBot.");
+        ESP_LOGI(TAG,"JR_VOICE_TTS result=%s",esp_err_to_name(tts_err));
+    }
+#endif
+    if (can_capture && !stop_requested) {
         vTaskDelay(pdMS_TO_TICKS(100));
         esp_err_t capture_err = stop_requested ? ESP_ERR_INVALID_STATE : open_mic(sample_rate);
         if (capture_err == ESP_OK) capture_err = jr_stt_capture(rx_chan, &stop_requested);
@@ -274,6 +300,14 @@ static esp_err_t reply_and_resume(void) {
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
     if (stop_requested) return beep_err;
 
+#if JRBOT_WITH_VOICE_UNIFIED
+    int resumed_chunk=0, resumed_rate=0;
+    esp_err_t restored=init_wakenet_ola_esp(&resumed_chunk,&resumed_rate);
+    if (restored != ESP_OK) return restored;
+    if (resumed_rate!=sample_rate || resumed_chunk!=voice_status.chunk_samples)
+        return ESP_ERR_NOT_SUPPORTED;
+    ESP_LOGI(TAG,"JR_VOICE_PHASE phase=wake stt_unloaded=1");
+#endif
     esp_err_t reopen = open_mic(sample_rate);
     if (reopen != ESP_OK) {
         ESP_LOGE(TAG, "reply completed but mic resume failed: %s", esp_err_to_name(reopen));
@@ -281,6 +315,9 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
+#if JRBOT_WITH_VOICE_UNIFIED
+    jr_camera_voice_end();
+#endif
 #if JRBOT_WITH_BABYTALK
     jr_usb_terminal_emit("JR_STT_WAIT_WAKE: diga Ola ESP para nova captura");
 #endif

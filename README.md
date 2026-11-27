@@ -1,9 +1,8 @@
-> **Teste de escuta no painel — `test/babytalk-panel`:** no modo autônomo,
-> “Olá ESP” dá um bip, captura 5 s em inglês e registra `JR_STT_TEXT` no log
-> do painel conectado por Serial USB. Teste 2: aliases de `happy` e `sad` mudam
-> o rosto e registram `JR_STT_COMMAND`. Síntese de voz desativada nesta branch.
-> Execute `INSTALAR.bat`, escolha a branch e a porta. [Instruções](docs/BABYTALK_PANEL_TEST.md).
-> Firmware experimental `JrBot_V2.2_STT_PANEL`; a `main` aprovada permanece separada.
+> **Integração V2.2 — `test/voice-unified`:** WakeNet + TTS pt-BR (S/M) + BabyTalk
+> na mesma aplicação, com OLED, Wi-Fi, câmera e painel mantidos no código.
+> Os motores alternam recursos de memória. Execute `INSTALAR.bat`, escolha esta
+> branch e a porta. [Instalação e validação](docs/VOICE_UNIFIED_TEST.md).
+> Firmware experimental `JrBot_V2.2_VOICE_UNIFIED`; integração ainda exige teste físico.
 
 <div align="center">
 

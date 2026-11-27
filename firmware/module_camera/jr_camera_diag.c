@@ -14,6 +14,7 @@
 static const char *TAG="jrbot_camera";
 static bool cleanup_failed;
 static bool camera_busy;
+static bool voice_reserved;
 static bool runtime_initialized;
 static jr_camera_size_t runtime_size=JR_CAMERA_SIZE_VGA;
 static int runtime_quality=12;
@@ -23,7 +24,7 @@ static portMUX_TYPE camera_state_lock=portMUX_INITIALIZER_UNLOCKED;
 static bool camera_acquire(void) {
     bool acquired=false;
     portENTER_CRITICAL(&camera_state_lock);
-    if (!camera_busy) {
+    if (!camera_busy && !voice_reserved) {
         camera_busy=true;
         acquired=true;
     }
@@ -268,5 +269,28 @@ bool jr_camera_test_once(char *response,size_t capacity) {
              "JR_OK camera_test=frame_received pid=0x%04X width=%u height=%u bytes=%u quality=%d released=1 optical_check=pending",
              pid,width,height,bytes,quality);
     return true;
+#endif
+}
+
+esp_err_t jr_camera_voice_begin(void) {
+#if JR_CAMERA_ENABLED
+    portENTER_CRITICAL(&camera_state_lock);
+    bool available=!camera_busy && !voice_reserved && !cleanup_failed;
+    if (available) voice_reserved=true;
+    portEXIT_CRITICAL(&camera_state_lock);
+    if (!available) return ESP_ERR_INVALID_STATE;
+    if (runtime_initialized) {
+        esp_err_t err=esp_camera_deinit();
+        if (err!=ESP_OK) { cleanup_failed=true; jr_camera_voice_end(); return err; }
+        runtime_initialized=false;
+    }
+#endif
+    return ESP_OK;
+}
+void jr_camera_voice_end(void) {
+#if JR_CAMERA_ENABLED
+    portENTER_CRITICAL(&camera_state_lock);
+    voice_reserved=false;
+    portEXIT_CRITICAL(&camera_state_lock);
 #endif
 }

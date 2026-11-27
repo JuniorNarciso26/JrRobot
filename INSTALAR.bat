@@ -320,6 +320,8 @@ set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 set "JRBOT_TTS_CMAKE_ARGS="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS.
+set "JRBOT_VOICE_UNIFIED="
+if /i "%CURRENT_BRANCH%"=="test/voice-unified" set "JRBOT_VOICE_UNIFIED=1"
 set "JRBOT_STT_PANEL="
 if /i "%CURRENT_BRANCH%"=="test/babytalk-panel" set "JRBOT_STT_PANEL=1"
 set "JRBOT_BABYTALK_TEST="
@@ -331,7 +333,12 @@ set "JRBOT_RAM_LIGHT_BRANCH="
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light" set "JRBOT_RAM_LIGHT_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="test/develop_wifi_ram_light_provisioning" set "JRBOT_RAM_LIGHT_BRANCH=1"
 
-if defined JRBOT_VTTS_BRANCH (
+if defined JRBOT_VOICE_UNIFIED (
+    set "BUILD_DIR=b-voice-unified"
+    set "SDKCONFIG_FILE=sdkconfig.voice-unified"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON -D JRBOT_ENABLE_BABYTALK=ON -D JRBOT_VOICE_UNIFIED=ON"
+) else if defined JRBOT_VTTS_BRANCH (
     rem Main and develop: ESP-IDF 6.1.1 + offline vTTS + HTTPS + WakeNet10.
     set "BUILD_DIR=b-develop-vtts"
     if /i "%CURRENT_BRANCH%"=="main" set "BUILD_DIR=b-main-vtts"
@@ -493,6 +500,7 @@ if defined JRBOT_VTTS_BRANCH (
 set "JRBOT_IDF61_BRANCH=%JRBOT_VTTS_BRANCH%"
 if defined JRBOT_BABYTALK_TEST set "JRBOT_IDF61_BRANCH=1"
 if defined JRBOT_STT_PANEL set "JRBOT_IDF61_BRANCH=1"
+if defined JRBOT_VOICE_UNIFIED set "JRBOT_IDF61_BRANCH=1"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="panel" goto panel
@@ -651,6 +659,17 @@ if errorlevel 1 exit /b 1
 exit /b 0
 
 :prepare
+if defined JRBOT_VOICE_UNIFIED (
+    echo [INTEGRACAO] WakeNet + vTTS S/M + BabyTalk na mesma aplicacao.
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_vtts_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_voice_unified.py
+    if errorlevel 1 goto failure
+)
 if defined JRBOT_STT_PANEL (
     echo [TESTE] Ola ESP - bip - 5 segundos em ingles - JR_STT_TEXT no log Serial do painel.
     echo [INFO] Sintese de voz desativada apenas nesta branch experimental.
@@ -762,6 +781,18 @@ if defined JRBOT_WIFI_MEMORY_BUILD (
     )
 )
 rem Revalidar tambem builds incrementais antes de anunciar sucesso ou gravar.
+if defined JRBOT_VOICE_UNIFIED (
+    python "..\tools\check_tts_acceleration.py" --elf "%BUILD_DIR%\jrbot_v2.elf"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+    python "..\tools\check_voice_unified.py" --build-dir "%BUILD_DIR%"
+    if errorlevel 1 (
+        popd
+        goto failure
+    )
+)
 if defined JRBOT_VTTS_BRANCH (
     python "..\tools\check_tts_acceleration.py" --elf "%BUILD_DIR%\jrbot_v2.elf"
     if errorlevel 1 (
@@ -838,6 +869,17 @@ if /i not "%ACTION%"=="flash" (
 goto success
 
 :menuconfig
+if defined JRBOT_VOICE_UNIFIED (
+    echo [INTEGRACAO] WakeNet + vTTS S/M + BabyTalk na mesma aplicacao.
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_vtts_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_voice_unified.py
+    if errorlevel 1 goto failure
+)
 if defined JRBOT_STT_PANEL (
     echo [TESTE] Ola ESP - bip - 5 segundos em ingles - JR_STT_TEXT no log Serial do painel.
     echo [INFO] Sintese de voz desativada apenas nesta branch experimental.

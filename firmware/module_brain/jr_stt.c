@@ -11,6 +11,9 @@
 #include "jr_face.h"
 #include "sram_pool.h"
 #include "stt_engine.h"
+#if JRBOT_WITH_VOICE_UNIFIED
+#include "mmrt_s3.h"
+#endif
 #define RATE 16000
 #define SAMPLES (5 * RATE)
 static int16_t *pcm;
@@ -24,8 +27,10 @@ esp_err_t jr_stt_reserve(void) {
 }
 esp_err_t jr_stt_open(void) {
     if (pcm) return ESP_OK;
+#if !JRBOT_WITH_VOICE_UNIFIED
     int rc=stt_engine_open();
     if (rc) { stt_engine_close(); emit("JR_STT_ERROR stage=model"); return ESP_FAIL; }
+#endif
     pcm=heap_caps_malloc(SAMPLES*sizeof(*pcm), MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if (!pcm) { stt_engine_close(); return ESP_ERR_NO_MEM; }
     emit("JR_STT_READY engine=babytalk language=en window_ms=5000 actions=happy_sad_aliases");
@@ -76,7 +81,23 @@ void jr_stt_transcribe(const volatile bool *cancel) {
     emit("JR_STT_PROCESSING");
     const int64_t start=esp_timer_get_time();
     stt_result_t result;
+#if JRBOT_WITH_VOICE_UNIFIED
+    size_t internal=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t largest=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    if (internal<MMRT_S3_BUFFER_BYTES+16384 || largest<MMRT_S3_BUFFER_BYTES) {
+        char budget[128];
+        snprintf(budget,sizeof(budget),"JR_STT_ERROR stage=memory internal=%u largest=%u need=%u",
+                 (unsigned)internal,(unsigned)largest,(unsigned)MMRT_S3_BUFFER_BYTES);
+        emit(budget);
+        return;
+    }
+    int rc=stt_engine_open();
+    if (!rc) rc=stt_engine_run(pcm,SAMPLES,&result);
+    stt_engine_close(); /* returns the SIMD arena before wake/TTS can reload */
+    if (rc) mmrt_s3_deinit(); /* also unwind a partially failed engine_open */
+#else
     int rc=stt_engine_run(pcm,SAMPLES,&result);
+#endif
     if(*cancel) { emit("JR_STT_CANCELLED"); return; }
     if(rc) { emit("JR_STT_ERROR stage=inference"); return; }
     char line[480];

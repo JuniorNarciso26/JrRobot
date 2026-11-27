@@ -19,12 +19,12 @@ def prepare(source, destination=None):
         raise RuntimeError('Caminho de fonte incompatível com CMake')
     (destination/'paths.cmake').write_text('set(BABYTALK_ROOT "${CMAKE_CURRENT_LIST_DIR}/'+relative+'")\n',encoding='utf-8')
     print('[OK] BabyTalk verificado; adaptador usa stt_model separado do WakeNet model.')
-def configure(config, defaults=None):
+def configure(config, defaults=None, partition="partitions_babytalk.csv"):
     config=Path(config)
     defaults=defaults or ROOT/'firmware/sdkconfig.defaults'
     values={
-        'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME':'"partitions_babytalk.csv"',
-        'CONFIG_PARTITION_TABLE_FILENAME':'"partitions_babytalk.csv"',
+        'CONFIG_PARTITION_TABLE_CUSTOM_FILENAME':f'"{partition}"',
+        'CONFIG_PARTITION_TABLE_FILENAME':f'"{partition}"',
         'CONFIG_ESP32S3_DATA_CACHE_64KB':'y',
         'CONFIG_ESP32S3_DATA_CACHE_32KB':'n',
         'CONFIG_ESP32S3_DATA_CACHE_LINE_64B':'y',
