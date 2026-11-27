@@ -16,7 +16,9 @@ vTTS/HTTPS e build separado `b-wifi-direct-vtts`.
    Se não houver rede, conecte o celular a **JrBot-Setup-XXXXXX** e abra
    `http://192.168.4.1`. Com o robô ocioso, também é possível segurar **BOOT
    por 3 segundos e soltar** para abrir essa configuração.
-3. Em **Conexão direta**, escolha uma senha de 8 a 63 caracteres ASCII,
+3. Em **Conexão direta**, use **Mostrar** e confira o contador de caracteres
+   se a senha for recusada. A mensagem indica comprimento ou posição de um
+   caractere incompatível, sem exibir a senha nos logs. Escolha de 8 a 63 caracteres ASCII,
    sem acentos. Ative e confirme o reinício.
 4. A rede de configuração será encerrada. No Wi-Fi do celular, selecione
    **JrBot-XXXXXX** e informe a senha escolhida. O sufixo distingue cada robô.

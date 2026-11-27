@@ -33,7 +33,8 @@
       <h2>Conexão direta</h2>
       <p class="muted">Use o JrBot pelo celular sem roteador. Crie uma senha para a rede do robô.</p>
       <label for="direct-password">Senha da rede JrBot (8 a 63 caracteres)</label>
-      <input id="direct-password" type="password" minlength="8" maxlength="63" autocomplete="new-password" placeholder="Escolha uma senha">
+      <div class="password"><input id="direct-password" type="password" minlength="8" maxlength="63" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Escolha uma senha"><button type="button" class="secondary" id="direct-show" aria-label="Mostrar senha da conexão direta">Mostrar</button></div>
+      <p id="direct-count" class="muted small" aria-live="polite">0 caracteres · mínimo 8</p>
       <button type="button" id="direct-on" class="primary" role="switch" aria-checked="false">Conexão direta: OFF — ativar</button>
       <p id="direct-status" class="muted small" role="status"></p>
     </section>
@@ -83,17 +84,34 @@
     async function refreshProfiles(){const list=document.getElementById('profiles');try{const result=await request('/profiles',{cache:'no-store'});if(!result.ok||!Array.isArray(result.data.profiles))throw Error('profiles');list.replaceChildren();for(const profile of result.data.profiles){let name;try{name=decodeURIComponent(profile.ssid_pct||'')}catch(e){name=profile.ssid_pct||''}const row=document.createElement('div');row.className='saved-item';const info=document.createElement('div');const title=document.createElement('strong');title.textContent=name;const details=document.createElement('p');details.textContent=profile.mode+(profile.selected?' · Rede selecionada':'');info.append(title,details);const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Apagar';del.onclick=()=>deleteProfile(profile.id,name);row.append(info,del);list.append(row)}if(!result.data.profiles.length){const empty=document.createElement('p');empty.className='muted small';empty.textContent='Nenhuma rede salva.';list.append(empty)}}catch(e){list.textContent='Não foi possível consultar as redes salvas.'}}
     async function deleteProfile(id,name){if(!confirm('Apagar a rede '+name+' da memória do JrBot?'))return;try{const result=await request('/profiles?id='+encodeURIComponent(id),{method:'DELETE'});if(!result.ok)throw Error('delete');await refreshProfiles();message('Rede '+name+' apagada.','ok')}catch(e){message('Não foi possível apagar a rede. Tente novamente.','error')}}
     document.getElementById('refresh-profiles').onclick=refreshProfiles;
+    function directPasswordError(password){
+      if(password.length<8)return 'A senha tem '+password.length+' caracteres. Digite pelo menos 8.';
+      if(password.length>63)return 'A senha tem mais de 63 caracteres. Use até 63.';
+      const invalid=Array.from(password).findIndex(c=>c.charCodeAt(0)<32||c.charCodeAt(0)>126);
+      if(invalid>=0)return 'Caractere não permitido na posição '+(invalid+1)+'. Use letras sem acentos, números ou símbolos comuns.';
+      return '';
+    }
+    document.getElementById('direct-password').oninput=function(){
+      document.getElementById('direct-count').textContent=this.value.length+' caracteres · mínimo 8';
+      document.getElementById('direct-status').textContent='';
+    };
+    document.getElementById('direct-show').onclick=function(){
+      const input=document.getElementById('direct-password');
+      input.type=input.type==='password'?'text':'password';
+      this.textContent=input.type==='text'?'Ocultar':'Mostrar';
+    };
     document.getElementById('direct-on').onclick=async function(){
       const input=document.getElementById('direct-password');
       const note=document.getElementById('direct-status');
       const password=input.value;
-      if(!/^[\x20-\x7e]{8,63}$/.test(password)){note.textContent='Escolha uma senha de 8 a 63 caracteres, sem acentos.';input.focus();return}
+      const error=directPasswordError(password);
+      if(error){note.textContent=error;input.focus();return}
       if(!confirm('Ativar conexão direta e reiniciar o JrBot?'))return;
       this.disabled=true;
       try{
         const result=await request('/direct',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-JrBot-WiFi':'1'},body:new URLSearchParams({ssid:'direct',pass:password})});
         if(!result.ok)throw Error('Não foi possível ativar. Aguarde o teste de rede terminar ou tente novamente.');
-        input.value='';this.setAttribute('aria-checked','true');this.textContent='Conexão direta: ON';
+        input.value='';document.getElementById('direct-count').textContent='Senha salva no JrBot.';this.setAttribute('aria-checked','true');this.textContent='Conexão direta: ON';
         submit.disabled=true;scanButton.disabled=true;
         note.textContent='Reiniciando. Conecte o celular à rede JrBot-XXXXXX usando sua senha. Mantenha a conexão mesmo sem internet e abra https://192.168.4.1 no Safari ou Chrome.';
       }catch(e){note.textContent=e.message;this.disabled=false}
