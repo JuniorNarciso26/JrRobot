@@ -86,6 +86,31 @@ class PanelTest(unittest.TestCase):
                     self.assertNotIn('stt_engine',requirements)
                     self.assertNotIn('sram_pool',requirements)
 
+    @unittest.skipUnless(shutil.which('gcc'),'host C compiler required')
+    def test_face_aliases_from_owner_log_and_rejection_of_other_utterances(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            (folder/'test.c').write_text(r'''
+#include <assert.h>
+#include <string.h>
+#include "jr_stt_aliases.h"
+int main(void) {
+ const char *happy[]={"happy","haing","habe","  HAPPY!  ","change face to happy","Change  the face to happy."};
+ const char *sad[]={"sad","se","said","shady face foresid","shange the face far se","change face to sad","change the face to sad"," SAD? "};
+ for(unsigned i=0;i<sizeof(happy)/sizeof(*happy);++i){const jr_stt_face_match_t *m=jr_stt_match_face(happy[i]);assert(m && !strcmp(m->expression,"happy"));}
+ for(unsigned i=0;i<sizeof(sad)/sizeof(*sad);++i){const jr_stt_face_match_t *m=jr_stt_match_face(sad[i]);assert(m && !strcmp(m->expression,"sad"));}
+ const char *other[]={NULL,""," ","(vazio)","unhappy","sadness","happy sad","not happy","don't change face to sad","he said hello","hello happy","several","happy123","happy/sad","happ-y","happ\xc3\xa9"};
+ for(unsigned i=0;i<sizeof(other)/sizeof(*other);++i)assert(!jr_stt_match_face(other[i]));
+ char long_text[512];memset(long_text,'a',sizeof(long_text)-1);long_text[sizeof(long_text)-1]=0;assert(!jr_stt_match_face(long_text));
+}
+''')
+            r=subprocess.run(['gcc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
+                '-I',str(ROOT/'firmware/module_brain'),str(ROOT/'firmware/module_brain/jr_stt_aliases.c'),
+                str(folder/'test.c'),'-o',str(folder/'test')],capture_output=True,text=True)
+            self.assertEqual(r.returncode,0,r.stderr)
+            r=subprocess.run([str(folder/'test')],capture_output=True,text=True,timeout=10)
+            self.assertEqual(r.returncode,0,r.stderr)
+
     @unittest.skipUnless(shutil.which('gcc') and SOURCE.exists(),'host C compiler and official headers required')
     def test_real_capture_and_panel_events_with_cancel_and_read_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -107,7 +132,12 @@ class PanelTest(unittest.TestCase):
 #include "jr_stt.h"
 #include "stt_engine.h"
 static int reads, calls, text_events,fail_at,cancel_at;
-static bool cancel;
+static bool cancel, cancel_in_model, face_fail;
+static int face_calls, command_count, unmatched, action_errors;
+static const char *transcript="habe";
+static char expression[16];
+bool jr_face_set_expression(const char *face){++face_calls;if(face_fail)return false;strcpy(expression,face);return true;}
+void jr_face_increment_command_count(void){++command_count;}
 int sram_pool_reserve(void){return 0;}
 int stt_engine_open(void){return 0;}
 void stt_engine_close(void){}
@@ -115,7 +145,9 @@ void *heap_caps_malloc(size_t n,int caps){(void)caps;return malloc(n);}
 int64_t esp_timer_get_time(void){return reads*16000LL;}
 void jr_usb_terminal_emit(const char*line){
  assert(strlen(line)<808);
- if(!strncmp(line,"JR_STT_TEXT:",12)){++text_events;assert(strstr(line,"happy"));}
+ if(strstr(line,"result=unmatched"))++unmatched;
+ if(strstr(line,"action=face") && strstr(line,"result=error"))++action_errors;
+ if(!strncmp(line,"JR_STT_TEXT:",12)){++text_events;assert(strstr(line,transcript));}
 }
 int i2s_channel_read(i2s_chan_handle_t rx,void *out,size_t n,size_t *bytes,int timeout){
  (void)rx;(void)timeout;++reads;
@@ -128,12 +160,12 @@ int i2s_channel_read(i2s_chan_handle_t rx,void *out,size_t n,size_t *bytes,int t
 int stt_engine_run(const int16_t *pcm,int n,stt_result_t *r){
  ++calls;assert(n==80000 && reads==321);
  for(int i=0;i<n;++i)assert(pcm[i]==(i%4-2)*1234);
- memset(r,0,sizeof(*r));strcpy(r->text,"happy");r->frames=501;return 0;
+ memset(r,0,sizeof(*r));strcpy(r->text,transcript);r->frames=501;if(cancel_in_model)cancel=true;return 0;
 }
 int main(void){
  assert(jr_stt_reserve()==ESP_OK && jr_stt_open()==ESP_OK);
  assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);
- assert(calls==0);jr_stt_transcribe(&cancel);assert(calls==1 && text_events==1);
+ assert(calls==0);jr_stt_transcribe(&cancel);assert(calls==1 && text_events==1 && face_calls==1 && command_count==1 && !strcmp(expression,"happy"));
  jr_stt_transcribe(&cancel);assert(calls==1);
  reads=0;fail_at=12;
  assert(jr_stt_capture((void*)1,&cancel)!=ESP_OK);
@@ -141,15 +173,27 @@ int main(void){
  reads=0;fail_at=0;cancel_at=20;
  assert(jr_stt_capture((void*)1,&cancel)!=ESP_OK);
  jr_stt_transcribe(&cancel);assert(calls==1);
+ cancel=false;cancel_at=0;reads=0;transcript="said";
+ assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);jr_stt_transcribe(&cancel);
+ assert(face_calls==2 && command_count==2 && !strcmp(expression,"sad"));
+ reads=0;transcript="not happy";
+ assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);jr_stt_transcribe(&cancel);
+ assert(face_calls==2 && command_count==2 && unmatched==1);
+ reads=0;transcript="happy";cancel_in_model=true;
+ assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);jr_stt_transcribe(&cancel);
+ assert(face_calls==2 && command_count==2);
+ reads=0;cancel=false;cancel_in_model=false;face_fail=true;
+ assert(jr_stt_capture((void*)1,&cancel)==ESP_OK);jr_stt_transcribe(&cancel);
+ assert(face_calls==3 && command_count==2 && action_errors==1);
  jr_stt_close();cancel=false;
  assert(jr_stt_capture((void*)1,&cancel)==ESP_ERR_INVALID_STATE);
 }
 '''
             (folder/'test.c').write_text(harness)
             result=subprocess.run(['gcc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined',
-                '-I',str(folder),'-I',str(ROOT/'firmware/module_brain'),'-I',str(ROOT/'firmware/core'),
+                '-I',str(folder),'-I',str(ROOT/'firmware/module_brain'),'-I',str(ROOT/'firmware/core'),'-I',str(ROOT/'firmware/module_face'),
                 '-I',str(SOURCE/'components/stt_engine'),'-I',str(SOURCE/'components/sram_pool'),
-                str(ROOT/'firmware/module_brain/jr_stt.c'),str(folder/'test.c'),'-o',str(folder/'test')],capture_output=True,text=True)
+                str(ROOT/'firmware/module_brain/jr_stt.c'),str(ROOT/'firmware/module_brain/jr_stt_aliases.c'),str(folder/'test.c'),'-o',str(folder/'test')],capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             result=subprocess.run([str(folder/'test')],capture_output=True,text=True,timeout=10)
             self.assertEqual(result.returncode,0,result.stderr)

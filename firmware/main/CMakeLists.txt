@@ -64,7 +64,7 @@ endif()
 set(JR_STT_SOURCES "")
 set(JR_STT_REQUIRES "")
 if(JRBOT_ENABLE_BABYTALK)
-    set(JR_STT_SOURCES "../module_brain/jr_stt.c")
+    set(JR_STT_SOURCES "../module_brain/jr_stt.c" "../module_brain/jr_stt_aliases.c")
     set(JR_STT_REQUIRES stt_engine sram_pool)
 endif()
 

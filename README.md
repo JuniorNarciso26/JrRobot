@@ -1,6 +1,7 @@
 > **Teste de escuta no painel — `test/babytalk-panel`:** no modo autônomo,
 > “Olá ESP” dá um bip, captura 5 s em inglês e registra `JR_STT_TEXT` no log
-> do painel conectado por Serial USB. Síntese de voz desativada nesta branch.
+> do painel conectado por Serial USB. Teste 2: aliases de `happy` e `sad` mudam
+> o rosto e registram `JR_STT_COMMAND`. Síntese de voz desativada nesta branch.
 > Execute `INSTALAR.bat`, escolha a branch e a porta. [Instruções](docs/BABYTALK_PANEL_TEST.md).
 > Firmware experimental `JrBot_V2.2_STT_PANEL`; a `main` aprovada permanece separada.
 

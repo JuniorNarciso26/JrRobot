@@ -7,6 +7,8 @@
 #include "esp_timer.h"
 #include "jr_usb_terminal.h"
 #include "jr_stt.h"
+#include "jr_stt_aliases.h"
+#include "jr_face.h"
 #include "sram_pool.h"
 #include "stt_engine.h"
 #define RATE 16000
@@ -26,7 +28,7 @@ esp_err_t jr_stt_open(void) {
     if (rc) { stt_engine_close(); emit("JR_STT_ERROR stage=model"); return ESP_FAIL; }
     pcm=heap_caps_malloc(SAMPLES*sizeof(*pcm), MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if (!pcm) { stt_engine_close(); return ESP_ERR_NO_MEM; }
-    emit("JR_STT_READY engine=babytalk language=en window_ms=5000 actions=0");
+    emit("JR_STT_READY engine=babytalk language=en window_ms=5000 actions=happy_sad_aliases");
     return ESP_OK;
 }
 void jr_stt_close(void) {
@@ -84,5 +86,16 @@ void jr_stt_transcribe(const volatile bool *cancel) {
         emit(line);
     }
     snprintf(line,sizeof(line),"JR_STT_TIME total_ms=%.1f frames=%d",(esp_timer_get_time()-start)/1000.0,result.frames);
+    emit(line);
+    const jr_stt_face_match_t *match=jr_stt_match_face(result.text);
+    if (!match) {
+        emit("JR_STT_COMMAND result=unmatched action=none");
+        return;
+    }
+    if (*cancel) { emit("JR_STT_CANCELLED"); return; }
+    bool applied=jr_face_set_expression(match->expression);
+    if (applied) jr_face_increment_command_count();
+    snprintf(line,sizeof(line),"JR_STT_COMMAND action=face expression=%s alias=\"%s\" result=%s",
+             match->expression,match->alias,applied?"ok":"error");
     emit(line);
 }
