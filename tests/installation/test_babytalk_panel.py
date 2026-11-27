@@ -40,6 +40,52 @@ class PanelTest(unittest.TestCase):
         self.assertLessEqual((SOURCE/'models/citrinet256_int4.mmrt').stat().st_size,parts['stt_model'][1])
         self.assertNotEqual(parts['model'][0],parts['stt_model'][0])
 
+    @unittest.skipUnless(shutil.which('cmake') and (ROOT.parent/'esp-idf-cmake/tools/cmake/build.cmake').exists(),
+                         'official ESP-IDF CMake checkout required')
+    def test_official_idf_early_dependency_scan_receives_feature_flag(self):
+        idf=ROOT.parent/'esp-idf-cmake'
+        for enabled in ('ON','OFF'):
+            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory() as tmp:
+                base=Path(tmp)
+                firmware=base/'firmware'
+                (firmware/'vendor/babytalk').mkdir(parents=True)
+                (firmware/'vendor/babytalk/paths.cmake').write_text('set(BABYTALK_ROOT "unused")\n')
+                (firmware/'version.txt').write_text('regression\n')
+                shutil.copy(ROOT/'firmware/CMakeLists.txt',firmware/'CMakeLists.txt')
+                fake_idf=base/'idf'
+                (fake_idf/'tools/cmake').mkdir(parents=True)
+                (fake_idf/'tools/cmake/project.cmake').write_text(
+                    f'include("{idf}/tools/cmake/build.cmake")\n'
+                    'add_custom_target(__idf_build_target)\n'
+                    f'idf_build_set_property(IDF_PATH "{idf}")\n'
+                    'idf_build_set_property(__COMPONENT_TARGETS "___idf_main")\n')
+                (base/'CMakeLists.txt').write_text(
+                    'cmake_minimum_required(VERSION 3.16)\nproject(check NONE)\n'
+                    f'set(ENV{{IDF_PATH}} "{fake_idf}")\n'
+                    f'set(JRBOT_ENABLE_BABYTALK {enabled})\n'
+                    # Stop at project(): run actual root setup, not full SDK/toolchain.
+                    'macro(project)\nreturn()\nendmacro()\n'
+                    f'include("{firmware}/CMakeLists.txt")\n'
+                    f'__build_write_properties("{base}/props.cmake")\n')
+                r=subprocess.run(['cmake','-S',str(base),'-B',str(base/'build')],capture_output=True,text=True)
+                self.assertEqual(r.returncode,0,r.stderr)
+                (base/'components.cmake').write_text(
+                    'set(__component____idf_main_COMPONENT_SOURCE project_components)\n'
+                    'set(__component____idf_main_COMPONENT_NAME main)\n'
+                    'set(__component____idf_main_COMPONENT_ALIAS idf::main)\n'
+                    f'set(__component____idf_main_COMPONENT_DIR "{ROOT}/firmware/main")\n')
+                r=subprocess.run(['cmake',f'-DBUILD_PROPERTIES_FILE={base}/props.cmake',
+                    f'-DCOMPONENT_PROPERTIES_FILE={base}/components.cmake',
+                    f'-DCOMPONENT_REQUIRES_FILE={base}/requirements.cmake','-P',
+                    str(idf/'tools/cmake/scripts/component_get_requirements.cmake')],capture_output=True,text=True)
+                self.assertEqual(r.returncode,0,r.stderr)
+                requirements=(base/'requirements.cmake').read_text()
+                if enabled=='ON':
+                    self.assertIn('stt_engine;sram_pool',requirements)
+                else:
+                    self.assertNotIn('stt_engine',requirements)
+                    self.assertNotIn('sram_pool',requirements)
+
     @unittest.skipUnless(shutil.which('gcc') and SOURCE.exists(),'host C compiler and official headers required')
     def test_real_capture_and_panel_events_with_cancel_and_read_failure(self):
         with tempfile.TemporaryDirectory() as tmp:

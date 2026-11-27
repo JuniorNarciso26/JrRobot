@@ -77,3 +77,13 @@ sobreposição dentro dos 16 MB, configuração repetível e captura C real comp
 em host com doubles de I2S e inferência. Confere 80000 amostras, ganho, publicação
 do texto, falha de leitura e cancelamento. Os testes não substituem compilação
 Xtensa/ESP-IDF nem o teste físico de coexistência WakeNet/BabyTalk/painel.
+
+### Correção da descoberta de dependências
+
+A opção `JRBOT_ENABLE_BABYTALK` é exportada por `idf_build_set_property` antes
+de `project()`. O ESP-IDF v1 calcula `REQUIRES` em um processo CMake separado;
+uma opção apenas no cache da configuração principal não chegava àquela etapa.
+Isso deixava `jr_stt.c` no build sem os includes de `stt_engine` e `sram_pool`.
+O teste de regressão executa o script oficial `component_get_requirements.cmake`
+do ESP-IDF 6.1 com a opção ligada e desligada. Reproduziu a ausência das
+dependências antes da correção e confirmou o resultado correto depois dela.

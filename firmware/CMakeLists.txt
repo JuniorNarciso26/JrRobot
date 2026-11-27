@@ -18,6 +18,9 @@ if(JRBOT_ENABLE_BABYTALK)
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(MINIMAL_BUILD ON)
+# IDF v1 scans REQUIRES in a separate cmake -P process. Cache options are not
+# inherited there; export this feature through the official build properties.
+idf_build_set_property(JRBOT_ENABLE_BABYTALK "${JRBOT_ENABLE_BABYTALK}")
 project(jrbot_v2)
 if(JRBOT_ENABLE_BABYTALK)
     esptool_py_flash_to_partition(flash "stt_model" "${BABYTALK_ROOT}/models/citrinet256_int4.mmrt")
