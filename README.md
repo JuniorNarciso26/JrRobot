@@ -1,3 +1,8 @@
+> **Teste isolado `test/babytalk-hw04`:** transcrição de fala em inglês no ESP32-S3.
+> Execute `INSTALAR.bat`, escolha esta branch e a porta, aguarde `JR_STT_READY`,
+> digite `ouvir` e fale após `FALE AGORA`. [Instruções](docs/BABYTALK_HW04_TEST.md).
+> Para voltar à aplicação completa do JrBot, reinstale `main`.
+
 <div align="center">
 
 <img src="docs/assets/readme/jrbot-logo.svg" alt="JrBot logo" width="360">

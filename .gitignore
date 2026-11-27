@@ -23,3 +23,9 @@ tests/hardware/results.json
 # Local baseline/comparison logs and retained isolated laboratory build.
 /.tts-benchmark-results/
 /experiments/vtts-hw04/.work/
+
+# Isolated BabyTalk sources/models/build and local voice experiments
+/.babytalk-hw04/
+/voice-dataset/
+/.venv-voz/
+/.tflite-yes-no/

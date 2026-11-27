@@ -320,6 +320,8 @@ set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 set "JRBOT_TTS_CMAKE_ARGS="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS.
+set "JRBOT_BABYTALK_TEST="
+if /i "%CURRENT_BRANCH%"=="test/babytalk-hw04" set "JRBOT_BABYTALK_TEST=1"
 set "JRBOT_VTTS_BRANCH="
 if /i "%CURRENT_BRANCH%"=="main" set "JRBOT_VTTS_BRANCH=1"
 if /i "%CURRENT_BRANCH%"=="develop" set "JRBOT_VTTS_BRANCH=1"
@@ -481,6 +483,9 @@ if defined JRBOT_VTTS_BRANCH (
     set "SDKCONFIG_FILE=sdkconfig.runtime-api-v1-02"
 )
 
+set "JRBOT_IDF61_BRANCH=%JRBOT_VTTS_BRANCH%"
+if defined JRBOT_BABYTALK_TEST set "JRBOT_IDF61_BRANCH=1"
+
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="panel" goto panel
 
@@ -497,7 +502,7 @@ goto help
 
 :ensure_idf
 set "IDF_EXPORT="
-if defined JRBOT_VTTS_BRANCH (
+if defined JRBOT_IDF61_BRANCH (
     rem vTTS target: official EIM installation at C:\esp6\release-v6.1\esp-idf.
     if exist "C:\esp6\release-v6.1\esp-idf\export.bat" set "IDF_EXPORT=C:\esp6\release-v6.1\esp-idf\export.bat"
     if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v6.1*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
@@ -509,7 +514,7 @@ if defined JRBOT_VTTS_BRANCH (
     if not defined IDF_EXPORT for /d %%D in ("C:\Espressif\frameworks\esp-idf-v5.5*") do if exist "%%~fD\export.bat" set "IDF_EXPORT=%%~fD\export.bat"
 )
 if not defined IDF_EXPORT (
-    if defined JRBOT_VTTS_BRANCH (
+    if defined JRBOT_IDF61_BRANCH (
         echo [ERRO] ESP-IDF 6.1.x nao foi localizado.
         echo Instale ESP-IDF 6.1.1 pelo EIM uma vez e execute INSTALAR.bat novamente.
     ) else (
@@ -522,7 +527,7 @@ rem The Windows shortcut may inherit the EIM default idf6.1_py3.13_env,
 rem while this PC's working IDF 6.1 Python is in tools\python\release-v6.1\venv.
 rem Resolve an EXISTING Python environment before export.bat, without installing
 rem anything or changing the globally configured Windows environment.
-if defined JRBOT_VTTS_BRANCH (
+if defined JRBOT_IDF61_BRANCH (
     if exist "C:\Espressif\tools\python\release-v6.1\venv\Scripts\python.exe" (
         set "IDF_TOOLS_PATH=C:\Espressif"
         set "IDF_PYTHON_ENV_PATH=C:\Espressif\tools\python\release-v6.1\venv"
@@ -556,7 +561,7 @@ if defined JRBOT_VTTS_BRANCH (
     set "PATH=!IDF_PYTHON_ENV_PATH!\Scripts;!PATH!"
 )
 rem Validate the selected SDK/venv before export, restoring only missing metadata.
-if defined JRBOT_VTTS_BRANCH (
+if defined JRBOT_IDF61_BRANCH (
     "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%~dp0tools\prepare_idf_environment.py" --export "%IDF_EXPORT%" --python-env "%IDF_PYTHON_ENV_PATH%" --expected 6.1
     if errorlevel 1 exit /b 1
 )
@@ -579,7 +584,7 @@ if not defined IDF_PYTHON_ENV_PATH (
     echo [ERRO] IDF_PYTHON_ENV_PATH nao foi definido pelo export.bat.
     exit /b 1
 )
-if defined JRBOT_VTTS_BRANCH (
+if defined JRBOT_IDF61_BRANCH (
     rem export.bat may print Activation script failed but return code 0.
     rem Explicitly verify the same tool-export operation before reporting [OK].
     "%IDF_PYTHON_ENV_PATH%\Scripts\python.exe" "%IDF_PATH%\tools\idf_tools.py" export --format key-value >nul
@@ -638,6 +643,7 @@ if errorlevel 1 exit /b 1
 exit /b 0
 
 :prepare
+if defined JRBOT_BABYTALK_TEST goto prepare_babytalk
 if defined JRBOT_VTTS_BRANCH (
     echo [INFO] Registrando a versao e o commit Git na imagem do firmware...
     python tools\stamp_firmware_revision.py
@@ -771,7 +777,50 @@ echo [INFO] Confirme a versao instalada no campo Firmware do painel ou em /statu
 if /i "%ACTION%"=="flash" goto success
 goto panel
 
+
+:prepare_babytalk
+echo [TESTE] BabyTalk: transcricao em ingles no ESP32-S3, sem rede.
+echo [INFO] Aplicacao isolada; para voltar ao robo completo, reinstale main.
+python tools\prepare_babytalk_hw04.py
+if errorlevel 1 goto failure
+pushd "%~dp0.babytalk-hw04\project"
+if errorlevel 1 goto failure
+if /i "%ACTION%"=="menuconfig" (
+    python "%IDF_PATH%\tools\idf.py" -B build menuconfig
+    set "RC=!errorlevel!"
+    popd
+    if not "!RC!"=="0" goto failure
+    goto success
+)
+python "%IDF_PATH%\tools\idf.py" -B build build
+if errorlevel 1 (
+    popd
+    goto failure
+)
+if /i "%ACTION%"=="build" (
+    popd
+    goto success
+)
+rem Model is included in the official flash target through its named partition.
+python "%IDF_PATH%\tools\idf.py" -B build -p "%JR_FLASH_PORT%" flash
+if errorlevel 1 (
+    popd
+    goto failure
+)
+echo [OK] JrBot_V2.2_BABYTALK_TEST e modelo instalados.
+echo [TESTE] Aguarde JR_STT_READY. Digite ouvir e ENTER, aguarde FALE AGORA e fale ingles.
+if /i not "%ACTION%"=="flash" (
+    python "%IDF_PATH%\tools\idf.py" -B build -p "%JR_FLASH_PORT%" monitor
+    set "RC=!errorlevel!"
+    popd
+    if not "!RC!"=="0" goto failure
+) else (
+    popd
+)
+goto success
+
 :menuconfig
+if defined JRBOT_BABYTALK_TEST goto prepare_babytalk
 call :check
 if errorlevel 1 goto failure
 pushd firmware
@@ -791,7 +840,9 @@ echo ============================================================
 echo [SUCESSO] JRBOT PREPARADO
 echo ============================================================
 if defined CURRENT_BRANCH echo Branch: %CURRENT_BRANCH%
-if exist firmware\version.txt (
+if defined JRBOT_BABYTALK_TEST (
+    echo Versao do teste: JrBot_V2.2_BABYTALK_TEST
+) else if exist firmware\version.txt (
     set /p "FW_VERSION=" < "firmware\version.txt"
     echo Versao do codigo: !FW_VERSION!
 )
