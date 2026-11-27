@@ -5,9 +5,23 @@ if(NOT IDF_TARGET STREQUAL "esp32s3")
 endif()
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/version.txt" PROJECT_VER LIMIT_COUNT 1)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/version.txt")
+option(JRBOT_ENABLE_BABYTALK "Experimental wake-to-text panel test" OFF)
+if(JRBOT_ENABLE_BABYTALK)
+    if(JRBOT_ENABLE_VTTS)
+        message(FATAL_ERROR "Panel STT test uses separate flash layout without embedded vTTS models")
+    endif()
+    include("${CMAKE_CURRENT_LIST_DIR}/vendor/babytalk/paths.cmake")
+    list(APPEND EXTRA_COMPONENT_DIRS
+        "${CMAKE_CURRENT_LIST_DIR}/babytalk_components/stt_engine"
+        "${BABYTALK_ROOT}/components/mmrt"
+        "${BABYTALK_ROOT}/components/sram_pool")
+endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(MINIMAL_BUILD ON)
 project(jrbot_v2)
+if(JRBOT_ENABLE_BABYTALK)
+    esptool_py_flash_to_partition(flash "stt_model" "${BABYTALK_ROOT}/models/citrinet256_int4.mmrt")
+endif()
 
 # project() has now created the final ELF target (ESP-IDF EXECUTABLE property).
 # Validate the selected implementations, not just the source file list.

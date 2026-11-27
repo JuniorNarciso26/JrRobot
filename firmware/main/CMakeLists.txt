@@ -61,6 +61,13 @@ if(JRBOT_ENABLE_VTTS)
     set(JR_TTS_INCLUDES "${VTTS_ROOT}/include" "${VTTS_ROOT}/src")
 endif()
 
+set(JR_STT_SOURCES "")
+set(JR_STT_REQUIRES "")
+if(JRBOT_ENABLE_BABYTALK)
+    set(JR_STT_SOURCES "../module_brain/jr_stt.c")
+    set(JR_STT_REQUIRES stt_engine sram_pool)
+endif()
+
 idf_component_register(
     SRCS
         "main.c"
@@ -89,6 +96,7 @@ idf_component_register(
         "../module_runtime/jr_runtime_api.c"
         "../module_tts/jr_tts.c"
         ${JR_TTS_SOURCES}
+        ${JR_STT_SOURCES}
     INCLUDE_DIRS
         "."
         "../core"
@@ -100,7 +108,7 @@ idf_component_register(
         "../module_runtime"
         "../module_tts"
         ${JR_TTS_INCLUDES}
-    REQUIRES esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap mdns
+    REQUIRES ${JR_STT_REQUIRES} esp_driver_i2c esp_driver_uart esp_driver_usb_serial_jtag esp_driver_gpio esp_driver_i2s esp_wifi esp_event esp_netif esp_http_server esp_https_server esp_psram esp32-camera esp-sr nvs_flash log esp_timer heap mdns
     EMBED_TXTFILES
         "jrskill_app.js"
         "memory_panel.js"
@@ -137,4 +145,10 @@ if(JRBOT_ENABLE_VTTS)
     target_add_binary_data(${COMPONENT_LIB} "${VTTS_ASSETS}/lex_en.bin" BINARY RENAME_TO lex_en.bin)
 else()
     target_compile_definitions(${COMPONENT_LIB} PRIVATE JRBOT_WITH_VTTS=0)
+endif()
+
+if(JRBOT_ENABLE_BABYTALK)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE JRBOT_WITH_BABYTALK=1)
+else()
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE JRBOT_WITH_BABYTALK=0)
 endif()

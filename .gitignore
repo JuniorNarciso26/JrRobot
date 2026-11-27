@@ -29,3 +29,8 @@ tests/hardware/results.json
 /voice-dataset/
 /.venv-voz/
 /.tflite-yes-no/
+
+# Generated BabyTalk panel adapter and dedicated SDK config/build
+/firmware/vendor/babytalk/
+/firmware/b-babytalk-panel/
+/firmware/sdkconfig.babytalk-panel*

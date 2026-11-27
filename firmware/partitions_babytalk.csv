@@ -1,0 +1,7 @@
+# Isolated STT panel test: 5 MiB app + 4 MiB WakeNet + 6 MiB BabyTalk.
+# Name, Type, SubType, Offset, Size
+nvs,data,nvs,0x9000,0x6000
+phy_init,data,phy,0xf000,0x1000
+factory,app,factory,0x10000,5M
+model,data,spiffs,0x510000,4M
+stt_model,data,0x40,0x910000,6M

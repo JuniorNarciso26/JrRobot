@@ -14,6 +14,9 @@
 #include "jr_wifi_provisioning.h"
 #include "jr_mdns.h"
 #include "jr_net_diag.h"
+#if JRBOT_WITH_BABYTALK
+#include "jr_stt.h"
+#endif
 
 #define JR_OLED_RETRY_MS 30000U
 #define JR_WIFI_SETUP_TIMEOUT_MS 30000U
@@ -30,6 +33,12 @@ void app_main(void) {
     ESP_LOGI("jrbot_main", "MS3625 enabled SCK=%d WS=%d SD=%d",JR_MIC_SCK_GPIO,JR_MIC_WS_GPIO,JR_MIC_SD_GPIO);
     ESP_LOGI("jrbot_main", "OV5640 enabled on board camera connector");
 
+#if JRBOT_WITH_BABYTALK
+    if (jr_stt_reserve() != ESP_OK) {
+        ESP_LOGE("jrbot_main", "BabyTalk SRAM reservation failed; not starting test");
+        return;
+    }
+#endif
     jr_wifi_prepare();
     jr_tts_init(); /* NVS ready; speech remains OFF until explicitly enabled. */
     if (jr_commands_init() != ESP_OK) ESP_LOGE("jrbot_main", "Command mutex unavailable");

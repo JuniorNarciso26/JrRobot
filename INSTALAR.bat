@@ -320,6 +320,8 @@ set "JRBOT_WIFI_RAM_LIGHT_BUILD="
 set "JRBOT_TTS_CMAKE_ARGS="
 for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
 rem Both main (approved V2.1.3) and develop now use ESP-IDF 6.1 and offline vTTS.
+set "JRBOT_STT_PANEL="
+if /i "%CURRENT_BRANCH%"=="test/babytalk-panel" set "JRBOT_STT_PANEL=1"
 set "JRBOT_BABYTALK_TEST="
 if /i "%CURRENT_BRANCH%"=="test/babytalk-hw04" set "JRBOT_BABYTALK_TEST=1"
 set "JRBOT_VTTS_BRANCH="
@@ -336,6 +338,11 @@ if defined JRBOT_VTTS_BRANCH (
     set "SDKCONFIG_FILE=sdkconfig.develop_vtts"
     set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
     set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=ON"
+) else if defined JRBOT_STT_PANEL (
+    set "BUILD_DIR=b-babytalk-panel"
+    set "SDKCONFIG_FILE=sdkconfig.babytalk-panel"
+    set "JRBOT_WIFI_RAM_LIGHT_BUILD=1"
+    set "JRBOT_TTS_CMAKE_ARGS=-D JRBOT_ENABLE_VTTS=OFF -D JRBOT_ENABLE_BABYTALK=ON"
 ) else if /i "%CURRENT_BRANCH%"=="feature/esp-sr-ola-esp-autonomo" (
     rem WakeNet10 portugues + sistema principal; build isolado do firmware aprovado.
     set "BUILD_DIR=b-ola-esp"
@@ -485,6 +492,7 @@ if defined JRBOT_VTTS_BRANCH (
 
 set "JRBOT_IDF61_BRANCH=%JRBOT_VTTS_BRANCH%"
 if defined JRBOT_BABYTALK_TEST set "JRBOT_IDF61_BRANCH=1"
+if defined JRBOT_STT_PANEL set "JRBOT_IDF61_BRANCH=1"
 
 if /i "%ACTION%"=="help" goto help
 if /i "%ACTION%"=="panel" goto panel
@@ -643,6 +651,16 @@ if errorlevel 1 exit /b 1
 exit /b 0
 
 :prepare
+if defined JRBOT_STT_PANEL (
+    echo [TESTE] Ola ESP - bip - 5 segundos em ingles - JR_STT_TEXT no log Serial do painel.
+    echo [INFO] Sintese de voz desativada apenas nesta branch experimental.
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_babytalk_panel.py
+    if errorlevel 1 goto failure
+)
 if defined JRBOT_BABYTALK_TEST goto prepare_babytalk
 if defined JRBOT_VTTS_BRANCH (
     echo [INFO] Registrando a versao e o commit Git na imagem do firmware...
@@ -820,6 +838,16 @@ if /i not "%ACTION%"=="flash" (
 goto success
 
 :menuconfig
+if defined JRBOT_STT_PANEL (
+    echo [TESTE] Ola ESP - bip - 5 segundos em ingles - JR_STT_TEXT no log Serial do painel.
+    echo [INFO] Sintese de voz desativada apenas nesta branch experimental.
+    python tools\stamp_firmware_revision.py
+    if errorlevel 1 goto failure
+    python tools\prepare_https_develop.py
+    if errorlevel 1 goto failure
+    python tools\prepare_babytalk_panel.py
+    if errorlevel 1 goto failure
+)
 if defined JRBOT_BABYTALK_TEST goto prepare_babytalk
 call :check
 if errorlevel 1 goto failure

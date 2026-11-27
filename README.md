@@ -1,8 +1,8 @@
-> **Teste isolado `test/babytalk-hw04`:** transcrição de fala em inglês no ESP32-S3.
-> Execute `INSTALAR.bat`, escolha esta branch e a porta, aguarde `JR_STT_READY`,
-> pressione ENTER e fale após `FALE AGORA`; outro ENTER ou uma pausa encerra a captura.
-> Ganho e sensibilidade ajustáveis pelo Serial. [Instruções](docs/BABYTALK_HW04_TEST.md).
-> Para voltar à aplicação completa do JrBot, reinstale `main`.
+> **Teste de escuta no painel — `test/babytalk-panel`:** no modo autônomo,
+> “Olá ESP” dá um bip, captura 5 s em inglês e registra `JR_STT_TEXT` no log
+> do painel conectado por Serial USB. Síntese de voz desativada nesta branch.
+> Execute `INSTALAR.bat`, escolha a branch e a porta. [Instruções](docs/BABYTALK_PANEL_TEST.md).
+> Firmware experimental `JrBot_V2.2_STT_PANEL`; a `main` aprovada permanece separada.
 
 <div align="center">
 

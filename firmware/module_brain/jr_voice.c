@@ -18,10 +18,18 @@
 #include "jr_board.h"
 #include "jr_tts.h"
 #include "jr_voice.h"
+#if JRBOT_WITH_BABYTALK
+#include "jr_stt.h"
+#include "jr_usb_terminal.h"
+#endif
 
 #define JR_VOICE_BUS_TIMEOUT_MS 2500U
 #define JR_VOICE_READ_TIMEOUT_MS 350U
+#if JRBOT_WITH_BABYTALK
+#define JR_VOICE_TASK_STACK 16384
+#else
 #define JR_VOICE_TASK_STACK 10240
+#endif
 #define JR_REPLY_SETTLE_MS 350
 
 static const char *TAG = "jrbot_voice";
@@ -157,6 +165,9 @@ fail:
 
 static void voice_cleanup(void) {
     close_mic();
+#if JRBOT_WITH_BABYTALK
+    jr_stt_close();
+#endif
 
     if (wn_data && wakenet) {
         wakenet->destroy(wn_data);
@@ -231,6 +242,17 @@ static esp_err_t reply_and_resume(void) {
     esp_err_t beep_err = jr_audio_test_tone(880, 180);
     ESP_LOGI(TAG, "WAKE_REPLY_END type=beep result=%s", esp_err_to_name(beep_err));
 
+#if JRBOT_WITH_BABYTALK
+    /* This experiment logs text only: no wake greeting, face command or action. */
+    if (beep_err == ESP_OK && !stop_requested) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_err_t capture_err = stop_requested ? ESP_ERR_INVALID_STATE : open_mic(sample_rate);
+        if (capture_err == ESP_OK) capture_err = jr_stt_capture(rx_chan, &stop_requested);
+        close_mic();
+        if (capture_err == ESP_OK) jr_stt_transcribe(&stop_requested);
+        else ESP_LOGW(TAG, "JR_STT_ERROR capture=%s", esp_err_to_name(capture_err));
+    }
+#else
     if (beep_err == ESP_OK && !stop_requested && wake_callback) {
         /* Existing OLED Love reaction runs after beep, independently of vTTS. */
         wake_callback("Ola ESP", wn_model_name, 1);
@@ -248,6 +270,7 @@ static esp_err_t reply_and_resume(void) {
         }
     }
 
+#endif
     vTaskDelay(pdMS_TO_TICKS(JR_REPLY_SETTLE_MS));
     if (stop_requested) return beep_err;
 
@@ -258,7 +281,10 @@ static esp_err_t reply_and_resume(void) {
     }
 
     clean_detector();
-    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED type=beep_oled_vtts result=%s listening_resumed=1",
+#if JRBOT_WITH_BABYTALK
+    jr_usb_terminal_emit("JR_STT_WAIT_WAKE: diga Ola ESP para nova captura");
+#endif
+    ESP_LOGI(TAG, "WAKE_LISTENING_RESUMED result=%s listening_resumed=1",
              esp_err_to_name(beep_err));
     return beep_err;
 }
@@ -338,14 +364,19 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
     portENTER_CRITICAL(&voice_lock);
     bool already_running = voice_status.running;
     portEXIT_CRITICAL(&voice_lock);
-    if (already_running) return ESP_OK;
+    if (already_running) return stop_requested ? ESP_ERR_INVALID_STATE : ESP_OK;
 
     stop_requested = false;
     wake_callback = wake_cb;
 
+#if JRBOT_WITH_BABYTALK
+    esp_err_t stt_err = jr_stt_open();
+    if (stt_err != ESP_OK) { status_error(stt_err); return stt_err; }
+#endif
     models = esp_srmodel_init("model");
     if (!models) {
         status_error(ESP_ERR_NOT_FOUND);
+        voice_cleanup();
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -404,7 +435,9 @@ esp_err_t jr_voice_start(jr_voice_wake_cb_t wake_cb) {
              voice_status.engine, voice_status.model, voice_status.wakeword, sample_rate, chunk);
     /* Prepare the short fixed acknowledgement while WakeNet listens. No I2S
      * acquisition or blocking synthesis is performed in this startup path. */
+#if !JRBOT_WITH_BABYTALK
     jr_tts_prepare_wake_reply();
+#endif
     return ESP_OK;
 }
 
