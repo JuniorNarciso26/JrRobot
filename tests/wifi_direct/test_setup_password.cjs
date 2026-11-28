@@ -13,7 +13,7 @@ async function run(password) {
   }
   const posts=[];
   const context=vm.createContext({document:{getElementById:node,createElement:()=>node(Symbol())},
-    URLSearchParams,Set,confirm:()=>true,fetch:async(url,options)=>{
+    URLSearchParams,Set,confirm:()=>{throw Error("Native dialogs blocked in captive window")},fetch:async(url,options)=>{
       if(options?.method==='POST')posts.push({url,options});
       return {ok:true,json:async()=>({aps:[],profiles:[],ok:true,restarting:true})};
     }});
@@ -40,5 +40,5 @@ async function run(password) {
     assert.match(nodes.get('direct-status').textContent,message);
     assert.equal(nodes.get('direct-password').value,password);
   }
-  console.log('PASS: actual setup button submits valid passwords unchanged; length and invalid-character feedback; show/hide');
+  console.log('PASS: activation without native dialogs; actual setup button submits valid passwords unchanged; length and invalid-character feedback; show/hide');
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -35,7 +35,8 @@
       <label for="direct-password">Senha da rede JrBot (8 a 63 caracteres)</label>
       <div class="password"><input id="direct-password" type="password" minlength="8" maxlength="63" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Escolha uma senha"><button type="button" class="secondary" id="direct-show" aria-label="Mostrar senha da conexão direta">Mostrar</button></div>
       <p id="direct-count" class="muted small" aria-live="polite">0 caracteres · mínimo 8</p>
-      <button type="button" id="direct-on" class="primary" role="switch" aria-checked="false">Conexão direta: OFF — ativar</button>
+      <button type="button" id="direct-on" class="primary" role="switch" aria-checked="false">Salvar senha e ativar conexão direta</button>
+      <p class="muted small">Ao tocar no botão, o JrBot salva a senha e reinicia na rede JrBot-XXXXXX.</p>
       <p id="direct-status" class="muted small" role="status"></p>
     </section>
     <form id="wifi-form" method="post" action="/test">
@@ -106,8 +107,10 @@
       const password=input.value;
       const error=directPasswordError(password);
       if(error){note.textContent=error;input.focus();return}
-      if(!confirm('Ativar conexão direta e reiniciar o JrBot?'))return;
+      // Captive Wi-Fi windows can suppress confirm(); the explicit button is the confirmation.
+      if(this.disabled)return;
       this.disabled=true;
+      note.textContent='Salvando senha e ativando conexão direta...';
       try{
         const result=await request('/direct',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-JrBot-WiFi':'1'},body:new URLSearchParams({ssid:'direct',pass:password})});
         if(!result.ok)throw Error('Não foi possível ativar. Aguarde o teste de rede terminar ou tente novamente.');
